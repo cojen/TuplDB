@@ -69,6 +69,7 @@ public final class TupleType extends Type {
         Map<String, ColumnInfo> keys, values;
 
         if (projection == null) {
+            // FIXME: exclude hidden columns
             keys = info.keyColumns;
             values = info.valueColumns;
         } else {

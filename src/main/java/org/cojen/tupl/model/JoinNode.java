@@ -19,8 +19,11 @@ package org.cojen.tupl.model;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.Map;
 
 import org.cojen.tupl.Table;
+
+import org.cojen.tupl.jdbc.TableProvider;
 
 import org.cojen.tupl.rows.join.JoinSpec;
 
@@ -64,7 +67,7 @@ public final class JoinNode extends RelationNode {
     private final int mJoinType;
     private final RelationNode mLeft, mRight;
 
-    private QueryFactory<?> mQueryFactory;
+    private TableProvider<?> mTableProvider;
 
     private JoinNode(RelationType type, String name,
                      int joinType, RelationNode left, RelationNode right)
@@ -86,36 +89,43 @@ public final class JoinNode extends RelationNode {
     }
 
     @Override
-    public QueryFactory<?> makeQueryFactory() {
-        if (mQueryFactory == null) {
-            mQueryFactory = doMakeQueryFactory();
+    public TableProvider<?> makeTableProvider() {
+        if (mTableProvider == null) {
+            mTableProvider = doMakeTableProvider();
         }
-        return mQueryFactory;
+        return mTableProvider;
     }
 
-    private QueryFactory<?> doMakeQueryFactory() {
+    private TableProvider<?> doMakeTableProvider() {
         int argCount = maxArgument();
 
-        var queryList = new ArrayList<QueryFactory>();
-        flattenQueries(this, queryList);
+        var providerList = new ArrayList<TableProvider>();
+        flattenProviders(this, providerList);
 
         Class<?> joinType = type().tupleType().clazz();
         String spec = makeSpec();
 
+        Map<String, String> projectionMap = makeProjectionMap();
+
         if (argCount == 0) {
-            var tables = new Table[queryList.size()];
+            var tables = new Table[providerList.size()];
             for (int i=0; i<tables.length; i++) {
-                tables[i] = queryList.get(i).table();
+                tables[i] = providerList.get(i).table();
             }
-            return QueryFactory.make(Table.join(joinType, spec, tables));
+            return TableProvider.make(Table.join(joinType, spec, tables), projectionMap);
         }
 
-        var queries = queryList.toArray(new QueryFactory[queryList.size()]);
+        var providers = providerList.toArray(new TableProvider[providerList.size()]);
 
-        return new QueryFactory() {
+        return new TableProvider() {
             @Override
             public Class rowType() {
                 return joinType;
+            }
+
+            @Override
+            public Map<String, String> projection() {
+                return projectionMap;
             }
 
             @Override
@@ -125,21 +135,21 @@ public final class JoinNode extends RelationNode {
 
             @Override
             public Table table(Object... args) {
-                var tables = new Table[queries.length];
+                var tables = new Table[providers.length];
                 for (int i=0; i<tables.length; i++) {
-                    tables[i] = queries[i].table(args);
+                    tables[i] = providers[i].table(args);
                 }
                 return Table.join(joinType, spec, tables);
             }
         };
     }
 
-    private static void flattenQueries(RelationNode node, ArrayList<QueryFactory> dst) {
+    private static void flattenProviders(RelationNode node, ArrayList<TableProvider> dst) {
         if (node instanceof JoinNode jn) {
-            flattenQueries(jn.mLeft, dst);
-            flattenQueries(jn.mRight, dst);
+            flattenProviders(jn.mLeft, dst);
+            flattenProviders(jn.mRight, dst);
         } else {
-            dst.add(node.makeQueryFactory());
+            dst.add(node.makeTableProvider());
         }
     }
 

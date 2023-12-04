@@ -21,12 +21,7 @@ import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 
-import java.util.Map;
-
-import org.cojen.tupl.Table;
 import org.cojen.tupl.Transaction;
-
-import org.cojen.tupl.rows.RowUtils;
 
 /**
  * 
@@ -46,35 +41,6 @@ public abstract class DbQuery extends BasePreparedStatement {
          * Returns a new DbQuery instance against the given connection.
          */
         DbQuery newDbQuery(DbConnection con);
-    }
-
-    public static interface TableProvider<R> {
-        Class<R> rowType();
-
-        /**
-         * Returns a map of table columns to target labels, whereby the order of the elements
-         * determines ResultSet column numbers. Null labels indicate that the column name
-         * serves as the label. A null map can be returned to project all non-hidden columns,
-         * with column names as labels.
-         */
-        Map<String, String> projection();
-
-        /**
-         * Returns the minimum amount of arguments which must be passed to the {@link #table}
-         * method.
-         */
-        int argumentCount();
-
-        /**
-         * Returns a fully functional table.
-         *
-         * @throws IllegalArgumentException if not enough arguments are given
-         */
-        Table<R> table(Object... args);
-
-        default Table<R> table() {
-            return table(RowUtils.NO_ARGS);
-        }
     }
 
     @Override

@@ -20,9 +20,12 @@ package org.cojen.tupl.model;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+
+import org.cojen.tupl.jdbc.TableProvider;
 
 import org.cojen.tupl.rows.filter.ColumnToArgFilter;
 import org.cojen.tupl.rows.filter.ColumnToColumnFilter;
@@ -92,7 +95,7 @@ public abstract sealed class SelectNode extends RelationNode
                 maxArgument = Math.max(maxArgument, node.maxArgument());
             }
 
-            pureProjection = new HashMap<String, String>();
+            pureProjection = new LinkedHashMap<String, String>();
 
             for (Node node : projection) {
                 if (!(node instanceof ColumnNode cn) || cn.from() != from) {
@@ -114,6 +117,7 @@ public abstract sealed class SelectNode extends RelationNode
 
             if (pureProjection != null && pureProjection.size() == fromType.numColumns()) {
                 // All columns are projected.
+                // FIXME: consider hidden columns
                 projection = null;
                 pureProjection = null;
             }
@@ -265,7 +269,7 @@ public abstract sealed class SelectNode extends RelationNode
     protected final Node[] mProjection;
     protected final int mMaxArgument;
 
-    private QueryFactory<?> mQueryFactory;
+    private TableProvider<?> mTableProvider;
 
     protected SelectNode(TupleType type, String name,
                          RelationNode from, RowFilter filter, Node[] projection,
@@ -313,14 +317,14 @@ public abstract sealed class SelectNode extends RelationNode
     }
 
     @Override
-    public final QueryFactory<?> makeQueryFactory() {
-        if (mQueryFactory == null) {
-            mQueryFactory = doMakeQueryFactory();
+    public final TableProvider<?> makeTableProvider() {
+        if (mTableProvider == null) {
+            mTableProvider = doMakeTableProvider();
         }
-        return mQueryFactory;
+        return mTableProvider;
     }
 
-    protected abstract QueryFactory<?> doMakeQueryFactory();
+    protected abstract TableProvider<?> doMakeTableProvider();
 
     @Override
     public final int hashCode() {

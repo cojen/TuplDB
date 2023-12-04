@@ -38,6 +38,8 @@ import org.cojen.tupl.diag.QueryPlan;
 
 import org.cojen.tupl.io.Utils;
 
+import org.cojen.tupl.jdbc.TableProvider;
+
 import org.cojen.tupl.rows.RowGen;
 import org.cojen.tupl.rows.MappedTable;
 
@@ -96,20 +98,26 @@ final class SelectMappedNode extends SelectNode {
     }
 
     @Override
-    protected QueryFactory<?> doMakeQueryFactory() {
-        QueryFactory source = mFrom.makeQueryFactory();
+    @SuppressWarnings("unchecked")
+    protected TableProvider doMakeTableProvider() {
+        TableProvider source = mFrom.makeTableProvider();
 
         int argCount = maxArgument();
         MapperFactory factory = makeMapper(argCount);
 
         Class targetClass = type().tupleType().clazz();
 
-        return new QueryFactory.Wrapped(source, argCount) {
+        return new TableProvider.Wrapped(source, makeProjectionMap(), argCount) {
+            @Override
+            public Class rowType() {
+                return targetClass;
+            }
+
             @Override
             @SuppressWarnings("unchecked")
             public Table table(Object... args) {
                 checkArgumentCount(args);
-                return mSource.table(args).map(targetClass, factory.get(args));
+                return source.table(args).map(targetClass, factory.get(args));
             }
         };
     }

@@ -45,7 +45,7 @@ public class ResultSetTest {
 
     @Test
     public void basic() throws Exception {
-        var rsClass = ResultSetMaker.find(Row.class, null);
+        var rsClass = ResultSetMaker.find(Row.class, null, 0);
         var rsCtor = rsClass.getConstructor();
 
         {
@@ -161,7 +161,7 @@ public class ResultSetTest {
         projection.put("id", "idx");
         projection.put("text", "message");
 
-        var rsClass = ResultSetMaker.find(Row.class, projection);
+        var rsClass = ResultSetMaker.find(Row.class, projection, 0);
         var rsCtor = rsClass.getConstructor();
         var rs = (ResultSet) rsCtor.newInstance();
         var rowClass = RowMaker.find(Row.class);
@@ -200,7 +200,7 @@ public class ResultSetTest {
 
     @Test
     public void join() throws Exception {
-        var rsClass = ResultSetMaker.find(Join.class, null);
+        var rsClass = ResultSetMaker.find(Join.class, null, 0);
         var rsCtor = rsClass.getConstructor();
 
         var rs = (ResultSet) rsCtor.newInstance();
@@ -253,7 +253,7 @@ public class ResultSetTest {
         projection.put("a.id", "aid");
         projection.put("b.id", "bid");
 
-        var rsClass = ResultSetMaker.find(Join.class, projection);
+        var rsClass = ResultSetMaker.find(Join.class, projection, 0);
         var rsCtor = rsClass.getConstructor();
 
         var rs = (ResultSet) rsCtor.newInstance();

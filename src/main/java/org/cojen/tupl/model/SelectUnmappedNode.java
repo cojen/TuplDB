@@ -22,6 +22,8 @@ import java.util.Map;
 
 import org.cojen.tupl.Table;
 
+import org.cojen.tupl.jdbc.TableProvider;
+
 import org.cojen.tupl.rows.RowUtils;
 
 import org.cojen.tupl.rows.filter.ColumnToConstantFilter;
@@ -51,6 +53,7 @@ final class SelectUnmappedNode extends SelectNode {
     {
         if (projection != null && projection.length == from.type().tupleType().numColumns()) {
             // Full projection.
+            // FIXME: consider hidden columns and renames
             projection = null;
         }
 
@@ -100,8 +103,9 @@ final class SelectUnmappedNode extends SelectNode {
     }
 
     @Override
-    protected QueryFactory<?> doMakeQueryFactory() {
-        QueryFactory<?> source = mFrom.makeQueryFactory();
+    @SuppressWarnings("unchecked")
+    protected TableProvider<?> doMakeTableProvider() {
+        TableProvider<?> source = mFrom.makeTableProvider();
 
         if (mFilter == TrueFilter.THE && mProjection == null) {
             return source;
@@ -109,11 +113,15 @@ final class SelectUnmappedNode extends SelectNode {
 
         // FIXME: Use an empty query if the filter is false.
 
+        Map<String, String> projectionMap;
+
         // Build up the full query string.
         var qb = new StringBuilder().append('{');
         if (mProjection == null) {
+            projectionMap = null;
             qb.append('*');
         } else {
+            projectionMap = makeProjectionMap();
             for (int i=0; i<mProjection.length; i++) {
                 if (i > 0) {
                     qb.append(", ");
@@ -141,26 +149,26 @@ final class SelectUnmappedNode extends SelectNode {
         }
 
         if (baseArgCount == 0) {
-            return QueryFactory.make(source.table().view(viewQuery, viewArgs));
+            return TableProvider.make(source.table().view(viewQuery, viewArgs), projectionMap);
         }
 
         if (viewArgs.length == 0) {
-            return new QueryFactory.Wrapped(source, baseArgCount) {
+            return new TableProvider.Wrapped(source, projectionMap, baseArgCount) {
                 @Override
                 public Table table(Object... args) {
-                    return mSource.table(args).view(viewQuery, args);
+                    return source.table(args).view(viewQuery, args);
                 }
             };
         }
 
-        return new QueryFactory.Wrapped(source, baseArgCount) {
+        return new TableProvider.Wrapped(source, projectionMap, baseArgCount) {
             @Override
             public Table table(Object... args) {
                 int argCount = checkArgumentCount(args);
                 var fullArgs = new Object[argCount + viewArgs.length];
                 System.arraycopy(args, 0, fullArgs, 0, argCount);
                 System.arraycopy(viewArgs, 0, fullArgs, argCount, viewArgs.length);
-                return mSource.table(args).view(viewQuery, fullArgs);
+                return source.table(args).view(viewQuery, fullArgs);
             }
         };
     }

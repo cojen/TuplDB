@@ -63,6 +63,7 @@ import org.cojen.tupl.rows.Converter;
 import org.cojen.tupl.rows.ConvertUtils;
 import org.cojen.tupl.rows.RowInfo;
 import org.cojen.tupl.rows.RowMaker;
+import org.cojen.tupl.rows.RowUtils;
 import org.cojen.tupl.rows.WeakCache;
 
 import org.cojen.tupl.rows.join.JoinRowMaker;
@@ -428,29 +429,49 @@ public final class ResultSetMaker {
     private void makeToStringMethod(MethodMaker mm, Variable rsVar, Variable rowVar)
         throws SQLNonTransientException
     {
-        var bob = mm.var(ResultSetMaker.class).invoke("beginToString", rsVar);
+        var bobVar = mm.var(ResultSetMaker.class).invoke("beginToString", rsVar);
 
         Label done = mm.label();
         rowVar.ifEq(null, done);
 
-        var initSize = bob.invoke("append", '{').invoke("length");
+        var initSize = bobVar.invoke("append", '{').invoke("length");
 
         for (Map.Entry<String, ColumnInfo> e : columns().entrySet()) {
             ColumnInfo info = e.getValue();
             if (!info.isHidden()) {
                 Label sep = mm.label();
-                bob.invoke("length").ifEq(initSize, sep);
-                bob.invoke("append", ", ");
+                bobVar.invoke("length").ifEq(initSize, sep);
+                bobVar.invoke("append", ", ");
                 sep.here();
-                bob.invoke("append", e.getKey()).invoke("append", '=');
-                CodeUtils.appendValue(bob, info, CodeUtils.getColumnValue(rowVar, info, true));
+
+                String name = e.getKey();
+                if (needsQuotes(name)) {
+                    mm.var(RowUtils.class).invoke("appendQuotedString", bobVar, name);
+                } else {
+                    bobVar.invoke("append", name);
+                }
+
+                bobVar.invoke("append", '=');
+                CodeUtils.appendValue(bobVar, info, CodeUtils.getColumnValue(rowVar, info, true));
             }
         }
 
-        bob.invoke("append", '}');
+        bobVar.invoke("append", '}');
 
         done.here();
-        mm.return_(bob.invoke("toString"));
+        mm.return_(bobVar.invoke("toString"));
+    }
+
+    private static boolean needsQuotes(String name) {
+        if (name.isEmpty()) {
+            return true;
+        }
+        for (int i=0; i<name.length(); i++) {
+            if (Character.isWhitespace(name.charAt(i))) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private void addCloseMethod() {

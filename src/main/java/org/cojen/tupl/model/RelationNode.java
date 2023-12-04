@@ -17,7 +17,11 @@
 
 package org.cojen.tupl.model;
 
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.Set;
+
+import org.cojen.tupl.jdbc.TableProvider;
 
 import org.cojen.maker.Variable;
 
@@ -73,11 +77,38 @@ public abstract class RelationNode extends Node {
      * @throws IllegalArgumentException if not found or is ambiguous
      */
     public final ColumnNode findColumn(String name) {
-        return ColumnNode.make(this, name, type().tupleType().findColumn(name, true));
+        return findColumn(name, name);
     }
 
     /**
-     * Makes a fully functional QueryFactory from this node.
+     * Find a column in this relation which matches the given name.
+     *
+     * @param name qualified or unqualified column name to find
+     * @param label label/alias to use instead of original column name (can have spaces)
+     * @return column with a fully qualified name, with the canonical case
+     * @throws IllegalArgumentException if not found or is ambiguous
      */
-    public abstract QueryFactory<?> makeQueryFactory();
+    public final ColumnNode findColumn(String name, String label) {
+        return ColumnNode.make(this, label, type().tupleType().findColumn(name, true));
+    }
+
+    /**
+     * Makes a fully functional TableProvider from this node. It can then be used with
+     * DbQueryMaker to make DbQuery instances.
+     */
+    public abstract TableProvider<?> makeTableProvider();
+
+    // FIXME: can return null if all columns are projected, other than hidden columns
+    protected Map<String, String> makeProjectionMap() {
+        var projectionMap = new LinkedHashMap<String, String>();
+
+        TupleType tt = type().tupleType();
+        int num = tt.numColumns();
+
+        for (int i=0; i<num; i++) {
+            projectionMap.put(tt.field(i), tt.column(i).name());
+        }
+
+        return projectionMap;
+    }
 }

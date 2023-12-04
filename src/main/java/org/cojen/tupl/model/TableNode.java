@@ -19,10 +19,12 @@ package org.cojen.tupl.model;
 
 import org.cojen.tupl.Table;
 
+import org.cojen.tupl.jdbc.TableProvider;
+
 import org.cojen.tupl.rows.IdentityTable;
 
 /**
- * Defines a node which access an ordinary table.
+ * Defines a node which accesses an ordinary table.
  *
  * @author Brian S. O'Neill
  */
@@ -54,8 +56,8 @@ public final class TableNode extends RelationNode {
     }
 
     @Override
-    public QueryFactory<?> makeQueryFactory() {
-        return QueryFactory.make(mTable);
+    public TableProvider<?> makeTableProvider() {
+        return TableProvider.make(mTable, null);
     }
 
     public Table table() {

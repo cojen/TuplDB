@@ -50,9 +50,7 @@ public final class DbQueryMaker {
      *
      * @throws SQLNonTransientException if a requested column doesn't exist
      */
-    public static DbQuery.Factory make(DbQuery.TableProvider<?> provider)
-        throws SQLNonTransientException
-    {
+    public static DbQuery.Factory make(TableProvider<?> provider) throws SQLNonTransientException {
         var key = new Key(provider.rowType(), provider.projection(), provider.argumentCount());
 
         try {
@@ -62,6 +60,7 @@ public final class DbQueryMaker {
         }
     }
 
+    // FIXME: Replace projection with an array of string pairs. Cannot use record.
     private record Key(Class<?> rowType, Map<String, String> projection, int argCount) { }
 
     private static final WeakCache<Key, MethodHandle, Object> cCache = new WeakCache<>() {
@@ -93,10 +92,10 @@ public final class DbQueryMaker {
         ClassMaker cm = CodeUtils.beginClassMaker(DbQueryMaker.class, rsClass, null, "query");
         cm.extend(DbQuery.class).implement(ScannerFactory.class).final_();
 
-        cm.addField(DbQuery.TableProvider.class, "provider").private_().final_();
+        cm.addField(TableProvider.class, "provider").private_().final_();
         cm.addField(rsClass, "rs").private_();
 
-        MethodMaker ctor = cm.addConstructor(DbConnection.class, DbQuery.TableProvider.class);
+        MethodMaker ctor = cm.addConstructor(DbConnection.class, TableProvider.class);
         ctor.invokeSuperConstructor(ctor.param(0));
         ctor.field("provider").set(ctor.param(1));
 
@@ -183,9 +182,9 @@ public final class DbQueryMaker {
         // collected as long as the generated factory class still exists.
         cm.addField(Object.class, "_").static_().private_();
 
-        cm.addField(DbQuery.TableProvider.class, "provider").private_().final_();
+        cm.addField(TableProvider.class, "provider").private_().final_();
 
-        ctor = cm.addConstructor(DbQuery.TableProvider.class);
+        ctor = cm.addConstructor(TableProvider.class);
         ctor.invokeSuperConstructor();
         ctor.field("provider").set(ctor.param(0));
 
@@ -199,7 +198,7 @@ public final class DbQueryMaker {
         Class<?> factoryClass = lookup.lookupClass();
 
         MethodMaker mm = MethodMaker.begin
-            (lookup, DbQuery.Factory.class, null, DbQuery.TableProvider.class);
+            (lookup, DbQuery.Factory.class, null, TableProvider.class);
         mm.return_(mm.new_(factoryClass, mm.param(0)));
 
         MethodHandle mh = mm.finish();
