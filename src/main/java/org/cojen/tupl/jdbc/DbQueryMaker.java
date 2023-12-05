@@ -51,43 +51,67 @@ public final class DbQueryMaker {
      * @throws SQLNonTransientException if a requested column doesn't exist
      */
     public static DbQuery.Factory make(TableProvider<?> provider) throws SQLNonTransientException {
-        var key = new Key(provider.rowType(), provider.projection(), provider.argumentCount());
-
         try {
-            return (DbQuery.Factory) cCache.obtain(key, null).invoke(provider);
+            return (DbQuery.Factory) cCache.obtain(new Key(provider), provider).invoke(provider);
         } catch (Throwable e) {
             throw Utils.rethrow(e);
         }
     }
 
-    // FIXME: Replace projection with an array of string pairs. Cannot use record.
-    private record Key(Class<?> rowType, Map<String, String> projection, int argCount) { }
+    private static final class Key {
+        private final Class<?> mRowType;
+        private final String[] mProjection;
+        private final int mArgCount;
 
-    private static final WeakCache<Key, MethodHandle, Object> cCache = new WeakCache<>() {
-        protected MethodHandle newValue(Key key, Object unused) {
+        Key(TableProvider<?> provider) {
+            mRowType = provider.rowType();
+
+            {
+                Map<String, String> projection = provider.projection();
+                var pairs = new String[projection.size() << 1];
+                int i = 0;
+                for (Map.Entry<String, String> e : projection.entrySet()) {
+                    pairs[i++] = e.getKey().intern();
+                    pairs[i++] = e.getValue().intern();
+                }
+                mProjection = pairs;
+            }
+
+            mArgCount = provider.argumentCount();
+        }
+
+        @Override
+        public int hashCode() {
+            int hash = mRowType.hashCode();
+            hash = hash * 31 + Arrays.hashCode(mProjection);
+            hash = hash * 31 + mArgCount;
+            return hash;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            return this == obj || obj instanceof Key other
+                && getClass() == other.getClass()
+                && mRowType == other.mRowType && Arrays.equals(mProjection, other.mProjection)
+                && mArgCount == other.mArgCount;
+        }
+    }
+
+    private static final WeakCache<Key, MethodHandle, TableProvider> cCache = new WeakCache<>() {
+        protected MethodHandle newValue(Key key, TableProvider provider) {
             try {
-                return new DbQueryMaker(key).finish();
+                return doMake(provider);
             } catch (SQLNonTransientException e) {
                 throw Utils.rethrow(e); 
             }
         }
     };
 
-    private final Class<?> mRowType;
-    private final Map<String, String> mProjection;
-    private final int mArgCount;
-
-    private DbQueryMaker(Key key) {
-        mRowType = key.rowType();
-        mProjection = key.projection();
-        mArgCount = key.argCount();
-    }
-
     /**
      * Returns a MethodHandle to a factory constructor which accepts a provider instance.
      */
-    private MethodHandle finish() throws SQLNonTransientException {
-        var rsClass = ResultSetMaker.find(mRowType, mProjection, 1);
+    private static MethodHandle doMake(TableProvider<?> provider) throws SQLNonTransientException {
+        var rsClass = ResultSetMaker.find(provider.rowType(), provider.projection(), 1);
 
         ClassMaker cm = CodeUtils.beginClassMaker(DbQueryMaker.class, rsClass, null, "query");
         cm.extend(DbQuery.class).implement(ScannerFactory.class).final_();
@@ -99,9 +123,11 @@ public final class DbQueryMaker {
         ctor.invokeSuperConstructor(ctor.param(0));
         ctor.field("provider").set(ctor.param(1));
 
-        if (mArgCount > 0) {
+        int argCount = provider.argumentCount();
+
+        if (argCount > 0) {
             cm.addField(Object[].class, "args").private_().final_();
-            ctor.field("args").set(ctor.new_(Object[].class, mArgCount));
+            ctor.field("args").set(ctor.new_(Object[].class, argCount));
 
             MethodMaker mm = cm.addMethod(null, "clearParameters").public_().override();
             mm.var(Arrays.class).invoke("fill", mm.field("args"), null);
@@ -161,7 +187,7 @@ public final class DbQueryMaker {
             var txnVar = mm.invoke("txn");
             var providerField = mm.field("provider");
             Variable tableVar;
-            if (mArgCount == 0) {
+            if (argCount == 0) {
                 tableVar = providerField.invoke("table");
             } else {
                 tableVar = providerField.invoke("table", mm.field("args"));
