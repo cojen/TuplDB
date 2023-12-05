@@ -40,8 +40,9 @@ import org.cojen.tupl.io.Utils;
 
 import org.cojen.tupl.jdbc.TableProvider;
 
-import org.cojen.tupl.rows.RowGen;
 import org.cojen.tupl.rows.MappedTable;
+import org.cojen.tupl.rows.RowGen;
+import org.cojen.tupl.rows.RowUtils;
 
 import org.cojen.tupl.rows.filter.RowFilter;
 import org.cojen.tupl.rows.filter.TrueFilter;
@@ -107,7 +108,14 @@ final class SelectMappedNode extends SelectNode {
 
         Class targetClass = type().tupleType().clazz();
 
-        return new TableProvider.Wrapped(source, makeProjectionMap(), argCount) {
+        Map<String, String> projectionMap = makeProjectionMap();
+
+        if (argCount == 0) {
+            return TableProvider.make
+                (source.table().map(targetClass, factory.get(RowUtils.NO_ARGS)), projectionMap);
+        }
+
+        return new TableProvider.Wrapped(source, projectionMap, argCount) {
             @Override
             public Class rowType() {
                 return targetClass;
