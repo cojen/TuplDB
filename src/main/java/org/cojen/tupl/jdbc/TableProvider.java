@@ -33,8 +33,8 @@ public interface TableProvider<R> {
     /**
      * Returns a map of table columns to target labels, whereby the order of the elements
      * determines ResultSet column numbers. Null labels indicate that the column name serves as
-     * the label. A null map can be returned to project all non-hidden columns, with column
-     * names as labels.
+     * the label. A null map can be returned to project all columns, with column names as
+     * labels.
      */
     Map<String, String> projection();
 
@@ -58,7 +58,7 @@ public interface TableProvider<R> {
     /**
      * Returns a TableProvider which just wraps a Table.
      *
-     * @param projection can be null to project all non-hidden columns
+     * @param projection can be null to project all columns
      */
     public static <R> TableProvider<R> make(Table<R> table, Map<String, String> projection) {
         class Simple implements TableProvider<R> {

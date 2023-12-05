@@ -117,7 +117,6 @@ public abstract sealed class SelectNode extends RelationNode
 
             if (pureProjection != null && pureProjection.size() == fromType.numColumns()) {
                 // All columns are projected.
-                // FIXME: consider hidden columns
                 projection = null;
                 pureProjection = null;
             }

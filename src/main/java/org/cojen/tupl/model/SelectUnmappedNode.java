@@ -53,7 +53,6 @@ final class SelectUnmappedNode extends SelectNode {
     {
         if (projection != null && projection.length == from.type().tupleType().numColumns()) {
             // Full projection.
-            // FIXME: consider hidden columns and renames
             projection = null;
         }
 

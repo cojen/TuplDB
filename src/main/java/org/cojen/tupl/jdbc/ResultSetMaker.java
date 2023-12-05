@@ -83,8 +83,8 @@ public final class ResultSetMaker {
      *
      * The projection a map of table columns to target labels, whereby the order of the
      * elements determines ResultSet column numbers. Null labels indicate that the column name
-     * serves as the label. A null map can be returned to project all non-hidden columns, with
-     * column names as labels.
+     * serves as the label. A null map can be returned to project all columns, with column
+     * names as labels.
      *
      * Supported modes:
      *
@@ -109,13 +109,10 @@ public final class ResultSetMaker {
             gatherAllScalarColumns(columns, info.keyColumns);
             gatherAllScalarColumns(columns, info.valueColumns);
 
-            Iterator<ColumnInfo> it = columns.values().iterator();
-            while (it.hasNext()) {
-                ColumnInfo colInfo = it.next();
-                joinType |= colInfo.prefix() != null;
-                if (colInfo.isHidden()) {
-                    // Need to remove all of the hidden columns.
-                    it.remove();
+            for (ColumnInfo colInfo : columns.values()) {
+                if (colInfo.prefix() != null) {
+                    joinType = true;
+                    break;
                 }
             }
         } else {

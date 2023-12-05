@@ -98,7 +98,9 @@ public abstract class RelationNode extends Node {
      */
     public abstract TableProvider<?> makeTableProvider();
 
-    // FIXME: can return null if all columns are projected, other than hidden columns
+    /**
+     * @return a map of field names to column names
+     */
     protected Map<String, String> makeProjectionMap() {
         var projectionMap = new LinkedHashMap<String, String>();
 
