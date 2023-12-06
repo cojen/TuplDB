@@ -57,7 +57,7 @@ import org.cojen.tupl.rows.filter.ColumnFilter;
 import org.cojen.tupl.rows.filter.ColumnToArgFilter;
 import org.cojen.tupl.rows.filter.ColumnToColumnFilter;
 import org.cojen.tupl.rows.filter.Parser;
-import org.cojen.tupl.rows.filter.Query;
+import org.cojen.tupl.rows.filter.QuerySpec;
 import org.cojen.tupl.rows.filter.RowFilter;
 import org.cojen.tupl.rows.filter.TrueFilter;
 import org.cojen.tupl.rows.filter.Visitor;
@@ -69,14 +69,14 @@ import org.cojen.tupl.rows.filter.Visitor;
  * @see Table#view
  */
 public abstract sealed class ViewedTable<R> extends WrappedTable<R, R> {
-    private static final WeakCache<Pair<Class, String>, MethodHandle, Query> cFactoryCache;
+    private static final WeakCache<Pair<Class, String>, MethodHandle, QuerySpec> cFactoryCache;
 
     private static final WeakCache<Pair<Class, String>, Helper, ViewedTable> cHelperCache;
 
     static {
         cFactoryCache = new WeakCache<>() {
             @Override
-            public MethodHandle newValue(Pair<Class, String> key, Query query) {
+            public MethodHandle newValue(Pair<Class, String> key, QuerySpec query) {
                 Class<?> rowType = key.a();
                 String queryStr = key.b();
 
@@ -123,7 +123,7 @@ public abstract sealed class ViewedTable<R> extends WrappedTable<R, R> {
     /**
      * MethodHandle signature: ViewedTable<R> make(Table<R> source, Object... args)
      */
-    private static MethodHandle makeTableFactory(Class<?> rowType, String queryStr, Query query)
+    private static MethodHandle makeTableFactory(Class<?> rowType, String queryStr, QuerySpec query)
         throws NoSuchMethodException, IllegalAccessException
     {
         RowInfo info = RowInfo.find(rowType);
@@ -159,7 +159,7 @@ public abstract sealed class ViewedTable<R> extends WrappedTable<R, R> {
             (void.class, String.class, SoftReference.class, int.class, Table.class, Object[].class);
         MethodHandle mh = MethodHandles.lookup().findConstructor(viewedClass, ctorType);
         int maxArg = query.filter().maxArgument();
-        var queryRef = new SoftReference<Query>(query);
+        var queryRef = new SoftReference<QuerySpec>(query);
         mh = MethodHandles.insertArguments(mh, 0, queryStr, queryRef, maxArg);
         return mh.asType(MethodType.methodType(ViewedTable.class, Table.class, Object[].class));
     }
@@ -168,7 +168,7 @@ public abstract sealed class ViewedTable<R> extends WrappedTable<R, R> {
     protected final int mMaxArg;
     protected final Object[] mArgs;
 
-    private SoftReference<Query> mQueryRef;
+    private SoftReference<QuerySpec> mQueryRef;
 
     private volatile SoftCache<String, String, Object> mFusedQueries;
     private static final VarHandle cFusedQueriesHandle;
@@ -187,7 +187,7 @@ public abstract sealed class ViewedTable<R> extends WrappedTable<R, R> {
         }
     }
 
-    protected ViewedTable(String queryStr, SoftReference<Query> queryRef, int maxArg,
+    protected ViewedTable(String queryStr, SoftReference<QuerySpec> queryRef, int maxArg,
                           Table<R> source, Object... args)
     {
         super(source);
@@ -297,8 +297,8 @@ public abstract sealed class ViewedTable<R> extends WrappedTable<R, R> {
     /**
      * Returns this view's query specification.
      */
-    protected final Query query() {
-        Query query = mQueryRef.get();
+    protected final QuerySpec query() {
+        QuerySpec query = mQueryRef.get();
 
         if (query == null) {
             query = new Parser(RowInfo.find(rowType()).allColumns, mQueryStr).parseQuery(null);
@@ -338,15 +338,15 @@ public abstract sealed class ViewedTable<R> extends WrappedTable<R, R> {
         return cache.obtain(queryStr, null);
     }
 
-    private Query doFuseQuery(String queryStr) {
-        Query thisQuery = query();
+    private QuerySpec doFuseQuery(String queryStr) {
+        QuerySpec thisQuery = query();
         Map<String, ? extends ColumnInfo> allColumns = thisQuery.projection();
 
         if (allColumns == null) {
             allColumns = RowInfo.find(rowType()).allColumns;
         }
 
-        Query query = new Parser(allColumns, queryStr, mMaxArg).parseQuery(null);
+        QuerySpec query = new Parser(allColumns, queryStr, mMaxArg).parseQuery(null);
 
         Map<String, ColumnInfo> projection = query.projection();
 
@@ -361,7 +361,7 @@ public abstract sealed class ViewedTable<R> extends WrappedTable<R, R> {
 
         RowFilter filter = thisQuery.filter().and(query.filter());
 
-        return new Query(projection, orderBy, filter);
+        return new QuerySpec(projection, orderBy, filter);
     }
 
     /**
@@ -386,7 +386,7 @@ public abstract sealed class ViewedTable<R> extends WrappedTable<R, R> {
      * @param emptyProjection pass true to project no columns
      */
     private String fuseQueryWithPk(boolean emptyProjection) {
-        Query query = query();
+        QuerySpec query = query();
         RowFilter filter = query.filter();
         int argNum = mMaxArg;
         for (ColumnInfo column : RowInfo.find(rowType()).keyColumns.values()) {
@@ -468,7 +468,7 @@ public abstract sealed class ViewedTable<R> extends WrappedTable<R, R> {
     /**
      * MethodHandle signature: Helper<R> make(ViewedTable<R> table)
      *
-     * @param table used to obtain the Query
+     * @param table used to obtain the QuerySpec
      */
     private static <R> Helper<R> makeHelper(Class<R> rowType, ViewedTable<R> table) {
         RowInfo info = RowInfo.find(rowType);
@@ -491,7 +491,7 @@ public abstract sealed class ViewedTable<R> extends WrappedTable<R, R> {
             cm.addMethod(boolean.class, "isPkFilter").protected_().override().return_(true);
         }
 
-        Query query = table.query();
+        QuerySpec query = table.query();
 
         // Implement the various check* methods.
         for (int which = 1; which <= 3; which++) {
@@ -904,7 +904,7 @@ public abstract sealed class ViewedTable<R> extends WrappedTable<R, R> {
      * This class is used when all columns are available and only a natural ordering is required.
      */
     private static sealed class NoFilter<R> extends ViewedTable<R> {
-        NoFilter(String queryStr, SoftReference<Query> queryRef, int maxArg,
+        NoFilter(String queryStr, SoftReference<QuerySpec> queryRef, int maxArg,
                  Table<R> source, Object... args)
         {
             super(queryStr, queryRef, maxArg, source, args);
@@ -972,7 +972,7 @@ public abstract sealed class ViewedTable<R> extends WrappedTable<R, R> {
      * This class is used when all columns are available and a filter is required.
      */
     private static sealed class HasFilter<R> extends ViewedTable<R> {
-        HasFilter(String queryStr, SoftReference<Query> queryRef, int maxArg,
+        HasFilter(String queryStr, SoftReference<QuerySpec> queryRef, int maxArg,
                   Table<R> source, Object... args)
         {
             super(queryStr, queryRef, maxArg, source, args);
@@ -1035,7 +1035,7 @@ public abstract sealed class ViewedTable<R> extends WrappedTable<R, R> {
      * and no rows are filtered. CRUD operations which require all columns aren't supported.
      */
     private static sealed class HasProjectionAndNoFilter<R> extends NoFilter<R> {
-        HasProjectionAndNoFilter(String queryStr, SoftReference<Query> queryRef, int maxArg,
+        HasProjectionAndNoFilter(String queryStr, SoftReference<QuerySpec> queryRef, int maxArg,
                                  Table<R> source, Object... args)
         {
             super(queryStr, queryRef, maxArg, source, args);
@@ -1092,7 +1092,7 @@ public abstract sealed class ViewedTable<R> extends WrappedTable<R, R> {
      * and a filter is required. CRUD operations which require all columns aren't supported.
      */
     private static sealed class HasProjectionAndHasFilter<R> extends HasFilter<R> {
-        HasProjectionAndHasFilter(String queryStr, SoftReference<Query> queryRef, int maxArg,
+        HasProjectionAndHasFilter(String queryStr, SoftReference<QuerySpec> queryRef, int maxArg,
                                   Table<R> source, Object... args)
         {
             super(queryStr, queryRef, maxArg, source, args);
@@ -1145,7 +1145,7 @@ public abstract sealed class ViewedTable<R> extends WrappedTable<R, R> {
      * No CRUD operations are supported.
      */
     private static final class NoPrimaryKeyAndNoFilter<R> extends HasProjectionAndNoFilter<R> {
-        NoPrimaryKeyAndNoFilter(String queryStr, SoftReference<Query> queryRef, int maxArg,
+        NoPrimaryKeyAndNoFilter(String queryStr, SoftReference<QuerySpec> queryRef, int maxArg,
                                 Table<R> source, Object... args)
         {
             super(queryStr, queryRef, maxArg, source, args);
@@ -1199,7 +1199,7 @@ public abstract sealed class ViewedTable<R> extends WrappedTable<R, R> {
      * No CRUD operations are supported.
      */
     private static final class NoPrimaryKeyAndHasFilter<R> extends HasProjectionAndHasFilter<R> {
-        NoPrimaryKeyAndHasFilter(String queryStr, SoftReference<Query> queryRef, int maxArg,
+        NoPrimaryKeyAndHasFilter(String queryStr, SoftReference<QuerySpec> queryRef, int maxArg,
                                  Table<R> source, Object... args)
         {
             super(queryStr, queryRef, maxArg, source, args);

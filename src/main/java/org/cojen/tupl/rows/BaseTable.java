@@ -53,7 +53,7 @@ import org.cojen.tupl.diag.QueryPlan;
 import org.cojen.tupl.rows.filter.ComplexFilterException;
 import org.cojen.tupl.rows.filter.FalseFilter;
 import org.cojen.tupl.rows.filter.Parser;
-import org.cojen.tupl.rows.filter.Query;
+import org.cojen.tupl.rows.filter.QuerySpec;
 import org.cojen.tupl.rows.filter.RowFilter;
 import org.cojen.tupl.rows.filter.TrueFilter;
 
@@ -79,7 +79,7 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
     private static final int PLAIN = 0b00, DOUBLE_CHECK = 0b01,
         FOR_UPDATE = 0b10, FOR_UPDATE_DOUBLE_CHECK = FOR_UPDATE | DOUBLE_CHECK;
 
-    private final MultiCache<String, ScanControllerFactory<R>, Query> mFilterFactoryCache;
+    private final MultiCache<String, ScanControllerFactory<R>, QuerySpec> mFilterFactoryCache;
     private final MultiCache<String, QueryLauncher<R>, IndexSelector> mQueryLauncherCache;
 
     private Trigger<R> mTrigger;
@@ -697,7 +697,8 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
      * @param queryStr the parsed and reduced query string; can be null initially
      */
     @SuppressWarnings("unchecked")
-    private ScanControllerFactory<R> newFilteredFactory(int type, String queryStr, Query query) {
+    private ScanControllerFactory<R> newFilteredFactory(int type, String queryStr, QuerySpec query)
+    {
         Class<?> rowType = rowType();
         RowInfo rowInfo = RowInfo.find(rowType);
         Map<String, ColumnInfo> allColumns = rowInfo.allColumns;
@@ -866,7 +867,7 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
         } else {
             rowInfo = RowInfo.find(rowType());
             Map<String, ColumnInfo> allColumns = rowInfo.allColumns;
-            Query query = new Parser(allColumns, queryStr).parseQuery(allColumns).reduce();
+            QuerySpec query = new Parser(allColumns, queryStr).parseQuery(allColumns).reduce();
             selector = new IndexSelector<R>(this, rowInfo, query, (type & FOR_UPDATE) != 0);
         }
 
@@ -917,7 +918,7 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
      */
     private QueryLauncher<R> newSubLauncher(int type, IndexSelector<R> selector, int i) {
         BaseTable<R> subTable = selector.selectedIndexTable(i);
-        Query subQuery = selector.selectedQuery(i);
+        QuerySpec subQuery = selector.selectedQuery(i);
         String subQueryStr = subQuery.toString();
 
         ScanControllerFactory<R> subFactory =

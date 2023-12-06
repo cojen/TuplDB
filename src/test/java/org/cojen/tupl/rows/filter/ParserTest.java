@@ -142,7 +142,7 @@ public class ParserTest {
     }
 
     private void pass(String filterStr, String expect) throws Exception {
-        Query q = new Parser(mColumnMap, filterStr).parseQuery(null);
+        QuerySpec q = new Parser(mColumnMap, filterStr).parseQuery(null);
         assertEquals(expect, q.toString());
     }
 }
