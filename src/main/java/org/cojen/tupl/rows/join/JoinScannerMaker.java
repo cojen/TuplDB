@@ -47,7 +47,7 @@ import org.cojen.tupl.rows.WeakCache;
 import org.cojen.tupl.rows.filter.ColumnToArgFilter;
 import org.cojen.tupl.rows.filter.ColumnToColumnFilter;
 import org.cojen.tupl.rows.filter.FalseFilter;
-import org.cojen.tupl.rows.filter.Query;
+import org.cojen.tupl.rows.filter.QuerySpec;
 import org.cojen.tupl.rows.filter.RowFilter;
 import org.cojen.tupl.rows.filter.TrueFilter;
 import org.cojen.tupl.rows.filter.Visitor;
@@ -77,7 +77,7 @@ final class JoinScannerMaker {
      * @param joinType interface which defines a join row
      * @see JoinScanner
      */
-    static Class<?> make(Class<?> joinType, JoinSpec spec, Query query) {
+    static Class<?> make(Class<?> joinType, JoinSpec spec, QuerySpec query) {
         return new JoinScannerMaker(joinType, spec, query).finish();
     }
 
@@ -105,7 +105,7 @@ final class JoinScannerMaker {
 
     private final Class<?> mJoinType;
     private final JoinSpec mSpec;
-    private final Query mQuery;
+    private final QuerySpec mQuery;
 
     private final Class<?> mJoinClass;
 
@@ -139,7 +139,7 @@ final class JoinScannerMaker {
     /**
      * @param query pass null for base class
      */
-    private JoinScannerMaker(Class<?> joinType, JoinSpec spec, Query query) {
+    private JoinScannerMaker(Class<?> joinType, JoinSpec spec, QuerySpec query) {
         mJoinType = joinType;
         mSpec = spec;
         mQuery = query;
@@ -350,7 +350,7 @@ final class JoinScannerMaker {
         }
     }
 
-    private Query queryFor(JoinSpec.Source source, RowFilter filter) {
+    private QuerySpec queryFor(JoinSpec.Source source, RowFilter filter) {
         // FIXME: Support orderBy.
 
         Map<String, ColumnInfo> queryProjection = null;
@@ -384,7 +384,7 @@ final class JoinScannerMaker {
             throw new AssertionError();
         }
 
-        return new Query(queryProjection, null, filter);
+        return new QuerySpec(queryProjection, null, filter);
     }
 
     /**

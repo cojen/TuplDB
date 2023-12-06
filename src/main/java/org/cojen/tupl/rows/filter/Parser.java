@@ -62,9 +62,9 @@ public final class Parser extends SimpleParser {
      *
      * @param availableColumns can pass null if same as all columns
      */
-    public Query parseQuery(Map<String, ? extends ColumnInfo> availableColumns) {
+    public QuerySpec parseQuery(Map<String, ? extends ColumnInfo> availableColumns) {
         parseProjection(availableColumns);
-        return new Query(mProjection, mOrderBy, parseFilter());
+        return new QuerySpec(mProjection, mOrderBy, parseFilter());
     }
 
     /**

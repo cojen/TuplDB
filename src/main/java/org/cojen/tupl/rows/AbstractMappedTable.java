@@ -41,7 +41,7 @@ import org.cojen.tupl.rows.filter.ColumnToArgFilter;
 import org.cojen.tupl.rows.filter.ColumnToColumnFilter;
 import org.cojen.tupl.rows.filter.ComplexFilterException;
 import org.cojen.tupl.rows.filter.Parser;
-import org.cojen.tupl.rows.filter.Query;
+import org.cojen.tupl.rows.filter.QuerySpec;
 import org.cojen.tupl.rows.filter.RowFilter;
 import org.cojen.tupl.rows.filter.TrueFilter;
 
@@ -146,7 +146,7 @@ public abstract class AbstractMappedTable<S, T> extends WrappedTable<S, T> {
      */
     protected abstract Class<?> inverseFunctions();
 
-    protected abstract SortPlan analyzeSort(InverseFinder finder, Query targetQuery);
+    protected abstract SortPlan analyzeSort(InverseFinder finder, QuerySpec targetQuery);
 
     /**
      * Splits a target query into source and target components.
@@ -161,10 +161,10 @@ public abstract class AbstractMappedTable<S, T> extends WrappedTable<S, T> {
         private int mMaxArg;
 
         public final RowFilter mTargetRemainder;
-        public final Query mSourceQuery;
+        public final QuerySpec mSourceQuery;
         public final SortPlan mSortPlan;
 
-        Splitter(Query targetQuery) {
+        Splitter(QuerySpec targetQuery) {
             RowInfo sourceInfo = RowInfo.find(mSource.rowType());
             var finder = new InverseFinder(sourceInfo.allColumns);
 
@@ -185,11 +185,11 @@ public abstract class AbstractMappedTable<S, T> extends WrappedTable<S, T> {
             RowFilter sourceFilter = split[0];
             mTargetRemainder = split[1];
 
-            Query sourceQuery;
+            QuerySpec sourceQuery;
 
             String sourceProjection = sourceProjection();
             if (sourceProjection == null) {
-                sourceQuery = new Query(null, null, sourceFilter);
+                sourceQuery = new QuerySpec(null, null, sourceFilter);
             } else {
                 sourceQuery = new Parser(sourceInfo.allColumns, '{' + sourceProjection + '}')
                     .parseQuery(null).withFilter(sourceFilter);

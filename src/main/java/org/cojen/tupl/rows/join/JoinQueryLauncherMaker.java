@@ -53,7 +53,7 @@ import org.cojen.tupl.rows.WeakCache;
 
 import org.cojen.tupl.rows.filter.FalseFilter;
 import org.cojen.tupl.rows.filter.Parser;
-import org.cojen.tupl.rows.filter.Query;
+import org.cojen.tupl.rows.filter.QuerySpec;
 import org.cojen.tupl.rows.filter.RowFilter;
 import org.cojen.tupl.rows.filter.TrueFilter;
 
@@ -114,7 +114,7 @@ final class JoinQueryLauncherMaker {
     private final JoinSpec mTableSpec;
     private final Class<?> mJoinType;
     private final RowInfo mJoinInfo;
-    private final Query mQuery;
+    private final QuerySpec mQuery;
 
     private JoinPlanner mPlanner;
     private Class<?> mScannerClass;

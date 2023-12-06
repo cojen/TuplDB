@@ -36,10 +36,11 @@ import org.cojen.tupl.rows.ComparatorMaker;
 import org.cojen.tupl.rows.GroupedTable;
 import org.cojen.tupl.rows.MappedTable;
 import org.cojen.tupl.rows.PlainPredicateMaker;
-import org.cojen.tupl.rows.RowUtils;
 import org.cojen.tupl.rows.ViewedTable;
 
 import org.cojen.tupl.rows.join.JoinTableMaker;
+
+import static org.cojen.tupl.rows.RowUtils.NO_ARGS;
 
 /**
  * Defines a relational collection of persistent rows. A row is defined by an interface
@@ -171,8 +172,24 @@ public interface Table<R> extends Closeable {
     /**
      * @hidden
      */
+    public default Scanner<R> newScanner(Transaction txn, String query) throws IOException {
+        return newScanner(txn, query, NO_ARGS);
+    }
+
+    /**
+     * @hidden
+     */
     public Scanner<R> newScannerWith(Transaction txn, R row, String query, Object... args)
         throws IOException;
+
+    /**
+     * @hidden
+     */
+    public default Scanner<R> newScannerWith(Transaction txn, R row, String query)
+        throws IOException
+    {
+        return newScannerWith(txn, row, query, NO_ARGS);
+    }
 
     /**
      * Returns a new updater for all rows of this table.
@@ -214,6 +231,13 @@ public interface Table<R> extends Closeable {
     }
 
     /**
+     * @hidden
+     */
+    public default Updater<R> newUpdater(Transaction txn, String query) throws IOException {
+        return newUpdater(txn, query, NO_ARGS);
+    }
+
+    /**
      * Returns a new stream for all rows of this table. The stream must be explicitly closed
      * when no longer used, or else it must be used with a try-with-resources statement. If an
      * underlying {@code IOException} is generated, it's thrown as if it was unchecked.
@@ -251,6 +275,13 @@ public interface Table<R> extends Closeable {
     }
 
     /**
+     * @hidden
+     */
+    public default Stream<R> newStream(Transaction txn, String query) {
+        return newStream(txn, query, NO_ARGS);
+    }
+
+    /**
      * Deletes all rows from this table which match the given query filter. Any query
      * projection is ignored.
      *
@@ -272,6 +303,13 @@ public interface Table<R> extends Closeable {
     }
 
     /**
+     * @hidden
+     */
+    public default long deleteAll(Transaction txn, String query) throws IOException {
+        return deleteAll(txn, query, NO_ARGS);
+    }
+
+    /**
      * Returns true if any rows exist in this table.
      *
      * @param txn optional transaction to use; pass null for auto-commit mode
@@ -288,7 +326,7 @@ public interface Table<R> extends Closeable {
      */
     public default boolean anyRowsWith(Transaction txn, R row) throws IOException {
         // TODO: Subclasses should provide an optimized implementation.
-        return anyRowsWith(txn, row, "{}", RowUtils.NO_ARGS);
+        return anyRowsWith(txn, row, "{}", NO_ARGS);
     }
 
     /**
@@ -308,6 +346,13 @@ public interface Table<R> extends Closeable {
     /**
      * @hidden
      */
+    public default boolean anyRows(Transaction txn, String query) throws IOException {
+        return anyRows(txn, query, NO_ARGS);
+    }
+
+    /**
+     * @hidden
+     */
     public default boolean anyRowsWith(Transaction txn, R row, String query, Object... args)
         throws IOException
     {
@@ -316,6 +361,13 @@ public interface Table<R> extends Closeable {
         boolean result = s.row() != null;
         s.close();
         return result;
+    }
+
+    /**
+     * @hidden
+     */
+    public default boolean anyRowsWith(Transaction txn, R row, String query) throws IOException {
+        return anyRowsWith(txn, row, query, NO_ARGS);
     }
 
     private static <R> Stream<R> newStream(Scanner<R> scanner) {
@@ -450,6 +502,13 @@ public interface Table<R> extends Closeable {
     }
 
     /**
+     * @hidden
+     */
+    public default Table<R> view(String query) {
+        return view(query, NO_ARGS);
+    }
+
+    /**
      * Returns a view backed by this table, whose rows have been mapped to target rows. The
      * returned table instance will throw a {@link ViewConstraintException} for operations
      * against rows not supported by the mapper, and closing the table has no effect.
@@ -558,6 +617,13 @@ public interface Table<R> extends Closeable {
     }
 
     /**
+     * @hidden
+     */
+    public default Predicate<R> predicate(String query) {
+        return predicate(query, NO_ARGS);
+    }
+
+    /**
      * Returns a query plan used by {@link #newScanner(Transaction, String, Object...)
      * newScanner}.
      *
@@ -566,6 +632,13 @@ public interface Table<R> extends Closeable {
      * @param args optional query arguments
      */
     public QueryPlan scannerPlan(Transaction txn, String query, Object... args) throws IOException;
+
+    /**
+     * @hidden
+     */
+    public default QueryPlan scannerPlan(Transaction txn, String query) throws IOException {
+        return scannerPlan(txn, query, NO_ARGS);
+    }
 
     /**
      * Returns a query plan used by {@link #newUpdater(Transaction, String, Object...)
@@ -582,6 +655,13 @@ public interface Table<R> extends Closeable {
     }
 
     /**
+     * @hidden
+     */
+    public default QueryPlan updaterPlan(Transaction txn, String query) throws IOException {
+        return updaterPlan(txn, query, NO_ARGS);
+    }
+
+    /**
      * Returns a query plan used by {@link #newStream(Transaction, String, Object...)
      * newStream}.
      *
@@ -593,6 +673,13 @@ public interface Table<R> extends Closeable {
         throws IOException
     {
         return scannerPlan(txn, query, args);
+    }
+
+    /**
+     * @hidden
+     */
+    public default QueryPlan streamPlan(Transaction txn, String query) throws IOException {
+        return streamPlan(txn, query, NO_ARGS);
     }
 
     /**

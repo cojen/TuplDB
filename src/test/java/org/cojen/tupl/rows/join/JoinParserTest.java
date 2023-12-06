@@ -28,7 +28,7 @@ import org.cojen.tupl.rows.ColumnInfo;
 import org.cojen.tupl.rows.RowInfo;
 
 import org.cojen.tupl.rows.filter.Parser;
-import org.cojen.tupl.rows.filter.Query;
+import org.cojen.tupl.rows.filter.QuerySpec;
 
 /**
  * 
@@ -85,7 +85,7 @@ public class JoinParserTest {
     }
 
     private void pass(String filterStr, String expect) throws Exception {
-        Query q = new Parser(mColumnMap, filterStr).parseQuery(null);
+        QuerySpec q = new Parser(mColumnMap, filterStr).parseQuery(null);
         assertEquals(expect, q.toString());
     }
 

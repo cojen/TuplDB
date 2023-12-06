@@ -46,7 +46,7 @@ import org.cojen.tupl.core.Pair;
 import org.cojen.tupl.diag.QueryPlan;
 
 import org.cojen.tupl.rows.filter.Parser;
-import org.cojen.tupl.rows.filter.Query;
+import org.cojen.tupl.rows.filter.QuerySpec;
 import org.cojen.tupl.rows.filter.RowFilter;
 import org.cojen.tupl.rows.filter.TrueFilter;
 
@@ -134,7 +134,7 @@ public abstract class GroupedTable<S, T> extends AbstractMappedTable<S, T> {
     protected final Grouper.Factory<S, T> mGrouperFactory;
     protected final Comparator<S> mGroupComparator;
 
-    private final SoftCache<String, ScannerFactory<S, T>, Query> mScannerFactoryCache;
+    private final SoftCache<String, ScannerFactory<S, T>, QuerySpec> mScannerFactoryCache;
 
     protected GroupedTable(Table<S> source, String groupBySpec, String orderBySpec,
                            Grouper.Factory<S, T> factory)
@@ -166,7 +166,7 @@ public abstract class GroupedTable<S, T> extends AbstractMappedTable<S, T> {
 
         mScannerFactoryCache = new SoftCache<>() {
             @Override
-            protected ScannerFactory<S, T> newValue(String queryStr, Query query) {
+            protected ScannerFactory<S, T> newValue(String queryStr, QuerySpec query) {
                 if (query == null) {
                     RowInfo rowInfo = RowInfo.find(rowType());
                     query = new Parser(rowInfo.allColumns, queryStr).parseQuery(null);
@@ -249,7 +249,7 @@ public abstract class GroupedTable<S, T> extends AbstractMappedTable<S, T> {
         return spec.isEmpty() ? null : OrderBy.splitSpec(spec);
     }
 
-    private ScannerFactory<S, T> makeScannerFactory(Query targetQuery) {
+    private ScannerFactory<S, T> makeScannerFactory(QuerySpec targetQuery) {
         var splitter = new Splitter(targetQuery);
 
         Class<T> targetType = rowType();
@@ -334,7 +334,7 @@ public abstract class GroupedTable<S, T> extends AbstractMappedTable<S, T> {
             var sourceTableVar = tableVar.invoke("source");
             Variable sourceScannerVar;
 
-            Query sourceQuery = splitter.mSourceQuery;
+            QuerySpec sourceQuery = splitter.mSourceQuery;
 
             if (sourceQuery == null) {
                 sourceScannerVar = sourceTableVar.invoke(methodName, txnVar);
@@ -384,7 +384,7 @@ public abstract class GroupedTable<S, T> extends AbstractMappedTable<S, T> {
             var txnVar = mm.param(2);
             var argsVar = splitter.prepareArgs(mm.param(3));
 
-            Query sourceQuery = splitter.mSourceQuery;
+            QuerySpec sourceQuery = splitter.mSourceQuery;
             String sourceQueryStr = sourceQuery == null ? null : sourceQuery.toString();
 
             var planVar = tableVar.invoke("source")
@@ -434,7 +434,7 @@ public abstract class GroupedTable<S, T> extends AbstractMappedTable<S, T> {
     }
 
     @Override
-    protected SortPlan analyzeSort(InverseFinder finder, Query targetQuery) {
+    protected SortPlan analyzeSort(InverseFinder finder, QuerySpec targetQuery) {
         OrderBy groupBy = OrderBy.forSpec(finder.mSourceColumns, mGroupBySpec);
         OrderBy orderBy = OrderBy.forSpec(finder.mSourceColumns, mOrderBySpec);
         OrderBy targetOrderBy = targetQuery.orderBy();

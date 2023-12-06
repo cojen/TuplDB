@@ -47,7 +47,7 @@ import org.cojen.tupl.diag.QueryPlan;
 
 import org.cojen.tupl.rows.filter.ComplexFilterException;
 import org.cojen.tupl.rows.filter.Parser;
-import org.cojen.tupl.rows.filter.Query;
+import org.cojen.tupl.rows.filter.QuerySpec;
 import org.cojen.tupl.rows.filter.RowFilter;
 import org.cojen.tupl.rows.filter.TrueFilter;
 
@@ -275,7 +275,7 @@ public abstract class AggregatedTable<S, T> extends WrappedTable<S, T> {
 
     protected final Aggregator.Factory<S, T> mAggregatorFactory;
 
-    private final SoftCache<String, ScannerFactory<S, T>, Query> mScannerFactoryCache;
+    private final SoftCache<String, ScannerFactory<S, T>, QuerySpec> mScannerFactoryCache;
 
     protected AggregatedTable(Table<S> source, Aggregator.Factory<S, T> factory) {
         super(source);
@@ -284,7 +284,7 @@ public abstract class AggregatedTable<S, T> extends WrappedTable<S, T> {
 
         mScannerFactoryCache = new SoftCache<>() {
             @Override
-            protected ScannerFactory<S, T> newValue(String queryStr, Query query) {
+            protected ScannerFactory<S, T> newValue(String queryStr, QuerySpec query) {
                 if (query == null) {
                     RowInfo rowInfo = RowInfo.find(rowType());
                     query = new Parser(rowInfo.allColumns, queryStr).parseQuery(null);
@@ -403,16 +403,16 @@ public abstract class AggregatedTable<S, T> extends WrappedTable<S, T> {
         return columns;
     }
 
-    private ScannerFactory<S, T> makeScannerFactory(Query targetQuery) {
+    private ScannerFactory<S, T> makeScannerFactory(QuerySpec targetQuery) {
         Class<S> sourceType = mSource.rowType();
         RowInfo sourceInfo = RowInfo.find(sourceType);
 
         // Prepare an initial source query, which will be replaced later.
-        Query sourceQuery;
+        QuerySpec sourceQuery;
         {
             String proj = mAggregatorFactory.sourceProjection();
             if (proj == null) {
-                sourceQuery = new Query(null, null, TrueFilter.THE);
+                sourceQuery = new QuerySpec(null, null, TrueFilter.THE);
             } else {
                 sourceQuery = new Parser(sourceInfo.allColumns, '{' + proj + '}').parseQuery(null);
             }
