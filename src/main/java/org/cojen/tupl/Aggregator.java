@@ -39,7 +39,7 @@ public interface Aggregator<R, T> extends Closeable {
         /**
          * Returns a comma-separated list of source columns which are needed by the {@code
          * Aggregator} instances. Null is returned by default, which indicates that all columns
-         * are needed.
+         * are needed. The implementation of this method must return a static constant.
          */
         default String sourceProjection() {
             return null;

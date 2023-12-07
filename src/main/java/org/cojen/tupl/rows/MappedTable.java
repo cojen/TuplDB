@@ -64,12 +64,9 @@ import org.cojen.tupl.rows.filter.TrueFilter;
  * @author Brian S O'Neill
  * @see Table#map
  */
-public abstract class MappedTable<S, T> extends AbstractMappedTable<S, T> {
-    /**
-     * Although the generated factories only depend on the targetType, a full key is needed
-     * because the mScannerFactoryCache and mInverse* fields rely on code which is generated
-     * against the source and target type.
-     */
+public abstract class MappedTable<S, T> extends AbstractMappedTable<S, T>
+    implements ScannerFactoryCache.Helper<MappedTable.ScannerFactory<S, T>>
+{
     private record FactoryKey(Class<?> sourceType, Class<?> targetType, Class<?> mapperClass) { }
 
     private static final WeakCache<FactoryKey, MethodHandle, Object> cFactoryCache;
@@ -87,8 +84,10 @@ public abstract class MappedTable<S, T> extends AbstractMappedTable<S, T> {
                                                Mapper<S, T> mapper)
     {
         Objects.requireNonNull(targetType);
+
+        var key = new FactoryKey(source.rowType(), targetType, mapper.getClass());
+
         try {
-            var key = new FactoryKey(source.rowType(), targetType, mapper.getClass());
             return (MappedTable<S, T>) cFactoryCache.obtain(key, null).invokeExact(source, mapper);
         } catch (Throwable e) {
             throw RowUtils.rethrow(e);
@@ -108,7 +107,8 @@ public abstract class MappedTable<S, T> extends AbstractMappedTable<S, T> {
 
         {
             MethodMaker ctor = tableMaker.addConstructor(Table.class, Mapper.class).private_();
-            ctor.invokeSuperConstructor(ctor.param(0), ctor.param(1));
+            var cacheVar = ctor.var(ScannerFactoryCache.class).setExact(new ScannerFactoryCache());
+            ctor.invokeSuperConstructor(cacheVar, ctor.param(0), ctor.param(1));
         }
 
         // Keep a reference to the MethodHandle instance, to prevent it from being garbage
@@ -185,31 +185,18 @@ public abstract class MappedTable<S, T> extends AbstractMappedTable<S, T> {
         TableMaker.unset(targetInfo, targetRowVar, mapToSource);
     }
 
-    private final Mapper<S, T> mMapper;
+    private final ScannerFactoryCache<ScannerFactory<S, T>> mScannerFactoryCache;
 
-    private final SoftCache<String, ScannerFactory<S, T>, QuerySpec> mScannerFactoryCache;
+    private final Mapper<S, T> mMapper;
 
     private InverseMapper<S, T> mInversePk, mInverseFull, mInverseUpdate;
 
-    protected MappedTable(Table<S> source, Mapper<S, T> mapper) {
+    protected MappedTable(ScannerFactoryCache<ScannerFactory<S, T>> scannerFactoryCache,
+                          Table<S> source, Mapper<S, T> mapper)
+    {
         super(source);
-
+        mScannerFactoryCache = scannerFactoryCache;
         mMapper = mapper;
-
-        mScannerFactoryCache = new SoftCache<>() {
-            @Override
-            protected ScannerFactory<S, T> newValue(String queryStr, QuerySpec query) {
-                if (query == null) {
-                    RowInfo rowInfo = RowInfo.find(rowType());
-                    query = new Parser(rowInfo.allColumns, queryStr).parseQuery(null);
-                    String canonical = query.toString();
-                    if (!canonical.equals(queryStr)) {
-                        return obtain(canonical, query);
-                    }
-                }
-                return makeScannerFactory(query);
-            }
-        };
     }
 
     @Override
@@ -217,7 +204,7 @@ public abstract class MappedTable<S, T> extends AbstractMappedTable<S, T> {
                                            String query, Object... args)
         throws IOException
     {
-        return mScannerFactoryCache.obtain(query, null).newScannerWith(this, txn, targetRow, args);
+        return mScannerFactoryCache.obtain(query, this).newScannerWith(this, txn, targetRow, args);
     }
 
     @Override
@@ -229,7 +216,7 @@ public abstract class MappedTable<S, T> extends AbstractMappedTable<S, T> {
     public final Updater<T> newUpdater(Transaction txn, String query, Object... args)
         throws IOException
     {
-        return mScannerFactoryCache.obtain(query, null).newUpdaterWith(this, txn, null, args);
+        return mScannerFactoryCache.obtain(query, this).newUpdaterWith(this, txn, null, args);
     }
 
     @Override
@@ -341,7 +328,7 @@ public abstract class MappedTable<S, T> extends AbstractMappedTable<S, T> {
         if (query == null) {
             query = "{*}";
         }
-        return mScannerFactoryCache.obtain(query, null).plan(false, this, txn, args);
+        return mScannerFactoryCache.obtain(query, this).plan(false, this, txn, args);
     }
 
     @Override
@@ -351,7 +338,7 @@ public abstract class MappedTable<S, T> extends AbstractMappedTable<S, T> {
         if (query == null) {
             query = "{*}";
         }
-        return mScannerFactoryCache.obtain(query, null).plan(true, this, txn, args);
+        return mScannerFactoryCache.obtain(query, this).plan(true, this, txn, args);
     }
 
     /**
@@ -588,7 +575,8 @@ public abstract class MappedTable<S, T> extends AbstractMappedTable<S, T> {
         }
     }
 
-    private ScannerFactory<S, T> makeScannerFactory(QuerySpec targetQuery) {
+    @Override
+    public ScannerFactory<S, T> makeScannerFactory(QuerySpec targetQuery) {
         var splitter = new Splitter(targetQuery);
 
         Class<T> targetType = rowType();

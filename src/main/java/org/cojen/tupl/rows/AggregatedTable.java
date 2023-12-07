@@ -41,8 +41,6 @@ import org.cojen.tupl.Table;
 import org.cojen.tupl.Transaction;
 import org.cojen.tupl.Updater;
 
-import org.cojen.tupl.core.Pair;
-
 import org.cojen.tupl.diag.QueryPlan;
 
 import org.cojen.tupl.rows.filter.ComplexFilterException;
@@ -59,14 +57,18 @@ import static java.util.Spliterator.*;
  * @author Brian S. O'Neill
  * @see Table#aggregate
  */
-public abstract class AggregatedTable<S, T> extends WrappedTable<S, T> {
-    private static final WeakCache<Pair<Class, Class>, MethodHandle, Table> cFactoryCache;
+public abstract class AggregatedTable<S, T> extends WrappedTable<S, T>
+    implements ScannerFactoryCache.Helper<AggregatedTable.ScannerFactory<S, T>>
+{
+    private record FactoryKey(Class<?> sourceType, Class<?> targetType, Class<?> factoryClass) { }
+
+    private static final WeakCache<FactoryKey, MethodHandle, Table> cFactoryCache;
 
     static {
         cFactoryCache = new WeakCache<>() {
             @Override
-            public MethodHandle newValue(Pair<Class, Class> key, Table source) {
-                return makeTableFactory(source, key.a(), key.b());
+            public MethodHandle newValue(FactoryKey key, Table source) {
+                return makeTableFactory(key, source);
             }
         };
     }
@@ -75,9 +77,10 @@ public abstract class AggregatedTable<S, T> extends WrappedTable<S, T> {
                                                          Aggregator.Factory<S, T> factory)
     {
         Objects.requireNonNull(targetType);
-        Objects.requireNonNull(factory);
+
+        var key = new FactoryKey(source.rowType(), targetType, factory.getClass());
+
         try {
-            var key = new Pair<Class, Class>(source.rowType(), targetType);
             return (AggregatedTable<S, T>) cFactoryCache.obtain(key, source)
                 .invokeExact(source, factory);
         } catch (Throwable e) {
@@ -90,9 +93,10 @@ public abstract class AggregatedTable<S, T> extends WrappedTable<S, T> {
      *
      *  AggregatedTable<S, T> make(Table<S> source, Aggregator.Factory<S, T>)
      */
-    private static MethodHandle makeTableFactory(Table<?> source, Class<?> sourceType,
-                                                 Class<?> targetType)
-    {
+    private static MethodHandle makeTableFactory(FactoryKey key, Table<?> source) {
+        Class<?> sourceType = key.sourceType();
+        Class<?> targetType = key.targetType();
+
         assert source.rowType() == sourceType;
 
         RowInfo targetInfo = RowInfo.find(targetType);
@@ -120,7 +124,8 @@ public abstract class AggregatedTable<S, T> extends WrappedTable<S, T> {
 
         {
             MethodMaker ctor = cm.addConstructor(Table.class, Aggregator.Factory.class).private_();
-            ctor.invokeSuperConstructor(ctor.param(0), ctor.param(1));
+            var cacheVar = ctor.var(ScannerFactoryCache.class).setExact(new ScannerFactoryCache());
+            ctor.invokeSuperConstructor(cacheVar, ctor.param(0), ctor.param(1));
         }
 
         // Keep a reference to the MethodHandle instance, to prevent it from being garbage
@@ -273,30 +278,16 @@ public abstract class AggregatedTable<S, T> extends WrappedTable<S, T> {
         return bob.toString();
     }
 
+    private final ScannerFactoryCache<ScannerFactory<S, T>> mScannerFactoryCache;
+
     protected final Aggregator.Factory<S, T> mAggregatorFactory;
 
-    private final SoftCache<String, ScannerFactory<S, T>, QuerySpec> mScannerFactoryCache;
-
-    protected AggregatedTable(Table<S> source, Aggregator.Factory<S, T> factory) {
+    protected AggregatedTable(ScannerFactoryCache<ScannerFactory<S, T>> scannerFactoryCache,
+                              Table<S> source, Aggregator.Factory<S, T> factory)
+    {
         super(source);
-
+        mScannerFactoryCache = scannerFactoryCache;
         mAggregatorFactory = factory;
-
-        mScannerFactoryCache = new SoftCache<>() {
-            @Override
-            protected ScannerFactory<S, T> newValue(String queryStr, QuerySpec query) {
-                if (query == null) {
-                    RowInfo rowInfo = RowInfo.find(rowType());
-                    query = new Parser(rowInfo.allColumns, queryStr).parseQuery(null);
-                    String canonical = query.toString();
-                    if (!canonical.equals(queryStr)) {
-                        return obtain(canonical, query);
-                    }
-                }
-
-                return makeScannerFactory(query);
-            }
-        };
     }
 
     @Override
@@ -308,7 +299,7 @@ public abstract class AggregatedTable<S, T> extends WrappedTable<S, T> {
 
         ScannerFactory<S, T> factory;
         try {
-            factory = mScannerFactoryCache.obtain(query, null);
+            factory = mScannerFactoryCache.obtain(query, this);
         } catch (Throwable e) {
             try {
                 aggregator.close();
@@ -348,7 +339,7 @@ public abstract class AggregatedTable<S, T> extends WrappedTable<S, T> {
         throws IOException
     {
         try (Aggregator<S, T> aggregator = mAggregatorFactory.newAggregator()) {
-            return mScannerFactoryCache.obtain(query == null ? "{*}" : query, null)
+            return mScannerFactoryCache.obtain(query == null ? "{*}" : query, this)
                 .plan(this, aggregator, txn, args);
         }
     }
@@ -403,7 +394,8 @@ public abstract class AggregatedTable<S, T> extends WrappedTable<S, T> {
         return columns;
     }
 
-    private ScannerFactory<S, T> makeScannerFactory(QuerySpec targetQuery) {
+    @Override
+    public ScannerFactory<S, T> makeScannerFactory(QuerySpec targetQuery) {
         Class<S> sourceType = mSource.rowType();
         RowInfo sourceInfo = RowInfo.find(sourceType);
 
