@@ -41,8 +41,6 @@ import org.cojen.tupl.Table;
 import org.cojen.tupl.Transaction;
 import org.cojen.tupl.ViewConstraintException;
 
-import org.cojen.tupl.core.Pair;
-
 import org.cojen.tupl.diag.QueryPlan;
 
 import org.cojen.tupl.rows.filter.Parser;
@@ -56,14 +54,19 @@ import org.cojen.tupl.rows.filter.TrueFilter;
  * @author Brian S. O'Neill
  * @see Table#group
  */
-public abstract class GroupedTable<S, T> extends AbstractMappedTable<S, T> {
-    private static final WeakCache<Pair<Class, Class>, MethodHandle, Table> cFactoryCache;
+public abstract class GroupedTable<S, T> extends AbstractMappedTable<S, T>
+    implements ScannerFactoryCache.Helper<GroupedTable.ScannerFactory<S, T>>
+{
+    private record FactoryKey(Class<?> sourceType, String groupBy, String orderBy,
+                              Class<?> targetType, Class<?> factoryClass) { } 
+
+    private static final WeakCache<FactoryKey, MethodHandle, Table> cFactoryCache;
 
     static {
         cFactoryCache = new WeakCache<>() {
             @Override
-            public MethodHandle newValue(Pair<Class, Class> key, Table source) {
-                return makeTableFactory(source, key.a(), key.b());
+            public MethodHandle newValue(FactoryKey key, Table source) {
+                return makeTableFactory(key, source);
             }
         };
     }
@@ -72,14 +75,16 @@ public abstract class GroupedTable<S, T> extends AbstractMappedTable<S, T> {
                                                   Class<T> targetType,
                                                   Grouper.Factory<S, T> factory)
     {
+        Objects.requireNonNull(groupBy);
+        Objects.requireNonNull(orderBy);
         Objects.requireNonNull(targetType);
-        Objects.requireNonNull(factory);
 
-        var key = new Pair<Class, Class>(source.rowType(), targetType);
+        var key = new FactoryKey(source.rowType(), groupBy, orderBy,
+                                 targetType, factory.getClass());
 
         try {
             return (GroupedTable<S, T>) cFactoryCache.obtain(key, source)
-                .invokeExact(source, groupBy, orderBy, factory);
+                .invokeExact(source, factory);
         } catch (Throwable e) {
             throw RowUtils.rethrow(e);
         }
@@ -88,22 +93,42 @@ public abstract class GroupedTable<S, T> extends AbstractMappedTable<S, T> {
     /**
      * MethodHandle signature:
      *
-     *  GroupedTable<S, T> make(Table<S> source, String groupBy, String orderBy,
-     *                          Grouper.Factory<S, T>)
+     *  GroupedTable<S, T> make(Table<S> source, Grouper.Factory<S, T>)
      */
-    private static MethodHandle makeTableFactory(Table<?> source, Class<?> sourceType,
-                                                 Class<?> targetType)
-    {
+    private static MethodHandle makeTableFactory(FactoryKey key, Table<?> source) {
+        Class<?> sourceType = key.sourceType();
+        Class<?> targetType = key.targetType();
+
         assert source.rowType() == sourceType;
+
+        RowInfo sourceInfo = RowInfo.find(source.rowType());
+
+        OrderBy groupBy;
+        try {
+            groupBy = OrderBy.forSpec(sourceInfo, key.groupBy());
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException(groupByMessage(e));
+        } catch (IllegalStateException e) {
+            throw new IllegalStateException(groupByMessage(e));
+        }
+
+        OrderBy orderBy = OrderBy.forSpec(sourceInfo, key.orderBy());
+
+        // Remove unnecessary order-by columns.
+        orderBy.keySet().removeAll(groupBy.keySet());
+
+        String groupBySpec = groupBy.spec();
+        String orderBySpec = orderBy.spec();
 
         ClassMaker cm = RowInfo.find(targetType).rowGen().beginClassMaker
             (GroupedTable.class, targetType, "grouped").final_()
             .extend(GroupedTable.class).implement(TableBasicsMaker.find(targetType));
 
         {
-            MethodMaker ctor = cm.addConstructor
-                (Table.class, String.class, String.class, Grouper.Factory.class).private_();
-            ctor.invokeSuperConstructor(ctor.param(0), ctor.param(1), ctor.param(2), ctor.param(3));
+            MethodMaker ctor = cm.addConstructor(Table.class, Grouper.Factory.class).private_();
+            var cacheVar = ctor.var(ScannerFactoryCache.class).setExact(new ScannerFactoryCache());
+            ctor.invokeSuperConstructor
+                (cacheVar, ctor.param(0), groupBySpec, orderBySpec, ctor.param(1));
         }
 
         // Keep a reference to the MethodHandle instance, to prevent it from being garbage
@@ -114,9 +139,8 @@ public abstract class GroupedTable<S, T> extends AbstractMappedTable<S, T> {
         Class<?> tableClass = lookup.lookupClass();
 
         MethodMaker mm = MethodMaker.begin
-            (lookup, GroupedTable.class, null, Table.class, String.class, String.class,
-             Grouper.Factory.class);
-        mm.return_(mm.new_(tableClass, mm.param(0), mm.param(1), mm.param(2), mm.param(3)));
+            (lookup, GroupedTable.class, null, Table.class, Grouper.Factory.class);
+        mm.return_(mm.new_(tableClass, mm.param(0), mm.param(1)));
 
         MethodHandle mh = mm.finish();
 
@@ -130,58 +154,25 @@ public abstract class GroupedTable<S, T> extends AbstractMappedTable<S, T> {
         return mh;
     }
 
+    private final ScannerFactoryCache<ScannerFactory<S, T>> mScannerFactoryCache;
+
     protected final String mGroupBySpec, mOrderBySpec;
     protected final Grouper.Factory<S, T> mGrouperFactory;
     protected final Comparator<S> mGroupComparator;
 
-    private final SoftCache<String, ScannerFactory<S, T>, QuerySpec> mScannerFactoryCache;
-
-    protected GroupedTable(Table<S> source, String groupBySpec, String orderBySpec,
+    protected GroupedTable(ScannerFactoryCache<ScannerFactory<S, T>> scannerFactoryCache,
+                           Table<S> source, String groupBySpec, String orderBySpec,
                            Grouper.Factory<S, T> factory)
     {
         super(source);
-
-        RowInfo sourceInfo = RowInfo.find(source.rowType());
-
-        OrderBy groupBy;
-        try {
-            groupBy = OrderBy.forSpec(sourceInfo, groupBySpec);
-        } catch (IllegalArgumentException e) {
-            throw new IllegalArgumentException(groupByMessage(e));
-        } catch (IllegalStateException e) {
-            throw new IllegalStateException(groupByMessage(e));
-        }
-
-        OrderBy orderBy = OrderBy.forSpec(sourceInfo, orderBySpec);
-
-        // Remove unnecessary order-by columns.
-        orderBy.keySet().removeAll(groupBy.keySet());
-
-        mGroupBySpec = groupBy.spec();
-        mOrderBySpec = orderBy.spec();
-
+        mScannerFactoryCache = scannerFactoryCache;
+        mGroupBySpec = groupBySpec;
+        mOrderBySpec = orderBySpec;
         mGrouperFactory = factory;
-
         mGroupComparator = source.comparator(groupBySpec);
-
-        mScannerFactoryCache = new SoftCache<>() {
-            @Override
-            protected ScannerFactory<S, T> newValue(String queryStr, QuerySpec query) {
-                if (query == null) {
-                    RowInfo rowInfo = RowInfo.find(rowType());
-                    query = new Parser(rowInfo.allColumns, queryStr).parseQuery(null);
-                    String canonical = query.toString();
-                    if (!canonical.equals(queryStr)) {
-                        return obtain(canonical, query);
-                    }
-                }
-
-                return makeScannerFactory(query);
-            }
-        };
     }
 
-    private String groupByMessage(RuntimeException e) {
+    private static String groupByMessage(RuntimeException e) {
         String message = e.getMessage();
         if (message == null) {
             throw e;
@@ -198,7 +189,7 @@ public abstract class GroupedTable<S, T> extends AbstractMappedTable<S, T> {
 
         ScannerFactory<S, T> factory;
         try {
-            factory = mScannerFactoryCache.obtain(query, null);
+            factory = mScannerFactoryCache.obtain(query, this);
         } catch (Throwable e) {
             try {
                 grouper.close();
@@ -226,7 +217,7 @@ public abstract class GroupedTable<S, T> extends AbstractMappedTable<S, T> {
         throws IOException
     {
         try (Grouper<S, T> grouper = mGrouperFactory.newGrouper()) {
-            return mScannerFactoryCache.obtain(query == null ? "{*}" : query, null)
+            return mScannerFactoryCache.obtain(query == null ? "{*}" : query, this)
                 .plan(this, grouper, txn, args);
         }
     }
@@ -249,7 +240,8 @@ public abstract class GroupedTable<S, T> extends AbstractMappedTable<S, T> {
         return spec.isEmpty() ? null : OrderBy.splitSpec(spec);
     }
 
-    private ScannerFactory<S, T> makeScannerFactory(QuerySpec targetQuery) {
+    @Override
+    public ScannerFactory<S, T> makeScannerFactory(QuerySpec targetQuery) {
         var splitter = new Splitter(targetQuery);
 
         Class<T> targetType = rowType();

@@ -82,7 +82,8 @@ public interface Mapper<R, T> {
 
     /**
      * Returns a comma-separated list of source columns which are needed by this {@code
-     * Mapper}. Null is returned by default, which indicates that all columns are needed.
+     * Mapper}. Null is returned by default, which indicates that all columns are needed. The
+     * implementation of this method must return a static constant.
      */
     default String sourceProjection() {
         return null;
