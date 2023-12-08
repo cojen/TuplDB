@@ -26,5 +26,5 @@ import org.cojen.tupl.Scanner;
  * @see ResultSetMaker
  */
 public interface ScannerFactory<R> {
-    Scanner<R> newScannerWith(R row) throws IOException;
+    Scanner<R> newScanner(R row) throws IOException;
 }

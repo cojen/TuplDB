@@ -109,7 +109,7 @@ public final class IdentityTable implements Table<IdentityTable.Row> {
     }
 
     @Override
-    public Scanner<Row> newScannerWith(Transaction txn, Row row) {
+    public Scanner<Row> newScanner(Row row, Transaction txn) {
         return new ScanOne(row);
     }
 
@@ -120,7 +120,7 @@ public final class IdentityTable implements Table<IdentityTable.Row> {
     }
 
     @Override
-    public Scanner<Row> newScannerWith(Transaction txn, Row row, String query, Object... args) {
+    public Scanner<Row> newScanner(Row row, Transaction txn, String query, Object... args) {
         validate(query);
         return new ScanOne(row);
     }
@@ -131,7 +131,7 @@ public final class IdentityTable implements Table<IdentityTable.Row> {
     }
 
     @Override
-    public boolean anyRowsWith(Transaction txn, Row row) {
+    public boolean anyRows(Row row, Transaction txn) {
         return true;
     }
 
@@ -142,7 +142,7 @@ public final class IdentityTable implements Table<IdentityTable.Row> {
     }
        
     @Override
-    public boolean anyRowsWith(Transaction txn, Row row, String query, Object... args) {
+    public boolean anyRows(Row row, Transaction txn, String query, Object... args) {
         validate(query);
         return true;
     }

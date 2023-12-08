@@ -22,10 +22,7 @@ import java.io.IOException;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
 
-import java.util.Comparator;
 import java.util.Spliterator;
-
-import java.util.function.Predicate;
 
 import org.cojen.dirmi.ClosedException;
 import org.cojen.dirmi.Pipe;
@@ -116,22 +113,12 @@ final class ClientTable<R> implements Table<R> {
     }
 
     @Override
-    public Scanner<R> newScanner(Transaction txn) throws IOException {
-        return newScannerWith(txn, null);
-    }
-
-    @Override
-    public Scanner<R> newScannerWith(Transaction txn, R row) throws IOException {
+    public Scanner<R> newScanner(R row, Transaction txn) throws IOException {
         return newScanner(mRemote.newScanner(mDb.remoteTransaction(txn), null), row);
     }
 
     @Override
-    public Scanner<R> newScanner(Transaction txn, String query, Object... args) throws IOException {
-        return newScannerWith(txn, null, query, args);
-    }
-
-    @Override
-    public Scanner<R> newScannerWith(Transaction txn, R row, String query, Object... args)
+    public Scanner<R> newScanner(R row, Transaction txn, String query, Object... args)
         throws IOException
     {
         return newScanner(mRemote.newScanner(mDb.remoteTransaction(txn), null, query, args), row);
@@ -210,7 +197,7 @@ final class ClientTable<R> implements Table<R> {
     }
 
     @Override
-    public boolean anyRowsWith(Transaction txn, R row) throws IOException {
+    public boolean anyRows(R row, Transaction txn) throws IOException {
         return anyRows(txn);
     }
 
@@ -220,7 +207,7 @@ final class ClientTable<R> implements Table<R> {
     }
 
     @Override
-    public boolean anyRowsWith(Transaction txn, R row, String query, Object... args)
+    public boolean anyRows(R row, Transaction txn, String query, Object... args)
         throws IOException
     {
         return anyRows(txn, query, args);

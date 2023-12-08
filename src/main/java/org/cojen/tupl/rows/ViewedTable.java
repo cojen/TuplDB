@@ -246,15 +246,15 @@ public abstract sealed class ViewedTable<R> extends WrappedTable<R, R> {
     }
 
     @Override
-    public final Scanner<R> newScannerWith(Transaction txn, R row) throws IOException {
-        return mSource.newScannerWith(txn, row, mQueryStr, mArgs);
+    public final Scanner<R> newScanner(R row, Transaction txn) throws IOException {
+        return mSource.newScanner(row, txn, mQueryStr, mArgs);
     }
 
     @Override
-    public final Scanner<R> newScannerWith(Transaction txn, R row, String query, Object... args)
+    public final Scanner<R> newScanner(R row, Transaction txn, String query, Object... args)
         throws IOException
     {
-        return mSource.newScannerWith(txn, row, fuseQuery(query), fuseArguments(args));
+        return mSource.newScanner(row, txn, fuseQuery(query), fuseArguments(args));
     }
 
     @Override

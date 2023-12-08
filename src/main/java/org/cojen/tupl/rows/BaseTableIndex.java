@@ -97,33 +97,33 @@ public abstract class BaseTableIndex<R> extends BaseTable<R> {
     }
 
     @Override
-    public Scanner<R> newScannerWith(Transaction txn, R row, String filter, Object... args)
+    public Scanner<R> newScanner(R row, Transaction txn, String filter, Object... args)
         throws IOException
     {
         return newScannerThisTable(txn, row, filter, args);
     }
 
     @Override
-    protected Updater<R> newUpdaterWith(Transaction txn, R row, String filter, Object... args)
+    protected Updater<R> newUpdater(R row, Transaction txn, String filter, Object... args)
         throws IOException
     {
         // By default, this will throw an UnmodifiableViewException. See below.
-        return newUpdaterThisTable(txn, row, filter, args);
+        return newUpdaterThisTable(row, txn, filter, args);
     }
 
     @Override
-    protected Updater<R> newUpdaterWith(Transaction txn, R row, ScanController<R> controller)
+    protected Updater<R> newUpdater(R row, Transaction txn, ScanController<R> controller)
         throws IOException
     {
         throw new UnmodifiableViewException();
     }
 
-    protected Updater<R> newJoinedUpdater(Transaction txn, R row,
+    protected Updater<R> newJoinedUpdater(R row, Transaction txn,
                                           ScanController<R> controller,
                                           BaseTable<R> primaryTable)
         throws IOException
     {
-        return primaryTable.newUpdaterWith(txn, row, controller, this);
+        return primaryTable.newUpdater(row, txn, controller, this);
     }
 
     @Override

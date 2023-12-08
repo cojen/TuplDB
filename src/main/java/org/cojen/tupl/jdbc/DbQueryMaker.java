@@ -182,7 +182,7 @@ public final class DbQueryMaker {
         }
 
         {
-            MethodMaker mm = cm.addMethod(Scanner.class, "newScannerWith", Object.class).public_();
+            MethodMaker mm = cm.addMethod(Scanner.class, "newScanner", Object.class).public_();
             var rowVar = mm.param(0);
             var txnVar = mm.invoke("txn");
             var providerField = mm.field("provider");
@@ -192,7 +192,7 @@ public final class DbQueryMaker {
             } else {
                 tableVar = providerField.invoke("table", mm.field("args"));
             }
-            mm.return_(tableVar.invoke("newScannerWith", txnVar, rowVar));
+            mm.return_(tableVar.invoke("newScanner", rowVar, txnVar));
         }
 
         assert cm.unimplementedMethods().isEmpty();

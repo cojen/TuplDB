@@ -53,7 +53,6 @@ import org.cojen.tupl.ViewConstraintException;
 
 import org.cojen.tupl.diag.QueryPlan;
 
-import org.cojen.tupl.rows.filter.Parser;
 import org.cojen.tupl.rows.filter.RowFilter;
 import org.cojen.tupl.rows.filter.QuerySpec;
 import org.cojen.tupl.rows.filter.TrueFilter;
@@ -200,11 +199,11 @@ public abstract class MappedTable<S, T> extends AbstractMappedTable<S, T>
     }
 
     @Override
-    public final Scanner<T> newScannerWith(Transaction txn, T targetRow,
-                                           String query, Object... args)
+    public final Scanner<T> newScanner(T targetRow, Transaction txn,
+                                       String query, Object... args)
         throws IOException
     {
-        return mScannerFactoryCache.obtain(query, this).newScannerWith(this, txn, targetRow, args);
+        return mScannerFactoryCache.obtain(query, this).newScanner(this, targetRow, txn, args);
     }
 
     @Override
@@ -216,7 +215,7 @@ public abstract class MappedTable<S, T> extends AbstractMappedTable<S, T>
     public final Updater<T> newUpdater(Transaction txn, String query, Object... args)
         throws IOException
     {
-        return mScannerFactoryCache.obtain(query, this).newUpdaterWith(this, txn, null, args);
+        return mScannerFactoryCache.obtain(query, this).newUpdater(this, null, txn, args);
     }
 
     @Override
@@ -642,13 +641,13 @@ public abstract class MappedTable<S, T> extends AbstractMappedTable<S, T>
             String methodName = which == 1 ? "newScanner" : "newUpdater";
 
             MethodMaker mm = cm.addMethod
-                (which == 1 ? Scanner.class : Updater.class, methodName + "With",
-                 MappedTable.class, Transaction.class, Object.class, Object[].class)
+                (which == 1 ? Scanner.class : Updater.class, methodName,
+                 MappedTable.class, Object.class, Transaction.class, Object[].class)
                 .public_().varargs();
 
             var tableVar = mm.param(0);
-            var txnVar = mm.param(1);
-            var targetRowVar = mm.param(2);
+            var targetRowVar = mm.param(1);
+            var txnVar = mm.param(2);
             var argsVar = mm.param(3);
 
             SortPlan sortPlan = splitter.mSortPlan;
@@ -837,12 +836,12 @@ public abstract class MappedTable<S, T> extends AbstractMappedTable<S, T>
     }
 
     public interface ScannerFactory<S, T> {
-        Scanner<T> newScannerWith(MappedTable<S, T> table,
-                                  Transaction txn, T targetRow, Object... args)
+        Scanner<T> newScanner(MappedTable<S, T> table,
+                              T targetRow, Transaction txn, Object... args)
             throws IOException;
 
-        Updater<T> newUpdaterWith(MappedTable<S, T> table,
-                                  Transaction txn, T targetRow, Object... args)
+        Updater<T> newUpdater(MappedTable<S, T> table,
+                              T targetRow, Transaction txn, Object... args)
             throws IOException;
 
         QueryPlan plan(boolean forUpdater, MappedTable<S, T> table, Transaction txn, Object... args)
@@ -859,7 +858,7 @@ public abstract class MappedTable<S, T> extends AbstractMappedTable<S, T>
     /**
      * Called by the generated ScannerFactory.
      *
-     * @see SortedQueryLauncher#newUpdaterWith
+     * @see SortedQueryLauncher#newUpdater
      */
     public final Updater<T> newWrappedUpdater(ScannerFactory<S, T> factory,
                                               Transaction txn, T targetRow, Object... args)
@@ -872,7 +871,7 @@ public abstract class MappedTable<S, T> extends AbstractMappedTable<S, T>
 
             Scanner<T> scanner;
             try {
-                scanner = factory.newScannerWith(this, txn, targetRow, args);
+                scanner = factory.newScanner(this, targetRow, txn, args);
                 // Commit the transaction scope to promote and keep all the locks which were
                 // acquired by the sort operation.
                 txn.commit();
@@ -893,7 +892,7 @@ public abstract class MappedTable<S, T> extends AbstractMappedTable<S, T>
 
         Scanner<T> scanner;
         try {
-            scanner = factory.newScannerWith(this, txn, targetRow, args);
+            scanner = factory.newScanner(this, targetRow, txn, args);
         } catch (Throwable e) {
             txn.exit();
             throw e;

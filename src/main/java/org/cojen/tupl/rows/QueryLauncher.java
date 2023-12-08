@@ -35,12 +35,12 @@ public interface QueryLauncher<R> extends Closeable {
     /**
      * @param row initial row; can be null
      */
-    Scanner<R> newScannerWith(Transaction txn, R row, Object... args) throws IOException;
+    Scanner<R> newScanner(R row, Transaction txn, Object... args) throws IOException;
 
     /**
      * @param row initial row; can be null
      */
-    Updater<R> newUpdaterWith(Transaction txn, R row, Object... args) throws IOException;
+    Updater<R> newUpdater(R row, Transaction txn, Object... args) throws IOException;
 
     /**
      * Scan and write rows to a remote endpoint.

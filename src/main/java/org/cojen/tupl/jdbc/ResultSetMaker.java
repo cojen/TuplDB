@@ -1084,6 +1084,6 @@ public final class ResultSetMaker {
         if (factory == null) {
             throw new SQLNonTransientException("No query has been executed into this ResultSet");
         }
-        return factory.newScannerWith(row);
+        return factory.newScanner(row);
     }
 }
