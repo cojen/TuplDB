@@ -43,7 +43,6 @@ import org.cojen.tupl.ViewConstraintException;
 
 import org.cojen.tupl.diag.QueryPlan;
 
-import org.cojen.tupl.rows.filter.Parser;
 import org.cojen.tupl.rows.filter.QuerySpec;
 import org.cojen.tupl.rows.filter.RowFilter;
 import org.cojen.tupl.rows.filter.TrueFilter;
@@ -181,8 +180,8 @@ public abstract class GroupedTable<S, T> extends AbstractMappedTable<S, T>
     }
 
     @Override
-    public final Scanner<T> newScannerWith(Transaction txn, T targetRow,
-                                           String query, Object... args)
+    public final Scanner<T> newScanner(T targetRow, Transaction txn,
+                                       String query, Object... args)
         throws IOException
     {
         Grouper<S, T> grouper = mGrouperFactory.newGrouper();
@@ -199,7 +198,7 @@ public abstract class GroupedTable<S, T> extends AbstractMappedTable<S, T>
             throw e;
         }
 
-        return factory.newScannerWith(this, grouper, txn, targetRow, args);
+        return factory.newScanner(this, grouper, targetRow, txn, args);
     }
 
     @Override
@@ -305,20 +304,20 @@ public abstract class GroupedTable<S, T> extends AbstractMappedTable<S, T>
 
         splitter.addPrepareArgsMethod(cm);
 
-        // Add the newScannerWith method.
+        // Add the newScanner method.
 
         {
             String methodName = "newScanner";
 
             MethodMaker mm = cm.addMethod
-                (Scanner.class, methodName + "With", GroupedTable.class, Grouper.class,
-                 Transaction.class, Object.class, Object[].class)
+                (Scanner.class, methodName, GroupedTable.class, Grouper.class,
+                 Object.class, Transaction.class, Object[].class)
                 .public_().varargs();
 
             var tableVar = mm.param(0);
             var grouperVar = mm.param(1);
-            var txnVar = mm.param(2);
-            var targetRowVar = mm.param(3);
+            var targetRowVar = mm.param(2);
+            var txnVar = mm.param(3);
             var argsVar = mm.param(4);
 
             argsVar = splitter.prepareArgs(argsVar);
@@ -492,8 +491,8 @@ public abstract class GroupedTable<S, T> extends AbstractMappedTable<S, T>
     }
 
     public interface ScannerFactory<S, T> {
-        Scanner<T> newScannerWith(GroupedTable<S, T> table, Grouper<S, T> grouper,
-                                  Transaction txn, T targetRow, Object... args)
+        Scanner<T> newScanner(GroupedTable<S, T> table, Grouper<S, T> grouper,
+                              T targetRow, Transaction txn, Object... args)
             throws IOException;
 
         QueryPlan plan(GroupedTable<S, T> table, Grouper<S, T> grouper,

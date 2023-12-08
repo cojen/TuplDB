@@ -41,20 +41,20 @@ class ScanQueryLauncher<R> implements QueryLauncher<R> {
     }
 
     @Override
-    public Scanner<R> newScannerWith(Transaction txn, R row, Object... args) throws IOException {
-        return mTable.newScannerWith(txn, row, mFactory.scanController(args));
+    public Scanner<R> newScanner(R row, Transaction txn, Object... args) throws IOException {
+        return mTable.newScanner(row, txn, mFactory.scanController(args));
     }
 
     @Override
-    public Updater<R> newUpdaterWith(Transaction txn, R row, Object... args) throws IOException {
-        return mTable.newUpdaterWith(txn, row, mFactory.scanController(args));
+    public Updater<R> newUpdater(R row, Transaction txn, Object... args) throws IOException {
+        return mTable.newUpdater(row, txn, mFactory.scanController(args));
     }
 
     @Override
     @SuppressWarnings("unchecked")
     public void scanWrite(Transaction txn, RowWriter writer, Object... args) throws IOException {
         // Pass the writer as if it's a row, but it's actually a RowConsumer.
-        Scanner<R> scanner = newScannerWith(txn, (R) writer, args);
+        Scanner<R> scanner = newScanner((R) writer, txn, args);
         try {
             while (scanner.step((R) writer) != null);
         } catch (Throwable e) {

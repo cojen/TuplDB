@@ -37,7 +37,7 @@ public final class LoadOneQueryLauncher<R> extends ScanQueryLauncher<R> {
     }
 
     @Override
-    public Scanner<R> newScannerWith(Transaction txn, R row, Object... args) throws IOException {
+    public Scanner<R> newScanner(R row, Transaction txn, Object... args) throws IOException {
         return new LoadOneScanner<>(mTable.mSource, txn, mFactory.scanController(args), row);
     }
 

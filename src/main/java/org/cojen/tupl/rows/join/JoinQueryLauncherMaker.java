@@ -191,11 +191,11 @@ final class JoinQueryLauncherMaker {
 
     private void addNewScannerMethod() {
         MethodMaker mm = mClassMaker.addMethod
-            (Scanner.class, "newScannerWith", Transaction.class, Object.class, Object[].class)
+            (Scanner.class, "newScanner", Object.class, Transaction.class, Object[].class)
             .public_().varargs();
 
-        var txnVar = mm.param(0);
-        var joinRowVar = mm.param(1).cast(mJoinType);
+        var joinRowVar = mm.param(0).cast(mJoinType);
+        var txnVar = mm.param(1);
         var argsVar = mm.param(2);
 
         Label enoughArgs = mm.label();

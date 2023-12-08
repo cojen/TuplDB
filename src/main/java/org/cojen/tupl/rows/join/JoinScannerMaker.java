@@ -1018,7 +1018,7 @@ final class JoinScannerMaker {
     }
 
     /**
-     * Makes code that calls newScannerWith on the join column.
+     * Makes code that calls newScanner on the join column.
      */
     private class ScannerMaker implements IntUnaryOperator {
         private final MethodMaker mMethodMaker;
@@ -1031,7 +1031,7 @@ final class JoinScannerMaker {
         private int mNumArgsToCheck;
 
         /**
-         * @param exists pass true to call exists instead of newScannerWith
+         * @param exists pass true to call exists instead of newScanner
          */
         ScannerMaker(MethodMaker mm, JoinSpec.Source source, boolean exists) {
             mMethodMaker = mm;
@@ -1116,7 +1116,7 @@ final class JoinScannerMaker {
                 if (filter == FalseFilter.THE) {
                     resultVar = mMethodMaker.var(boolean.class).set(false);
                 } else if (filter == TrueFilter.THE) {
-                    resultVar = mTableVar.invoke("anyRowsWith", mTxnVar, levelRowVar());
+                    resultVar = mTableVar.invoke("anyRows", levelRowVar(), mTxnVar);
                 } else {
                     Map<String, JoinSpec.Source> sources = mSource.argSources();
                     if (sources != null) {
@@ -1131,7 +1131,7 @@ final class JoinScannerMaker {
                         }
                     }
 
-                    resultVar = mTableVar.invoke("anyRowsWith", mTxnVar, levelRowVar(),
+                    resultVar = mTableVar.invoke("anyRows", levelRowVar(), mTxnVar,
                                                  "{} " + filter, mArgsVar);
                 }
 
@@ -1147,7 +1147,7 @@ final class JoinScannerMaker {
             var query = queryFor(mSource, filter);
 
             if (query.isFullScan()) {
-                mMethodMaker.return_(mTableVar.invoke("newScannerWith", mTxnVar, levelRowVar()));
+                mMethodMaker.return_(mTableVar.invoke("newScanner", levelRowVar(), mTxnVar));
                 return;
             }
 
@@ -1171,7 +1171,7 @@ final class JoinScannerMaker {
                 }
             }
 
-            mMethodMaker.return_(mTableVar.invoke("newScannerWith", mTxnVar, levelRowVar(),
+            mMethodMaker.return_(mTableVar.invoke("newScanner", levelRowVar(), mTxnVar,
                                                   query.toString(), mArgsVar));
         }
 

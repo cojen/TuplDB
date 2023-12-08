@@ -73,27 +73,15 @@ public abstract class JoinTable<J> implements Table<J> {
     }
 
     @Override
-    public final Scanner<J> newScanner(Transaction txn) throws IOException {
-        return newScannerWith(txn, null);
+    public final Scanner<J> newScanner(J row, Transaction txn) throws IOException {
+        return newScanner(row, txn, "{*}", (Object[]) null);
     }
 
     @Override
-    public final Scanner<J> newScannerWith(Transaction txn, J row) throws IOException {
-        return newScannerWith(txn, row, "{*}", (Object[]) null);
-    }
-
-    @Override
-    public final Scanner<J> newScanner(Transaction txn, String query, Object... args)
+    public final Scanner<J> newScanner(J row, Transaction txn, String query, Object... args)
         throws IOException
     {
-        return newScannerWith(txn, null, query, args);
-    }
-
-    @Override
-    public final Scanner<J> newScannerWith(Transaction txn, J row, String query, Object... args)
-        throws IOException
-    {
-        return scannerQueryLauncher(query).newScannerWith(txn, row, args);
+        return scannerQueryLauncher(query).newScanner(row, txn, args);
     }
 
     @Override

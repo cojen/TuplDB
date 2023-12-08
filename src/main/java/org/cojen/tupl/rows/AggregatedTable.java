@@ -39,7 +39,6 @@ import org.cojen.tupl.Aggregator;
 import org.cojen.tupl.Scanner;
 import org.cojen.tupl.Table;
 import org.cojen.tupl.Transaction;
-import org.cojen.tupl.Updater;
 
 import org.cojen.tupl.diag.QueryPlan;
 
@@ -206,7 +205,7 @@ public abstract class AggregatedTable<S, T> extends WrappedTable<S, T>
 
                 String queryString = queryString(targetInfo.keyColumns.values());
 
-                var scannerVar = mm.invoke("newScannerWith", txnVar, rowVar, queryString, argsVar);
+                var scannerVar = mm.invoke("newScanner", rowVar, txnVar, queryString, argsVar);
                 var foundVar = scannerVar.invoke("row").ne(null);
                 scannerVar.invoke("close");
 
@@ -291,8 +290,8 @@ public abstract class AggregatedTable<S, T> extends WrappedTable<S, T>
     }
 
     @Override
-    public final Scanner<T> newScannerWith(Transaction txn, T targetRow,
-                                           String query, Object... args)
+    public final Scanner<T> newScanner(T targetRow, Transaction txn,
+                                       String query, Object... args)
         throws IOException
     {
         Aggregator<S, T> aggregator = mAggregatorFactory.newAggregator();
@@ -309,7 +308,7 @@ public abstract class AggregatedTable<S, T> extends WrappedTable<S, T>
             throw e;
         }
 
-        return factory.newScannerWith(this, aggregator, txn, targetRow, args);
+        return factory.newScanner(this, aggregator, targetRow, txn, args);
     }
 
     /**
@@ -317,7 +316,7 @@ public abstract class AggregatedTable<S, T> extends WrappedTable<S, T>
      */
     @Override
     public boolean load(Transaction txn, T targetRow) throws IOException {
-        Scanner<T> s = newScannerWith(txn, targetRow);
+        Scanner<T> s = newScanner(targetRow, txn);
         boolean found = s.row() != null;
         s.close();
         if (!found) {
@@ -522,13 +521,13 @@ public abstract class AggregatedTable<S, T> extends WrappedTable<S, T>
         ctor.field("_").set(ctor.this_());
 
         MethodMaker mm = factoryMaker.addMethod
-            (Scanner.class, "newScannerWith", AggregatedTable.class, Aggregator.class,
-             Transaction.class, Object.class, Object[].class).public_().varargs();
+            (Scanner.class, "newScanner", AggregatedTable.class, Aggregator.class,
+             Object.class, Transaction.class, Object[].class).public_().varargs();
 
         var tableVar = mm.param(0);
         var aggregatorVar = mm.param(1);
-        var txnVar = mm.param(2);
-        var targetRowVar = mm.param(3);
+        var targetRowVar = mm.param(2);
+        var txnVar = mm.param(3);
         var argsVar = mm.param(4);
 
         var sourceTableVar = tableVar.invoke("source");
@@ -636,8 +635,8 @@ public abstract class AggregatedTable<S, T> extends WrappedTable<S, T>
     }
 
     public interface ScannerFactory<S, T> {
-        Scanner<T> newScannerWith(AggregatedTable<S, T> table, Aggregator<S, T> aggregator,
-                                  Transaction txn, T targetRow, Object... args)
+        Scanner<T> newScanner(AggregatedTable<S, T> table, Aggregator<S, T> aggregator,
+                              T targetRow, Transaction txn, Object... args)
             throws IOException;
 
         QueryPlan plan(AggregatedTable<S, T> table, Aggregator<S, T> aggregator,

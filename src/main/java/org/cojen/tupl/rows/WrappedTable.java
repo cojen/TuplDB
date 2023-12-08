@@ -40,20 +40,8 @@ public abstract class WrappedTable<S, T> implements Table<T> {
     }
 
     @Override
-    public Scanner<T> newScanner(Transaction txn) throws IOException {
-        return newScannerWith(txn, null);
-    }
-
-    @Override
-    public Scanner<T> newScannerWith(Transaction txn, T targetRow) throws IOException {
-        return newScannerWith(txn, targetRow, "{*}", RowUtils.NO_ARGS);
-    }
-
-    @Override
-    public Scanner<T> newScanner(Transaction txn, String query, Object... args)
-        throws IOException
-    {
-        return newScannerWith(txn, null, query, args);
+    public Scanner<T> newScanner(T targetRow, Transaction txn) throws IOException {
+        return newScanner(targetRow, txn, "{*}", RowUtils.NO_ARGS);
     }
 
     @Override

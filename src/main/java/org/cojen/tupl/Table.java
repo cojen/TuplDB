@@ -150,12 +150,14 @@ public interface Table<R> extends Closeable {
      * @throws IllegalStateException if transaction belongs to another database instance
      * @see #scannerPlan scannerPlan
      */
-    public Scanner<R> newScanner(Transaction txn) throws IOException;
+    public default Scanner<R> newScanner(Transaction txn) throws IOException {
+        return newScanner(null, txn);
+    }
 
     /**
      * @hidden
      */
-    public Scanner<R> newScannerWith(Transaction txn, R row) throws IOException;
+    public Scanner<R> newScanner(R row, Transaction txn) throws IOException;
 
     /**
      * Returns a new scanner for a subset of rows from this table, as specified by the query
@@ -166,8 +168,11 @@ public interface Table<R> extends Closeable {
      * @throws IllegalStateException if transaction belongs to another database instance
      * @see #scannerPlan scannerPlan
      */
-    public Scanner<R> newScanner(Transaction txn, String query, Object... args)
-        throws IOException;
+    public default Scanner<R> newScanner(Transaction txn, String query, Object... args)
+        throws IOException
+    {
+        return newScanner(null, txn, query, args);
+    }
 
     /**
      * @hidden
@@ -179,16 +184,16 @@ public interface Table<R> extends Closeable {
     /**
      * @hidden
      */
-    public Scanner<R> newScannerWith(Transaction txn, R row, String query, Object... args)
+    public Scanner<R> newScanner(R row, Transaction txn, String query, Object... args)
         throws IOException;
 
     /**
      * @hidden
      */
-    public default Scanner<R> newScannerWith(Transaction txn, R row, String query)
+    public default Scanner<R> newScanner(R row, Transaction txn, String query)
         throws IOException
     {
-        return newScannerWith(txn, row, query, NO_ARGS);
+        return newScanner(row, txn, query, NO_ARGS);
     }
 
     /**
@@ -318,15 +323,15 @@ public interface Table<R> extends Closeable {
      */
     public default boolean anyRows(Transaction txn) throws IOException {
         // TODO: Subclasses should provide an optimized implementation.
-        return anyRowsWith(txn, null);
+        return anyRows(null, txn);
     }
 
     /**
      * @hidden
      */
-    public default boolean anyRowsWith(Transaction txn, R row) throws IOException {
+    public default boolean anyRows(R row, Transaction txn) throws IOException {
         // TODO: Subclasses should provide an optimized implementation.
-        return anyRowsWith(txn, row, "{}", NO_ARGS);
+        return anyRows(row, txn, "{}", NO_ARGS);
     }
 
     /**
@@ -340,7 +345,7 @@ public interface Table<R> extends Closeable {
         throws IOException
     {
         // TODO: Subclasses should provide an optimized implementation.
-        return anyRowsWith(txn, null, query, args);
+        return anyRows(null, txn, query, args);
     }
 
     /**
@@ -353,11 +358,11 @@ public interface Table<R> extends Closeable {
     /**
      * @hidden
      */
-    public default boolean anyRowsWith(Transaction txn, R row, String query, Object... args)
+    public default boolean anyRows(R row, Transaction txn, String query, Object... args)
         throws IOException
     {
         // TODO: Subclasses should provide an optimized implementation.
-        Scanner<R> s = newScannerWith(txn, row, query, args);
+        Scanner<R> s = newScanner(row, txn, query, args);
         boolean result = s.row() != null;
         s.close();
         return result;
@@ -366,8 +371,8 @@ public interface Table<R> extends Closeable {
     /**
      * @hidden
      */
-    public default boolean anyRowsWith(Transaction txn, R row, String query) throws IOException {
-        return anyRowsWith(txn, row, query, NO_ARGS);
+    public default boolean anyRows(R row, Transaction txn, String query) throws IOException {
+        return anyRows(row, txn, query, NO_ARGS);
     }
 
     private static <R> Stream<R> newStream(Scanner<R> scanner) {

@@ -216,7 +216,7 @@ public class MappedTest {
             assertNull(scanner.step());
         }
 
-        try (var scanner = mapped.newScannerWith(null, mapped.newRow())) {
+        try (var scanner = mapped.newScanner(mapped.newRow(), null)) {
             row = scanner.row();
             assertEquals("{id=2, num=234, str=123}", row.toString());
             row = scanner.step(row);
@@ -224,7 +224,7 @@ public class MappedTest {
             assertNull(scanner.step(row));
         }
 
-        try (var scanner = mapped.newScannerWith(null, mapped.newRow(), "{*}")) {
+        try (var scanner = mapped.newScanner(mapped.newRow(), null, "{*}")) {
             row = scanner.row();
             assertEquals("{id=2, num=234, str=123}", row.toString());
             row = scanner.step();
