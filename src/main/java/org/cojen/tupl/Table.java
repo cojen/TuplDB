@@ -100,6 +100,9 @@ import static org.cojen.tupl.rows.RowUtils.NO_ARGS;
  * ArgRef       = "?" [ uint ]
  * }</pre></blockquote>
  *
+ * Note that a query projection specifies the minimum set of requested columns, but additional
+ * ones might be provided if they were needed by the query implementation.
+ *
  * @author Brian S O'Neill
  * @see Database#openTable Database.openTable
  * @see PrimaryKey

@@ -26,6 +26,7 @@ import java.lang.invoke.VarHandle;
 
 import java.lang.ref.WeakReference;
 
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
 
@@ -859,17 +860,19 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
             selector = new IndexSelector<R>(this, rowInfo, query, (type & FOR_UPDATE) != 0);
         }
 
-        if ((type & FOR_UPDATE) != 0) {
+        if ((type & FOR_UPDATE) != 0) forUpdate: {
             if (selector.orderBy() != null) {
                 // The Updater needs to have a sort step applied, and so it needs access to
                 // the primary key. This is because the update/delete operation is performed
                 // by calling Table.update or Table.delete. See WrappedUpdater.
-                // TODO: Remove this requirement by automatically decoding the primary key and
-                // hiding the result.
-                Map<String, ColumnInfo> proj = selector.query().projection();
+                QuerySpec query = selector.query();
+                Map<String, ColumnInfo> proj = query.projection();
                 if (proj != null && !proj.keySet().containsAll(rowInfo.keyColumns.keySet())) {
-                    throw new IllegalStateException
-                        ("Sorted Updater query must select all primary key columns");
+                    proj = new LinkedHashMap<>(proj);
+                    proj.putAll(rowInfo.keyColumns);
+                    query = query.withProjection(proj);
+                    selector = new IndexSelector<R>(this, rowInfo, query, true);
+                    break forUpdate;
                 }
             }
 
