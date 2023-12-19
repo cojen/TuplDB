@@ -63,6 +63,8 @@ public class DbConnection extends BaseConnection {
                 mTxn = null;
             }
         } else if (txn == null) {
+            // A new transaction is UPGRADABLE_READ, which will be treated as serializable.
+            // See BaseTable.newScanner, BaseTableIndex.newScanner, and BaseTable.newUpdater.
             mTxn = db().newTransaction();
         }
     }
@@ -121,44 +123,52 @@ public class DbConnection extends BaseConnection {
 
     @Override
     public void setTransactionIsolation(int level) throws SQLException {
-        Transaction txn;
+        // Note: See BaseTable.newScanner, BaseTableIndex.newScanner, and BaseTable.newUpdater
+        // to see how predicate locks are used in conjunction with transaction lock modes.
+
+        Transaction txn = mTxn;
         LockMode mode;
 
-        obtainTxn: {
-            switch (level) {
-            case TRANSACTION_SERIALIZABLE:
-                txn = mTxn;
-                if (txn != null) {
-                    mode = LockMode.UPGRADABLE_READ;
-                    break obtainTxn;
-                }
-                mTxn = db().newTransaction();
-                return;
-
-            case TRANSACTION_REPEATABLE_READ:
-                mode = LockMode.READ_COMMITTED;
-                break;
- 
-            case TRANSACTION_READ_COMMITTED:
-                txn = mTxn;
-                if (txn != null) {
-                    mode = LockMode.READ_COMMITTED;
-                    break obtainTxn;
-                }
-                return;
-
-            case TRANSACTION_READ_UNCOMMITTED:
-                mode = LockMode.READ_UNCOMMITTED;
-                break;
-
-            default: throw new SQLException("Unknown level");
-            }
-
-            txn = mTxn;
-
+        switch (level) {
+        case TRANSACTION_SERIALIZABLE:
+            // Setting the transaction mode to UPGRADABLE_READ is sufficient, because a
+            // predicate lock will also be used to ensure serializability.
             if (txn == null) {
-                mTxn = txn = db().newTransaction();
+                // New transactions are UPGRADABLE_READ, so no need to explicitly set the mode.
+                mTxn = db().newTransaction();
+            } else {
+                txn.lockMode(LockMode.UPGRADABLE_READ);
             }
+            return;
+
+        case TRANSACTION_REPEATABLE_READ:
+            // When scanning a secondary index, this mode will also use a predicate lock, and
+            // so it's effectively serializable too. The difference is that read locks are used
+            // (instead of upgradable locks), and so attempting to modify rows acquired with
+            // this mode will fail. See IllegalUpgradeException and LockUpgradeRule.
+            mode = LockMode.REPEATABLE_READ;
+            break;
+ 
+        case TRANSACTION_READ_COMMITTED:
+            // Note that a null transaction also behaves like READ_COMMITTED, except that a
+            // predicate lock will never be used, and so it's weaker than a transaction which
+            // explicitly uses READ_COMMITTED. When scanning rows with a null transaction over
+            // a secondary index, rows which were already seen could move ahead and thus be
+            // seen again. The use of a predicate lock prevents this. If no predicate lock is
+            // desired, then setAutoCommit(true) should be used instead, which sets the
+            // transaction to null.
+            mode = LockMode.READ_COMMITTED;
+            break;
+
+        case TRANSACTION_READ_UNCOMMITTED:
+            mode = LockMode.READ_UNCOMMITTED;
+            break;
+
+        default: throw new SQLException("Unknown level");
+        }
+
+        if (txn == null) {
+            mTxn = txn = db().newTransaction();
         }
 
         txn.lockMode(mode);
