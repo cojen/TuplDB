@@ -27,8 +27,10 @@ import java.util.EnumSet;
 import com.sun.jna.Native;
 import com.sun.jna.Pointer;
 
+import com.sun.jna.platform.win32.Advapi32;
 import com.sun.jna.platform.win32.Kernel32;
 import com.sun.jna.platform.win32.Kernel32Util;
+import com.sun.jna.platform.win32.WinDef;
 import com.sun.jna.platform.win32.WinNT;
 
 import com.sun.jna.win32.W32APIOptions;
@@ -183,6 +185,23 @@ final class WindowsFileIO extends JavaFileIO {
     }
 
     static long valloc(long length) throws IOException {
+        // Try to allocate large pages.
+        if (length >= (1L << 30) && requestSeLockMemoryPrivilege()) {
+            // Round up if necessary.
+            long largePageSize = cKernel.GetLargePageMinimum();
+            long largeLength = ((length + largePageSize - 1) / largePageSize) * largePageSize;
+
+            long addr = cKernel.VirtualAlloc
+                (0, // lpAddress
+                 largeLength,
+                 0x1000 | 0x2000 | 0x20000000, // MEM_COMMIT | MEM_RESERVE | MEM_LARGE_PAGES
+                 0x04); // PAGE_READWRITE
+
+            if (addr != 0) {
+                return addr;
+            }
+        }
+
         long addr = cKernel.VirtualAlloc
             (0, // lpAddress
              length,
@@ -194,6 +213,42 @@ final class WindowsFileIO extends JavaFileIO {
         }
 
         return addr;
+    }
+
+    private static boolean requestSeLockMemoryPrivilege() {
+        WinNT.HANDLE process = cKernel.GetCurrentProcess();
+
+        try {
+            var api = Advapi32.INSTANCE;
+            int access = cKernel.TOKEN_ADJUST_PRIVILEGES;
+            var tokenRef = new WinNT.HANDLEByReference();
+            if (!api.OpenProcessToken(process, access, tokenRef)) {
+                return false;
+            }
+
+            WinNT.HANDLE token = tokenRef.getValue();
+
+            try {
+                var luid = new WinNT.LUID();
+                if (!api.LookupPrivilegeValue(null, "SeLockMemoryPrivilege", luid)) {
+                    return false;
+                }
+
+                var tp = new WinNT.TOKEN_PRIVILEGES(1);
+                tp.Privileges[0] = new WinNT.LUID_AND_ATTRIBUTES
+                    (luid, new WinDef.DWORD(WinNT.SE_PRIVILEGE_ENABLED));
+
+                if (!api.AdjustTokenPrivileges(token, false, tp, tp.size(), null, null)) {
+                    return false;
+                }
+
+                return cKernel.GetLastError() == cKernel.ERROR_SUCCESS;
+            } finally {
+                closeHandle(token);
+            }
+        } finally {
+            closeHandle(process);
+        }
     }
 
     static void vfree(long addr) throws IOException {
@@ -223,5 +278,7 @@ final class WindowsFileIO extends JavaFileIO {
         long VirtualAlloc(long lpAddress, long dwSize, int flAllocationType, int flProtect);
 
         boolean VirtualFree(long lpAddress, long dwSize, int dwFreeType);
+
+        long GetLargePageMinimum();
     }
 }
