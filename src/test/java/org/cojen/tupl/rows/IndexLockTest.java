@@ -136,11 +136,11 @@ public class IndexLockTest {
         scanTxn.reset();
 
         try {
-            // Need an explicit transaction to add a predicate lock. READ_COMMITTED is the
+            // Need an explicit transaction to add a predicate lock. UPGRADABLE_READ is the
             // lowest level that does this.
             Transaction txn = mDatabase.newTransaction();
             try {
-                txn.lockMode(LockMode.READ_COMMITTED);
+                txn.lockMode(LockMode.UPGRADABLE_READ);
                 newScanner(table, updater, txn, "id >= ? && id <= ?", 3, 7);
             } finally {
                 txn.exit();
@@ -433,8 +433,6 @@ public class IndexLockTest {
 
         // The predicate lock will guard the whole table.
         Transaction txn1 = mDatabase.newTransaction();
-        // Be nice and don't retain row locks, but this isn't enough.
-        txn1.lockMode(LockMode.READ_COMMITTED);
 
         Scanner<TestRow> scanner;
         if (!withFilter) {
@@ -493,97 +491,6 @@ public class IndexLockTest {
         w1.await();
         scanner.close();
         txn1.exit();
-    }
-
-    @Test
-    public void noDeadlock() throws Exception {
-        noDeadlock(LockMode.READ_COMMITTED);
-    }
-
-    @Test
-    public void noDeadlock2() throws Exception {
-        // Same as noDeadlock, but with a stronger scan lock mode.
-        noDeadlock(LockMode.REPEATABLE_READ);
-    }
-
-    @Test
-    public void noDeadlock3() throws Exception {
-        // The name of this test is a lie. Deadlock is expected when the scan uses the
-        // strongest locking mode.
-        try {
-            noDeadlock(LockMode.UPGRADABLE_READ);
-            fail();
-        } catch (DeadlockException e) {
-            rowLockTimeout(e);
-        }
-    }
-
-    private void noDeadlock(LockMode scanLockMode) throws Exception {
-        // Attempt a row move without deadlock by inserting before deleting. Note that if the
-        // scanner uses the UPGRADABLE_READ lock mode, a deadlock is caused by the load
-        // operation, which also needs UPGRADABLE_READ to finish the delete.
-
-        var table = mDatabase.openTable(TestRow.class);
-
-        fill(table, 0, 3);
-
-        Transaction txn1 = mDatabase.newTransaction();
-        txn1.lockMode(scanLockMode);
-        var scanner = table.newScanner(txn1);
-
-        Transaction txn2 = mDatabase.newTransaction();
-        var row = table.newRow();
-        row.id(1);
-        table.load(txn2, row); // needs UPGRADABLE_READ lock mode
-        row.id(100);
-
-        // Begin the move by inserting, which must acquire the predicate lock.
-        txn2.lockTimeout(2, TimeUnit.SECONDS);
-        Waiter w1 = start(() -> {
-            table.insert(txn2, row);
-        });
-
-        for (int i=0; i<=3; i++) {
-            assertEquals(i, scanner.row().id());
-            scanner.step();
-        }
-
-        assertNull(scanner.row());
-
-        if (scanLockMode == LockMode.READ_COMMITTED) {
-            // Must forcibly release the predicate lock.
-            txn1.exit();
-        } else if (scanLockMode == LockMode.REPEATABLE_READ) {
-            // Must forcibly release the row locks and the predicate lock.
-            scanner.close();
-            txn1.exit();
-        }
-
-        // The scanner has finished, and so the move operation is unblocked.
-        w1.await();
-
-        row.id(1);
-        table.delete(txn2, row);
-        txn2.commit();
-
-        scanner.close();
-        txn1.exit();
-
-        // Verify the row move.
-
-        // Null transaction doesn't add a predicate lock. This scan doesn't require it
-        // because no concurrent inserts are being performed.
-        scanner = table.newScanner(null);
-
-        long[] expect = {0, 2, 3, 100};
-
-        for (int i=0; i<=3; i++) {
-            long id = scanner.row().id();
-            assertEquals(expect[i], id);
-            scanner.step();
-        }
-
-        assertNull(scanner.row());
     }
 
     @Test
@@ -775,7 +682,7 @@ public class IndexLockTest {
         var replicaTable = replicaDb.openTable(TestRow.class);
 
         Transaction txn1 = replicaDb.newTransaction();
-        txn1.lockMode(LockMode.READ_COMMITTED);
+        txn1.lockMode(LockMode.UPGRADABLE_READ);
 
         var scanner = replicaTable.newScanner(txn1, "id >= ? && id <= ?", 3, 7);
 
@@ -1204,6 +1111,44 @@ public class IndexLockTest {
         if (!(e1 instanceof DeadlockException || e2 instanceof DeadlockException)) {
             fail("no deadlock: " + e1 + ", " + e2);
         }
+    }
+
+    @Test
+    public void secondaryPredicate() throws Exception {
+        // Test that a scan over a secondary index is protected by a predicate lock.
+
+        var table = mDatabase.openTable(TestRow2.class);
+        fill(table, 1, 4);
+
+        Transaction txn1 = mDatabase.newTransaction();
+        txn1.lockMode(LockMode.READ_COMMITTED);
+
+        var scanner1 = table.newScanner(txn1, "name >= ? && name <= ?", "name-2", "name-4");
+        assertEquals("name-2", scanner1.row().name());
+        scanner1.step();
+        assertEquals("name-3", scanner1.row().name());
+
+        var row = table.newRow();
+        row.id(2);
+        row.name("xname");
+        // Can update the row because no row lock is held.
+        table.update(null, row);
+
+        row.name("name-4");
+        try {
+            table.update(null, row);
+            fail();
+        } catch (LockTimeoutException e) {
+            // Cannot move the row into the scan range.
+        }
+
+        scanner1.step();
+        assertEquals("name-4", scanner1.row().name());
+        assertNull(scanner1.step());
+        txn1.reset();
+
+        // Update should work now.
+        table.update(null, row);
     }
 
     private static <R extends TestRow> void fill(Table<R> table, int start, int end)
