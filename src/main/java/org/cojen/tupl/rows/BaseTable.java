@@ -196,27 +196,47 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
         throw Utils.rethrow(cause);
     }
 
-    /**
-     * Note: Is overridden by BaseTableIndex.
-     */
-    protected Scanner<R> newScanner(R row, Transaction txn, ScanController<R> controller)
+    final Scanner<R> newScanner(R row, Transaction txn, ScanController<R> controller)
         throws IOException
     {
+        final BasicScanner<R> scanner;
         RowPredicateLock.Closer closer = null;
 
-        if (txn != null && txn.lockMode() == LockMode.UPGRADABLE_READ) {
-            /*
-              When scanning the primary table index, treat UPGRADABLE_READ as serializable
-              isolation. Adding a predicate lock prevents new rows from being inserted into the
-              scan range for the duration of the transaction scope.
+        newScanner: {
+            if (txn == null) {
+                // A null transaction behaves like a read committed transaction (as usual), but
+                // it doesn't acquire predicate locks. This makes it weaker than a transaction
+                // which is explicitly read committed.
 
-              When scanning a secondary index, REPEATABLE_READ and READ_COMMITTED also use a
-              predicate lock. See BaseTableIndex.newScanner.
-            */
-            closer = mIndexLock.addPredicate(txn, controller.predicate());
+                if (joinedPrimaryTableClass() != null) {
+                    // Need to guard against this secondary index from being concurrently
+                    // dropped. This is like adding a predicate lock which matches nothing.
+                    txn = mSource.newTransaction(null);
+                    closer = mIndexLock.addGuard(txn);
+
+                    if (controller.isJoined()) {
+                        // Need to retain row locks against the secondary until after the primary
+                        // row has been loaded.
+                        txn.lockMode(LockMode.REPEATABLE_READ);
+                        scanner = new AutoUnlockScanner<>(this, controller);
+                    } else {
+                        txn.lockMode(LockMode.READ_COMMITTED);
+                        scanner = new TxnResetScanner<>(this, controller);
+                    }
+
+                    break newScanner;
+                }
+            } else if (!txn.lockMode().noReadLock) {
+                // This case is reached when a transaction was provided which is read committed
+                // or higher. Adding a predicate lock prevents new rows from being inserted
+                // into the scan range for the duration of the transaction scope. If the lock
+                // mode is repeatable read, then rows which have been read cannot be deleted,
+                // effectively making the transaction serializable.
+                closer = mIndexLock.addPredicate(txn, controller.predicate());
+            }
+
+            scanner = new BasicScanner<>(this, controller);
         }
-
-        var scanner = new BasicScanner<>(this, controller);
 
         try {
             scanner.init(txn, row);
