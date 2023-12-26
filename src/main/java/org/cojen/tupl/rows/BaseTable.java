@@ -1170,8 +1170,26 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
     protected final void replaceNoTrigger(Transaction txn, R row, byte[] key, byte[] value)
         throws IOException
     {
-        // Nothing is ever inserted, and so no need to use a predicate lock.
-        if (!mSource.replace(txn, key, value)) {
+        Index source = mSource;
+
+        // Note that although that calling replace doesn't insert a new physical row,
+        // it can insert a logical row, depending on which query predicates now match.
+        // For this reason, it needs to always call openAcquire.
+
+        // RowPredicateLock requires a non-null transaction.
+        txn = ViewUtils.enterScope(source, txn);
+        boolean result;
+        try {
+            redoPredicateMode(txn);
+            try (var closer = mIndexLock.openAcquire(txn, row)) {
+                result = source.replace(txn, key, value);
+            }
+            txn.commit();
+        } finally {
+            txn.exit();
+        }
+
+        if (!result) {
             throw new NoSuchRowException();
         }
     }
@@ -1365,44 +1383,54 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
     {
         // See comments in storeAndTrigger.
 
-        while (true) {
-            Trigger<R> trigger = trigger();
-            trigger.acquireShared();
-            try {
-                int mode = trigger.mode();
+        Index source = mSource;
 
-                if (mode == Trigger.SKIP) {
-                    if (mSource.replace(txn, key, value)) {
-                        return;
-                    }
-                    throw new NoSuchRowException();
-                }
+        // Note that although that calling replace doesn't insert a new physical row,
+        // it can insert a logical row, depending on which query predicates now match.
+        // For this reason, it needs to always call openAcquire.
 
-                if (mode != Trigger.DISABLED) {
-                    Index source = mSource;
+        // RowPredicateLock and Trigger require a non-null transaction.
+        txn = ViewUtils.enterScope(source, txn);
+        try {
+            redoPredicateMode(txn);
 
-                    // RowPredicateLock and Trigger require a non-null transaction.
-                    txn = ViewUtils.enterScope(source, txn);
-                    try (var c = source.newCursor(txn)) {
-                        c.find(key);
-                        byte[] oldValue = c.value();
-                        if (oldValue == null) {
-                            throw new NoSuchRowException();
+            while (true) {
+                Trigger<R> trigger = trigger();
+                trigger.acquireShared();
+                try {
+                    int mode = trigger.mode();
+
+                    if (mode == Trigger.SKIP) {
+                        try (var closer = mIndexLock.openAcquireP(txn, row, key, value)) {
+                            if (source.replace(txn, key, value)) {
+                                txn.commit();
+                                return;
+                            }
                         }
-                        c.store(value);
-                        // Only need to enable redoPredicateMode for the trigger, since it
-                        // might insert new secondary index entries (and call openAcquire).
-                        redoPredicateMode(txn);
-                        trigger.storeP(txn, row, key, oldValue, value);
-                        txn.commit();
-                        return;
-                    } finally {
-                        txn.exit();
+                        throw new NoSuchRowException();
                     }
+
+                    if (mode != Trigger.DISABLED) {
+                        try (var c = source.newCursor(txn)) {
+                            try (var closer = mIndexLock.openAcquireP(txn, row, key, value)) {
+                                c.find(key);
+                            }
+                            byte[] oldValue = c.value();
+                            if (oldValue == null) {
+                                throw new NoSuchRowException();
+                            }
+                            c.store(value);
+                            trigger.storeP(txn, row, key, oldValue, value);
+                            txn.commit();
+                            return;
+                        }
+                    }
+                } finally {
+                    trigger.releaseShared();
                 }
-            } finally {
-                trigger.releaseShared();
             }
+        } finally {
+            txn.exit();
         }
     }
 
