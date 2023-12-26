@@ -1472,8 +1472,7 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
     }
 
     /**
-     * Delete a fully encoded key and invoke a trigger. The given row instance is expected to
-     * be empty, and it's never modified by this method.
+     * Delete a fully encoded key and invoke a trigger.
      *
      * @see RemoteProxyMaker
      */
