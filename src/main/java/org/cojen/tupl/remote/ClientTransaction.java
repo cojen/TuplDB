@@ -208,6 +208,16 @@ final class ClientTransaction implements Transaction {
     }
 
     @Override
+    public void rollback() throws IOException {
+        if (!isBogus()) {
+            RemoteTransaction remote = mRemote;
+            if (remote != null) {
+                remote.rollback();
+            }
+        }
+    }
+
+    @Override
     public LockResult lockShared(long indexId, byte[] key) throws LockFailureException {
         return remote().lockShared(indexId, key);
     }
