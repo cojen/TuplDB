@@ -439,11 +439,11 @@ class StaticTableMaker extends TableMaker {
      * Override in order for addDoUpdateMethod to work.
      */
     @Override
-    protected void finishDoUpdate(MethodMaker mm,
-                                  Variable rowVar, Variable mergeVar, Variable cursorVar)
+    protected void finishDoUpdate(MethodMaker mm, Variable rowVar, Variable mergeVar,
+                                  Variable keyVar, Variable cursorVar)
     {
         finishDoUpdate(mm, mRowInfo, 0, // no schema version
-                       supportsTriggers() ? 1 : 0, mm.this_(), rowVar, mergeVar, cursorVar);
+                       supportsTriggers() ? 1 : 0, mm.this_(), rowVar, mergeVar, keyVar, cursorVar);
     }
 
     private void addDecodePartialHandle() {

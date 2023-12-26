@@ -359,12 +359,12 @@ public class DynamicTableMaker extends TableMaker {
      * Override in order for addDoUpdateMethod to work.
      */
     @Override
-    protected void finishDoUpdate(MethodMaker mm,
-                                  Variable rowVar, Variable mergeVar, Variable cursorVar)
+    protected void finishDoUpdate(MethodMaker mm, Variable rowVar, Variable mergeVar,
+                                  Variable keyVar, Variable cursorVar)
     {
         var indy = mm.var(DynamicTableMaker.class).indy
             ("indyDoUpdate", mStore.ref(), mRowType, mTableId, supportsTriggers() ? 1 : 0);
-        indy.invoke(null, "doUpdate", null, mm.this_(), rowVar, mergeVar, cursorVar);
+        indy.invoke(null, "doUpdate", null, mm.this_(), rowVar, mergeVar, keyVar, cursorVar);
     }
 
     /**
@@ -376,14 +376,15 @@ public class DynamicTableMaker extends TableMaker {
     {
         return doIndyEncode
             (lookup, name, mt, storeRef, rowType, tableId, (mm, info, schemaVersion) -> {
-                // All these variables were provided by the indy call in addDoUpdateMethod.
+                // All these variables were provided by the indy call in finishDoUpdate.
                 Variable tableVar = mm.param(0);
                 Variable rowVar = mm.param(1);
                 Variable mergeVar = mm.param(2);
-                Variable cursorVar = mm.param(3);
+                Variable keyVar = mm.param(3);
+                Variable cursorVar = mm.param(4);
 
                 finishDoUpdate(mm, info, schemaVersion, triggers,
-                               tableVar, rowVar, mergeVar, cursorVar);
+                               tableVar, rowVar, mergeVar, keyVar, cursorVar);
             });
     }
 }
