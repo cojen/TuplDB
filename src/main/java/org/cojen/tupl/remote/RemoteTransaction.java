@@ -155,6 +155,9 @@ public interface RemoteTransaction extends Remote, Disposable {
     byte[] lastLockedKey();
 
     @RemoteFailure(declared=false)
+    boolean wasAcquired(long indexId, byte[] key);
+
+    @RemoteFailure(declared=false)
     void unlock();
 
     @RemoteFailure(declared=false)

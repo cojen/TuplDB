@@ -403,6 +403,15 @@ public interface Transaction extends Flushable {
     byte[] lastLockedKey();
 
     /**
+     * Checks if the last acquired lock was against the given index id and key.
+     *
+     * <p><i>Note: This method is intended for advanced use cases.</i>
+     *
+     * @return true if lock matches and was just acquired
+     */
+    boolean wasAcquired(long indexId, byte[] key);
+
+    /**
      * Fully releases the last lock or group acquired, within the current scope. If the last
      * lock operation was an upgrade, for a lock not immediately acquired, unlock is not
      * allowed. Instead, an IllegalStateException is thrown.

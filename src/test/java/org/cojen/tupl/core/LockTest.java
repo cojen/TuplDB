@@ -421,6 +421,7 @@ public class LockTest {
         assertEquals(2, mManager.numLocksHeld());
         assertEquals(2, locker.lastLockedIndex());
         assertEquals(k1, locker.lastLockedKey());
+        assertTrue(locker.wasAcquired(2, k1));
         locker.scopeExitAll();
         assertEquals(0, mManager.numLocksHeld());
     }

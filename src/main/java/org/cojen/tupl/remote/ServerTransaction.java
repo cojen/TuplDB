@@ -230,6 +230,11 @@ public final class ServerTransaction implements RemoteTransaction, SessionAware 
     }
 
     @Override
+    public boolean wasAcquired(long indexId, byte[] key) {
+        return mTxn.wasAcquired(indexId, key);
+    }
+
+    @Override
     public void unlock() {
         mTxn.unlock();
     }

@@ -22,6 +22,8 @@ import java.lang.invoke.VarHandle;
 
 import java.lang.ref.WeakReference;
 
+import java.util.Arrays;
+
 import java.util.concurrent.ThreadLocalRandom;
 
 import org.cojen.tupl.DeadlockException;
@@ -522,6 +524,22 @@ class Locker implements DatabaseAccess { // weak access to database
             return null;
         }
         return peek(tailObj).mKey;
+    }
+
+    /**
+     * Checks if the last acquired lock was against the given index id and key.
+     *
+     * <p><i>Note: This method is intended for advanced use cases.</i>
+     *
+     * @return true if lock matches and was just acquired
+     */
+    public final boolean wasAcquired(long indexId, byte[] key) {
+        Object tailObj = mTailBlock;
+        if (tailObj == null) {
+            return false;
+        }
+        Lock lock = peek(tailObj);
+        return lock.mIndexId == indexId && Arrays.equals(lock.mKey, key);
     }
 
     private static Lock peek(Object tailObj) {

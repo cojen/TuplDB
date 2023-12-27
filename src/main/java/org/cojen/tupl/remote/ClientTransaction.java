@@ -302,6 +302,12 @@ final class ClientTransaction implements Transaction {
     }
 
     @Override
+    public boolean wasAcquired(long indexId, byte[] key) {
+        RemoteTransaction remote = mRemote;
+        return remote != null && remote.wasAcquired(indexId, key);
+    }
+
+    @Override
     public void unlock() {
         remote().unlock();
     }
