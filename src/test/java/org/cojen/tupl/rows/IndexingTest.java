@@ -1752,4 +1752,24 @@ public class IndexingTest {
             assertNull(s.row());
         }
     }
+
+    @Test
+    public void loadOneViaSecondary() throws Exception {
+        // Test joining to the primary index when only one row is loaded.
+
+        Database db = Database.open(new DatabaseConfig().directPageAccess(false));
+        Table<TestRow> table = db.openTable(TestRow.class);
+
+        TestRow row = table.newRow();
+        row.id(1);
+        row.path("path-1");
+        row.name("name-1");
+        row.num(BigDecimal.ONE);
+        table.insert(null, row);
+
+        try (var scanner = table.newScanner(null, "path == ?", "path-1")) {
+            row = scanner.row();
+            assertEquals(1, row.id());
+        }
+    }
 }

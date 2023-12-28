@@ -51,7 +51,8 @@ public interface RowEvaluator<R> extends RowDecoder<R> {
      *
      * @param c refers the key and value to evaluate and decode; reset might be called to abort
      * the scan
-     * @param result LockResult from cursor access
+     * @param result LockResult from cursor access; is only used to combine locks when joining
+     * to a primary row
      * @param row can pass null to construct a new instance; can also be a RowConsumer
      * @return null if row is filtered out
      */
@@ -63,7 +64,8 @@ public interface RowEvaluator<R> extends RowDecoder<R> {
      *
      * @param secondary refers the key and value to evaluate and decode; reset might be called
      * to abort the scan
-     * @param result LockResult from secondary cursor access
+     * @param result LockResult from secondary cursor access; is only used to combine locks
+     * when joining to a primary row
      * @param row can pass null to construct a new instance; can also be a RowConsumer
      * @param primary cursor is positioned as a side effect
      * @return null if row is filtered out

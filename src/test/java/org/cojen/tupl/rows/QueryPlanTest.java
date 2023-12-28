@@ -844,9 +844,9 @@ public class QueryPlanTest {
                         new QueryPlan.PrimaryJoin
                         (TestRow.class.getName(), new String[] {"+id"},
                          new QueryPlan.Filter
-                         ("a != ?4 && id < ?5", new QueryPlan.LoadOne
+                         ("a != ?4 && id < ?5", new QueryPlan.RangeScan
                           (TestRow.class.getName(), "alternate key", new String[] {"+a"},
-                           "a == ?3"))))))
+                           false, "a >= ?3", "a <= ?3"))))))
                      , plan);
 
         results = mTable.newStream(null, query, "hello1", "hello2", 4, 1, 4).toList();

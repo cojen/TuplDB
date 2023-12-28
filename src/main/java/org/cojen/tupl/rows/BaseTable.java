@@ -919,8 +919,15 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
             subTable.mFilterFactoryCache.obtain(type & ~FOR_UPDATE, subQueryStr, subQuery);
 
         if ((type & FOR_UPDATE) == 0 && subFactory.loadsOne()) {
-            // Return an optimized launcher.
-            return new LoadOneQueryLauncher<>(subTable, subFactory);
+            if (subTable.joinedPrimaryTableClass() != null) {
+                // FIXME: This optimization doesn't work because JoinedScanController needs a
+                // real Cursor. Can I obtain a different subFactory which creates controllers
+                // whose evaluator validates using a double check? It also needs to combine
+                // locks such that they can both be unlocked when rows are filtered out.
+            } else {
+                // Return an optimized launcher.
+                return new LoadOneQueryLauncher<>(subTable, subFactory);
+            }
         }
 
         if (selector.selectedReverse(i)) {
