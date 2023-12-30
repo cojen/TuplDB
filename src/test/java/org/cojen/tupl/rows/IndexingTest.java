@@ -1772,4 +1772,43 @@ public class IndexingTest {
             assertEquals(1, row.id());
         }
     }
+
+    @Test
+    public void doubleCheck() throws Exception {
+        // Test that READ_UNCOMMITTED transaction double checks the primary row because it
+        // might have been concurrently modified.
+
+        Database db = Database.open(new DatabaseConfig().directPageAccess(false));
+        Index ix = db.openIndex("test");
+        Table<TestRow> table = ix.asTable(TestRow.class);
+
+        TestRow row = table.newRow();
+        row.id(1);
+        row.path("path-1");
+        row.name("name-1");
+        row.num(BigDecimal.ONE);
+        table.insert(null, row);
+
+        // Update the row without updating the secondary indexes to simulate concurrent
+        // modification.
+        try (Cursor c = ix.newCursor(null)) {
+            c.first();
+            byte[] value = c.value();
+            // Expected to update to "path-2".
+            value[value.length - 1]++;
+            c.store(value);
+        }
+
+        Transaction txn = db.newTransaction();
+        try {
+            txn.lockMode(LockMode.READ_UNCOMMITTED);
+
+            try (var scanner = table.newScanner(txn, "path == ?", "path-1")) {
+                // Filtered out.
+                assertNull(scanner.row());
+            }
+        } finally {
+            txn.reset();
+        }
+    }
 }

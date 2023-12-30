@@ -127,11 +127,6 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
 
         if (supportsSecondaries()) {
             int[] typeMap = {PLAIN, DOUBLE_CHECK, FOR_UPDATE, FOR_UPDATE_DOUBLE_CHECK};
-            if (joinedPrimaryTableClass() == null) {
-                // Won't need to double check.
-                typeMap[DOUBLE_CHECK] = PLAIN;
-                typeMap[FOR_UPDATE_DOUBLE_CHECK] = FOR_UPDATE;
-            }
             mQueryLauncherCache = MultiCache.newSoftCache(typeMap, (type, queryStr, selector) -> {
                 try {
                     return newQueryLauncher(type, queryStr, selector);
