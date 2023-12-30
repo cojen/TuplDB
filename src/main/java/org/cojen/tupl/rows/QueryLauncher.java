@@ -17,8 +17,13 @@
 
 package org.cojen.tupl.rows;
 
-import java.io.Closeable;
 import java.io.IOException;
+
+import java.lang.invoke.VarHandle;
+
+import java.lang.ref.WeakReference;
+
+import java.util.Map;
 
 import org.cojen.tupl.Scanner;
 import org.cojen.tupl.Updater;
@@ -26,28 +31,250 @@ import org.cojen.tupl.Transaction;
 
 import org.cojen.tupl.diag.QueryPlan;
 
+import org.cojen.tupl.rows.filter.Parser;
+import org.cojen.tupl.rows.filter.QuerySpec;
+
+import static org.cojen.tupl.rows.BaseTable.*;
+
 /**
  * 
  *
  * @author Brian S O'Neill
  */
-public interface QueryLauncher<R> extends Closeable {
+public abstract class QueryLauncher<R> {
     /**
      * @param row initial row; can be null
      */
-    Scanner<R> newScanner(R row, Transaction txn, Object... args) throws IOException;
+    public abstract Scanner<R> newScanner(R row, Transaction txn, Object... args)
+        throws IOException;
 
     /**
      * @param row initial row; can be null
      */
-    Updater<R> newUpdater(R row, Transaction txn, Object... args) throws IOException;
+    public abstract Updater<R> newUpdater(R row, Transaction txn, Object... args)
+        throws IOException;
 
     /**
      * Scan and write rows to a remote endpoint.
      */
-    void scanWrite(Transaction txn, RowWriter writer, Object... args) throws IOException;
+    public abstract void scanWrite(Transaction txn, RowWriter writer, Object... args)
+        throws IOException;
 
-    QueryPlan scannerPlan(Transaction txn, Object... args);
+    public abstract QueryPlan scannerPlan(Transaction txn, Object... args) throws IOException;
 
-    QueryPlan updaterPlan(Transaction txn, Object... args);
+    public abstract QueryPlan updaterPlan(Transaction txn, Object... args) throws IOException;
+
+    /**
+     * Is called when the BaseTable is closed, in order to close all the secondary indexes
+     * referenced by this query. This method must not be public.
+     */
+    protected void closeIndexes() throws IOException {
+    }
+
+    /**
+     * Defines a plain delegating launcher which lazily creates the underlying launchers.
+     */
+    static final class Delegate<R> extends QueryLauncher<R> {
+        final BaseTable<R> mTable;
+        final String mQueryStr;
+
+        private WeakReference<QuerySpec> mQueryRef;
+
+        private QueryLauncher<R>
+            mForScanner, mForScannerDoubleCheck,
+            mForUpdater, mForUpdaterDoubleCheck;
+
+        Delegate(BaseTable<R> table, String queryStr) {
+            RowInfo rowInfo = RowInfo.find(table.rowType());
+            Map<String, ColumnInfo> allColumns = rowInfo.allColumns;
+            QuerySpec query = new Parser(allColumns, queryStr).parseQuery(allColumns).reduce();
+
+            mTable = table;
+
+            String newString = query.toString();
+            if (!newString.equals(queryStr)) {
+                queryStr = newString;
+            }
+
+            mQueryStr = queryStr;
+
+            mQueryRef = new WeakReference<>(query);
+        }
+
+        /**
+         * @param query canonical query
+         */
+        Delegate(BaseTable<R> table, QuerySpec query) {
+            mTable = table;
+            mQueryStr = query.toString();
+            mQueryRef = new WeakReference<>(query);
+        }
+
+        public String canonicalQueryString() {
+            return mQueryStr;
+        }
+
+        public QuerySpec canonicalQuery() {
+            return query(null);
+        }
+
+        @Override
+        public Scanner<R> newScanner(R row, Transaction txn, Object... args) throws IOException {
+            return forScanner(txn).newScanner(row, txn, args);
+        }
+
+        @Override
+        public Updater<R> newUpdater(R row, Transaction txn, Object... args) throws IOException {
+            return forUpdater(txn).newUpdater(row, txn, args);
+        }
+
+        @Override
+        public void scanWrite(Transaction txn, RowWriter writer, Object... args)
+            throws IOException
+        {
+            forScanner(txn).scanWrite(txn, writer, args);
+        }
+
+        @Override
+        public QueryPlan scannerPlan(Transaction txn, Object... args) throws IOException {
+            return forScanner(txn).scannerPlan(txn, args);
+        }
+
+        @Override
+        public QueryPlan updaterPlan(Transaction txn, Object... args) throws IOException {
+            return forUpdater(txn).updaterPlan(txn, args);
+        }
+
+        @Override
+        protected void closeIndexes() throws IOException {
+            mTable.close();
+
+            QueryLauncher<R> forScanner, forScannerDoubleCheck, forUpdater, forUpdaterDoubleCheck;
+
+            synchronized (this) {
+                forScanner = mForScanner;
+                mForScanner = null;
+
+                forScannerDoubleCheck = mForScannerDoubleCheck;
+                mForScannerDoubleCheck = null;
+
+                forUpdater = mForUpdater;
+                mForUpdater = null;
+
+                forUpdaterDoubleCheck = mForUpdaterDoubleCheck;
+                mForUpdaterDoubleCheck = null;
+            }
+
+            closeIndexes(forScanner);
+            closeIndexes(forScannerDoubleCheck);
+            closeIndexes(forUpdater);
+            closeIndexes(forUpdaterDoubleCheck);
+        }
+
+        private static void closeIndexes(QueryLauncher<?> launcher) throws IOException {
+            if (launcher != null) {
+                launcher.closeIndexes();
+            }
+        }
+
+        private QueryLauncher<R> forScanner(Transaction txn) throws IOException {
+            // Might need to double check the filter after joining to the primary, in case
+            // there were any changes after the secondary entry was loaded.
+            return !RowUtils.isUnlocked(txn) ? forScanner() : forScannerDoubleCheck();
+        }
+
+        private QueryLauncher<R> forScanner() throws IOException {
+            QueryLauncher<R> forScanner = mForScanner;
+            return forScanner == null ? queryLauncher(PLAIN) : forScanner;
+        }
+
+        private QueryLauncher<R> forScannerDoubleCheck() throws IOException {
+            QueryLauncher<R> forScanner = mForScannerDoubleCheck;
+            return forScanner == null ? queryLauncher(DOUBLE_CHECK) : forScanner;
+        }
+
+        private QueryLauncher<R> forUpdater(Transaction txn) throws IOException {
+            // Might need to double check the filter after joining to the primary, in case
+            // there were any changes after the secondary entry was loaded. Note that no double
+            // check is needed with READ_UNCOMMITTED, because the updater still acquires locks.
+            return !RowUtils.isUnsafe(txn) ? forUpdater() : forUpdaterDoubleCheck();
+        }
+
+        private QueryLauncher<R> forUpdater() throws IOException {
+            QueryLauncher<R> forUpdater = mForUpdater;
+            return forUpdater == null ? queryLauncher(FOR_UPDATE) : forUpdater;
+        }
+
+        private QueryLauncher<R> forUpdaterDoubleCheck() throws IOException {
+            QueryLauncher<R> forUpdater = mForUpdaterDoubleCheck;
+            return forUpdater == null ? queryLauncher(FOR_UPDATE_DOUBLE_CHECK) : forUpdater;
+        }
+
+        private synchronized QueryLauncher<R> queryLauncher(int type) throws IOException {
+            return queryLauncher(type, null);
+        }
+
+        private synchronized QueryLauncher<R> queryLauncher(int type, IndexSelector selector)
+            throws IOException
+        {
+            QueryLauncher<R> launcher = switch (type) {
+                default -> mForScanner;
+                case DOUBLE_CHECK -> mForScannerDoubleCheck;
+                case FOR_UPDATE -> mForUpdater;
+                case FOR_UPDATE_DOUBLE_CHECK -> mForUpdaterDoubleCheck;
+            };
+
+            if (launcher != null) {
+                return launcher;
+            }
+
+            if (selector == null) {
+                RowInfo rowInfo = RowInfo.find(mTable.rowType());
+                selector = new IndexSelector<R>
+                    (mTable, rowInfo, query(rowInfo), (type & FOR_UPDATE) != 0);
+            }
+
+            if ((type & DOUBLE_CHECK) != 0 && selector.noJoins()) {
+                // Double checking is only needed when a secondary joins to a primary.
+                launcher = queryLauncher(type & ~DOUBLE_CHECK, selector);
+            } else {
+                launcher = mTable.newQueryLauncher(type, selector);
+
+                if (launcher == null) {
+                    // No special update rule is needed.
+                    assert (type & FOR_UPDATE) != 0;
+                    launcher = queryLauncher(type & ~FOR_UPDATE, selector);
+                }
+            }
+
+            VarHandle.storeStoreFence();
+
+            switch (type) {
+                default -> mForScanner = launcher;
+                case DOUBLE_CHECK -> mForScannerDoubleCheck = launcher;
+                case FOR_UPDATE -> mForUpdater = launcher;
+                case FOR_UPDATE_DOUBLE_CHECK -> mForUpdaterDoubleCheck = launcher;
+            }
+
+            return launcher;
+        }
+
+        /**
+         * @param rowInfo can be null
+         */
+        private QuerySpec query(RowInfo rowInfo) {
+            QuerySpec query = mQueryRef.get();
+            if (query == null) {
+                if (rowInfo == null) {
+                    rowInfo = RowInfo.find(mTable.rowType());
+                }
+                Map<String, ColumnInfo> allColumns = rowInfo.allColumns;
+                query = new Parser(allColumns, mQueryStr).parseQuery(allColumns);
+                var ref = new WeakReference<>(query);
+                VarHandle.storeStoreFence();
+                mQueryRef = ref;
+            }
+            return query;
+        }
+    }
 }

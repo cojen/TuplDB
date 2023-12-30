@@ -79,12 +79,40 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
 
     protected final Index mSource;
 
-    // MultiCache types.
-    private static final int PLAIN = 0b00, DOUBLE_CHECK = 0b01,
+    // MultiCache and QueryLauncher types.
+    static final int PLAIN = 0b00, DOUBLE_CHECK = 0b01,
         FOR_UPDATE = 0b10, FOR_UPDATE_DOUBLE_CHECK = FOR_UPDATE | DOUBLE_CHECK;
 
     private final MultiCache<String, ScanControllerFactory<R>, QuerySpec> mFilterFactoryCache;
-    private final MultiCache<String, QueryLauncher<R>, IndexSelector> mQueryLauncherCache;
+
+    class QueryCache extends SoftCache<String, QueryLauncher<R>, QuerySpec> {
+        @Override
+        public QueryLauncher<R> newValue(String queryStr, QuerySpec query) {
+            if (query != null) {
+                return newLauncher(query);
+            }
+            var launcher = newLauncher(queryStr);
+            String canonicalStr = launcher.canonicalQueryString();
+            if (canonicalStr.equals(queryStr)) {
+                return launcher;
+            } else { 
+                return obtain(canonicalStr, launcher.canonicalQuery());
+            }
+        }
+
+        protected QueryLauncher.Delegate<R> newLauncher(String queryStr) {
+            return new QueryLauncher.Delegate<>(BaseTable.this, queryStr);
+        }
+
+        /**
+         * @param query canonical query instance
+         */
+        protected QueryLauncher<R> newLauncher(QuerySpec query) {
+            return new QueryLauncher.Delegate<>(BaseTable.this, query);
+        }
+    }
+
+    private final QueryCache mQueryCache;
 
     private Trigger<R> mTrigger;
     private static final VarHandle cTriggerHandle;
@@ -126,20 +154,15 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
         }
 
         if (supportsSecondaries()) {
-            int[] typeMap = {PLAIN, DOUBLE_CHECK, FOR_UPDATE, FOR_UPDATE_DOUBLE_CHECK};
-            mQueryLauncherCache = MultiCache.newSoftCache(typeMap, (type, queryStr, selector) -> {
-                try {
-                    return newQueryLauncher(type, queryStr, selector);
-                } catch (IOException e) {
-                    throw RowUtils.rethrow(e);
-                }
-            });
+            mQueryCache = new QueryCache();
 
             var trigger = new Trigger<R>();
             trigger.mMode = Trigger.SKIP;
             cTriggerHandle.setRelease(this, trigger);
         } else {
-            mQueryLauncherCache = null;
+            // This table implements a secondary index which doesn't join to the primary table,
+            // and it's not expected to be directly queried.
+            mQueryCache = null;
         }
     }
 
@@ -156,13 +179,13 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
     public Scanner<R> newScanner(R row, Transaction txn, String queryStr, Object... args)
         throws IOException
     {
-        QueryLauncher<R> launcher = scannerQueryLauncher(txn, queryStr);
+        QueryLauncher<R> launcher = scannerQueryLauncher(queryStr);
 
         while (true) {
             try {
                 return launcher.newScanner(row, txn, args);
             } catch (Throwable e) {
-                launcher = newScannerRetry(txn, queryStr, launcher, e);
+                launcher = newScannerRetry(queryStr, launcher, e);
             }
         }
     }
@@ -172,7 +195,7 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
      * index might have been dropped, so check and retry. Returns a new QueryLauncher to use or
      * else throws the original exception.
      */
-    private QueryLauncher<R> newScannerRetry(Transaction txn, String queryStr,
+    private QueryLauncher<R> newScannerRetry(String queryStr,
                                              QueryLauncher<R> launcher, Throwable cause)
     {
         // A ClosedIndexException could have come from the dropped index directly, and a
@@ -181,7 +204,7 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
         if (cause instanceof ClosedIndexException || cause instanceof LockFailureException) {
             QueryLauncher<R> newLauncher;
             try {
-                newLauncher = scannerQueryLauncher(txn, queryStr);
+                newLauncher = scannerQueryLauncher(queryStr);
                 if (newLauncher != launcher) {
                     // Only return the launcher if it changed.
                     return newLauncher;
@@ -264,13 +287,8 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
         return mFilterFactoryCache.obtain(type, queryStr, null);
     }
 
-    private QueryLauncher<R> scannerQueryLauncher(Transaction txn, String queryStr)
-        throws IOException
-    {
-        // Might need to double check the filter after joining to the primary, in case there
-        // were any changes after the secondary entry was loaded.
-        int type = RowUtils.isUnlocked(txn) ? DOUBLE_CHECK : PLAIN;
-        return mQueryLauncherCache.obtain(type, queryStr, null);
+    private QueryLauncher<R> scannerQueryLauncher(String queryStr) throws IOException {
+        return mQueryCache.obtain(queryStr, null);
     }
 
     @Override
@@ -292,13 +310,13 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
     protected Updater<R> newUpdater(R row, Transaction txn, String queryStr, Object... args)
         throws IOException
     {
-        QueryLauncher<R> launcher = updaterQueryLauncher(txn, queryStr);
+        QueryLauncher<R> launcher = updaterQueryLauncher(queryStr);
 
         while (true) {
             try {
                 return launcher.newUpdater(row, txn, args);
             } catch (Throwable e) {
-                launcher = newUpdaterRetry(txn, queryStr, launcher, e);
+                launcher = newUpdaterRetry(queryStr, launcher, e);
             }
         }
     }
@@ -308,7 +326,7 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
      * index might have been dropped, so check and retry. Returns a new QueryLauncher to use or
      * else throws the original exception.
      */
-    private QueryLauncher<R> newUpdaterRetry(Transaction txn, String queryStr,
+    private QueryLauncher<R> newUpdaterRetry(String queryStr,
                                              QueryLauncher<R> launcher, Throwable cause)
     {
         // A ClosedIndexException could have come from the dropped index directly, and a
@@ -317,7 +335,7 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
         if (cause instanceof ClosedIndexException || cause instanceof LockFailureException) {
             QueryLauncher<R> newLauncher;
             try {
-                newLauncher = updaterQueryLauncher(txn, queryStr);
+                newLauncher = updaterQueryLauncher(queryStr);
                 if (newLauncher != launcher) {
                     // Only return the launcher if it changed.
                     return newLauncher;
@@ -435,12 +453,8 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
         return mFilterFactoryCache.obtain(type, queryStr, null);
     }
 
-    private QueryLauncher<R> updaterQueryLauncher(Transaction txn, String queryStr) {
-        // Might need to double check the filter after joining to the primary, in case there
-        // were any changes after the secondary entry was loaded. Note that no double check is
-        // needed with READ_UNCOMMITTED, because the updater for it still acquires locks.
-        int type = RowUtils.isUnsafe(txn) ? FOR_UPDATE_DOUBLE_CHECK : FOR_UPDATE;
-        return mQueryLauncherCache.obtain(type, queryStr, null);
+    private QueryLauncher<R> updaterQueryLauncher(String queryStr) {
+        return mQueryCache.obtain(queryStr, null);
     }
 
     /* FIXME: Override and optimize deleteAll.
@@ -489,7 +503,7 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
     {
         var writer = new RowWriter<R>(out);
 
-        scannerQueryLauncher(txn, queryStr).scanWrite(txn, writer, args);
+        scannerQueryLauncher(queryStr).scanWrite(txn, writer, args);
 
         // Write the scan terminator. See RowWriter.writeHeader.
         out.writeByte(0);
@@ -569,7 +583,7 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
         if (queryStr == null) {
             return plan(args);
         } else {
-            return scannerQueryLauncher(txn, queryStr).scannerPlan(txn, args);
+            return scannerQueryLauncher(queryStr).scannerPlan(txn, args);
         }
     }
 
@@ -580,7 +594,7 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
         if (queryStr == null) {
             return plan(args);
         } else {
-            return updaterQueryLauncher(txn, queryStr).updaterPlan(txn, args);
+            return updaterQueryLauncher(queryStr).updaterPlan(txn, args);
         }
     }
 
@@ -604,10 +618,10 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
         // forces any in-progress scans to abort. Scans over sorted results aren't necessarily
         // affected, athough it would be nice if those always aborted too.
 
-        if (mQueryLauncherCache != null) {
-            mQueryLauncherCache.clear((QueryLauncher<R> launcher) -> {
+        if (mQueryCache != null) {
+            mQueryCache.clear((QueryLauncher<R> launcher) -> {
                 try {
-                    launcher.close();
+                    launcher.closeIndexes();
                 } catch (IOException e) {
                     throw Utils.rethrow(e);
                 }
@@ -840,23 +854,14 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
 
     /**
      * @param type PLAIN, DOUBLE_CHECK, etc.
+     * @param selector must be provided
+     * @return null if type is FOR_UPDATE but it should just be PLAIN
      */
     @SuppressWarnings("unchecked")
-    private QueryLauncher<R> newQueryLauncher(int type, String queryStr, IndexSelector selector)
-        throws IOException
-    {
+    QueryLauncher<R> newQueryLauncher(int type, IndexSelector selector) throws IOException {
         checkClosed();
 
-        RowInfo rowInfo;
-
-        if (selector != null) {
-            rowInfo = selector.primaryInfo();
-        } else {
-            rowInfo = RowInfo.find(rowType());
-            Map<String, ColumnInfo> allColumns = rowInfo.allColumns;
-            QuerySpec query = new Parser(allColumns, queryStr).parseQuery(allColumns).reduce();
-            selector = new IndexSelector<R>(this, rowInfo, query, (type & FOR_UPDATE) != 0);
-        }
+        RowInfo rowInfo = selector.primaryInfo();
 
         if ((type & FOR_UPDATE) != 0) forUpdate: {
             if (selector.orderBy() != null) {
@@ -877,7 +882,7 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
             if (!selector.forUpdateRuleChosen()) {
                 // Don't actually return a specialized updater instance because it will be the
                 // same as the scanner instance.
-                return mQueryLauncherCache.obtain(type & ~FOR_UPDATE, queryStr, selector);
+                return null;
             }
         }
 
@@ -936,8 +941,8 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
      * To be called when the set of available secondary indexes and alternate keys has changed.
      */
     void clearQueryCache() {
-        if (mQueryLauncherCache != null) {
-            mQueryLauncherCache.clear();
+        if (mQueryCache != null) {
+            mQueryCache.clear();
         }
     }
 
@@ -1700,7 +1705,7 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
     }
 
     /**
-     * Note: Is overridden by BaseTableIndex.
+     * Note: Is overridden by BaseTableIndex to always return false.
      */
     boolean supportsSecondaries() {
         return true;

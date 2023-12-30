@@ -67,7 +67,7 @@ abstract class RefCache<K, V, H> extends ReferenceQueue<Object> {
      * UnsupportedOperationException can be thrown.
      */
     @SuppressWarnings({"unchecked"})
-    public V obtain(K key, H helper) {
+    public final V obtain(K key, H helper) {
         Latch latch;
         while (true) {
             Object value = get(key);

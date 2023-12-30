@@ -31,7 +31,7 @@ import org.cojen.tupl.diag.QueryPlan;
  *
  * @author Brian S O'Neill
  */
-class ScanQueryLauncher<R> implements QueryLauncher<R> {
+class ScanQueryLauncher<R> extends QueryLauncher<R> {
     protected final BaseTable<R> mTable;
     protected final ScanControllerFactory<R> mFactory;
 
@@ -74,7 +74,7 @@ class ScanQueryLauncher<R> implements QueryLauncher<R> {
     }
 
     @Override
-    public void close() throws IOException {
+    public void closeIndexes() throws IOException {
         mTable.close();
     }
 }
