@@ -37,7 +37,6 @@ import org.cojen.tupl.DatabaseException;
 import org.cojen.tupl.DurabilityMode;
 import org.cojen.tupl.Entry;
 import org.cojen.tupl.Index;
-import org.cojen.tupl.LockFailureException;
 import org.cojen.tupl.LockMode;
 import org.cojen.tupl.LockResult;
 import org.cojen.tupl.NoSuchRowException;
@@ -85,9 +84,9 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
 
     private final MultiCache<String, ScanControllerFactory<R>, QuerySpec> mFilterFactoryCache;
 
-    class QueryCache extends SoftCache<String, QueryLauncher<R>, QuerySpec> {
+    class QueryCache extends SoftCache<String, QueryLauncher.Delegate<R>, QuerySpec> {
         @Override
-        public QueryLauncher<R> newValue(String queryStr, QuerySpec query) {
+        public QueryLauncher.Delegate<R> newValue(String queryStr, QuerySpec query) {
             if (query != null) {
                 return newLauncher(query);
             }
@@ -107,7 +106,7 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
         /**
          * @param query canonical query instance
          */
-        protected QueryLauncher<R> newLauncher(QuerySpec query) {
+        protected QueryLauncher.Delegate<R> newLauncher(QuerySpec query) {
             return new QueryLauncher.Delegate<>(BaseTable.this, query);
         }
     }
@@ -179,42 +178,7 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
     public Scanner<R> newScanner(R row, Transaction txn, String queryStr, Object... args)
         throws IOException
     {
-        QueryLauncher<R> launcher = scannerQueryLauncher(queryStr);
-
-        while (true) {
-            try {
-                return launcher.newScanner(row, txn, args);
-            } catch (Throwable e) {
-                launcher = newScannerRetry(queryStr, launcher, e);
-            }
-        }
-    }
-
-    /**
-     * To be called when attempting to launch a new scanner and an exception is thrown. An
-     * index might have been dropped, so check and retry. Returns a new QueryLauncher to use or
-     * else throws the original exception.
-     */
-    private QueryLauncher<R> newScannerRetry(String queryStr,
-                                             QueryLauncher<R> launcher, Throwable cause)
-    {
-        // A ClosedIndexException could have come from the dropped index directly, and a
-        // LockFailureException could be caused while waiting for the index lock. Other
-        // exceptions aren't expected so don't bother trying to obtain a new launcher.
-        if (cause instanceof ClosedIndexException || cause instanceof LockFailureException) {
-            QueryLauncher<R> newLauncher;
-            try {
-                newLauncher = scannerQueryLauncher(queryStr);
-                if (newLauncher != launcher) {
-                    // Only return the launcher if it changed.
-                    return newLauncher;
-                }
-            } catch (Throwable e) {
-                cause.addSuppressed(e);
-            }
-        }
-
-        throw Utils.rethrow(cause);
+        return query(queryStr).newScanner(row, txn, args);
     }
 
     final Scanner<R> newScanner(R row, Transaction txn, ScanController<R> controller)
@@ -287,10 +251,6 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
         return mFilterFactoryCache.obtain(type, queryStr, null);
     }
 
-    private QueryLauncher<R> scannerQueryLauncher(String queryStr) throws IOException {
-        return mQueryCache.obtain(queryStr, null);
-    }
-
     @Override
     public final Updater<R> newUpdater(Transaction txn) throws IOException {
         return newUpdater(null, txn);
@@ -310,42 +270,7 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
     protected Updater<R> newUpdater(R row, Transaction txn, String queryStr, Object... args)
         throws IOException
     {
-        QueryLauncher<R> launcher = updaterQueryLauncher(queryStr);
-
-        while (true) {
-            try {
-                return launcher.newUpdater(row, txn, args);
-            } catch (Throwable e) {
-                launcher = newUpdaterRetry(queryStr, launcher, e);
-            }
-        }
-    }
-
-    /**
-     * To be called when attempting to launch a new updater and an exception is thrown. An
-     * index might have been dropped, so check and retry. Returns a new QueryLauncher to use or
-     * else throws the original exception.
-     */
-    private QueryLauncher<R> newUpdaterRetry(String queryStr,
-                                             QueryLauncher<R> launcher, Throwable cause)
-    {
-        // A ClosedIndexException could have come from the dropped index directly, and a
-        // LockFailureException could be caused while waiting for the index lock. Other
-        // exceptions aren't expected so don't bother trying to obtain a new launcher.
-        if (cause instanceof ClosedIndexException || cause instanceof LockFailureException) {
-            QueryLauncher<R> newLauncher;
-            try {
-                newLauncher = updaterQueryLauncher(queryStr);
-                if (newLauncher != launcher) {
-                    // Only return the launcher if it changed.
-                    return newLauncher;
-                }
-            } catch (Throwable e) {
-                cause.addSuppressed(e);
-            }
-        }
-
-        throw Utils.rethrow(cause);
+        return query(queryStr).newUpdater(row, txn, args);
     }
 
     protected Updater<R> newUpdater(R row, Transaction txn, ScanController<R> controller)
@@ -453,7 +378,7 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
         return mFilterFactoryCache.obtain(type, queryStr, null);
     }
 
-    private QueryLauncher<R> updaterQueryLauncher(String queryStr) {
+    final QueryLauncher.Delegate<R> query(String queryStr) {
         return mQueryCache.obtain(queryStr, null);
     }
 
@@ -503,7 +428,7 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
     {
         var writer = new RowWriter<R>(out);
 
-        scannerQueryLauncher(queryStr).scanWrite(txn, writer, args);
+        query(queryStr).scanWrite(txn, writer, args);
 
         // Write the scan terminator. See RowWriter.writeHeader.
         out.writeByte(0);
@@ -583,7 +508,7 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
         if (queryStr == null) {
             return plan(args);
         } else {
-            return scannerQueryLauncher(queryStr).scannerPlan(txn, args);
+            return query(queryStr).scannerPlan(txn, args);
         }
     }
 
@@ -594,7 +519,7 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
         if (queryStr == null) {
             return plan(args);
         } else {
-            return updaterQueryLauncher(queryStr).updaterPlan(txn, args);
+            return query(queryStr).updaterPlan(txn, args);
         }
     }
 
@@ -619,7 +544,7 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
         // affected, athough it would be nice if those always aborted too.
 
         if (mQueryCache != null) {
-            mQueryCache.clear((QueryLauncher<R> launcher) -> {
+            mQueryCache.clear((QueryLauncher.Delegate<R> launcher) -> {
                 try {
                     launcher.closeIndexes();
                 } catch (IOException e) {

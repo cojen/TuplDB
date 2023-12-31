@@ -25,11 +25,15 @@ import java.lang.ref.WeakReference;
 
 import java.util.Map;
 
+import org.cojen.tupl.ClosedIndexException;
+import org.cojen.tupl.LockFailureException;
 import org.cojen.tupl.Scanner;
 import org.cojen.tupl.Updater;
 import org.cojen.tupl.Transaction;
 
 import org.cojen.tupl.diag.QueryPlan;
+
+import org.cojen.tupl.io.Utils;
 
 import org.cojen.tupl.rows.filter.Parser;
 import org.cojen.tupl.rows.filter.QuerySpec;
@@ -72,7 +76,7 @@ public abstract class QueryLauncher<R> {
     }
 
     /**
-     * Defines a plain delegating launcher which lazily creates the underlying launchers.
+     * Defines a delegating launcher which lazily creates the underlying launchers.
      */
     static final class Delegate<R> extends QueryLauncher<R> {
         final BaseTable<R> mTable;
@@ -120,18 +124,27 @@ public abstract class QueryLauncher<R> {
 
         @Override
         public Scanner<R> newScanner(R row, Transaction txn, Object... args) throws IOException {
-            return forScanner(txn).newScanner(row, txn, args);
+            try {
+                return forScanner(txn).newScanner(row, txn, args);
+            } catch (Throwable e) {
+                return retry(e).newScanner(row, txn, args);
+            }
         }
 
         @Override
         public Updater<R> newUpdater(R row, Transaction txn, Object... args) throws IOException {
-            return forUpdater(txn).newUpdater(row, txn, args);
+            try {
+                return forUpdater(txn).newUpdater(row, txn, args);
+            } catch (Throwable e) {
+                return retry(e).newUpdater(row, txn, args);
+            }
         }
 
         @Override
         public void scanWrite(Transaction txn, RowWriter writer, Object... args)
             throws IOException
         {
+            // FIXME: Attempt to retry if nothing has been written yet.
             forScanner(txn).scanWrite(txn, writer, args);
         }
 
@@ -275,6 +288,31 @@ public abstract class QueryLauncher<R> {
                 mQueryRef = ref;
             }
             return query;
+        }
+
+        /**
+         * To be called when attempting to launch a new scanner or updater and an exception is
+         * thrown. An index might have been dropped, so check and retry. Returns a new
+         * QueryLauncher to use or else throws the original exception.
+         */
+        private QueryLauncher.Delegate<R> retry(Throwable cause) {
+            // A ClosedIndexException could have come from the dropped index directly, and a
+            // LockFailureException could be caused while waiting for the index lock. Other
+            // exceptions aren't expected so don't bother trying to obtain a new launcher.
+            if (cause instanceof ClosedIndexException || cause instanceof LockFailureException) {
+                QueryLauncher.Delegate<R> newLauncher;
+                try {
+                    newLauncher = mTable.query(mQueryStr);
+                    if (newLauncher != this) {
+                        // Only return the launcher if it changed.
+                        return newLauncher;
+                    }
+                } catch (Throwable e) {
+                    Utils.suppress(cause, e);
+                }
+            }
+
+            throw Utils.rethrow(cause);
         }
     }
 }
