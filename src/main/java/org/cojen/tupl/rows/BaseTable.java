@@ -450,13 +450,6 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
     }
 
     /**
-     * Returns a view of this table which doesn't perform automatic index selection.
-     */
-    protected Table<R> viewPrimaryKey() {
-        return new PrimaryTable<>(this);
-    }
-
-    /**
      * Returns a view of this table where the primary key is specified by the columns of an
      * alternate key, and the row is fully resolved by joining to the primary table. Direct
      * stores against the returned table aren't permitted, and an {@link

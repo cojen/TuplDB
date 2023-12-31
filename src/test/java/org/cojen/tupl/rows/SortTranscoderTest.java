@@ -178,7 +178,7 @@ public class SortTranscoderTest {
 
         Index sorted = sort(statusIx, td);
 
-        try (Scanner<TestRow> s = table.viewPrimaryKey().newScanner(null, "{id, status}")) {
+        try (Scanner<TestRow> s = table.newScanner(null, "{+id, status}")) {
             try (Cursor c = sorted.newCursor(null)) {
                 TestRow row = table.newRow();
                 for (c.first(); c.key() != null; c.next()) {

@@ -101,27 +101,6 @@ public class QueryPlanTest {
                      (TestRow.class.getName(), "primary key", new String[] {"+id"}, "id == ?1"),
                      plan);
 
-        plan = mTable.viewPrimaryKey().scannerPlan(null, "a == ?");
-        comparePlans(new QueryPlan.Filter
-                     ("a == ?1", new QueryPlan.FullScan
-                      (TestRow.class.getName(), "primary key",
-                       new String[] {"+id"}, false)),
-                     plan);
-
-        plan = mTable.viewPrimaryKey().scannerPlan(null, "id == ?1 && id != ?1 || b == ?2");
-        comparePlans(new QueryPlan.Filter
-                     ("b == ?2", new QueryPlan.FullScan
-                      (TestRow.class.getName(), "primary key",
-                       new String[] {"+id"}, false)),
-                     plan);
-
-        plan = mTable.viewPrimaryKey().scannerPlan(null, "a == ? && id > ?");
-        comparePlans(new QueryPlan.Filter
-                     ("a == ?1", new QueryPlan.RangeScan
-                      (TestRow.class.getName(), "primary key",
-                       new String[] {"+id"}, false, "id > ?2", null)),
-                     plan);
-
         plan = mTable.scannerPlan(null, "id != ?");
         comparePlans(new QueryPlan.Filter
                      ("id != ?1", new QueryPlan.FullScan
