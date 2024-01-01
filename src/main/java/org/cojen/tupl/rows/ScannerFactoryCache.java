@@ -25,32 +25,27 @@ import org.cojen.tupl.rows.filter.QuerySpec;
  *
  * @author Brian S. O'Neill
  */
-public final class ScannerFactoryCache<F> {
-    private final SoftCache<String, Object, Object> mCache;
-
-    ScannerFactoryCache() {
-        mCache = new SoftCache<>() {
-            @Override
-            protected Object newValue(String queryStr, Object helperObj) {
-                if (helperObj instanceof Helper helper) {
-                    RowInfo rowInfo = RowInfo.find(helper.rowType());
-                    QuerySpec query = new Parser(rowInfo.allColumns, queryStr).parseQuery(null);
-                    String canonicalStr = query.toString();
-                    if (canonicalStr.equals(queryStr)) {
-                        return helper.makeScannerFactory(query);
-                    } else {
-                        return obtain(canonicalStr, new ForCanonical(helper, query));
-                    }
-                } else {
-                    return ((ForCanonical) helperObj).makeScannerFactory();
-                }
-            }
-        };
-    }
+public final class ScannerFactoryCache<F> extends SoftCache<String, Object, Object> {
 
     @SuppressWarnings("unchecked")
     public F obtain(String queryStr, Helper<F> helper) {
-        return (F) mCache.obtain(queryStr, helper);
+        return (F) super.obtain(queryStr, helper);
+    }
+
+    @Override
+    protected Object newValue(String queryStr, Object helperObj) {
+        if (helperObj instanceof Helper helper) {
+            RowInfo rowInfo = RowInfo.find(helper.rowType());
+            QuerySpec query = new Parser(rowInfo.allColumns, queryStr).parseQuery(null);
+            String canonicalStr = query.toString();
+            if (canonicalStr.equals(queryStr)) {
+                return helper.makeScannerFactory(query);
+            } else {
+                return obtain(canonicalStr, new ForCanonical(helper, query));
+            }
+        } else {
+            return ((ForCanonical) helperObj).makeScannerFactory();
+        }
     }
 
     public static interface Helper<F> {
