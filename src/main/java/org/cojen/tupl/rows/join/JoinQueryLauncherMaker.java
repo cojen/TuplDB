@@ -140,7 +140,7 @@ final class JoinQueryLauncherMaker {
 
         mClassMaker = RowGen.anotherClassMaker
             (getClass(), mJoinInfo.name, mScannerClass, "launcher")
-            .implement(QueryLauncher.class).public_().final_();
+            .extend(QueryLauncher.class).public_().final_();
 
         mSources = spec.copySources();
 
