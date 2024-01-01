@@ -21,8 +21,6 @@ import java.io.IOException;
 
 import org.cojen.tupl.Scanner;
 import org.cojen.tupl.Transaction;
-import org.cojen.tupl.Updater;
-import org.cojen.tupl.View;
 
 import org.cojen.tupl.diag.QueryPlan;
 

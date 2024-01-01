@@ -25,11 +25,8 @@ import org.cojen.dirmi.Pipe;
 import org.cojen.dirmi.Remote;
 import org.cojen.dirmi.RemoteFailure;
 import org.cojen.dirmi.Restorable;
-import org.cojen.dirmi.Serialized;
 
 import org.cojen.tupl.DurabilityMode;
-
-import org.cojen.tupl.diag.QueryPlan;
 
 /**
  * 
@@ -47,7 +44,11 @@ public interface RemoteTable extends Remote, Disposable {
     public Pipe newUpdater(RemoteTransaction txn, Pipe pipe, String query, Object... args)
         throws IOException;
 
-    public long deleteAll(RemoteTransaction txn, String query, Object... args) throws IOException;
+    @Restorable
+    public RemoteQuery query(String query) throws IOException;
+
+    @Restorable
+    public RemoteQuery queryAll() throws IOException;
 
     public boolean anyRows(RemoteTransaction txn) throws IOException;
 
@@ -61,18 +62,6 @@ public interface RemoteTable extends Remote, Disposable {
 
     @Restorable
     public RemoteTableProxy proxy(byte[] descriptor) throws IOException;
-
-    @Serialized(filter="java.base/*;org.cojen.tupl.**")
-    public QueryPlan scannerPlan(RemoteTransaction txn, String query, Object... args)
-        throws IOException;
-
-    @Serialized(filter="java.base/*;org.cojen.tupl.**")
-    public QueryPlan updaterPlan(RemoteTransaction txn, String query, Object... args)
-        throws IOException;
-
-    @Serialized(filter="java.base/*;org.cojen.tupl.**")
-    public QueryPlan streamPlan(RemoteTransaction txn, String query, Object... args)
-        throws IOException;
 
     @Disposer
     public void close() throws IOException;

@@ -29,14 +29,13 @@ import org.cojen.dirmi.Pipe;
 import org.cojen.dirmi.RemoteException;
 
 import org.cojen.tupl.DurabilityMode;
+import org.cojen.tupl.Query;
 import org.cojen.tupl.Scanner;
 import org.cojen.tupl.Table;
 import org.cojen.tupl.Transaction;
 import org.cojen.tupl.Updater;
 
 import org.cojen.tupl.io.Utils;
-
-import org.cojen.tupl.diag.QueryPlan;
 
 import org.cojen.tupl.rows.ClientTableHelper;
 import org.cojen.tupl.rows.RowReader;
@@ -124,7 +123,7 @@ final class ClientTable<R> implements Table<R> {
         return newScanner(mRemote.newScanner(mDb.remoteTransaction(txn), null, query, args), row);
     }
 
-    private Scanner<R> newScanner(Pipe pipe, R row) throws IOException {
+    Scanner<R> newScanner(Pipe pipe, R row) throws IOException {
         try {
             pipe.flush();
 
@@ -146,15 +145,15 @@ final class ClientTable<R> implements Table<R> {
 
     @Override
     public Updater<R> newUpdater(Transaction txn) throws IOException {
-        return newUpdater(mRemote.newUpdater(mDb.remoteTransaction(txn), null));
+        return newUpdater(mRemote.newUpdater(mDb.remoteTransaction(txn), null), null);
     }
 
     @Override
     public Updater<R> newUpdater(Transaction txn, String query, Object... args) throws IOException {
-        return newUpdater(mRemote.newUpdater(mDb.remoteTransaction(txn), null, query, args));
+        return newUpdater(mRemote.newUpdater(mDb.remoteTransaction(txn), null, query, args), null);
     }
 
-    private ClientUpdater<R> newUpdater(Pipe pipe) throws IOException {
+    ClientUpdater<R> newUpdater(Pipe pipe, R row) throws IOException {
         RemoteTableProxy proxy = proxy();
 
         pipe.writeObject(proxy);
@@ -165,12 +164,13 @@ final class ClientTable<R> implements Table<R> {
         var updater = (RemoteUpdater) pipe.readObject();
 
         try {
-            R row;
             if (updater == null) {
                 row = null;
                 pipe.recycle();
             } else {
-                row = mHelper.newRow();
+                if (row == null) {
+                    row = mHelper.newRow();
+                }
                 mHelper.updaterRow(row, pipe); // pipe is recycled or closed as a side-effect
             }
             return new ClientUpdater<R>(mHelper, proxy, characteristics, size, updater, row);
@@ -187,8 +187,13 @@ final class ClientTable<R> implements Table<R> {
     }
 
     @Override
-    public long deleteAll(Transaction txn, String query, Object... args) throws IOException {
-        return mRemote.deleteAll(mDb.remoteTransaction(txn), query, args);
+    public Query<R> query(String query) throws IOException {
+        return new ClientQuery<>(this, mRemote.query(query));
+    }
+
+    @Override
+    public Query<R> queryAll() throws IOException {
+        return new ClientQuery<>(this, mRemote.queryAll());
     }
 
     @Override
@@ -282,21 +287,6 @@ final class ClientTable<R> implements Table<R> {
         }
 
         return proxy;
-    }
-
-    @Override
-    public QueryPlan scannerPlan(Transaction txn, String query, Object... args) throws IOException {
-        return mRemote.scannerPlan(mDb.remoteTransaction(txn), query, args);
-    }
-
-    @Override
-    public QueryPlan updaterPlan(Transaction txn, String query, Object... args) throws IOException {
-        return mRemote.updaterPlan(mDb.remoteTransaction(txn), query, args);
-    }
-
-    @Override
-    public QueryPlan streamPlan(Transaction txn, String query, Object... args) throws IOException {
-        return mRemote.scannerPlan(mDb.remoteTransaction(txn), query, args);
     }
 
     @Override

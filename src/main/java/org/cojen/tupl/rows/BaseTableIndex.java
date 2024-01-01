@@ -27,8 +27,6 @@ import org.cojen.tupl.UnmodifiableViewException;
 
 import org.cojen.tupl.core.RowPredicateLock;
 
-import org.cojen.tupl.diag.QueryPlan;
-
 /**
  * Base class for the tables returned by viewAlternateKey and viewSecondaryIndex.
  *
@@ -127,12 +125,8 @@ public abstract class BaseTableIndex<R> extends BaseTable<R> {
     }
 
     @Override
-    public QueryPlan scannerPlan(Transaction txn, String filter, Object... args) {
-        return scannerPlanThisTable(txn, filter, args);
-    }
-
-    @Override
-    public QueryPlan updaterPlan(Transaction txn, String filter, Object... args) {
-        return scannerPlan(txn, filter, args);
+    public QueryLauncher.Delegate<R> query(String queryStr) {
+        // Not cached because this method is just used by the test suite.
+        return new QueryLauncher.Delegate<>(this, queryStr);
     }
 }

@@ -156,12 +156,12 @@ public class MappedTest {
         } catch (UnmodifiableViewException e) {
         }
 
-        QueryPlan.Mapper plan = (QueryPlan.Mapper) mapped.scannerPlan(null, null);
+        QueryPlan.Mapper plan = (QueryPlan.Mapper) mapped.queryAll().scannerPlan(null);
         assertEquals(TestRow.class.getName(), plan.target);
         assertTrue(plan.using.contains("org.cojen.tupl.rows.MappedTest"));
-        assertEquals(mTable.scannerPlan(null, null), plan.source);
+        assertEquals(mTable.queryAll().scannerPlan(null), plan.source);
 
-        QueryPlan plan2 = mapped.scannerPlan(null, "{*}");
+        QueryPlan plan2 = mapped.query("{*}").scannerPlan(null);
         assertEquals(plan, plan2);
         assertEquals(plan.hashCode(), plan2.hashCode());
         assertEquals(plan.toString(), plan2.toString());
@@ -250,9 +250,9 @@ public class MappedTest {
             assertNull(scanner.step());
         }
 
-        var plan3 = (QueryPlan.Sort) mapped.scannerPlan(null, "{-str, id}");
+        var plan3 = (QueryPlan.Sort) mapped.query("{-str, id}").scannerPlan(null);
         assertEquals("[-str]", Arrays.toString(plan3.sortColumns));
-        assertEquals(mTable.scannerPlan(null, null), ((QueryPlan.Mapper) plan3.source).source);
+        assertEquals(mTable.queryAll().scannerPlan(null), ((QueryPlan.Mapper) plan3.source).source);
 
         try (var scanner = mapped.newScanner(null, "{-str, id}")) {
             row = scanner.row();
@@ -431,7 +431,7 @@ public class MappedTest {
             assertNull(scanner.step(row));
         }
 
-        var plan = (QueryPlan.Mapper) mapped.scannerPlan(null, "num == ? && str == ?");
+        var plan = (QueryPlan.Mapper) mapped.query("num == ? && str == ?").scannerPlan(null);
         var sub1 = (QueryPlan.Filter) plan.source;
         assertEquals("num == ?4", sub1.expression);
         var sub2 = (QueryPlan.PrimaryJoin) sub1.source;
@@ -465,9 +465,9 @@ public class MappedTest {
             assertNull(scanner.step(row));
         }
 
-        var plan2 = (QueryPlan.Sort) mapped.scannerPlan(null, "{-str, id}");
+        var plan2 = (QueryPlan.Sort) mapped.query("{-str, id}").scannerPlan(null);
         assertEquals("[-str]", Arrays.toString(plan2.sortColumns));
-        assertEquals(mTable.scannerPlan(null, null), ((QueryPlan.Mapper) plan2.source).source);
+        assertEquals(mTable.queryAll().scannerPlan(null), ((QueryPlan.Mapper) plan2.source).source);
 
         try (var scanner = mapped.newScanner(null, "{-str, id}")) {
             row = scanner.row();
@@ -477,7 +477,7 @@ public class MappedTest {
             assertNull(scanner.step(row));
         }
 
-        plan = (QueryPlan.Mapper) mapped.scannerPlan(null, "{-id}");
+        plan = (QueryPlan.Mapper) mapped.query("{-id}").scannerPlan(null);
         assertTrue(((QueryPlan.FullScan) plan.source).reverse);
 
         try (var scanner = mapped.newScanner(null, "{-id, *}")) {
@@ -649,7 +649,7 @@ public class MappedTest {
             assertNull(scanner.step());
         }
 
-        var plan = (QueryPlan.Mapper) mapped.scannerPlan(null, "string > ? && number != ?");
+        var plan = (QueryPlan.Mapper) mapped.query("string > ? && number != ?").scannerPlan(null);
         var sub1 = (QueryPlan.Filter) plan.source;
         assertEquals("str > ?3 && num != ?4", sub1.expression);
 
@@ -669,9 +669,9 @@ public class MappedTest {
 
         String query = "{-string, identifier} string >= ?";
 
-        var plan2 = (QueryPlan.Sort) mapped.scannerPlan(null, query);
+        var plan2 = (QueryPlan.Sort) mapped.query(query).scannerPlan(null);
         assertEquals("[-string]", Arrays.toString(plan2.sortColumns));
-        assertEquals(mTable.scannerPlan(null, "str >= ?2"),
+        assertEquals(mTable.query("str >= ?2").scannerPlan(null),
                      ((QueryPlan.Mapper) plan2.source).source);
 
         try (var scanner = mapped.newScanner(null, query, "a")) {
@@ -684,7 +684,7 @@ public class MappedTest {
 
         query = "{-identifier} string >= ?";
 
-        var plan3 = mapped.scannerPlan(null, query);
+        var plan3 = mapped.query(query).scannerPlan(null);
         assertEquals("""
 - map: org.cojen.tupl.rows.MappedTest$Renamed
   using: Renamer
@@ -769,7 +769,7 @@ public class MappedTest {
     private void sortMany(int amount) throws Exception {
         Table<Renamed> mapped = mTable.map(Renamed.class, new Renamer());
 
-        var plan = (QueryPlan.Sort) mapped.scannerPlan(null, "{+number, *}");
+        var plan = (QueryPlan.Sort) mapped.query("{+number, *}").scannerPlan(null);
         assertEquals("[+number]", Arrays.toString(plan.sortColumns));
 
         var rnd = new Random(amount);

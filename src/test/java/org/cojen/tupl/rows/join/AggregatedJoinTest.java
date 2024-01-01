@@ -280,7 +280,7 @@ public class AggregatedJoinTest {
     private void eval(Table join, String plan, String[] results, String query, Object... args)
         throws Exception 
     {
-        String actualPlan = join.scannerPlan(null, query, args).toString();
+        String actualPlan = join.query(query).scannerPlan(null, args).toString();
         assertEquals(plan, actualPlan);
 
         int resultNum = 0;
@@ -297,7 +297,7 @@ public class AggregatedJoinTest {
     @SuppressWarnings("unchecked")
     private static void dump(Table table, String query, Object... args) throws Exception {
         System.out.println(query);
-        System.out.println(table.scannerPlan(null, query, args));
+        System.out.println(table.query(query).scannerPlan(null, args));
 
         try (var scanner = table.newScanner(null, query, args)) {
             for (var row = scanner.row(); row != null; row = scanner.step(row)) {

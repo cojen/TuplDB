@@ -123,21 +123,21 @@ public class ViewedTest {
 
         // Scanners and Updaters should honor the view's natural order unless overridden.
 
-        QueryPlan plan = view.scannerPlan(null, null);
+        QueryPlan plan = view.queryAll().scannerPlan(null);
         assertEquals("""
 - reverse full scan over primary key: org.cojen.tupl.rows.ViewedTest$TestRow
   key columns: +id
                      """,
                      plan.toString());
 
-        plan = view.updaterPlan(null, null);
+        plan = view.queryAll().updaterPlan(null);
         assertEquals("""
 - reverse full scan over primary key: org.cojen.tupl.rows.ViewedTest$TestRow
   key columns: +id
                      """,
                      plan.toString());
 
-        plan = view.scannerPlan(null, "name == ?");
+        plan = view.query("name == ?").scannerPlan(null);
         assertEquals("""
 - sort: -id
   - primary join: org.cojen.tupl.rows.ViewedTest$TestRow
@@ -148,7 +148,7 @@ public class ViewedTest {
                      """,
                      plan.toString());
 
-        plan = view.scannerPlan(null, "{id, name} name == ?");
+        plan = view.query("{id, name} name == ?").scannerPlan(null);
         assertEquals("""
 - sort: -id
   - range scan over secondary index: org.cojen.tupl.rows.ViewedTest$TestRow
@@ -157,7 +157,7 @@ public class ViewedTest {
                      """,
                      plan.toString());
 
-        plan = view.scannerPlan(null, "{id, +name} name == ?");
+        plan = view.query("{id, +name} name == ?").scannerPlan(null);
         assertEquals("""
 - range scan over secondary index: org.cojen.tupl.rows.ViewedTest$TestRow
   key columns: +name, +id
@@ -543,7 +543,7 @@ public class ViewedTest {
         view.merge(null, row);
         assertEquals("{id=2, name=world}", row.toString());
 
-        QueryPlan plan = view.scannerPlan(null, "id <= ?", 2);
+        QueryPlan plan = view.query("id <= ?").scannerPlan(null, 2);
         assertEquals("""
 - reverse range scan over primary key: org.cojen.tupl.rows.ViewedTest$TestRow
   key columns: +id

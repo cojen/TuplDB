@@ -17,15 +17,12 @@
 
 package org.cojen.tupl.rows.join;
 
-import java.lang.invoke.MethodHandle;
-
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
 import java.util.function.IntUnaryOperator;
-import java.util.function.Predicate;
 
 import org.cojen.maker.ClassMaker;
 import org.cojen.maker.Field;

@@ -360,7 +360,13 @@ final class JoinQueryLauncherMaker {
             var txnVar = mm.param(0);
             String queryStr = queryStr(filter);
             var argsVar = mm.param(1);
-            subPlanVar = tableVar.invoke("scannerPlan", txnVar, queryStr, argsVar);
+            Variable queryVar;
+            if (queryStr == null) {
+                queryVar = tableVar.invoke("queryAll");
+            } else {
+                queryVar = tableVar.invoke("query", queryStr);
+            }
+            subPlanVar = queryVar.invoke("scannerPlan", txnVar, argsVar);
         }
 
         final RowFilter remainder = node.remainder();
@@ -387,10 +393,18 @@ final class JoinQueryLauncherMaker {
      * @param type join type; pass 0 for outermost level
      */
     private Variable makeFullJoinLevelPlan(MethodMaker mm, int type, JoinSpec.FullJoin node) {
-        String queryStr = queryStr(node.filter());
-
-        var subPlanVar = mm.field(node.name())
-            .invoke("scannerPlan", mm.param(0), queryStr, mm.param(1));
+        final Variable subPlanVar;
+        {
+            String queryStr = queryStr(node.filter());
+            var tableVar = mm.field(node.name());
+            Variable queryVar;
+            if (queryStr == null) {
+                queryVar = tableVar.invoke("queryAll");
+            } else {
+                queryVar = tableVar.invoke("query", queryStr);
+            }
+            subPlanVar = queryVar.invoke("scannerPlan", mm.param(0), mm.param(1));
+        }
 
         Variable assignmentsVar = makeAssignmentsVar(mm, node.argAssignments());
 

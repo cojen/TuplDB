@@ -36,6 +36,7 @@ import org.cojen.maker.MethodMaker;
 import org.cojen.maker.Variable;
 
 import org.cojen.tupl.Grouper;
+import org.cojen.tupl.Query;
 import org.cojen.tupl.Scanner;
 import org.cojen.tupl.Table;
 import org.cojen.tupl.Transaction;
@@ -184,21 +185,7 @@ public abstract class GroupedTable<S, T> extends AbstractMappedTable<S, T>
                                        String query, Object... args)
         throws IOException
     {
-        Grouper<S, T> grouper = mGrouperFactory.newGrouper();
-
-        ScannerFactory<S, T> factory;
-        try {
-            factory = mScannerFactoryCache.obtain(query, this);
-        } catch (Throwable e) {
-            try {
-                grouper.close();
-            } catch (Throwable e2) {
-                RowUtils.suppress(e, e2);
-            }
-            throw e;
-        }
-
-        return factory.newScanner(this, grouper, targetRow, txn, args);
+        return query(query).newScanner(targetRow, txn, args);
     }
 
     @Override
@@ -209,16 +196,6 @@ public abstract class GroupedTable<S, T> extends AbstractMappedTable<S, T>
     @Override
     public boolean exists(Transaction txn, T row) throws IOException {
         throw new ViewConstraintException();
-    }
-
-    @Override
-    public final QueryPlan scannerPlan(Transaction txn, String query, Object... args)
-        throws IOException
-    {
-        try (Grouper<S, T> grouper = mGrouperFactory.newGrouper()) {
-            return mScannerFactoryCache.obtain(query == null ? "{*}" : query, this)
-                .plan(this, grouper, txn, args);
-        }
     }
 
     /**
@@ -376,10 +353,14 @@ public abstract class GroupedTable<S, T> extends AbstractMappedTable<S, T>
             var argsVar = splitter.prepareArgs(mm.param(3));
 
             QuerySpec sourceQuery = splitter.mSourceQuery;
-            String sourceQueryStr = sourceQuery == null ? null : sourceQuery.toString();
+            Variable sourceQueryVar;
+            if (sourceQuery == null) {
+                sourceQueryVar = tableVar.invoke("source").invoke("queryAll");
+            } else {
+                sourceQueryVar = tableVar.invoke("source").invoke("query", sourceQuery.toString());
+            }
 
-            var planVar = tableVar.invoke("source")
-                .invoke("scannerPlan", txnVar, sourceQueryStr, argsVar);
+            final var planVar = sourceQueryVar.invoke("scannerPlan", txnVar, argsVar);
 
             var targetVar = mm.var(Class.class).set(targetType).invoke("getName");
             var usingVar = grouperVar.invoke("toString");
@@ -415,17 +396,40 @@ public abstract class GroupedTable<S, T> extends AbstractMappedTable<S, T>
     }
 
     @Override
-    protected String sourceProjection() {
+    protected final Query<T> newQuery(String query) throws IOException {
+        ScannerFactory<S, T> factory = mScannerFactoryCache.obtain(query, this);
+
+        return new Query<T>() {
+            @Override
+            public Scanner<T> newScanner(T row, Transaction txn, Object... args)
+                throws IOException
+            {
+                try (Grouper<S, T> grouper = mGrouperFactory.newGrouper()) {
+                    return factory.newScanner(GroupedTable.this, grouper, row, txn, args);
+                }
+            }
+
+            @Override
+            public QueryPlan scannerPlan(Transaction txn, Object... args) throws IOException {
+                try (Grouper<S, T> grouper = mGrouperFactory.newGrouper()) {
+                    return factory.plan(GroupedTable.this, grouper, txn, args);
+                }
+            }
+        };
+    }
+
+    @Override
+    protected final String sourceProjection() {
         return mGrouperFactory.sourceProjection();
     }
 
     @Override
-    protected Class<?> inverseFunctions() {
+    protected final Class<?> inverseFunctions() {
         return mGrouperFactory.getClass();
     }
 
     @Override
-    protected SortPlan analyzeSort(InverseFinder finder, QuerySpec targetQuery) {
+    protected final SortPlan analyzeSort(InverseFinder finder, QuerySpec targetQuery) {
         OrderBy groupBy = OrderBy.forSpec(finder.mSourceColumns, mGroupBySpec);
         OrderBy orderBy = OrderBy.forSpec(finder.mSourceColumns, mOrderBySpec);
         OrderBy targetOrderBy = targetQuery.orderBy();

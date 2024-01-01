@@ -867,7 +867,7 @@ public class BasicJoinTest {
     private void eval(String plan, String[] results, String query, Object... args)
         throws Exception 
     {
-        String actualPlan = mJoin.scannerPlan(null, query, args).toString();
+        String actualPlan = mJoin.query(query).scannerPlan(null, args).toString();
         assertEquals(plan, actualPlan);
 
         int resultNum = 0;
@@ -884,7 +884,7 @@ public class BasicJoinTest {
     @SuppressWarnings("unchecked")
     private void dump(String query, Object... args) throws Exception {
         System.out.println(query);
-        System.out.println(mJoin.scannerPlan(null, query, args));
+        System.out.println(mJoin.query(query).scannerPlan(null, args));
 
         try (var scanner = mJoin.newScanner(null, query, args)) {
             for (var row = scanner.row(); row != null; row = scanner.step(row)) {

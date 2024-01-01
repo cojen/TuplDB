@@ -229,7 +229,7 @@ public class GroupedTest {
         assertTrue(grouped.anyRows(null, "count == ?", 3));
         assertFalse(grouped.anyRows(null, "count == ?", 300));
 
-        QueryPlan plan = grouped.scannerPlan(null, null);
+        QueryPlan plan = grouped.queryAll().scannerPlan(null);
         assertEquals("""
 - group: org.cojen.tupl.rows.GroupedTest$TestRowGroup
   using: Grouped1
@@ -257,7 +257,7 @@ public class GroupedTest {
         grouped = mTable.group
             ("", "-id", TestRowGroup.class, new Grouped1Factory(false, false));
 
-        plan = grouped.scannerPlan(null, null);
+        plan = grouped.queryAll().scannerPlan(null);
         assertEquals("""
 - group: org.cojen.tupl.rows.GroupedTest$TestRowGroup
   using: Grouped1
@@ -286,7 +286,7 @@ public class GroupedTest {
         grouped = mTable.group
             ("+name", "", TestRowGroup.class, new Grouped1Factory(true, true));
 
-        plan = grouped.scannerPlan(null, null);
+        plan = grouped.queryAll().scannerPlan(null);
         assertEquals("""
 - group: org.cojen.tupl.rows.GroupedTest$TestRowGroup
   using: Grouped1
@@ -316,7 +316,7 @@ public class GroupedTest {
         grouped = mTable.group
             ("+name", "-id", TestRowGroup.class, new Grouped1Factory(true, false));
 
-        plan = grouped.scannerPlan(null, null);
+        plan = grouped.queryAll().scannerPlan(null);
         assertEquals("""
 - group: org.cojen.tupl.rows.GroupedTest$TestRowGroup
   using: Grouped1
@@ -344,7 +344,7 @@ public class GroupedTest {
             }
         }
 
-        plan = grouped.scannerPlan(null, "count == ?", 1);
+        plan = grouped.query("count == ?").scannerPlan(null, 1);
         assertEquals("""
 - filter: count == ?1
   - group: org.cojen.tupl.rows.GroupedTest$TestRowGroup
@@ -371,7 +371,7 @@ public class GroupedTest {
             }
         }
 
-        plan = grouped.scannerPlan(null, "{*, ~sumNum}");
+        plan = grouped.query("{*, ~sumNum}").scannerPlan(null);
         assertEquals("""
 - group: org.cojen.tupl.rows.GroupedTest$TestRowGroup
   using: Grouped1
@@ -399,7 +399,7 @@ public class GroupedTest {
             }
         }
 
-        plan = grouped.scannerPlan(null, "{*, ~sumNum} count == ?", 1);
+        plan = grouped.query("{*, ~sumNum} count == ?").scannerPlan(null, 1);
         assertEquals("""
 - filter: count == ?1
   - group: org.cojen.tupl.rows.GroupedTest$TestRowGroup
@@ -456,7 +456,7 @@ public class GroupedTest {
         Table<TestRowGroup> grouped = mTable.group
             ("+name-name", "+id+name-id", TestRowGroup.class, new Grouped1Factory(true, false));
 
-        QueryPlan plan = grouped.scannerPlan(null, "{*, -avgNum}");
+        QueryPlan plan = grouped.query("{*, -avgNum}").scannerPlan(null);
         assertEquals("""
 - sort: -avgNum
   - group: org.cojen.tupl.rows.GroupedTest$TestRowGroup
@@ -485,7 +485,7 @@ public class GroupedTest {
             }
         }
 
-        plan = grouped.scannerPlan(null, "{*, -name}");
+        plan = grouped.query("{*, -name}").scannerPlan(null);
         assertEquals("""
 - group: org.cojen.tupl.rows.GroupedTest$TestRowGroup
   using: Grouped1
@@ -513,7 +513,7 @@ public class GroupedTest {
             }
         }
 
-        plan = grouped.scannerPlan(null, "{*, -name, +avgNum, ~sumNum} count > ?", 1);
+        plan = grouped.query("{*, -name, +avgNum, ~sumNum} count > ?").scannerPlan(null, 1);
         assertEquals("""
 - sort: -name, +avgNum
   - filter: count > ?1

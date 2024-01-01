@@ -17,13 +17,19 @@
 
 package org.cojen.tupl.rows;
 
+import java.io.IOException;
+
 import java.util.Collections;
 import java.util.Comparator;
 
+import java.util.stream.Stream;
+
 import org.cojen.tupl.DurabilityMode;
+import org.cojen.tupl.Query;
 import org.cojen.tupl.Scanner;
 import org.cojen.tupl.Table;
 import org.cojen.tupl.Transaction;
+import org.cojen.tupl.Updater;
 
 import org.cojen.tupl.diag.QueryPlan;
 
@@ -37,7 +43,7 @@ import org.cojen.tupl.rows.filter.Parser;
  *
  * @author Brian S. O'Neill
  */
-public final class IdentityTable implements Table<IdentityTable.Row> {
+public final class IdentityTable implements Table<IdentityTable.Row>, Query<IdentityTable.Row> {
     public sealed interface Row extends Comparable<Row> { }
 
     // Singleton instance.
@@ -126,6 +132,12 @@ public final class IdentityTable implements Table<IdentityTable.Row> {
     }
 
     @Override
+    public Query<Row> query(String query) {
+        validate(query);
+        return this;
+    }
+
+    @Override
     public boolean anyRows(Transaction txn) {
         return true;
     }
@@ -185,13 +197,6 @@ public final class IdentityTable implements Table<IdentityTable.Row> {
         return ComparatorMaker.ZERO;
     }
 
-    public QueryPlan scannerPlan(Transaction txn, String query, Object... args) {
-        if (query != null) {
-            validate(query);
-        }
-        return new QueryPlan.Identity();
-    }
-
     @Override
     public void close() {
         // Do nothing.
@@ -200,6 +205,42 @@ public final class IdentityTable implements Table<IdentityTable.Row> {
     @Override
     public boolean isClosed() {
         return false;
+    }
+
+    // Implement additional methods defined in the Query interface.
+
+    @Override
+    public Scanner<Row> newScanner(Transaction txn, Object... args) {
+        return new ScanOne();
+    }
+
+    @Override
+    public Scanner<Row> newScanner(Row row, Transaction txn, Object... args) {
+        return new ScanOne(row);
+    }
+
+    @Override
+    public Updater<Row> newUpdater(Transaction txn) throws IOException {
+        return newUpdater(txn, RowUtils.NO_ARGS);
+    }
+
+    @Override
+    public Stream<Row> newStream(Transaction txn) {
+        return newStream(txn, RowUtils.NO_ARGS);
+    }
+
+    @Override
+    public boolean anyRows(Transaction txn, Object... args) {
+        return true;
+    }
+
+    public boolean anyRows(Row row, Transaction txn, Object... args) {
+        return true;
+    }
+
+    @Override
+    public QueryPlan scannerPlan(Transaction txn, Object... args) {
+        return new QueryPlan.Identity();
     }
 
     private static void validate(String query) {

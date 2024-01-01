@@ -40,6 +40,7 @@ import org.cojen.tupl.Index;
 import org.cojen.tupl.LockMode;
 import org.cojen.tupl.LockResult;
 import org.cojen.tupl.NoSuchRowException;
+import org.cojen.tupl.Query;
 import org.cojen.tupl.Scanner;
 import org.cojen.tupl.Updater;
 import org.cojen.tupl.Table;
@@ -88,26 +89,15 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
         @Override
         public QueryLauncher.Delegate<R> newValue(String queryStr, QuerySpec query) {
             if (query != null) {
-                return newLauncher(query);
+                return new QueryLauncher.Delegate<>(BaseTable.this, query);
             }
-            var launcher = newLauncher(queryStr);
+            var launcher = new QueryLauncher.Delegate<>(BaseTable.this, queryStr);
             String canonicalStr = launcher.canonicalQueryString();
             if (canonicalStr.equals(queryStr)) {
                 return launcher;
             } else { 
                 return obtain(canonicalStr, launcher.canonicalQuery());
             }
-        }
-
-        protected QueryLauncher.Delegate<R> newLauncher(String queryStr) {
-            return new QueryLauncher.Delegate<>(BaseTable.this, queryStr);
-        }
-
-        /**
-         * @param query canonical query instance
-         */
-        protected QueryLauncher.Delegate<R> newLauncher(QuerySpec query) {
-            return new QueryLauncher.Delegate<>(BaseTable.this, query);
         }
     }
 
@@ -378,14 +368,10 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
         return mFilterFactoryCache.obtain(type, queryStr, null);
     }
 
-    final QueryLauncher.Delegate<R> query(String queryStr) {
+    @Override
+    public QueryLauncher.Delegate<R> query(String queryStr) {
         return mQueryCache.obtain(queryStr, null);
     }
-
-    /* FIXME: Override and optimize deleteAll.
-    @Override
-    public final long deleteAll(Transaction txn, String query, Object... args) throws IOException {
-    */
 
     @Override
     public final String toString() {
@@ -422,13 +408,29 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
      * Scan and write a subset of rows from this table to a remote endpoint. This method
      * doesn't flush the output stream.
      */
-    @SuppressWarnings("unchecked")
     public final void scanWrite(Transaction txn, DataOutput out, String queryStr, Object... args)
         throws IOException
     {
         var writer = new RowWriter<R>(out);
 
         query(queryStr).scanWrite(txn, writer, args);
+
+        // Write the scan terminator. See RowWriter.writeHeader.
+        out.writeByte(0);
+    }
+
+    /**
+     * Scan and write a subset of rows from this table to a remote endpoint. This method
+     * doesn't flush the output stream.
+     *
+     * @param query expected to be a Query object obtained from this BaseTable
+     */
+    public final void scanWrite(Transaction txn, DataOutput out, Query<R> query, Object... args)
+        throws IOException
+    {
+        var writer = new RowWriter<R>(out);
+
+        ((QueryLauncher) query).scanWrite(txn, writer, args);
 
         // Write the scan terminator. See RowWriter.writeHeader.
         out.writeByte(0);
@@ -492,39 +494,6 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
      */
     protected Table<R> viewUnjoined() {
         return this;
-    }
-
-    @Override
-    public QueryPlan scannerPlan(Transaction txn, String queryStr, Object... args)
-        throws IOException
-    {
-        if (queryStr == null) {
-            return plan(args);
-        } else {
-            return query(queryStr).scannerPlan(txn, args);
-        }
-    }
-
-    @Override
-    public QueryPlan updaterPlan(Transaction txn, String queryStr, Object... args)
-        throws IOException
-    {
-        if (queryStr == null) {
-            return plan(args);
-        } else {
-            return query(queryStr).updaterPlan(txn, args);
-        }
-    }
-
-    /**
-     * Note: Doesn't support orderBy.
-     */
-    final QueryPlan scannerPlanThisTable(Transaction txn, String queryStr, Object... args) {
-        if (queryStr == null) {
-            return plan(args);
-        } else {
-            return scannerFilteredFactory(txn, queryStr).plan(args);
-        }
     }
 
     @Override
@@ -860,7 +829,7 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
      */
     void clearQueryCache() {
         if (mQueryCache != null) {
-            mQueryCache.clear();
+            mQueryCache.traverse(QueryLauncher.Delegate::clear);
         }
     }
 

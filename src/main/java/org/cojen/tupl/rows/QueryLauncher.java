@@ -27,6 +27,7 @@ import java.util.Map;
 
 import org.cojen.tupl.ClosedIndexException;
 import org.cojen.tupl.LockFailureException;
+import org.cojen.tupl.Query;
 import org.cojen.tupl.Scanner;
 import org.cojen.tupl.Updater;
 import org.cojen.tupl.Transaction;
@@ -45,16 +46,18 @@ import static org.cojen.tupl.rows.BaseTable.*;
  *
  * @author Brian S O'Neill
  */
-public abstract class QueryLauncher<R> {
+public abstract class QueryLauncher<R> implements Query<R> {
     /**
      * @param row initial row; can be null
      */
+    @Override
     public abstract Scanner<R> newScanner(R row, Transaction txn, Object... args)
         throws IOException;
 
     /**
      * @param row initial row; can be null
      */
+    @Override
     public abstract Updater<R> newUpdater(R row, Transaction txn, Object... args)
         throws IOException;
 
@@ -64,8 +67,10 @@ public abstract class QueryLauncher<R> {
     public abstract void scanWrite(Transaction txn, RowWriter writer, Object... args)
         throws IOException;
 
+    @Override
     public abstract QueryPlan scannerPlan(Transaction txn, Object... args) throws IOException;
 
+    @Override
     public abstract QueryPlan updaterPlan(Transaction txn, Object... args) throws IOException;
 
     /**
@@ -148,6 +153,11 @@ public abstract class QueryLauncher<R> {
             forScanner(txn).scanWrite(txn, writer, args);
         }
 
+        /* FIXME: Override and optimize deleteAll.
+        @Override
+        public long deleteAll(Transaction txn, Object... args) throws IOException {
+        */
+
         @Override
         public QueryPlan scannerPlan(Transaction txn, Object... args) throws IOException {
             return forScanner(txn).scannerPlan(txn, args);
@@ -188,6 +198,16 @@ public abstract class QueryLauncher<R> {
             if (launcher != null) {
                 launcher.closeIndexes();
             }
+        }
+
+        /**
+         * Clears the cached launcher instances.
+         */
+        public synchronized void clear() {
+            mForScanner = null;
+            mForScannerDoubleCheck = null;
+            mForUpdater = null;
+            mForUpdaterDoubleCheck = null;
         }
 
         private QueryLauncher<R> forScanner(Transaction txn) throws IOException {

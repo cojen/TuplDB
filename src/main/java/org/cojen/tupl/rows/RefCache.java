@@ -40,6 +40,11 @@ abstract class RefCache<K, V, H> extends ReferenceQueue<Object> {
     public abstract void clear(Consumer<V> c);
 
     /**
+     * Traverse all values while synchronized.
+     */
+    public abstract void traverse(Consumer<V> c);
+
+    /**
      * Can be called without explicit synchronization, but entries can appear to go missing.
      * Double check with synchronization.
      */

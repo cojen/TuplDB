@@ -24,8 +24,6 @@ import org.cojen.dirmi.Pipe;
 import org.cojen.tupl.DurabilityMode;
 import org.cojen.tupl.Updater;
 
-import org.cojen.tupl.diag.QueryPlan;
-
 import org.cojen.tupl.io.Utils;
 
 import org.cojen.tupl.rows.BaseTable;
@@ -104,7 +102,7 @@ final class ServerTable<R> implements RemoteTable {
         return null;
     }
 
-    private void newUpdater(Updater updater, Pipe pipe) throws IOException {
+    void newUpdater(Updater updater, Pipe pipe) throws IOException {
         try {
             var proxy = (RemoteTableProxy) pipe.readObject();
             int characteristics = updater.characteristics();
@@ -131,8 +129,13 @@ final class ServerTable<R> implements RemoteTable {
     }
 
     @Override
-    public long deleteAll(RemoteTransaction txn, String query, Object... args) throws IOException {
-        return mTable.deleteAll(ServerTransaction.txn(txn), query, args);
+    public RemoteQuery query(String query) throws IOException {
+        return new ServerQuery<>(this, mTable.query(query));
+    }
+
+    @Override
+    public RemoteQuery queryAll() throws IOException {
+        return new ServerQuery<>(this, mTable.queryAll());
     }
 
     @Override
@@ -158,27 +161,6 @@ final class ServerTable<R> implements RemoteTable {
     @Override
     public RemoteTableProxy proxy(byte[] descriptor) throws IOException {
         return mProxyCache.obtain(descriptor, null);
-    }
-
-    @Override
-    public QueryPlan scannerPlan(RemoteTransaction txn, String query, Object... args)
-        throws IOException
-    {
-        return mTable.scannerPlan(ServerTransaction.txn(txn), query, args);
-    }
-
-    @Override
-    public QueryPlan updaterPlan(RemoteTransaction txn, String query, Object... args)
-        throws IOException
-    {
-        return mTable.updaterPlan(ServerTransaction.txn(txn), query, args);
-    }
-
-    @Override
-    public QueryPlan streamPlan(RemoteTransaction txn, String query, Object... args)
-        throws IOException
-    {
-        return mTable.streamPlan(ServerTransaction.txn(txn), query, args);
     }
 
     @Override

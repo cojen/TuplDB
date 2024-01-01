@@ -30,8 +30,6 @@ import org.cojen.tupl.rows.filter.ColumnToArgFilter;
 import org.cojen.tupl.rows.filter.ColumnToColumnFilter;
 import org.cojen.tupl.rows.filter.ComplexFilterException;
 import org.cojen.tupl.rows.filter.RowFilter;
-import org.cojen.tupl.rows.filter.TrueFilter;
-import org.cojen.tupl.rows.filter.Visitor;
 
 /**
  * 

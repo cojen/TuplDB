@@ -216,7 +216,7 @@ public class AggregatedTest {
         assertTrue(aggregated.exists(null, row));
         assertEquals("{*count=10}", row.toString());
 
-        QueryPlan plan = aggregated.scannerPlan(null, null);
+        QueryPlan plan = aggregated.queryAll().scannerPlan(null);
         assertEquals("""
 - aggregate: org.cojen.tupl.rows.AggregatedTest$TestRowAgg
   using: Aggregator1
@@ -233,7 +233,7 @@ public class AggregatedTest {
 
         String query = "{avgNum, +count}";
 
-        plan = aggregated.scannerPlan(null, query);
+        plan = aggregated.query(query).scannerPlan(null);
         assertEquals("""
 - aggregate: org.cojen.tupl.rows.AggregatedTest$TestRowAgg
   using: Aggregator1
@@ -250,7 +250,7 @@ public class AggregatedTest {
 
         query = "{avgNum, +count} minNum == ?";
 
-        plan = aggregated.scannerPlan(null, query);
+        plan = aggregated.query(query).scannerPlan(null);
         assertEquals("""
 - filter: minNum == ?1
   - aggregate: org.cojen.tupl.rows.AggregatedTest$TestRowAgg
@@ -272,7 +272,7 @@ public class AggregatedTest {
 
         query = "minNum == ?";
 
-        plan = aggregated.scannerPlan(null, query);
+        plan = aggregated.query(query).scannerPlan(null);
         assertEquals("""
 - filter: minNum == ?1
   - aggregate: org.cojen.tupl.rows.AggregatedTest$TestRowAgg
@@ -322,7 +322,7 @@ public class AggregatedTest {
         assertTrue(aggregated.anyRows(null, "count != ?", 999));
         assertTrue(aggregated.anyRows(null, "count == ?", 2));
 
-        QueryPlan plan = aggregated.scannerPlan(null, null);
+        QueryPlan plan = aggregated.queryAll().scannerPlan(null);
         assertEquals("""
 - aggregate: org.cojen.tupl.rows.AggregatedTest$TestRowAggByName
   using: Aggregator1
@@ -362,7 +362,7 @@ public class AggregatedTest {
 
         String query = "name >= ? && name < ?";
 
-        plan = aggregated.scannerPlan(null, query);
+        plan = aggregated.query(query).scannerPlan(null);
         assertEquals("""
 - aggregate: org.cojen.tupl.rows.AggregatedTest$TestRowAggByName
   using: Aggregator1
@@ -384,7 +384,7 @@ public class AggregatedTest {
 
         query = "maxNum >= ? && maxNum <= ?";
 
-        plan = aggregated.scannerPlan(null, query);
+        plan = aggregated.query(query).scannerPlan(null);
         assertEquals("""
 - filter: maxNum >= ?1 && maxNum <= ?2
   - aggregate: org.cojen.tupl.rows.AggregatedTest$TestRowAggByName
@@ -411,7 +411,7 @@ public class AggregatedTest {
 
         query = "{+avgNum, *} name >= ? && name < ? && maxNum >= ? && maxNum <= ?";
 
-        plan = aggregated.scannerPlan(null, query);
+        plan = aggregated.query(query).scannerPlan(null);
         assertEquals("""
 - sort: +avgNum
   - filter: maxNum >= ?3 && maxNum <= ?4
@@ -445,7 +445,7 @@ public class AggregatedTest {
 
         query = "{-avgNum, *, ~totalNum} count >= ? && avgNum >= ?";
 
-        plan = aggregated.scannerPlan(null, query);
+        plan = aggregated.query(query).scannerPlan(null);
         assertEquals("""
 - sort: -avgNum
   - filter: count >= ?1 && avgNum >= ?2

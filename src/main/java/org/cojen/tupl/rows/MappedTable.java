@@ -44,6 +44,7 @@ import org.cojen.maker.Variable;
 
 import org.cojen.tupl.LockMode;
 import org.cojen.tupl.Mapper;
+import org.cojen.tupl.Query;
 import org.cojen.tupl.Scanner;
 import org.cojen.tupl.Table;
 import org.cojen.tupl.Transaction;
@@ -321,23 +322,34 @@ public abstract class MappedTable<S, T> extends AbstractMappedTable<S, T>
     }
 
     @Override
-    public final QueryPlan scannerPlan(Transaction txn, String query, Object... args)
-        throws IOException
-    {
-        if (query == null) {
-            query = "{*}";
-        }
-        return mScannerFactoryCache.obtain(query, this).plan(false, this, txn, args);
-    }
+    protected final Query<T> newQuery(String query) throws IOException {
+        ScannerFactory<S, T> factory = mScannerFactoryCache.obtain(query, this);
 
-    @Override
-    public final QueryPlan updaterPlan(Transaction txn, String query, Object... args)
-        throws IOException
-    {
-        if (query == null) {
-            query = "{*}";
-        }
-        return mScannerFactoryCache.obtain(query, this).plan(true, this, txn, args);
+        return new Query<T>() {
+            @Override
+            public Scanner<T> newScanner(T row, Transaction txn, Object... args)
+                throws IOException
+            {
+                return factory.newScanner(MappedTable.this, row, txn, args);
+            }
+
+            @Override
+            public Updater<T> newUpdater(T row, Transaction txn, Object... args)
+                throws IOException
+            {
+                return factory.newUpdater(MappedTable.this, row, txn, args);
+            }
+
+            @Override
+            public QueryPlan scannerPlan(Transaction txn, Object... args) throws IOException {
+                return factory.plan(false, MappedTable.this, txn, args);
+            }
+
+            @Override
+            public QueryPlan updaterPlan(Transaction txn, Object... args) throws IOException {
+                return factory.plan(true, MappedTable.this, txn, args);
+            }
+        };
     }
 
     /**
@@ -724,17 +736,21 @@ public abstract class MappedTable<S, T> extends AbstractMappedTable<S, T>
             var argsVar = splitter.prepareArgs(mm.param(3));
 
             QuerySpec sourceQuery = splitter.mSourceQuery;
-            String sourceQueryStr = sourceQuery == null ? null : sourceQuery.toString();
+            Variable sourceQueryVar;
+            if (sourceQuery == null) {
+                sourceQueryVar = tableVar.invoke("source").invoke("queryAll");
+            } else {
+                sourceQueryVar = tableVar.invoke("source").invoke("query", sourceQuery.toString());
+            }
 
-            var sourceTableVar = tableVar.invoke("source");
-            var planVar = mm.var(QueryPlan.class);
+            final var planVar = mm.var(QueryPlan.class);
 
             Label forUpdater = mm.label();
             forUpdaterVar.ifTrue(forUpdater);
-            planVar.set(sourceTableVar.invoke("scannerPlan", txnVar, sourceQueryStr, argsVar));
+            planVar.set(sourceQueryVar.invoke("scannerPlan", txnVar, argsVar));
             Label ready = mm.label().goto_();
             forUpdater.here();
-            planVar.set(sourceTableVar.invoke("updaterPlan", txnVar, sourceQueryStr, argsVar));
+            planVar.set(sourceQueryVar.invoke("updaterPlan", txnVar, argsVar));
             ready.here();
 
             var targetVar = mm.var(Class.class).set(targetType).invoke("getName");

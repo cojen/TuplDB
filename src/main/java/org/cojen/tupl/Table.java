@@ -25,9 +25,6 @@ import java.util.Comparator;
 import java.util.function.Predicate;
 
 import java.util.stream.Stream;
-import java.util.stream.StreamSupport;
-
-import org.cojen.tupl.diag.QueryPlan;
 
 import org.cojen.tupl.io.Utils;
 
@@ -39,6 +36,8 @@ import org.cojen.tupl.rows.PlainPredicateMaker;
 import org.cojen.tupl.rows.ViewedTable;
 
 import org.cojen.tupl.rows.join.JoinTableMaker;
+
+import org.cojen.tupl.rows.RowUtils;
 
 import static org.cojen.tupl.rows.RowUtils.NO_ARGS;
 
@@ -151,7 +150,6 @@ public interface Table<R> extends Closeable {
      * @param txn optional transaction for the scanner to use; pass null for auto-commit mode
      * @return a new scanner positioned at the first row in the table
      * @throws IllegalStateException if transaction belongs to another database instance
-     * @see #scannerPlan scannerPlan
      */
     public default Scanner<R> newScanner(Transaction txn) throws IOException {
         return newScanner(null, txn);
@@ -169,7 +167,6 @@ public interface Table<R> extends Closeable {
      * @param txn optional transaction for the scanner to use; pass null for auto-commit mode
      * @return a new scanner positioned at the first row in the table accepted by the query
      * @throws IllegalStateException if transaction belongs to another database instance
-     * @see #scannerPlan scannerPlan
      */
     public default Scanner<R> newScanner(Transaction txn, String query, Object... args)
         throws IOException
@@ -211,7 +208,6 @@ public interface Table<R> extends Closeable {
      * @param txn optional transaction for the updater to use; pass null for auto-commit mode
      * @return a new updater positioned at the first row in the table
      * @throws IllegalStateException if transaction belongs to another database instance
-     * @see #updaterPlan updaterPlan
      */
     public default Updater<R> newUpdater(Transaction txn) throws IOException {
         throw new UnmodifiableViewException();
@@ -230,7 +226,6 @@ public interface Table<R> extends Closeable {
      * @param txn optional transaction for the updater to use; pass null for auto-commit mode
      * @return a new updater positioned at the first row in the table accepted by the query
      * @throws IllegalStateException if transaction belongs to another database instance
-     * @see #updaterPlan updaterPlan
      */
     public default Updater<R> newUpdater(Transaction txn, String query, Object... args)
         throws IOException
@@ -253,11 +248,10 @@ public interface Table<R> extends Closeable {
      * @param txn optional transaction for the stream to use; pass null for auto-commit mode
      * @return a new stream positioned at the first row in the table
      * @throws IllegalStateException if transaction belongs to another database instance
-     * @see #streamPlan streamPlan
      */
     public default Stream<R> newStream(Transaction txn) {
         try {
-            return newStream(newScanner(txn));
+            return RowUtils.newStream(newScanner(txn));
         } catch (IOException e) {
             throw Utils.rethrow(e);
         }
@@ -272,11 +266,10 @@ public interface Table<R> extends Closeable {
      * @param txn optional transaction for the stream to use; pass null for auto-commit mode
      * @return a new stream positioned at the first row in the table accepted by the query
      * @throws IllegalStateException if transaction belongs to another database instance
-     * @see #streamPlan streamPlan
      */
     public default Stream<R> newStream(Transaction txn, String query, Object... args) {
         try {
-            return newStream(newScanner(txn, query, args));
+            return RowUtils.newStream(newScanner(txn, query, args));
         } catch (IOException e) {
             throw Utils.rethrow(e);
         }
@@ -290,31 +283,16 @@ public interface Table<R> extends Closeable {
     }
 
     /**
-     * Deletes all rows from this table which match the given query filter. Any query
-     * projection is ignored.
-     *
-     * @param txn optional transaction to use; pass null for auto-commit mode against each row
-     * @return the amount of rows deleted
-     * @throws IllegalStateException if transaction belongs to another database instance
+     * Returns a query for a subset of rows from this table, as specified by the query
+     * expression.
      */
-    public default long deleteAll(Transaction txn, String query, Object... args)
-        throws IOException
-    {
-        // Note: If the transaction is null, deleting in batches is an acceptable optimization.
-        long total = 0;
-        try (var updater = newUpdater(txn, query, args)) {
-            for (var row = updater.row(); row != null; row = updater.delete(row)) {
-                total++;
-            }
-        }
-        return total;
-    }
+    public Query<R> query(String query) throws IOException;
 
     /**
-     * @hidden
+     * Returns a query for all rows of this table.
      */
-    public default long deleteAll(Transaction txn, String query) throws IOException {
-        return deleteAll(txn, query, NO_ARGS);
+    public default Query<R> queryAll() throws IOException {
+        return query("{*}");
     }
 
     /**
@@ -376,16 +354,6 @@ public interface Table<R> extends Closeable {
      */
     public default boolean anyRows(R row, Transaction txn, String query) throws IOException {
         return anyRows(row, txn, query, NO_ARGS);
-    }
-
-    private static <R> Stream<R> newStream(Scanner<R> scanner) {
-        return StreamSupport.stream(scanner, false).onClose(() -> {
-            try {
-                scanner.close();
-            } catch (Throwable e) {
-                Utils.rethrow(e);
-            }
-        });
     }
 
     /**
@@ -629,65 +597,6 @@ public interface Table<R> extends Closeable {
      */
     public default Predicate<R> predicate(String query) {
         return predicate(query, NO_ARGS);
-    }
-
-    /**
-     * Returns a query plan used by {@link #newScanner(Transaction, String, Object...)
-     * newScanner}.
-     *
-     * @param txn optional transaction to be used; pass null for auto-commit mode
-     * @param query optional query expression
-     * @param args optional query arguments
-     */
-    public QueryPlan scannerPlan(Transaction txn, String query, Object... args) throws IOException;
-
-    /**
-     * @hidden
-     */
-    public default QueryPlan scannerPlan(Transaction txn, String query) throws IOException {
-        return scannerPlan(txn, query, NO_ARGS);
-    }
-
-    /**
-     * Returns a query plan used by {@link #newUpdater(Transaction, String, Object...)
-     * newUpdater}.
-     *
-     * @param txn optional transaction to be used; pass null for auto-commit mode
-     * @param query optional query expression
-     * @param args optional query arguments
-     */
-    public default QueryPlan updaterPlan(Transaction txn, String query, Object... args)
-        throws IOException
-    {
-        throw new UnmodifiableViewException();
-    }
-
-    /**
-     * @hidden
-     */
-    public default QueryPlan updaterPlan(Transaction txn, String query) throws IOException {
-        return updaterPlan(txn, query, NO_ARGS);
-    }
-
-    /**
-     * Returns a query plan used by {@link #newStream(Transaction, String, Object...)
-     * newStream}.
-     *
-     * @param txn optional transaction to be used; pass null for auto-commit mode
-     * @param query optional query expression
-     * @param args optional query arguments
-     */
-    public default QueryPlan streamPlan(Transaction txn, String query, Object... args)
-        throws IOException
-    {
-        return scannerPlan(txn, query, args);
-    }
-
-    /**
-     * @hidden
-     */
-    public default QueryPlan streamPlan(Transaction txn, String query) throws IOException {
-        return streamPlan(txn, query, NO_ARGS);
     }
 
     /**
