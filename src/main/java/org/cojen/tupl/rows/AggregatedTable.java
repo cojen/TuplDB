@@ -593,12 +593,10 @@ public abstract class AggregatedTable<S, T> extends WrappedTable<S, T>
         // collected as long as the generated query class still exists.
         queryMaker.addField(Object.class, "handle").private_().static_();
 
-        return BaseQuery.ctorHandle(queryMaker.finishLookup(), AggregatedTable.class);
+        return QueryFactoryCache.ctorHandle(queryMaker.finishLookup(), AggregatedTable.class);
     }
 
-    public abstract static class BaseQuery<S, T> extends QueryFactoryCache.Factory
-        implements Query<T>
-    {
+    public abstract static class BaseQuery<S, T> implements Query<T> {
         protected final AggregatedTable<S, T> table;
         protected final Query<S> squery;
 

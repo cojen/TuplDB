@@ -747,7 +747,7 @@ public abstract class MappedTable<S, T> extends AbstractMappedTable<S, T>
         // collected as long as the generated query class still exists.
         cm.addField(Object.class, "handle").private_().static_();
 
-        return BaseQuery.ctorHandle(cm.finishLookup(), MappedTable.class);
+        return QueryFactoryCache.ctorHandle(cm.finishLookup(), MappedTable.class);
     }
 
     @Override
@@ -870,9 +870,7 @@ public abstract class MappedTable<S, T> extends AbstractMappedTable<S, T>
         return new WrappedUpdater.EndCommit<>(this, txn, scanner);
     }
 
-    public static abstract class BaseQuery<S, T> extends QueryFactoryCache.Factory
-        implements Query<T>
-    {
+    public static abstract class BaseQuery<S, T> implements Query<T> {
         protected final MappedTable<S, T> table;
         protected final Query<S> squery;
 

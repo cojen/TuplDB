@@ -388,7 +388,7 @@ public abstract class GroupedTable<S, T> extends AbstractMappedTable<S, T>
         // collected as long as the generated query class still exists.
         cm.addField(Object.class, "handle").private_().static_();
 
-        return BaseQuery.ctorHandle(cm.finishLookup(), GroupedTable.class);
+        return QueryFactoryCache.ctorHandle(cm.finishLookup(), GroupedTable.class);
     }
 
     @Override
@@ -467,9 +467,7 @@ public abstract class GroupedTable<S, T> extends AbstractMappedTable<S, T>
         return plan;
     }
 
-    public abstract static class BaseQuery<S, T> extends QueryFactoryCache.Factory
-        implements Query<T>
-    {
+    public abstract static class BaseQuery<S, T> implements Query<T> {
         protected final GroupedTable<S, T> table;
         protected final Query<S> squery;
 
