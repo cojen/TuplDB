@@ -409,7 +409,7 @@ public abstract sealed class ViewedTable<R> extends WrappedTable<R, R> {
      *
      * @param emptyProjection pass true to project no columns
      */
-    private String fuseQueryWithPk(boolean emptyProjection) {
+    private Query<R> fuseQueryWithPk(boolean emptyProjection) throws IOException {
         QuerySpec query = querySpec();
         RowFilter filter = query.filter();
         int argNum = mMaxArg;
@@ -420,7 +420,7 @@ public abstract sealed class ViewedTable<R> extends WrappedTable<R, R> {
         if (emptyProjection) {
             query = query.withProjection(Collections.emptyMap());
         }
-        return query.toString();
+        return mSource.query(query.toString());
     }
 
     /**
@@ -655,7 +655,7 @@ public abstract sealed class ViewedTable<R> extends WrappedTable<R, R> {
      * were generated as hidden, it would lead to confusing stack traces.
      */
     public static abstract class Helper<R> {
-        private String mFusedPkQuery, mFusedPkQueryEmptyProjection;
+        private Query<R> mFusedPkQuery, mFusedPkQueryEmptyProjection;
 
         protected Helper() {
         }
@@ -675,10 +675,10 @@ public abstract sealed class ViewedTable<R> extends WrappedTable<R, R> {
             // projection might need to be applied when loading the row. The caller of this method
             // is responsible for implementing the quick option if all columns are projected.
 
-            String query = fusedPkQuery(table);
+            Query<R> query = fusedPkQuery(table);
             Object[] args = fusePkArguments(table.mArgs, table.mMaxArg, row);
 
-            try (var scanner = table.mSource.newScanner(txn, query, args)) {
+            try (var scanner = query.newScanner(txn, args)) {
                 R found = scanner.row();
                 if (found == null) {
                     unsetValueColumns(row);
@@ -702,10 +702,10 @@ public abstract sealed class ViewedTable<R> extends WrappedTable<R, R> {
             }
 
             // Use an empty projection because the columns don't need to be decoded.
-            String query = fusedPkQueryEmptyProjection(table);
+            Query<R> query = fusedPkQueryEmptyProjection(table);
             Object[] args = fusePkArguments(table.mArgs, table.mMaxArg, row);
 
-            try (var scanner = table.mSource.newScanner(txn, query, args)) {
+            try (var scanner = query.newScanner(txn, args)) {
                 return scanner.row() != null;
             }
         }
@@ -751,10 +751,10 @@ public abstract sealed class ViewedTable<R> extends WrappedTable<R, R> {
             // require that all columns within the projection be set.
             checkPk(row);
 
-            String query = fusedPkQuery(table);
+            Query<R> query = fusedPkQuery(table);
             Object[] args = fusePkArguments(table.mArgs, table.mMaxArg, row);
 
-            try (var updater = table.mSource.newUpdater(txn, query, args)) {
+            try (var updater = query.newUpdater(txn, args)) {
                 R found = updater.row();
                 if (found == null) {
                     // It's possible that the row wasn't found because it was filtered out or
@@ -783,22 +783,22 @@ public abstract sealed class ViewedTable<R> extends WrappedTable<R, R> {
                 return table.mSource.delete(txn, row);
             }
 
-            String query = fusedPkQueryEmptyProjection(table);
+            Query<R> query = fusedPkQueryEmptyProjection(table);
             Object[] args = fusePkArguments(table.mArgs, table.mMaxArg, row);
 
-            return table.mSource.query(query).deleteAll(txn, args) != 0;
+            return query.deleteAll(txn, args) != 0;
         }
 
-        private String fusedPkQuery(ViewedTable<R> table) {
-            String query = mFusedPkQuery;
+        private Query<R> fusedPkQuery(ViewedTable<R> table) throws IOException {
+            Query<R> query = mFusedPkQuery;
             if (query == null) {
                 mFusedPkQuery = query = table.fuseQueryWithPk(false);
             }
             return query;
         }
 
-        private String fusedPkQueryEmptyProjection(ViewedTable<R> table) {
-            String query = mFusedPkQueryEmptyProjection;
+        private Query<R> fusedPkQueryEmptyProjection(ViewedTable<R> table) throws IOException {
+            Query<R> query = mFusedPkQueryEmptyProjection;
             if (query == null) {
                 mFusedPkQueryEmptyProjection = query = table.fuseQueryWithPk(true);
             }
