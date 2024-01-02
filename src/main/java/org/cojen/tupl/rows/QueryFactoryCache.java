@@ -18,6 +18,8 @@
 package org.cojen.tupl.rows;
 
 import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.MethodType;
 
 import org.cojen.tupl.Query;
 
@@ -32,6 +34,26 @@ import org.cojen.tupl.rows.filter.QuerySpec;
 public final class QueryFactoryCache extends SoftCache<String, MethodHandle, Object> {
     public MethodHandle obtain(String queryStr, Helper helper) {
         return super.obtain(queryStr, helper);
+    }
+
+    public static abstract class Factory {
+        /**
+         * Returns a constructor MethodHandle which accepts the given parameter type. The
+         * lookup class must have a private static Object field named "handle". This is used
+         * to keep a reference to the MethodHandle instance, to prevent it from being garbage
+         * collected as long as the generated factory class still exists.
+         */
+        static MethodHandle ctorHandle(MethodHandles.Lookup lookup, Class<?> paramType) {
+            try {
+                MethodHandle mh = lookup.findConstructor
+                    (lookup.lookupClass(), MethodType.methodType(void.class, paramType));
+                lookup.findStaticVarHandle
+                    (lookup.lookupClass(), "handle", Object.class).set(mh);
+                return mh;
+            } catch (Throwable e) {
+                throw RowUtils.rethrow(e);
+            }
+        }
     }
 
     public static interface Helper {

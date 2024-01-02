@@ -589,16 +589,16 @@ public abstract class AggregatedTable<S, T> extends WrappedTable<S, T>
             mm.return_(planVar);
         }
 
-        try {
-            MethodHandles.Lookup lookup = queryMaker.finishLookup();
-            return lookup.findConstructor(lookup.lookupClass(),
-                                          MethodType.methodType(void.class, AggregatedTable.class));
-        } catch (Throwable e) {
-            throw RowUtils.rethrow(e);
-        }
+        // Keep a reference to the MethodHandle instance, to prevent it from being garbage
+        // collected as long as the generated query class still exists.
+        queryMaker.addField(Object.class, "handle").private_().static_();
+
+        return BaseQuery.ctorHandle(queryMaker.finishLookup(), AggregatedTable.class);
     }
 
-    public abstract static class BaseQuery<S, T> implements Query<T> {
+    public abstract static class BaseQuery<S, T> extends QueryFactoryCache.Factory
+        implements Query<T>
+    {
         protected final AggregatedTable<S, T> table;
         protected final Query<S> squery;
 
