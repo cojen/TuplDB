@@ -878,12 +878,12 @@ public abstract class MappedTable<S, T> extends AbstractMappedTable<S, T>
 
         protected BaseQuery(MappedTable<S, T> table) throws IOException {
             this.table = table;
-            this.squery = table.source().queryAll();
+            this.squery = table.mSource.queryAll();
         }
 
         protected BaseQuery(MappedTable<S, T> table, String queryStr) throws IOException {
             this.table = table;
-            this.squery = table.source().query(queryStr);
+            this.squery = table.mSource.query(queryStr);
         }
 
         // Used when Query is also a Mapper.

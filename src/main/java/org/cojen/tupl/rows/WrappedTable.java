@@ -67,10 +67,7 @@ public abstract class WrappedTable<S, T> extends SoftCache<String, Query<T>, Obj
         return false;
     }
 
-    /**
-     * Is called by generated Query classes.
-     */
-    public final Table<S> source() {
+    protected final Table<S> source() {
         return mSource;
     }
 
