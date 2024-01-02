@@ -259,16 +259,19 @@ public abstract sealed class ViewedTable<R> extends WrappedTable<R, R> {
     }
 
     @Override
-    public Updater<R> newUpdater(Transaction txn) throws IOException {
-        return new CheckedUpdater<>(helper(), mSource.newUpdater(txn, mQueryStr, mArgs));
+    public final Updater<R> newUpdater(Transaction txn) throws IOException {
+        return applyChecks(mSource.newUpdater(txn, mQueryStr, mArgs));
     }
 
     @Override
-    public Updater<R> newUpdater(Transaction txn, String query, Object... args)
+    public final Updater<R> newUpdater(Transaction txn, String query, Object... args)
         throws IOException
     {
-        return new CheckedUpdater<>
-            (helper(), mSource.newUpdater(txn, fuseQuery(query), fuseArguments(args)));
+        return applyChecks(mSource.newUpdater(txn, fuseQuery(query), fuseArguments(args)));
+    }
+
+    protected Updater<R> applyChecks(Updater<R> updater) {
+        return new CheckedUpdater<>(helper(), updater);
     }
 
     @Override
@@ -292,12 +295,7 @@ public abstract sealed class ViewedTable<R> extends WrappedTable<R, R> {
             public Updater<R> newUpdater(R row, Transaction txn, Object... args)
                 throws IOException
             {
-                return query.newUpdater(row, txn, fuseArguments(args));
-            }
-
-            @Override
-            public long deleteAll(Transaction txn, Object... args) throws IOException {
-                return query.deleteAll(txn, fuseArguments(args));
+                return applyChecks(query.newUpdater(row, txn, fuseArguments(args)));
             }
 
             @Override
@@ -935,15 +933,9 @@ public abstract sealed class ViewedTable<R> extends WrappedTable<R, R> {
         }
 
         @Override
-        public Updater<R> newUpdater(Transaction txn) throws IOException {
-            return mSource.newUpdater(txn, mQueryStr, mArgs);
-        }
-
-        @Override
-        public Updater<R> newUpdater(Transaction txn, String query, Object... args)
-            throws IOException
-        {
-            return mSource.newUpdater(txn, fuseQuery(query), fuseArguments(args));
+        protected Updater<R> applyChecks(Updater<R> updater) {
+            // No checks are required.
+            return updater;
         }
 
         @Override
