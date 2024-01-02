@@ -68,14 +68,14 @@ public abstract class WrappedTable<S, T> extends SoftCache<String, Query<T>, Obj
     }
 
     /**
-     * Is called by generated ScannerFactory classes.
+     * Is called by generated Query classes.
      */
     public final Table<S> source() {
         return mSource;
     }
 
     /**
-     * Is called by generated ScannerFactory classes.
+     * Is called by generated Query classes.
      */
     public final Scanner<T> sort(Scanner<T> source, Comparator<T> comparator,
                                  Set<String> projection, String orderBySpec)
