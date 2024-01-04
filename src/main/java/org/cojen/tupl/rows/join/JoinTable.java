@@ -29,11 +29,10 @@ import java.util.Comparator;
 import java.util.function.Predicate;
 
 import org.cojen.tupl.DurabilityMode;
+import org.cojen.tupl.Query;
 import org.cojen.tupl.Scanner;
 import org.cojen.tupl.Table;
 import org.cojen.tupl.Transaction;
-
-import org.cojen.tupl.diag.QueryPlan;
 
 import org.cojen.tupl.rows.QueryLauncher;
 import org.cojen.tupl.rows.RowInfo;
@@ -100,6 +99,11 @@ public abstract class JoinTable<J> implements Table<J> {
     }
 
     @Override
+    public Query<J> query(String query) throws IOException {
+        return scannerQueryLauncher(query);
+    }
+
+    @Override
     public boolean load(Transaction txn, J row) throws IOException {
         throw new UnsupportedOperationException();
     }
@@ -112,14 +116,6 @@ public abstract class JoinTable<J> implements Table<J> {
     @Override
     public Predicate<J> predicate(String query, Object... args) {
         return JoinPredicateMaker.newInstance(rowType(), query, args);
-    }
-
-    @Override
-    public QueryPlan scannerPlan(Transaction txn, String query, Object... args) throws IOException {
-        if (query == null) {
-            query = "{*}";
-        }
-        return scannerQueryLauncher(query).scannerPlan(txn, args);
     }
 
     @Override

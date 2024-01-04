@@ -17,8 +17,6 @@
 
 package org.cojen.tupl.rows.join;
 
-import java.io.IOException;
-
 import org.cojen.tupl.Scanner;
 
 /**

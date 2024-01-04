@@ -104,6 +104,8 @@ public interface RemoteTransaction extends Remote, Disposable {
         reset(cause);
     }
 
+    void rollback() throws IOException;
+
     @RemoteFailure(declared=false)
     LockResult lockShared(long indexId, byte[] key) throws LockFailureException;
 
@@ -151,6 +153,9 @@ public interface RemoteTransaction extends Remote, Disposable {
 
     @RemoteFailure(declared=false)
     byte[] lastLockedKey();
+
+    @RemoteFailure(declared=false)
+    boolean wasAcquired(long indexId, byte[] key);
 
     @RemoteFailure(declared=false)
     void unlock();

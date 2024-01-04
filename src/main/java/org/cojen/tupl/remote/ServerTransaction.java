@@ -143,6 +143,11 @@ public final class ServerTransaction implements RemoteTransaction, SessionAware 
     }
 
     @Override
+    public void rollback() throws IOException {
+        mTxn.rollback();
+    }
+
+    @Override
     public LockResult lockShared(long indexId, byte[] key) throws LockFailureException {
         return mTxn.lockShared(indexId, key);
     }
@@ -222,6 +227,11 @@ public final class ServerTransaction implements RemoteTransaction, SessionAware 
     @Override
     public byte[] lastLockedKey() {
         return mTxn.lastLockedKey();
+    }
+
+    @Override
+    public boolean wasAcquired(long indexId, byte[] key) {
+        return mTxn.wasAcquired(indexId, key);
     }
 
     @Override

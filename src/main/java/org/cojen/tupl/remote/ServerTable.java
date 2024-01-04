@@ -22,6 +22,7 @@ import java.io.IOException;
 import org.cojen.dirmi.Pipe;
 
 import org.cojen.tupl.DurabilityMode;
+import org.cojen.tupl.Query;
 import org.cojen.tupl.Updater;
 
 import org.cojen.tupl.diag.QueryPlan;
@@ -104,7 +105,7 @@ final class ServerTable<R> implements RemoteTable {
         return null;
     }
 
-    private void newUpdater(Updater updater, Pipe pipe) throws IOException {
+    void newUpdater(Updater updater, Pipe pipe) throws IOException {
         try {
             var proxy = (RemoteTableProxy) pipe.readObject();
             int characteristics = updater.characteristics();
@@ -131,8 +132,17 @@ final class ServerTable<R> implements RemoteTable {
     }
 
     @Override
-    public long deleteAll(RemoteTransaction txn, String query, Object... args) throws IOException {
-        return mTable.deleteAll(ServerTransaction.txn(txn), query, args);
+    public void query(String query) throws IOException {
+        // This just validates the query.
+        mTable.query(query);
+    }
+
+    @Override
+    public long deleteAll(RemoteTransaction txn, String queryStr, Object... args)
+        throws IOException
+    {
+        Query query = mTable.query(queryStr);
+        return query.deleteAll(ServerTransaction.txn(txn), args);
     }
 
     @Override
@@ -161,24 +171,27 @@ final class ServerTable<R> implements RemoteTable {
     }
 
     @Override
-    public QueryPlan scannerPlan(RemoteTransaction txn, String query, Object... args)
+    public QueryPlan scannerPlan(RemoteTransaction txn, String queryStr, Object... args)
         throws IOException
     {
-        return mTable.scannerPlan(ServerTransaction.txn(txn), query, args);
+        Query query = mTable.query(queryStr);
+        return query.scannerPlan(ServerTransaction.txn(txn), args);
     }
 
     @Override
-    public QueryPlan updaterPlan(RemoteTransaction txn, String query, Object... args)
+    public QueryPlan updaterPlan(RemoteTransaction txn, String queryStr, Object... args)
         throws IOException
     {
-        return mTable.updaterPlan(ServerTransaction.txn(txn), query, args);
+        Query query = mTable.query(queryStr);
+        return query.updaterPlan(ServerTransaction.txn(txn), args);
     }
 
     @Override
-    public QueryPlan streamPlan(RemoteTransaction txn, String query, Object... args)
+    public QueryPlan streamPlan(RemoteTransaction txn, String queryStr, Object... args)
         throws IOException
     {
-        return mTable.streamPlan(ServerTransaction.txn(txn), query, args);
+        Query query = mTable.query(queryStr);
+        return query.streamPlan(ServerTransaction.txn(txn), args);
     }
 
     @Override

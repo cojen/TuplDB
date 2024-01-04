@@ -30,6 +30,7 @@ import org.cojen.tupl.unsafe.UnsafeAccess;
  *
  * @author Brian S O'Neill
  */
+@SuppressWarnings("deprecation")
 public class DirectAccess {
     private static final sun.misc.Unsafe UNSAFE = UnsafeAccess.tryObtain();
 

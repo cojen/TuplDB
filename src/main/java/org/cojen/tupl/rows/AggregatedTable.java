@@ -36,6 +36,7 @@ import org.cojen.maker.MethodMaker;
 import org.cojen.maker.Variable;
 
 import org.cojen.tupl.Aggregator;
+import org.cojen.tupl.Query;
 import org.cojen.tupl.Scanner;
 import org.cojen.tupl.Table;
 import org.cojen.tupl.Transaction;
@@ -57,7 +58,7 @@ import static java.util.Spliterator.*;
  * @see Table#aggregate
  */
 public abstract class AggregatedTable<S, T> extends WrappedTable<S, T>
-    implements ScannerFactoryCache.Helper<AggregatedTable.ScannerFactory<S, T>>
+    implements QueryFactoryCache.Helper
 {
     private record FactoryKey(Class<?> sourceType, Class<?> targetType, Class<?> factoryClass) { }
 
@@ -123,7 +124,7 @@ public abstract class AggregatedTable<S, T> extends WrappedTable<S, T>
 
         {
             MethodMaker ctor = cm.addConstructor(Table.class, Aggregator.Factory.class).private_();
-            var cacheVar = ctor.var(ScannerFactoryCache.class).setExact(new ScannerFactoryCache());
+            var cacheVar = ctor.var(QueryFactoryCache.class).setExact(new QueryFactoryCache());
             ctor.invokeSuperConstructor(cacheVar, ctor.param(0), ctor.param(1));
         }
 
@@ -277,15 +278,15 @@ public abstract class AggregatedTable<S, T> extends WrappedTable<S, T>
         return bob.toString();
     }
 
-    private final ScannerFactoryCache<ScannerFactory<S, T>> mScannerFactoryCache;
+    private final QueryFactoryCache mQueryFactoryCache;
 
     protected final Aggregator.Factory<S, T> mAggregatorFactory;
 
-    protected AggregatedTable(ScannerFactoryCache<ScannerFactory<S, T>> scannerFactoryCache,
+    protected AggregatedTable(QueryFactoryCache queryFactoryCache,
                               Table<S> source, Aggregator.Factory<S, T> factory)
     {
         super(source);
-        mScannerFactoryCache = scannerFactoryCache;
+        mQueryFactoryCache = queryFactoryCache;
         mAggregatorFactory = factory;
     }
 
@@ -294,21 +295,7 @@ public abstract class AggregatedTable<S, T> extends WrappedTable<S, T>
                                        String query, Object... args)
         throws IOException
     {
-        Aggregator<S, T> aggregator = mAggregatorFactory.newAggregator();
-
-        ScannerFactory<S, T> factory;
-        try {
-            factory = mScannerFactoryCache.obtain(query, this);
-        } catch (Throwable e) {
-            try {
-                aggregator.close();
-            } catch (Throwable e2) {
-                RowUtils.suppress(e, e2);
-            }
-            throw e;
-        }
-
-        return factory.newScanner(this, aggregator, targetRow, txn, args);
+        return query(query).newScanner(targetRow, txn, args);
     }
 
     /**
@@ -331,16 +318,6 @@ public abstract class AggregatedTable<S, T> extends WrappedTable<S, T>
     @Override
     public boolean exists(Transaction txn, T targetRow) throws IOException {
         return anyRows(txn);
-    }
-
-    @Override
-    public final QueryPlan scannerPlan(Transaction txn, String query, Object... args)
-        throws IOException
-    {
-        try (Aggregator<S, T> aggregator = mAggregatorFactory.newAggregator()) {
-            return mScannerFactoryCache.obtain(query == null ? "{*}" : query, this)
-                .plan(this, aggregator, txn, args);
-        }
     }
 
     /**
@@ -370,31 +347,17 @@ public abstract class AggregatedTable<S, T> extends WrappedTable<S, T>
         return (source.characteristics() & ~(SIZED | SUBSIZED)) | ORDERED | SORTED;
     }
 
-    /**
-     * Called by the generated ScannerFactory.
-     */
-    public final QueryPlan plan(QueryPlan.Aggregator plan) {
-        return mAggregatorFactory.plan(plan);
-    }
-
-    /**
-     * Returns columns (or null) for QueryPlan.Aggregator.
-     */
-    public final String[] groupByColumns() {
-        RowInfo info = RowInfo.find(rowType());
-        if (info.keyColumns.isEmpty()) {
-            return null;
+    @Override
+    protected final Query<T> newQuery(String query) throws IOException {
+        try {
+            return (Query<T>) mQueryFactoryCache.obtain(query, this).invoke(this);
+        } catch (Throwable e) {
+            throw RowUtils.rethrow(e);
         }
-        var columns = new String[info.keyColumns.size()];
-        int ix = 0;
-        for (String name : info.keyColumns.keySet()) {
-            columns[ix++] = name;
-        }
-        return columns;
     }
 
     @Override
-    public ScannerFactory<S, T> makeScannerFactory(QuerySpec targetQuery) {
+    public MethodHandle makeQueryFactory(QuerySpec targetQuery) {
         Class<S> sourceType = mSource.rowType();
         RowInfo sourceInfo = RowInfo.find(sourceType);
 
@@ -509,138 +472,197 @@ public abstract class AggregatedTable<S, T> extends WrappedTable<S, T>
         sourceQuery = sourceQuery.withOrderBy(sourceOrderBy).withFilter(sourceFilter);
         targetQuery = targetQuery.withOrderBy(targetOrderBy).withFilter(targetFilter);
 
-        ClassMaker factoryMaker = targetInfo.rowGen().beginClassMaker
-            (AggregatedTable.class, targetType, "factory").final_().implement(ScannerFactory.class);
+        ClassMaker queryMaker = targetInfo.rowGen().beginClassMaker
+            (AggregatedTable.class, targetType, "query").final_().extend(BaseQuery.class);
 
-        // Keep a singleton instance, in order for a weakly cached reference to the factory to
-        // stick around until the class is unloaded.
-        factoryMaker.addField(Object.class, "_").private_().static_();
-
-        MethodMaker ctor = factoryMaker.addConstructor().private_();
-        ctor.invokeSuperConstructor();
-        ctor.field("_").set(ctor.this_());
-
-        MethodMaker mm = factoryMaker.addMethod
-            (Scanner.class, "newScanner", AggregatedTable.class, Aggregator.class,
-             Object.class, Transaction.class, Object[].class).public_().varargs();
-
-        var tableVar = mm.param(0);
-        var aggregatorVar = mm.param(1);
-        var targetRowVar = mm.param(2);
-        var txnVar = mm.param(3);
-        var argsVar = mm.param(4);
-
-        var sourceTableVar = tableVar.invoke("source");
-
-        final Variable sourceScannerVar;
-
-        if (sourceQuery.isFullScan()) {
-            sourceScannerVar = sourceTableVar.invoke("newScanner", txnVar);
-        } else {
-            sourceScannerVar = sourceTableVar.invoke
-                ("newScanner", txnVar, sourceQuery.toString(), argsVar);
+        {
+            MethodMaker mm = queryMaker.addConstructor(AggregatedTable.class).private_();
+            var tableVar = mm.param(0);
+            if (sourceQuery == null) {
+                mm.invokeSuperConstructor(tableVar);
+            } else {
+                mm.invokeSuperConstructor(tableVar, sourceQuery.toString());
+            }
         }
 
-        // Define the comparator returned by AggregatedScanner.
+        // Add the newScanner method.
 
-        Variable aggregateComparatorVar = null;
+        {
+            String methodName = "newScanner";
 
-        if (!targetInfo.keyColumns.isEmpty()) {
-            var aggregateOrderBy = new OrderBy(sourceOrderBy);
-            Iterator<Map.Entry<String, OrderBy.Rule>> it = aggregateOrderBy.entrySet().iterator();
+            MethodMaker mm = queryMaker.addMethod
+                (Scanner.class, methodName, Object.class, Transaction.class, Object[].class)
+                .public_().varargs();
 
-            while (it.hasNext()) {
-                Map.Entry<String, OrderBy.Rule> e = it.next();
-                if (!targetInfo.keyColumns.containsKey(e.getKey())) {
-                    // Can only refer to target primary key columns.
-                    it.remove();
+            var targetRowVar = mm.param(0);
+            var txnVar = mm.param(1);
+            var argsVar = mm.param(2);
+            var tableVar = mm.field("table").get();
+
+            var sourceScannerVar = mm.field("squery").invoke(methodName, txnVar, argsVar);
+            var aggregatorVar = tableVar.invoke("newAggregator", sourceScannerVar);
+
+            // Define the comparator returned by AggregatedScanner.
+
+            Variable aggregateComparatorVar = null;
+
+            if (!targetInfo.keyColumns.isEmpty()) {
+                var aggregateOrderBy = new OrderBy(sourceOrderBy);
+                Iterator<Map.Entry<String, OrderBy.Rule>> it =
+                    aggregateOrderBy.entrySet().iterator();
+
+                while (it.hasNext()) {
+                    Map.Entry<String, OrderBy.Rule> e = it.next();
+                    if (!targetInfo.keyColumns.containsKey(e.getKey())) {
+                        // Can only refer to target primary key columns.
+                        it.remove();
+                    }
+                }
+            
+                if (!sourceOrderBy.isEmpty()) {
+                    aggregateComparatorVar = mm.var(Comparator.class).setExact
+                        (ComparatorMaker.comparator
+                         (targetType, aggregateOrderBy, aggregateOrderBy.spec()));
                 }
             }
-            
-            if (!sourceOrderBy.isEmpty()) {
-                aggregateComparatorVar = mm.var(Comparator.class).setExact
-                    (ComparatorMaker.comparator
-                     (targetType, aggregateOrderBy, aggregateOrderBy.spec()));
-            }
-        }
 
-        var targetScannerVar = mm.new_(AggregatedScanner.class, tableVar, sourceScannerVar,
-                                       aggregateComparatorVar, targetRowVar, aggregatorVar);
+            var targetScannerVar = mm.new_(AggregatedScanner.class, tableVar, sourceScannerVar,
+                                           aggregateComparatorVar, targetRowVar, aggregatorVar);
 
-        targetScannerVar = WrappedScanner.wrap(targetType, argsVar, targetScannerVar,
-                                               targetQuery.filter(), targetQuery.projection());
+            targetScannerVar = WrappedScanner.wrap(targetType, argsVar, targetScannerVar,
+                                                   targetQuery.filter(), targetQuery.projection());
 
-        if (targetQuery.orderBy() != null) {
-            OrderBy orderBy = targetQuery.orderBy();
-            String orderBySpec = orderBy.spec();
+            if (targetQuery.orderBy() != null) {
+                OrderBy orderBy = targetQuery.orderBy();
+                String orderBySpec = orderBy.spec();
 
-            var comparatorVar = mm.var(Comparator.class).setExact
-                (ComparatorMaker.comparator(targetType, orderBy, orderBySpec));
+                var comparatorVar = mm.var(Comparator.class).setExact
+                    (ComparatorMaker.comparator(targetType, orderBy, orderBySpec));
 
-            Variable projectionVar = null;
+                Variable projectionVar = null;
 
-            if (targetQuery.projection() != null) {
-                projectionVar = mm.var(Set.class).setExact
-                    (SortedQueryLauncher.canonicalize(targetQuery.projection().keySet()));
+                if (targetQuery.projection() != null) {
+                    projectionVar = mm.var(Set.class).setExact
+                        (SortedQueryLauncher.canonicalize(targetQuery.projection().keySet()));
+                }
+
+                targetScannerVar = tableVar.invoke("sort", targetScannerVar, comparatorVar,
+                                                   projectionVar, orderBySpec);
             }
 
-            targetScannerVar = tableVar.invoke("sort", targetScannerVar, comparatorVar,
-                                               projectionVar, orderBySpec);
+            mm.return_(targetScannerVar);
         }
-
-        mm.return_(targetScannerVar);
 
         // Add the plan method.
 
-        mm = factoryMaker.addMethod
-            (QueryPlan.class, "plan", AggregatedTable.class, Aggregator.class,
-             Transaction.class, Object[].class).public_().varargs();
+        {
+            MethodMaker mm = queryMaker.addMethod
+                (QueryPlan.class, "scannerPlan", Transaction.class, Object[].class)
+                .public_().varargs();
 
-        tableVar = mm.param(0);
-        aggregatorVar = mm.param(1);
-        txnVar = mm.param(2);
-        argsVar = mm.param(3);
+            var txnVar = mm.param(0);
+            var argsVar = mm.param(1);
+            var tableVar = mm.field("table").get();
+            var sourceQueryVar = mm.field("squery");
 
-        final var planVar = tableVar.invoke("source")
-            .invoke("scannerPlan", txnVar, sourceQuery.toString(), argsVar);
+            final var planVar = sourceQueryVar.invoke("scannerPlan", txnVar, argsVar);
 
-        var targetVar = mm.var(Class.class).set(targetType).invoke("getName");
-        var usingVar = aggregatorVar.invoke("toString");
-        var groupByVar = tableVar.invoke("groupByColumns");
+            var targetVar = mm.var(Class.class).set(targetType).invoke("getName");
+            var usingVar = tableVar.invoke("aggregatorString");
+            var groupByVar = tableVar.invoke("groupByColumns");
 
-        var aggregatorPlanVar = mm.new_
-            (QueryPlan.Aggregator.class, targetVar, usingVar, groupByVar, planVar);
-        planVar.set(tableVar.invoke("plan", aggregatorPlanVar));
+            var aggregatorPlanVar = mm.new_
+                (QueryPlan.Aggregator.class, targetVar, usingVar, groupByVar, planVar);
+            planVar.set(tableVar.invoke("plan", aggregatorPlanVar));
 
-        if (targetQuery.filter() != TrueFilter.THE) {
-            planVar.set(mm.new_(QueryPlan.Filter.class, targetQuery.filter().toString(), planVar));
+            if (targetQuery.filter() != TrueFilter.THE) {
+                planVar.set(mm.new_(QueryPlan.Filter.class,
+                                    targetQuery.filter().toString(), planVar));
+            }
+
+            if (targetQuery.orderBy() != null) {
+                String spec = targetQuery.orderBy().spec();
+                var columnsVar = mm.var(OrderBy.class).invoke("splitSpec", spec);
+                planVar.set(mm.new_(QueryPlan.Sort.class, columnsVar, planVar));
+            }
+
+            mm.return_(planVar);
         }
 
-        if (targetQuery.orderBy() != null) {
-            String spec = targetQuery.orderBy().spec();
-            var columnsVar = mm.var(OrderBy.class).invoke("splitSpec", spec);
-            planVar.set(mm.new_(QueryPlan.Sort.class, columnsVar, planVar));
+        // Keep a reference to the MethodHandle instance, to prevent it from being garbage
+        // collected as long as the generated query class still exists.
+        queryMaker.addField(Object.class, "handle").private_().static_();
+
+        return QueryFactoryCache.ctorHandle(queryMaker.finishLookup(), AggregatedTable.class);
+    }
+
+    public abstract static class BaseQuery<S, T> implements Query<T> {
+        protected final AggregatedTable<S, T> table;
+        protected final Query<S> squery;
+
+        protected BaseQuery(AggregatedTable<S, T> table) throws IOException {
+            this.table = table;
+            this.squery = table.mSource.queryAll();
         }
 
-        mm.return_(planVar);
-
-        try {
-            MethodHandles.Lookup lookup = factoryMaker.finishHidden();
-            MethodHandle mh = lookup.findConstructor
-                (lookup.lookupClass(), MethodType.methodType(void.class));
-            return (ScannerFactory<S, T>) mh.invoke();
-        } catch (Throwable e) {
-            throw RowUtils.rethrow(e);
+        protected BaseQuery(AggregatedTable<S, T> table, String queryStr) throws IOException {
+            this.table = table;
+            this.squery = table.mSource.query(queryStr);
         }
     }
 
-    public interface ScannerFactory<S, T> {
-        Scanner<T> newScanner(AggregatedTable<S, T> table, Aggregator<S, T> aggregator,
-                              T targetRow, Transaction txn, Object... args)
-            throws IOException;
+    /**
+     * Called by generated Query instances.
+     */
+    public final Aggregator<S, T> newAggregator() throws IOException {
+        return mAggregatorFactory.newAggregator();
+    }
 
-        QueryPlan plan(AggregatedTable<S, T> table, Aggregator<S, T> aggregator,
-                       Transaction txn, Object... args)
-            throws IOException;
+    /**
+     * Called by generated Query instances.
+     */
+    public final Aggregator<S, T> newAggregator(Scanner<S> sourceScanner) throws IOException {
+        try {
+            return mAggregatorFactory.newAggregator();
+        } catch (Throwable e) {
+            try {
+                sourceScanner.close();
+            } catch (Throwable e2) {
+                RowUtils.suppress(e, e2);
+            }
+            throw e;
+        }
+    }
+
+    /**
+     * Called by generated Query instances.
+     */
+    public final String aggregatorString() throws IOException {
+        try (Aggregator<S, T> aggregator = mAggregatorFactory.newAggregator()) {
+            return aggregator.toString();
+        }
+    }
+
+    /**
+     * Called by generated Query instances.
+     */
+    public final QueryPlan plan(QueryPlan.Aggregator plan) {
+        return mAggregatorFactory.plan(plan);
+    }
+
+    /**
+     * Called by generated Query instances. Returns columns (or null) for QueryPlan.Aggregator.
+     */
+    public final String[] groupByColumns() {
+        RowInfo info = RowInfo.find(rowType());
+        if (info.keyColumns.isEmpty()) {
+            return null;
+        }
+        var columns = new String[info.keyColumns.size()];
+        int ix = 0;
+        for (String name : info.keyColumns.keySet()) {
+            columns[ix++] = name;
+        }
+        return columns;
     }
 }

@@ -23,6 +23,7 @@ import java.util.Comparator;
 import java.util.Set;
 
 import org.cojen.tupl.DurabilityMode;
+import org.cojen.tupl.Query;
 import org.cojen.tupl.Scanner;
 import org.cojen.tupl.Table;
 import org.cojen.tupl.Transaction;
@@ -32,7 +33,9 @@ import org.cojen.tupl.Transaction;
  * @param <T> target row type
  * @author Brian S. O'Neill
  */
-public abstract class WrappedTable<S, T> implements Table<T> {
+public abstract class WrappedTable<S, T> extends SoftCache<String, Query<T>, Object>
+    implements Table<T>
+{
     protected final Table<S> mSource;
 
     protected WrappedTable(Table<S> source) {
@@ -64,15 +67,12 @@ public abstract class WrappedTable<S, T> implements Table<T> {
         return false;
     }
 
-    /**
-     * Is called by generated ScannerFactory classes.
-     */
-    public final Table<S> source() {
+    protected final Table<S> source() {
         return mSource;
     }
 
     /**
-     * Is called by generated ScannerFactory classes.
+     * Is called by generated Query classes.
      */
     public final Scanner<T> sort(Scanner<T> source, Comparator<T> comparator,
                                  Set<String> projection, String orderBySpec)
@@ -80,4 +80,21 @@ public abstract class WrappedTable<S, T> implements Table<T> {
     {
         return RowSorter.sort(this, source, comparator, projection, orderBySpec);
     }
+
+    @Override
+    public final Query<T> query(String query) throws IOException {
+        return obtain(query, null);
+    }
+
+    // Defined in the SoftCache class.
+    @Override
+    protected final Query<T> newValue(String query, Object unused) {
+        try {
+            return newQuery(query);
+        } catch (IOException e) {
+            throw RowUtils.rethrow(e);
+        }
+    }
+
+    protected abstract Query<T> newQuery(String query) throws IOException;
 }

@@ -459,6 +459,23 @@ final class IndexSelector<R> {
     }
 
     /**
+     * Returns true if none of the selected indexes need to join to a primary. Projection isn't
+     * considered because even when a selected index is covering, a join might still be needed
+     * if a double check filter is needed against the primary row.
+     *
+     * @throws NullPointerException if no base table was provided to the constructor
+     */
+    boolean noJoins() {
+        int numSelected = numSelected();
+        for (int i=0; i<numSelected; i++) {
+            if (selectedIndexTable(i).joinedPrimaryTableClass() != null) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /**
      * Checks if an open range scan should scan in reverse, which is more efficient because no
      * predicate needs to be checked for each row.
      */

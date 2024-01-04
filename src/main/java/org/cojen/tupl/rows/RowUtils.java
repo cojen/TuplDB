@@ -25,6 +25,9 @@ import java.math.BigInteger;
 
 import java.nio.charset.StandardCharsets;
 
+import java.util.stream.Stream;
+import java.util.stream.StreamSupport;
+
 import org.cojen.tupl.LockMode;
 import org.cojen.tupl.Scanner;
 import org.cojen.tupl.Transaction;
@@ -818,5 +821,15 @@ public class RowUtils extends Utils {
         }
 
         return b.append('}').toString();
+    }
+
+    public static <R> Stream<R> newStream(Scanner<R> scanner) {
+        return StreamSupport.stream(scanner, false).onClose(() -> {
+            try {
+                scanner.close();
+            } catch (Throwable e) {
+                Utils.rethrow(e);
+            }
+        });
     }
 }

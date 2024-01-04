@@ -61,7 +61,20 @@ public class SoftCache<K, V, H> extends RefCache<K, V, H> {
             clear();
         }
 
-        if (size > 0) for (int i=0; i<entries.length; i++) {
+        if (size > 0) {
+            traverse(entries, c);
+        }
+    }
+
+    @Override
+    public synchronized void traverse(Consumer<V> c) {
+        if (mSize > 0) {
+            traverse(mEntries, c);
+        }
+    }
+
+    private static <K, V> void traverse(Entry<K, V>[] entries, Consumer<V> c) {
+        for (int i=0; i<entries.length; i++) {
             for (var e = entries[i]; e != null; e = e.mNext) {
                 V value = e.get();
                 if (value != null) {

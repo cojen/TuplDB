@@ -32,7 +32,7 @@ import static java.util.Spliterator.*;
  *
  * @author Brian S O'Neill
  */
-public final class DisjointUnionQueryLauncher<R> implements QueryLauncher<R> {
+public final class DisjointUnionQueryLauncher<R> extends QueryLauncher<R> {
     private final QueryLauncher<R>[] mLaunchers;
 
     /**
@@ -91,7 +91,7 @@ public final class DisjointUnionQueryLauncher<R> implements QueryLauncher<R> {
     }
 
     @Override
-    public QueryPlan scannerPlan(Transaction txn, Object... args) {
+    public QueryPlan scannerPlan(Transaction txn, Object... args) throws IOException {
         var subPlans = new QueryPlan[mLaunchers.length];
         for (int i=0; i<subPlans.length; i++) {
             subPlans[i] = mLaunchers[i].scannerPlan(txn, args);
@@ -100,7 +100,7 @@ public final class DisjointUnionQueryLauncher<R> implements QueryLauncher<R> {
     }
 
     @Override
-    public QueryPlan updaterPlan(Transaction txn, Object... args) {
+    public QueryPlan updaterPlan(Transaction txn, Object... args) throws IOException {
         var subPlans = new QueryPlan[mLaunchers.length];
         for (int i=0; i<subPlans.length; i++) {
             subPlans[i] = mLaunchers[i].updaterPlan(txn, args);
@@ -109,9 +109,9 @@ public final class DisjointUnionQueryLauncher<R> implements QueryLauncher<R> {
     }
 
     @Override
-    public void close() throws IOException {
+    public void closeIndexes() throws IOException {
         for (QueryLauncher launcher : mLaunchers) {
-            launcher.close();
+            launcher.closeIndexes();
         }
     }
 }

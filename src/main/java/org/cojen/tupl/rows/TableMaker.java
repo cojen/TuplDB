@@ -599,6 +599,9 @@ public class TableMaker {
         final var source = mm.field("mSource");
         final var cursorVar = source.invoke("newCursor", txnVar);
 
+        // Must enable redoPredicateMode before openAcquire to have any effect.
+        mm.invoke("redoPredicateMode", txnVar);
+
         Label cursorStart = mm.label().here();
 
         // If all value columns are dirty, replace the whole row and commit.
@@ -624,7 +627,10 @@ public class TableMaker {
                 prepareForTrigger(mm, mm.this_(), triggerVar, skipLabel);
                 triggerStart = mm.label().here();
 
+                Variable closerVar = mm.field("mIndexLock").invoke("openAcquire", txnVar, rowVar);
+                Label opStart = mm.label().here();
                 cursorVar.invoke("find", keyVar);
+                mm.finally_(opStart, () -> closerVar.invoke("close"));
                 var oldValueVar = cursorVar.invoke("value");
                 Label replace = mm.label();
                 oldValueVar.ifNe(null, replace);
@@ -632,9 +638,6 @@ public class TableMaker {
                 replace.here();
                 var valueVar = mm.invoke("encodeValue", rowVar);
                 cursorVar.invoke("store", valueVar);
-                // Only need to enable redoPredicateMode for the trigger, since it might insert
-                // new secondary index entries (and call openAcquire).
-                mm.invoke("redoPredicateMode", txnVar);
                 triggerVar.invoke("store", txnVar, rowVar, keyVar, oldValueVar, valueVar);
                 txnVar.invoke("commit");
                 markAllClean(rowVar);
@@ -643,8 +646,11 @@ public class TableMaker {
                 skipLabel.here();
             }
 
+            Variable closerVar = mm.field("mIndexLock").invoke("openAcquire", txnVar, rowVar);
+            Label opStart = mm.label().here();
             cursorVar.invoke("autoload", false);
             cursorVar.invoke("find", keyVar);
+            mm.finally_(opStart, () -> closerVar.invoke("close"));
             Label replace = mm.label();
             cursorVar.invoke("value").ifNe(null, replace);
             mm.new_(NoSuchRowException.class).throw_();
@@ -665,16 +671,9 @@ public class TableMaker {
             cont.here();
         }
 
-        cursorVar.invoke("find", keyVar);
-
-        Label hasValue = mm.label();
-        cursorVar.invoke("value").ifNe(null, hasValue);
-        mm.new_(NoSuchRowException.class).throw_();
-        hasValue.here();
-
         // The bulk of the method might not be implemented until needed, delaying
         // acquisition/creation of the current schema version.
-        finishDoUpdate(mm, rowVar, mergeVar, cursorVar);
+        finishDoUpdate(mm, rowVar, mergeVar, keyVar, cursorVar);
 
         mm.finally_(cursorStart, () -> cursorVar.invoke("reset"));
     }
@@ -682,8 +681,8 @@ public class TableMaker {
     /**
      * Subclass must override this method in order for the addDoUpdateMethod to work.
      */
-    protected void finishDoUpdate(MethodMaker mm,
-                                  Variable rowVar, Variable mergeVar, Variable cursorVar)
+    protected void finishDoUpdate(MethodMaker mm, Variable rowVar, Variable mergeVar,
+                                  Variable keyVar, Variable cursorVar)
     {
         throw new UnsupportedOperationException();
     }
@@ -692,14 +691,28 @@ public class TableMaker {
      * @param triggers 0 for false, 1 for true
      */
     protected static void finishDoUpdate(MethodMaker mm, RowInfo rowInfo, int schemaVersion,
-                                         int triggers, Variable tableVar,
-                                         Variable rowVar, Variable mergeVar, Variable cursorVar)
+                                         int triggers, Variable tableVar, Variable rowVar,
+                                         Variable mergeVar, Variable keyVar, Variable cursorVar)
     {
+        Label findLabel = mm.label().here();
+        var resultVar = cursorVar.invoke("find", keyVar);
+
+        Label hasValue = mm.label();
+        cursorVar.invoke("value").ifNe(null, hasValue);
+        mm.new_(NoSuchRowException.class).throw_();
+        hasValue.here();
+
+        var txnVar = cursorVar.invoke("link");
         Variable valueVar = cursorVar.invoke("value");
 
         var ue = encodeUpdateValue(mm, rowInfo, schemaVersion, tableVar, rowVar, valueVar);
         Variable newValueVar = ue.newEntryVar;
         Variable[] offsetVars = ue.offsetVars;
+
+        var acquiredVar = tableVar.invoke("tryOpenAcquireP", txnVar, rowVar, keyVar,
+                                          cursorVar, resultVar, newValueVar);
+
+        acquiredVar.ifFalse(findLabel); // loop back and try again
 
         if (triggers == 0) {
             cursorVar.invoke("commit", newValueVar);
@@ -716,11 +729,6 @@ public class TableMaker {
 
             cursorVar.invoke("store", newValueVar);
 
-            // Only need to enable redoPredicateMode for the trigger, since it might insert
-            // new secondary index entries (and call openAcquire).
-            var txnVar = cursorVar.invoke("link");
-            tableVar.invoke("redoPredicateMode", txnVar);
-            var keyVar = cursorVar.invoke("key");
             triggerVar.invoke("storeP", txnVar, rowVar, keyVar, valueVar, newValueVar);
             txnVar.invoke("commit");
             Label cont = mm.label().goto_();
@@ -775,8 +783,6 @@ public class TableMaker {
             prepareForTrigger(mm, tableVar, triggerVar, skipLabel);
             Label triggerStart = mm.label().here();
 
-            var txnVar = cursorVar.invoke("link");
-            var keyVar = cursorVar.invoke("key");
             triggerVar.invoke("store", txnVar, rowVar, keyVar, valueVar, newValueVar);
             cursorVar.invoke("commit", newValueVar);
             Label cont = mm.label().goto_();

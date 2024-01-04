@@ -43,6 +43,7 @@ import org.cojen.maker.Label;
 import org.cojen.maker.MethodMaker;
 
 import org.cojen.tupl.NoSuchRowException;
+import org.cojen.tupl.Query;
 import org.cojen.tupl.Scanner;
 import org.cojen.tupl.Table;
 import org.cojen.tupl.Transaction;
@@ -211,37 +212,37 @@ public abstract sealed class ViewedTable<R> extends WrappedTable<R, R> {
     }
 
     @Override
-    public Class<R> rowType() {
+    public final Class<R> rowType() {
         return mSource.rowType();
     }
 
     @Override
-    public R newRow() {
+    public final R newRow() {
         return mSource.newRow();
     }
 
     @Override
-    public R cloneRow(R row) {
+    public final R cloneRow(R row) {
         return mSource.cloneRow(row);
     }
 
     @Override
-    public void unsetRow(R row) {
+    public final void unsetRow(R row) {
         mSource.unsetRow(row);
     }
 
     @Override
-    public void cleanRow(R row) {
+    public final void cleanRow(R row) {
         mSource.cleanRow(row);
     }
 
     @Override
-    public void copyRow(R from, R to) {
+    public final void copyRow(R from, R to) {
         mSource.copyRow(from, to);
     }
 
     @Override
-    public boolean isSet(R row, String name) {
+    public final boolean isSet(R row, String name) {
         return mSource.isSet(row, name);
     }
 
@@ -258,21 +259,19 @@ public abstract sealed class ViewedTable<R> extends WrappedTable<R, R> {
     }
 
     @Override
-    public Updater<R> newUpdater(Transaction txn) throws IOException {
-        return new CheckedUpdater<>(helper(), mSource.newUpdater(txn, mQueryStr, mArgs));
+    public final Updater<R> newUpdater(Transaction txn) throws IOException {
+        return applyChecks(mSource.newUpdater(txn, mQueryStr, mArgs));
     }
 
     @Override
-    public Updater<R> newUpdater(Transaction txn, String query, Object... args)
+    public final Updater<R> newUpdater(Transaction txn, String query, Object... args)
         throws IOException
     {
-        return new CheckedUpdater<>
-            (helper(), mSource.newUpdater(txn, fuseQuery(query), fuseArguments(args)));
+        return applyChecks(mSource.newUpdater(txn, fuseQuery(query), fuseArguments(args)));
     }
 
-    @Override
-    public long deleteAll(Transaction txn, String query, Object... args) throws IOException {
-        return mSource.deleteAll(txn, fuseQuery(query), fuseArguments(args));
+    protected Updater<R> applyChecks(Updater<R> updater) {
+        return new CheckedUpdater<>(helper(), updater);
     }
 
     @Override
@@ -281,23 +280,50 @@ public abstract sealed class ViewedTable<R> extends WrappedTable<R, R> {
     }
 
     @Override
-    public final QueryPlan scannerPlan(Transaction txn, String query, Object... args)
-        throws IOException
-    {
-        return mSource.scannerPlan(txn, fuseQuery(query), fuseArguments(args));
-    }
+    protected final Query<R> newQuery(String queryStr) throws IOException {
+        Query<R> query = mSource.query(fuseQuery(queryStr));
 
-    @Override
-    public final QueryPlan updaterPlan(Transaction txn, String query, Object... args)
-        throws IOException
-    {
-        return mSource.updaterPlan(txn, fuseQuery(query), fuseArguments(args));
+        return new Query<R>() {
+            @Override
+            public Scanner<R> newScanner(R row, Transaction txn, Object... args)
+                throws IOException
+            {
+                return query.newScanner(row, txn, fuseArguments(args));
+            }
+
+            @Override
+            public Updater<R> newUpdater(R row, Transaction txn, Object... args)
+                throws IOException
+            {
+                return applyChecks(query.newUpdater(row, txn, fuseArguments(args)));
+            }
+
+            @Override
+            public boolean anyRows(Transaction txn, Object... args) throws IOException {
+                return query.anyRows(txn, fuseArguments(args));
+            }
+
+            @Override
+            public boolean anyRows(R row, Transaction txn, Object... args) throws IOException {
+                return query.anyRows(row, txn, fuseArguments(args));
+            }
+
+            @Override
+            public QueryPlan scannerPlan(Transaction txn, Object... args) throws IOException {
+                return query.scannerPlan(txn, fuseArguments(args));
+            }
+
+            @Override
+            public QueryPlan updaterPlan(Transaction txn, Object... args) throws IOException {
+                return query.updaterPlan(txn, fuseArguments(args));
+            }
+        };
     }
 
     /**
      * Returns this view's query specification.
      */
-    protected final QuerySpec query() {
+    protected final QuerySpec querySpec() {
         QuerySpec query = mQueryRef.get();
 
         if (query == null) {
@@ -312,11 +338,7 @@ public abstract sealed class ViewedTable<R> extends WrappedTable<R, R> {
      * Fuse this view's query specification with the one given. The arguments of the given
      * query are incremented by mMaxArg.
      */
-    protected String fuseQuery(String queryStr) {
-        if (queryStr == null) {
-            return mQueryStr;
-        }
-
+    protected final String fuseQuery(String queryStr) {
         SoftCache<String, String, Object> cache = mFusedQueries;
 
         if (cache == null) {
@@ -339,7 +361,7 @@ public abstract sealed class ViewedTable<R> extends WrappedTable<R, R> {
     }
 
     private QuerySpec doFuseQuery(String queryStr) {
-        QuerySpec thisQuery = query();
+        QuerySpec thisQuery = querySpec();
         Map<String, ? extends ColumnInfo> allColumns = thisQuery.projection();
 
         if (allColumns == null) {
@@ -367,7 +389,7 @@ public abstract sealed class ViewedTable<R> extends WrappedTable<R, R> {
     /**
      * Used in conjunction with fuseQuery.
      */
-    protected Object[] fuseArguments(Object... args) {
+    protected final Object[] fuseArguments(Object... args) {
         if (args == null || args.length == 0) {
             return mArgs;
         } else if (mMaxArg == 0) {
@@ -385,8 +407,8 @@ public abstract sealed class ViewedTable<R> extends WrappedTable<R, R> {
      *
      * @param emptyProjection pass true to project no columns
      */
-    private String fuseQueryWithPk(boolean emptyProjection) {
-        QuerySpec query = query();
+    private Query<R> fuseQueryWithPk(boolean emptyProjection) throws IOException {
+        QuerySpec query = querySpec();
         RowFilter filter = query.filter();
         int argNum = mMaxArg;
         for (ColumnInfo column : RowInfo.find(rowType()).keyColumns.values()) {
@@ -396,7 +418,7 @@ public abstract sealed class ViewedTable<R> extends WrappedTable<R, R> {
         if (emptyProjection) {
             query = query.withProjection(Collections.emptyMap());
         }
-        return query.toString();
+        return mSource.query(query.toString());
     }
 
     /**
@@ -424,7 +446,7 @@ public abstract sealed class ViewedTable<R> extends WrappedTable<R, R> {
             }
         };
 
-        query().filter().accept(visitor);
+        querySpec().filter().accept(visitor);
 
         return visitor.mPkOnly;
     }
@@ -491,7 +513,7 @@ public abstract sealed class ViewedTable<R> extends WrappedTable<R, R> {
             cm.addMethod(boolean.class, "isPkFilter").protected_().override().return_(true);
         }
 
-        QuerySpec query = table.query();
+        QuerySpec query = table.querySpec();
 
         // Implement the various check* methods.
         for (int which = 1; which <= 3; which++) {
@@ -631,7 +653,7 @@ public abstract sealed class ViewedTable<R> extends WrappedTable<R, R> {
      * were generated as hidden, it would lead to confusing stack traces.
      */
     public static abstract class Helper<R> {
-        private String mFusedPkQuery, mFusedPkQueryEmptyProjection;
+        private Query<R> mFusedPkQuery, mFusedPkQueryEmptyProjection;
 
         protected Helper() {
         }
@@ -651,10 +673,10 @@ public abstract sealed class ViewedTable<R> extends WrappedTable<R, R> {
             // projection might need to be applied when loading the row. The caller of this method
             // is responsible for implementing the quick option if all columns are projected.
 
-            String query = fusedPkQuery(table);
+            Query<R> query = fusedPkQuery(table);
             Object[] args = fusePkArguments(table.mArgs, table.mMaxArg, row);
 
-            try (var scanner = table.mSource.newScanner(txn, query, args)) {
+            try (var scanner = query.newScanner(txn, args)) {
                 R found = scanner.row();
                 if (found == null) {
                     unsetValueColumns(row);
@@ -678,10 +700,10 @@ public abstract sealed class ViewedTable<R> extends WrappedTable<R, R> {
             }
 
             // Use an empty projection because the columns don't need to be decoded.
-            String query = fusedPkQueryEmptyProjection(table);
+            Query<R> query = fusedPkQueryEmptyProjection(table);
             Object[] args = fusePkArguments(table.mArgs, table.mMaxArg, row);
 
-            try (var scanner = table.mSource.newScanner(txn, query, args)) {
+            try (var scanner = query.newScanner(txn, args)) {
                 return scanner.row() != null;
             }
         }
@@ -727,10 +749,10 @@ public abstract sealed class ViewedTable<R> extends WrappedTable<R, R> {
             // require that all columns within the projection be set.
             checkPk(row);
 
-            String query = fusedPkQuery(table);
+            Query<R> query = fusedPkQuery(table);
             Object[] args = fusePkArguments(table.mArgs, table.mMaxArg, row);
 
-            try (var updater = table.mSource.newUpdater(txn, query, args)) {
+            try (var updater = query.newUpdater(txn, args)) {
                 R found = updater.row();
                 if (found == null) {
                     // It's possible that the row wasn't found because it was filtered out or
@@ -759,22 +781,22 @@ public abstract sealed class ViewedTable<R> extends WrappedTable<R, R> {
                 return table.mSource.delete(txn, row);
             }
 
-            String query = fusedPkQueryEmptyProjection(table);
+            Query<R> query = fusedPkQueryEmptyProjection(table);
             Object[] args = fusePkArguments(table.mArgs, table.mMaxArg, row);
 
-            return table.mSource.deleteAll(txn, query, args) != 0;
+            return query.deleteAll(txn, args) != 0;
         }
 
-        private String fusedPkQuery(ViewedTable<R> table) {
-            String query = mFusedPkQuery;
+        private Query<R> fusedPkQuery(ViewedTable<R> table) throws IOException {
+            Query<R> query = mFusedPkQuery;
             if (query == null) {
                 mFusedPkQuery = query = table.fuseQueryWithPk(false);
             }
             return query;
         }
 
-        private String fusedPkQueryEmptyProjection(ViewedTable<R> table) {
-            String query = mFusedPkQueryEmptyProjection;
+        private Query<R> fusedPkQueryEmptyProjection(ViewedTable<R> table) throws IOException {
+            Query<R> query = mFusedPkQueryEmptyProjection;
             if (query == null) {
                 mFusedPkQueryEmptyProjection = query = table.fuseQueryWithPk(true);
             }
@@ -911,15 +933,9 @@ public abstract sealed class ViewedTable<R> extends WrappedTable<R, R> {
         }
 
         @Override
-        public Updater<R> newUpdater(Transaction txn) throws IOException {
-            return mSource.newUpdater(txn, mQueryStr, mArgs);
-        }
-
-        @Override
-        public Updater<R> newUpdater(Transaction txn, String query, Object... args)
-            throws IOException
-        {
-            return mSource.newUpdater(txn, fuseQuery(query), fuseArguments(args));
+        protected Updater<R> applyChecks(Updater<R> updater) {
+            // No checks are required.
+            return updater;
         }
 
         @Override

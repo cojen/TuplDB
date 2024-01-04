@@ -36,6 +36,7 @@ import org.cojen.maker.MethodMaker;
 import org.cojen.maker.Variable;
 
 import org.cojen.tupl.Grouper;
+import org.cojen.tupl.Query;
 import org.cojen.tupl.Scanner;
 import org.cojen.tupl.Table;
 import org.cojen.tupl.Transaction;
@@ -54,7 +55,7 @@ import org.cojen.tupl.rows.filter.TrueFilter;
  * @see Table#group
  */
 public abstract class GroupedTable<S, T> extends AbstractMappedTable<S, T>
-    implements ScannerFactoryCache.Helper<GroupedTable.ScannerFactory<S, T>>
+    implements QueryFactoryCache.Helper
 {
     private record FactoryKey(Class<?> sourceType, String groupBy, String orderBy,
                               Class<?> targetType, Class<?> factoryClass) { } 
@@ -125,7 +126,7 @@ public abstract class GroupedTable<S, T> extends AbstractMappedTable<S, T>
 
         {
             MethodMaker ctor = cm.addConstructor(Table.class, Grouper.Factory.class).private_();
-            var cacheVar = ctor.var(ScannerFactoryCache.class).setExact(new ScannerFactoryCache());
+            var cacheVar = ctor.var(QueryFactoryCache.class).setExact(new QueryFactoryCache());
             ctor.invokeSuperConstructor
                 (cacheVar, ctor.param(0), groupBySpec, orderBySpec, ctor.param(1));
         }
@@ -153,18 +154,18 @@ public abstract class GroupedTable<S, T> extends AbstractMappedTable<S, T>
         return mh;
     }
 
-    private final ScannerFactoryCache<ScannerFactory<S, T>> mScannerFactoryCache;
+    private final QueryFactoryCache mQueryFactoryCache;
 
     protected final String mGroupBySpec, mOrderBySpec;
     protected final Grouper.Factory<S, T> mGrouperFactory;
     protected final Comparator<S> mGroupComparator;
 
-    protected GroupedTable(ScannerFactoryCache<ScannerFactory<S, T>> scannerFactoryCache,
+    protected GroupedTable(QueryFactoryCache queryFactoryCache,
                            Table<S> source, String groupBySpec, String orderBySpec,
                            Grouper.Factory<S, T> factory)
     {
         super(source);
-        mScannerFactoryCache = scannerFactoryCache;
+        mQueryFactoryCache = queryFactoryCache;
         mGroupBySpec = groupBySpec;
         mOrderBySpec = orderBySpec;
         mGrouperFactory = factory;
@@ -184,21 +185,7 @@ public abstract class GroupedTable<S, T> extends AbstractMappedTable<S, T>
                                        String query, Object... args)
         throws IOException
     {
-        Grouper<S, T> grouper = mGrouperFactory.newGrouper();
-
-        ScannerFactory<S, T> factory;
-        try {
-            factory = mScannerFactoryCache.obtain(query, this);
-        } catch (Throwable e) {
-            try {
-                grouper.close();
-            } catch (Throwable e2) {
-                RowUtils.suppress(e, e2);
-            }
-            throw e;
-        }
-
-        return factory.newScanner(this, grouper, targetRow, txn, args);
+        return query(query).newScanner(targetRow, txn, args);
     }
 
     @Override
@@ -209,16 +196,6 @@ public abstract class GroupedTable<S, T> extends AbstractMappedTable<S, T>
     @Override
     public boolean exists(Transaction txn, T row) throws IOException {
         throw new ViewConstraintException();
-    }
-
-    @Override
-    public final QueryPlan scannerPlan(Transaction txn, String query, Object... args)
-        throws IOException
-    {
-        try (Grouper<S, T> grouper = mGrouperFactory.newGrouper()) {
-            return mScannerFactoryCache.obtain(query == null ? "{*}" : query, this)
-                .plan(this, grouper, txn, args);
-        }
     }
 
     /**
@@ -240,16 +217,34 @@ public abstract class GroupedTable<S, T> extends AbstractMappedTable<S, T>
     }
 
     @Override
-    public ScannerFactory<S, T> makeScannerFactory(QuerySpec targetQuery) {
+    protected final Query<T> newQuery(String query) throws IOException {
+        try {
+            return (Query<T>) mQueryFactoryCache.obtain(query, this).invoke(this);
+        } catch (Throwable e) {
+            throw RowUtils.rethrow(e);
+        }
+    }
+
+    @Override
+    public MethodHandle makeQueryFactory(QuerySpec targetQuery) {
         var splitter = new Splitter(targetQuery);
 
         Class<T> targetType = rowType();
         RowInfo targetInfo = RowInfo.find(targetType);
 
         ClassMaker cm = targetInfo.rowGen().beginClassMaker
-            (GroupedTable.class, targetType, "factory").final_().implement(ScannerFactory.class);
+            (GroupedTable.class, targetType, "query").final_().extend(BaseQuery.class);
 
-        cm.addConstructor().private_();
+        {
+            MethodMaker mm = cm.addConstructor(GroupedTable.class).private_();
+            var tableVar = mm.param(0);
+            QuerySpec sourceQuery = splitter.mSourceQuery;
+            if (sourceQuery == null) {
+                mm.invokeSuperConstructor(tableVar);
+            } else {
+                mm.invokeSuperConstructor(tableVar, sourceQuery.toString());
+            }
+        }
 
         Class scannerClass = GroupedScanner.class;
 
@@ -310,29 +305,18 @@ public abstract class GroupedTable<S, T> extends AbstractMappedTable<S, T>
             String methodName = "newScanner";
 
             MethodMaker mm = cm.addMethod
-                (Scanner.class, methodName, GroupedTable.class, Grouper.class,
-                 Object.class, Transaction.class, Object[].class)
+                (Scanner.class, methodName, Object.class, Transaction.class, Object[].class)
                 .public_().varargs();
 
-            var tableVar = mm.param(0);
-            var grouperVar = mm.param(1);
-            var targetRowVar = mm.param(2);
-            var txnVar = mm.param(3);
-            var argsVar = mm.param(4);
+            var targetRowVar = mm.param(0);
+            var txnVar = mm.param(1);
+            var argsVar = mm.param(2);
+            var tableVar = mm.field("table").get();
 
             argsVar = splitter.prepareArgs(argsVar);
 
-            var sourceTableVar = tableVar.invoke("source");
-            Variable sourceScannerVar;
-
-            QuerySpec sourceQuery = splitter.mSourceQuery;
-
-            if (sourceQuery == null) {
-                sourceScannerVar = sourceTableVar.invoke(methodName, txnVar);
-            } else {
-                sourceScannerVar = sourceTableVar.invoke
-                    (methodName, txnVar, sourceQuery.toString(), argsVar);
-            }
+            var sourceScannerVar = mm.field("squery").invoke(methodName, txnVar, argsVar);
+            var grouperVar = tableVar.invoke("newGrouper", sourceScannerVar);
 
             Variable resultVar;
 
@@ -367,22 +351,18 @@ public abstract class GroupedTable<S, T> extends AbstractMappedTable<S, T>
 
         {
             MethodMaker mm = cm.addMethod
-                (QueryPlan.class, "plan", GroupedTable.class, Grouper.class,
-                 Transaction.class, Object[].class).public_().varargs();
+                (QueryPlan.class, "scannerPlan", Transaction.class, Object[].class)
+                .public_().varargs();
 
-            var tableVar = mm.param(0);
-            var grouperVar = mm.param(1);
-            var txnVar = mm.param(2);
-            var argsVar = splitter.prepareArgs(mm.param(3));
+            var txnVar = mm.param(0);
+            var argsVar = splitter.prepareArgs(mm.param(1));
+            var tableVar = mm.field("table").get();
+            var sourceQueryVar = mm.field("squery");
 
-            QuerySpec sourceQuery = splitter.mSourceQuery;
-            String sourceQueryStr = sourceQuery == null ? null : sourceQuery.toString();
-
-            var planVar = tableVar.invoke("source")
-                .invoke("scannerPlan", txnVar, sourceQueryStr, argsVar);
+            final var planVar = sourceQueryVar.invoke("scannerPlan", txnVar, argsVar);
 
             var targetVar = mm.var(Class.class).set(targetType).invoke("getName");
-            var usingVar = grouperVar.invoke("toString");
+            var usingVar = tableVar.invoke("grouperString");
             var groupByVar = tableVar.invoke("groupByColumns");
             var orderByVar = tableVar.invoke("orderByColumns");
 
@@ -404,28 +384,25 @@ public abstract class GroupedTable<S, T> extends AbstractMappedTable<S, T>
             mm.return_(planVar);
         }
 
-        try {
-            MethodHandles.Lookup lookup = cm.finishHidden();
-            MethodHandle mh = lookup.findConstructor
-                (lookup.lookupClass(), MethodType.methodType(void.class));
-            return (ScannerFactory<S, T>) mh.invoke();
-        } catch (Throwable e) {
-            throw RowUtils.rethrow(e);
-        }
+        // Keep a reference to the MethodHandle instance, to prevent it from being garbage
+        // collected as long as the generated query class still exists.
+        cm.addField(Object.class, "handle").private_().static_();
+
+        return QueryFactoryCache.ctorHandle(cm.finishLookup(), GroupedTable.class);
     }
 
     @Override
-    protected String sourceProjection() {
+    protected final String sourceProjection() {
         return mGrouperFactory.sourceProjection();
     }
 
     @Override
-    protected Class<?> inverseFunctions() {
+    protected final Class<?> inverseFunctions() {
         return mGrouperFactory.getClass();
     }
 
     @Override
-    protected SortPlan analyzeSort(InverseFinder finder, QuerySpec targetQuery) {
+    protected final SortPlan analyzeSort(InverseFinder finder, QuerySpec targetQuery) {
         OrderBy groupBy = OrderBy.forSpec(finder.mSourceColumns, mGroupBySpec);
         OrderBy orderBy = OrderBy.forSpec(finder.mSourceColumns, mOrderBySpec);
         OrderBy targetOrderBy = targetQuery.orderBy();
@@ -490,18 +467,55 @@ public abstract class GroupedTable<S, T> extends AbstractMappedTable<S, T>
         return plan;
     }
 
-    public interface ScannerFactory<S, T> {
-        Scanner<T> newScanner(GroupedTable<S, T> table, Grouper<S, T> grouper,
-                              T targetRow, Transaction txn, Object... args)
-            throws IOException;
+    public abstract static class BaseQuery<S, T> implements Query<T> {
+        protected final GroupedTable<S, T> table;
+        protected final Query<S> squery;
 
-        QueryPlan plan(GroupedTable<S, T> table, Grouper<S, T> grouper,
-                       Transaction txn, Object... args)
-            throws IOException;
+        protected BaseQuery(GroupedTable<S, T> table) throws IOException {
+            this.table = table;
+            this.squery = table.mSource.queryAll();
+        }
+
+        protected BaseQuery(GroupedTable<S, T> table, String queryStr) throws IOException {
+            this.table = table;
+            this.squery = table.mSource.query(queryStr);
+        }
     }
 
     /**
-     * Called by the generated ScannerFactory.
+     * Called by generated Query instances.
+     */
+    public final Grouper<S, T> newGrouper() throws IOException {
+        return mGrouperFactory.newGrouper();
+    }
+
+    /**
+     * Called by generated Query instances.
+     */
+    public final Grouper<S, T> newGrouper(Scanner<S> sourceScanner) throws IOException {
+        try {
+            return mGrouperFactory.newGrouper();
+        } catch (Throwable e) {
+            try {
+                sourceScanner.close();
+            } catch (Throwable e2) {
+                RowUtils.suppress(e, e2);
+            }
+            throw e;
+        }
+    }
+
+    /**
+     * Called by generated Query instances.
+     */
+    public final String grouperString() throws IOException {
+        try (Grouper<S, T> grouper = mGrouperFactory.newGrouper()) {
+            return grouper.toString();
+        }
+    }
+
+    /**
+     * Called by generated Query instances.
      */
     public final QueryPlan plan(QueryPlan.Grouper plan) {
         return mGrouperFactory.plan(plan);

@@ -167,7 +167,7 @@ public class PermutationsTest {
         String query = "department.id == employee.departmentId && " +
             "department.companyId == company.id";
 
-        QueryPlan plan = mJoin.scannerPlan(null, query);
+        QueryPlan plan = mJoin.query(query).scannerPlan(null);
         //System.out.println(plan);
 
         var rows = new TreeSet<String>();

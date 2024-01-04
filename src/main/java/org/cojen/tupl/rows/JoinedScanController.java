@@ -19,8 +19,6 @@ package org.cojen.tupl.rows;
 
 import java.io.IOException;
 
-import java.util.Arrays;
-
 import org.cojen.tupl.Cursor;
 import org.cojen.tupl.Index;
 import org.cojen.tupl.LockMode;
@@ -72,14 +70,15 @@ public abstract class JoinedScanController<R> extends SingleScanController<R> {
      *
      * @param secondaryCursor must have a non-null transaction
      */
-    protected byte[] join(Cursor secondaryCursor, LockResult result, byte[] primaryKey)
+    protected final byte[] join(Cursor secondaryCursor, LockResult secondaryResult,
+                                byte[] primaryKey)
         throws IOException
     {
         Transaction txn = secondaryCursor.link();
         byte[] primaryValue = mPrimaryIndex.load(txn, primaryKey);
 
-        if (result == LockResult.ACQUIRED && txn.lastLockedIndex() == mPrimaryIndex.id() &&
-            Arrays.equals(txn.lastLockedKey(), primaryKey))
+        if (secondaryResult == LockResult.ACQUIRED &&
+            txn.wasAcquired(mPrimaryIndex.id(), primaryKey))
         {
             // Combine the secondary and primary locks together, so that they can be released
             // together if the row is filtered out.
