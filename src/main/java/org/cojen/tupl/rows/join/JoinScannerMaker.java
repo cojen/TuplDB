@@ -18,6 +18,7 @@
 package org.cojen.tupl.rows.join;
 
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -30,6 +31,7 @@ import org.cojen.maker.Label;
 import org.cojen.maker.MethodMaker;
 import org.cojen.maker.Variable;
 
+import org.cojen.tupl.Query;
 import org.cojen.tupl.Scanner;
 import org.cojen.tupl.Table;
 import org.cojen.tupl.Transaction;
@@ -61,21 +63,9 @@ final class JoinScannerMaker {
         cBaseCache = new WeakCache<>() {
             @Override
             protected Class<?> newValue(Key key, JoinSpec spec) {
-                return new JoinScannerMaker(key.mJoinType, spec, null).finish();
+                return new JoinScannerMaker(key.mJoinType, spec, null).finishBase();
             }
         };
-    }
-
-    /**
-     * Returns a class implementing JoinScanner, which is constructed with these parameters:
-     *
-     *   (Transaction txn, J joinRow, Table table0, ..., Object... args)
-     *
-     * @param joinType interface which defines a join row
-     * @see JoinScanner
-     */
-    static Class<?> make(Class<?> joinType, JoinSpec spec, QuerySpec query) {
-        return new JoinScannerMaker(joinType, spec, query).finish();
     }
 
     private static final class Key {
@@ -101,12 +91,17 @@ final class JoinScannerMaker {
     }
 
     private final Class<?> mJoinType;
+    private final RowInfo mJoinInfo;
     private final JoinSpec mSpec;
     private final QuerySpec mQuery;
 
     private final Class<?> mJoinClass;
 
+    private final Class<?> mParentClass;
     private final ClassMaker mClassMaker;
+
+    private ClassMaker mLauncherMaker;
+    private Map<String, Map<QuerySpec, MethodMaker>> mQueryMethods;
 
     private MethodMaker mCtorMaker;
 
@@ -134,33 +129,95 @@ final class JoinScannerMaker {
     private Map<String, ColumnInfo> mProjectionMap;
 
     /**
-     * @param query pass null for base class
+     * @param joinType interface which defines a join row
      */
-    private JoinScannerMaker(Class<?> joinType, JoinSpec spec, QuerySpec query) {
+    JoinScannerMaker(Class<?> joinType, JoinSpec spec, QuerySpec query) {
         mJoinType = joinType;
+        mJoinInfo = RowInfo.find(joinType);
         mSpec = spec;
         mQuery = query;
 
-        mJoinClass = JoinRowMaker.find(joinType);
-
-        RowInfo joinInfo = RowInfo.find(joinType);
+        mJoinClass = JoinRowMaker.find(mJoinType);
 
         if (query == null) {
             // Generate a new sub-package to facilitate unloading.
             String subPackage = RowGen.newSubPackage();
             mClassMaker = RowGen.beginClassMaker
-                (getClass(), joinType, joinInfo.name, subPackage, "scanner")
+                (getClass(), joinType, mJoinInfo.name, subPackage, "scanner")
                 .extend(JoinScanner.class).public_();
+            mParentClass = null;
         } else {
-            Class<?> parentClass = cBaseCache.obtain(new Key(joinType, spec), spec);
-            mClassMaker = RowGen.anotherClassMaker
-                (getClass(), joinInfo.name, parentClass, "scanner")
-                .extend(parentClass);
+            mParentClass = cBaseCache.obtain(new Key(joinType, spec), spec);
+            mClassMaker = anotherClassMaker(getClass(), "scanner").extend(mParentClass);
         }
     }
 
-    private Class<?> finish() {
-        return mQuery == null ? finishBase() : finishImpl();
+    ClassMaker classMaker() {
+        return mClassMaker;
+    }
+
+    /**
+     * Begin defining another class in the same sub-package.
+     *
+     * @param who the class which is making a class (can be null)
+     * @param suffix appended to class name (can be null)
+     */
+    ClassMaker anotherClassMaker(Class<?> who, String suffix) {
+        return RowGen.anotherClassMaker(who, mJoinInfo.name, mParentClass, suffix);
+    }
+
+    /**
+     * Returns a class implementing JoinScanner, which is constructed with these parameters:
+     *
+     *   (Transaction txn, J joinRow, JoinQueryLauncher launcher, Object... args)
+     *
+     * Calling this method has the side-effect of defining query returning methods inside the
+     * JoinQueryLauncher being made. The JoinQueryLauncherMaker is required to implement these
+     * methods. The first QuerySpec in the sub maps is the full one, which is used when no
+     * arguments are null.
+     *
+     * @param launcherMaker class being made by JoinQueryLauncherMaker
+     * @param queryMethods maps source names to required query methods
+     * @see JoinScanner
+     */
+    Class<?> finish(ClassMaker launcherMaker,
+                    Map<String, Map<QuerySpec, MethodMaker>> queryMethods)
+    {
+        mLauncherMaker = launcherMaker;
+        mQueryMethods = queryMethods;
+
+        buildProjectionMap();
+
+        mClassMaker.addField(launcherMaker, "launcher").private_().final_();
+        mClassMaker.addField(Object[].class, "args").private_().final_();
+
+        mCtorMaker = mClassMaker.addConstructor
+            (Transaction.class, mJoinType, launcherMaker, Object[].class).varargs();
+
+        mCtorMaker.field("launcher").set(mCtorMaker.param(2));
+        mCtorMaker.field("args").set(mCtorMaker.param(3));
+
+        mSpec.root().accept(new JoinSpec.Visitor() {
+            @Override
+            public JoinSpec.Node visit(JoinSpec.Column node) {
+                mLastSource = node;
+                return node;
+            }
+
+            @Override
+            public JoinSpec.Node visit(JoinSpec.FullJoin node) {
+                mLastSource = node;
+                return node;
+            }
+        });
+
+        addLoopMethod();
+
+        // Call this after defining the loop method because it might have added more code into
+        // constructor which must run before the super class constructor.
+        mCtorMaker.invokeSuperConstructor(mCtorMaker.param(0), mCtorMaker.param(1));
+
+        return mClassMaker.finish();
     }
 
     /**
@@ -211,59 +268,6 @@ final class JoinScannerMaker {
 
         var exVar = ctor.catch_(tryStart, tryEnd, Throwable.class);
         ctor.invoke("close", ctor.param(1), exVar).throw_();
-
-        return mClassMaker.finish();
-    }
-
-    /**
-     * Returns a class which only needs to implement the loop method.
-     */
-    private Class<?> finishImpl() {
-        buildProjectionMap();
-
-        mClassMaker.addField(Object[].class, "args").private_().final_();
-
-        var paramTypes = new Object[2 + mSpec.numSources() + 1];
-        int i = 0;
-        paramTypes[i++] = Transaction.class;
-        paramTypes[i++] = mJoinType;
-        for (; i < paramTypes.length - 1; i++) {
-            paramTypes[i] = Table.class;
-        }
-        paramTypes[i] = Object[].class;
-
-        mCtorMaker = mClassMaker.addConstructor(paramTypes);
-
-        mSpec.root().accept(new JoinSpec.Visitor() {
-            int mNum = 2;
-
-            @Override
-            public JoinSpec.Node visit(JoinSpec.Column node) {
-                doVisit(node);
-                return node;
-            }
-
-            @Override
-            public JoinSpec.Node visit(JoinSpec.FullJoin node) {
-                doVisit(node);
-                return node;
-            }
-
-            private void doVisit(JoinSpec.Source source) {
-                mLastSource = source;
-                String fieldName = source.name() + "_t";
-                mClassMaker.addField(Table.class, fieldName).private_().final_();
-                mCtorMaker.field(fieldName).set(mCtorMaker.param(mNum++));
-            }
-        });
-
-        mCtorMaker.field("args").set(mCtorMaker.param(paramTypes.length - 1));
-
-        addLoopMethod();
-
-        // Call this after defining the loop method because it might have added more code into
-        // constructor which must run before the super class constructor.
-        mCtorMaker.invokeSuperConstructor(mCtorMaker.param(0), mCtorMaker.param(1));
 
         return mClassMaker.finish();
     }
@@ -347,7 +351,7 @@ final class JoinScannerMaker {
         }
     }
 
-    private QuerySpec queryFor(JoinSpec.Source source, RowFilter filter) {
+    private QuerySpec querySpecFor(JoinSpec.Source source, RowFilter filter) {
         // FIXME: Support orderBy.
 
         Map<String, ColumnInfo> queryProjection = null;
@@ -382,6 +386,19 @@ final class JoinScannerMaker {
         }
 
         return new QuerySpec(queryProjection, null, filter);
+    }
+
+    /**
+     * Returns the name of a method to invoke (on the launcher) which returns a Query object.
+     */
+    private String queryMethodFor(JoinSpec.Source source, QuerySpec spec) {
+        Map<QuerySpec, MethodMaker> methods = mQueryMethods
+            .computeIfAbsent(source.name(), name -> new LinkedHashMap<>());
+
+        return methods.computeIfAbsent(spec, key -> {
+            String methodName = source.name() + "_q" + (methods.size() + 1);
+            return mLauncherMaker.addMethod(Query.class, methodName);
+        }).name();
     }
 
     /**
@@ -1021,7 +1038,7 @@ final class JoinScannerMaker {
         private final MethodMaker mMethodMaker;
         private final JoinSpec.Source mSource;
         private final boolean mExists;
-        private final Variable mTableVar, mTxnVar, mArgsVar, mJoinRowVar;
+        private final Variable mLauncherVar, mTxnVar, mArgsVar, mJoinRowVar;
         private final RowFilter mFilter;
 
         private int[] mArgsToCheck;
@@ -1035,8 +1052,8 @@ final class JoinScannerMaker {
             mSource = source;
             mExists = exists;
 
-            mTableVar = mm.field(source.name() + "_t");
             mTxnVar = mm.field("txn");
+            mLauncherVar = mm.field("launcher");
             mArgsVar = mm.field("args");
             mJoinRowVar = mm.param(0);
 
@@ -1108,12 +1125,17 @@ final class JoinScannerMaker {
             }
 
             if (mExists) {
+                QuerySpec spec = querySpecFor(mSource, filter);
+                spec = spec.withProjection(Collections.emptyMap());
+                String queryMethod = queryMethodFor(mSource, spec);
+
                 final Variable resultVar;
 
                 if (filter == FalseFilter.THE) {
                     resultVar = mMethodMaker.var(boolean.class).set(false);
                 } else if (filter == TrueFilter.THE) {
-                    resultVar = mTableVar.invoke("anyRows", levelRowVar(), mTxnVar);
+                    resultVar = mLauncherVar.invoke(queryMethod).invoke
+                        ("anyRows", levelRowVar(), mTxnVar);
                 } else {
                     Map<String, JoinSpec.Source> sources = mSource.argSources();
                     if (sources != null) {
@@ -1128,8 +1150,8 @@ final class JoinScannerMaker {
                         }
                     }
 
-                    resultVar = mTableVar.invoke("anyRows", levelRowVar(), mTxnVar,
-                                                 "{} " + filter, mArgsVar);
+                    resultVar = mLauncherVar.invoke(queryMethod).invoke
+                        ("anyRows", levelRowVar(), mTxnVar, mArgsVar);
                 }
 
                 mMethodMaker.return_(resultVar);
@@ -1141,10 +1163,12 @@ final class JoinScannerMaker {
                 return;
             }
 
-            var query = queryFor(mSource, filter);
+            QuerySpec spec = querySpecFor(mSource, filter);
+            String queryMethod = queryMethodFor(mSource, spec);
 
-            if (query.isFullScan()) {
-                mMethodMaker.return_(mTableVar.invoke("newScanner", levelRowVar(), mTxnVar));
+            if (spec.isFullScan()) {
+                mMethodMaker.return_(mLauncherVar.invoke(queryMethod).invoke
+                                     ("newScanner", levelRowVar(), mTxnVar));
                 return;
             }
 
@@ -1168,8 +1192,8 @@ final class JoinScannerMaker {
                 }
             }
 
-            mMethodMaker.return_(mTableVar.invoke("newScanner", levelRowVar(), mTxnVar,
-                                                  query.toString(), mArgsVar));
+            mMethodMaker.return_(mLauncherVar.invoke(queryMethod).invoke
+                                 ("newScanner", levelRowVar(), mTxnVar, mArgsVar));
         }
 
         private Variable levelRowVar() {
