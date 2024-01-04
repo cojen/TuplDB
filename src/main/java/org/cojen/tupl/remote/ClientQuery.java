@@ -33,41 +33,31 @@ import org.cojen.tupl.diag.QueryPlan;
  */
 final class ClientQuery<R> implements Query<R> {
     final ClientTable<R> mTable;
-    final RemoteQuery mRemote;
+    final String mQuery;
 
-    ClientQuery(ClientTable<R> table, RemoteQuery remote) {
+    ClientQuery(ClientTable<R> table, String query) {
         mTable = table;
-        mRemote = remote;
+        mQuery = query;
     }
 
     @Override
     public Scanner<R> newScanner(R row, Transaction txn, Object... args) throws IOException {
-        return mTable.newScanner(mRemote.newScanner(mTable.mDb.remoteTransaction(txn), null), row);
+        return mTable.newScanner(row, txn, mQuery, args);
     }
 
     @Override
     public Updater<R> newUpdater(R row, Transaction txn, Object... args) throws IOException {
-        return mTable.newUpdater(mRemote.newUpdater(mTable.mDb.remoteTransaction(txn), null), row);
+        return mTable.newUpdater(txn, mQuery, args);
     }
 
     @Override
     public long deleteAll(Transaction txn, Object... args) throws IOException {
-        return mRemote.deleteAll(mTable.mDb.remoteTransaction(txn), args);
-    }
-
-    @Override
-    public boolean anyRows(Transaction txn) throws IOException {
-        return mRemote.anyRows(mTable.mDb.remoteTransaction(txn));
-    }
-
-    @Override
-    public boolean anyRows(R row, Transaction txn) throws IOException {
-        return anyRows(txn);
+        return mTable.mRemote.deleteAll(mTable.mDb.remoteTransaction(txn), mQuery, args);
     }
 
     @Override
     public boolean anyRows(Transaction txn, Object... args) throws IOException {
-        return mRemote.anyRows(mTable.mDb.remoteTransaction(txn), args);
+        return mTable.mRemote.anyRows(mTable.mDb.remoteTransaction(txn), mQuery, args);
     }
 
     @Override
@@ -77,16 +67,16 @@ final class ClientQuery<R> implements Query<R> {
 
     @Override
     public QueryPlan scannerPlan(Transaction txn, Object... args) throws IOException {
-        return mRemote.scannerPlan(mTable.mDb.remoteTransaction(txn), args);
+        return mTable.mRemote.scannerPlan(mTable.mDb.remoteTransaction(txn), mQuery, args);
     }
 
     @Override
     public QueryPlan updaterPlan(Transaction txn, Object... args) throws IOException {
-        return mRemote.updaterPlan(mTable.mDb.remoteTransaction(txn), args);
+        return mTable.mRemote.updaterPlan(mTable.mDb.remoteTransaction(txn), mQuery, args);
     }
 
     @Override
     public QueryPlan streamPlan(Transaction txn, Object... args) throws IOException {
-        return mRemote.scannerPlan(mTable.mDb.remoteTransaction(txn), args);
+        return mTable.mRemote.streamPlan(mTable.mDb.remoteTransaction(txn), mQuery, args);
     }
 }

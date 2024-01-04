@@ -188,12 +188,18 @@ final class ClientTable<R> implements Table<R> {
 
     @Override
     public Query<R> query(String query) throws IOException {
-        return new ClientQuery<>(this, mRemote.query(query));
+        // TODO: This design just validates the query and sends the query string to the server
+        // each time. An improved design should cache the client and server query objects, and
+        // the server needs to be able to release the objects when memory is low. It will need
+        // to use a SoftReference and some way of disposing the remote object in a way that
+        // preserves restorability.
+        mRemote.query(query);
+        return new ClientQuery<>(this, query);
     }
 
     @Override
     public Query<R> queryAll() throws IOException {
-        return new ClientQuery<>(this, mRemote.queryAll());
+        return query("{*}");
     }
 
     @Override
