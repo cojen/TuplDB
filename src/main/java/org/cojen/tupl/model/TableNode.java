@@ -46,6 +46,11 @@ public final class TableNode extends RelationNode {
     }
 
     @Override
+    public TableNode withName(String name) {
+        return name.equals(name()) ? this : new TableNode(type(), name, mTable);
+    }
+
+    @Override
     public int maxArgument() {
         return 0;
     }

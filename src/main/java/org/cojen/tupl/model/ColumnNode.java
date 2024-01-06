@@ -74,6 +74,11 @@ public final class ColumnNode extends Node {
     }
 
     @Override
+    public ColumnNode withName(String name) {
+        return name.equals(mName) ? this : new ColumnNode(mFrom, name, mColumn);
+    }
+
+    @Override
     public int maxArgument() {
         return 0;
     }

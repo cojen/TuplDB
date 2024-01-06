@@ -76,6 +76,11 @@ public final class ParamNode extends Node {
     }
 
     @Override
+    public ParamNode withName(String name) {
+        return name.equals(mName) ? this : new ParamNode(name, mType, mOrdinal);
+    }
+
+    @Override
     public int maxArgument() {
         return mOrdinal;
     }

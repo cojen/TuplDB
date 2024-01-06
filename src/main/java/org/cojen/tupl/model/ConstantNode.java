@@ -22,6 +22,9 @@ import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
 
+import java.math.BigDecimal;
+import java.math.BigInteger;
+
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -45,13 +48,21 @@ import static org.cojen.tupl.rows.ColumnInfo.*;
  *
  * @author Brian S. O'Neill
  */
-public final class ConstantNode extends Node {
+public sealed class ConstantNode extends Node {
     public static ConstantNode make(Object value) {
-        /* FIXME: needs a proper typeCode
-        Type type = BasicType.make(value == null ? Object.class : value.getClass());
-        return new ConstantNode(type, value);
-        */
-        throw null;
+        return new ConstantNode(Object.class, TYPE_REFERENCE, value);
+    }
+
+    public static ConstantNode make(String value) {
+        return new ConstantNode(String.class, TYPE_UTF8, value);
+    }
+
+    public static ConstantNode make(BigInteger value) {
+        return new ConstantNode(BigInteger.class, TYPE_BIG_INTEGER, value);
+    }
+
+    public static ConstantNode make(BigDecimal value) {
+        return new ConstantNode(BigDecimal.class, TYPE_BIG_DECIMAL, value);
     }
 
     public static ConstantNode make(boolean value) {
@@ -151,6 +162,30 @@ public final class ConstantNode extends Node {
         }
 
         return b.toString();
+    }
+
+    @Override
+    public ConstantNode withName(String name) {
+        return new Named(mType, mValue, name);
+    }
+
+    private static final class Named extends ConstantNode {
+        private final String mName;
+
+        private Named(Type type, Object value, String name) {
+            super(type, value);
+            mName = name;
+        }
+
+        @Override
+        public String name() {
+            return mName;
+        }
+
+        @Override
+        public ConstantNode withName(String name) {
+            return name.equals(mName) ? this : super.withName(name);
+        }
     }
 
     @Override

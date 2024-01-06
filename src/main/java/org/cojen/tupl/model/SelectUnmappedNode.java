@@ -101,6 +101,16 @@ final class SelectUnmappedNode extends SelectNode {
         mArgMap = null;
     }
 
+    private SelectUnmappedNode(SelectUnmappedNode node, String name) {
+        super(node.type(), name, node.mFrom, node.mFilter, node.mProjection, node.mMaxArgument);
+        mArgMap = node.mArgMap;
+    }
+
+    @Override
+    public SelectUnmappedNode withName(String name) {
+        return name.equals(name()) ? this : new SelectUnmappedNode(this, name);
+    }
+
     @Override
     @SuppressWarnings("unchecked")
     protected TableProvider<?> doMakeTableProvider() {

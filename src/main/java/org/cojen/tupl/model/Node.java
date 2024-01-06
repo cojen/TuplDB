@@ -48,6 +48,8 @@ public abstract class Node {
      */
     public abstract String name();
 
+    public abstract Node withName(String name);
+
     /**
      * Returns the highest query argument needed by this node, which is zero if none are
      * needed.

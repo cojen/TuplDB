@@ -212,6 +212,11 @@ public sealed class BinaryOpNode extends Node {
         return mName;
     }
 
+    @Override
+    public BinaryOpNode withName(String name) {
+        return name.equals(mName) ? this : new BinaryOpNode(mType, name, mOp, mLeft, mRight);
+    }
+
     private static void append(StringBuilder b, int op, Node left, Node right) {
         append(b, left);
         b.append(' ').append(opString(op)).append(' ');

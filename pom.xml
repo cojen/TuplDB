@@ -109,6 +109,11 @@
       <version>2.7.2</version>
       <scope>test</scope>
     </dependency>
+    <dependency>
+      <groupId>com.github.jsqlparser</groupId>
+      <artifactId>jsqlparser</artifactId>
+      <version>4.8</version>
+    </dependency>
   </dependencies>
 
 
@@ -195,6 +200,11 @@
           <configuration>
             <source>17</source>
             <target>17</target>
+            <compilerArgs>
+              <!-- Needed because JSQLParser doesn't declare a module. -->
+              <arg>--add-reads</arg>
+              <arg>org.cojen.tupl=ALL-UNNAMED</arg>
+            </compilerArgs>
           </configuration>
       </plugin>
 

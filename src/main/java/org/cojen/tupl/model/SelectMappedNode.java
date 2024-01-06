@@ -71,6 +71,12 @@ final class SelectMappedNode extends SelectNode {
         mRequireRemap = where == null ? false : where.hasOrderDependentException();
     }
 
+    private SelectMappedNode(SelectMappedNode node, String name) {
+        super(node.type(), name, node.mFrom, node.mFilter, node.mProjection, node.mMaxArgument);
+        mWhere = node.mWhere;
+        mRequireRemap = node.mRequireRemap;
+    }
+
     /* FIXME: Notes
 
        - The Mapper evaluates the "where" filter and returns null if it yields false. Any
@@ -92,6 +98,11 @@ final class SelectMappedNode extends SelectNode {
        - However, the MappedUpdater will call the checkUpdate and checkDelete methods. So
          perhaps always define those methods? Just checkStore can be skipped.
     */
+
+    @Override
+    public SelectMappedNode withName(String name) {
+        return name.equals(name()) ? this : new SelectMappedNode(this, name);
+    }
 
     @Override
     public boolean isPureFunction() {

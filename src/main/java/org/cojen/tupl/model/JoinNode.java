@@ -79,6 +79,11 @@ public final class JoinNode extends RelationNode {
     }
 
     @Override
+    public JoinNode withName(String name) {
+        return name.equals(name()) ? this : new JoinNode(type(), name, mJoinType, mLeft, mRight);
+    }
+
+    @Override
     public int maxArgument() {
         return Math.max(mLeft.maxArgument(), mRight.maxArgument());
     }
