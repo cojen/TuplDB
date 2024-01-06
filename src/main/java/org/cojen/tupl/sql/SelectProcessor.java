@@ -63,7 +63,16 @@ public class SelectProcessor implements SelectVisitor {
 
     @Override
     public void visit(PlainSelect plainSelect) {
-        if (plainSelect.getDistinct() != null ||
+        if (plainSelect.getFetch() != null ||
+            plainSelect.getForClause() != null ||
+            plainSelect.getIsolation() != null ||
+            plainSelect.getLimit() != null ||
+            plainSelect.getLimitBy() != null ||
+            plainSelect.getOffset() != null ||
+            plainSelect.getOrderByElements() != null ||
+            plainSelect.getWithItemsList() != null ||
+            plainSelect.isOracleSiblings() ||
+            plainSelect.getDistinct() != null ||
             plainSelect.getFirst() != null ||
             plainSelect.getForMode() != null ||
             plainSelect.getForUpdateTable() != null ||
