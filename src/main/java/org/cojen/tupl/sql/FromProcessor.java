@@ -81,7 +81,7 @@ public class FromProcessor implements FromItemVisitor {
             if (alias.getAliasColumns() != null) {
                 throw fail();
             }
-            name = alias.getName();
+            name = SqlUtils.unquote(alias.getName());
         }
 
         mNode = TableNode.make(name, dbTable);

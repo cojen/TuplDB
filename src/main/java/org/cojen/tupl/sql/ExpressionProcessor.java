@@ -52,7 +52,7 @@ public class ExpressionProcessor implements ExpressionVisitor {
             if (alias.getAliasColumns() != null) {
                 throw fail();
             }
-            node = node.withName(alias.getName());
+            node = node.withName(SqlUtils.unquote(alias.getName()));
         }
 
         return node;
