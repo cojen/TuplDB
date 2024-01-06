@@ -47,7 +47,10 @@ public interface TableFinder {
      * qualified names
      */
     public static TableFinder using(Database db, String schema, ClassLoader loader) {
-        return name -> db.findTable(findClass(schema, loader, name));
+        return name -> {
+            Class<?> clazz = findClass(schema, loader, name);
+            return clazz == null ? null : db.findTable(clazz);
+        };
     }
 
     private static Class<?> findClass(String schema, ClassLoader loader, String name) {
