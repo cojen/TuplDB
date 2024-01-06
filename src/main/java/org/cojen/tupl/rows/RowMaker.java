@@ -232,7 +232,7 @@ public class RowMaker {
     private void addHashCode() {
         MethodMaker mm = mClassMaker.addMethod(int.class, "hashCode").public_();
         if (mRowInfo.allColumns.isEmpty()) {
-            mm.return_(0);
+            mm.return_(mRowInfo.name.hashCode());
         } else {
             var indy = mm.var(RowMaker.class).indy("indyObjectMethod", mRowType);
             mm.return_(indy.invoke(int.class, "hashCode", null, mm.this_()));
@@ -289,8 +289,12 @@ public class RowMaker {
 
     private void addEquals() {
         MethodMaker mm = mClassMaker.addMethod(boolean.class, "equals", Object.class).public_();
-        var indy = mm.var(RowMaker.class).indy("indyObjectMethod", mRowType);
-        mm.return_(indy.invoke(boolean.class, "equals", null, mm.this_(), mm.param(0)));
+        if (mRowInfo.allColumns.isEmpty()) {
+            mm.return_(mm.param(0).instanceOf(mm.this_()));
+        } else {
+            var indy = mm.var(RowMaker.class).indy("indyObjectMethod", mRowType);
+            mm.return_(indy.invoke(boolean.class, "equals", null, mm.this_(), mm.param(0)));
+        }
     }
 
     private static void addEquals(MethodMaker mm, Class<?> rowType,
@@ -350,8 +354,12 @@ public class RowMaker {
 
     private void addToString() {
         MethodMaker mm = mClassMaker.addMethod(String.class, "toString").public_();
-        var indy = mm.var(RowMaker.class).indy("indyObjectMethod", mRowType);
-        mm.return_(indy.invoke(String.class, "toString", null, mm.this_()));
+        if (mRowInfo.allColumns.isEmpty()) {
+            mm.return_("{}");
+        } else {
+            var indy = mm.var(RowMaker.class).indy("indyObjectMethod", mRowType);
+            mm.return_(indy.invoke(String.class, "toString", null, mm.this_()));
+        }
     }
 
     private static void addToString(MethodMaker mm, Class<?> rowType, Variable rowObject) {
@@ -431,8 +439,13 @@ public class RowMaker {
         }
 
         MethodMaker mm = mClassMaker.addMethod(int.class, "compareTo", mClassMaker).public_();
-        var indy = mm.var(RowMaker.class).indy("indyCompare", mRowType);
-        mm.return_(indy.invoke(int.class, "compare", null, mm.this_(), mm.param(0)));
+
+        if (mRowInfo.allColumns.isEmpty()) {
+            mm.return_(0);
+        } else {
+            var indy = mm.var(RowMaker.class).indy("indyCompare", mRowType);
+            mm.return_(indy.invoke(int.class, "compare", null, mm.this_(), mm.param(0)));
+        }
 
         // Now implement the bridge methods.
 
