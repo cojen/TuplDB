@@ -17,6 +17,10 @@
 
 package org.cojen.tupl.rows;
 
+import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.MethodType;
+
 import java.io.IOException;
 
 import java.util.Collections;
@@ -44,30 +48,21 @@ import org.cojen.tupl.rows.filter.Parser;
  * @author Brian S. O'Neill
  */
 public final class IdentityTable implements Table<IdentityTable.Row>, Query<IdentityTable.Row> {
-    public sealed interface Row extends Comparable<Row> { }
+    public interface Row extends Comparable<Row> { }
 
     // Singleton instance.
     public static final IdentityTable THE = new IdentityTable();
 
-    private static final class RowImpl implements Row {
-        @Override
-        public int hashCode() {
-            return 1368441029;
-        }
+    private static final MethodHandle NEW_ROW;
 
-        @Override
-        public boolean equals(Object obj) {
-            return obj instanceof RowImpl;
-        }
-
-        @Override
-        public String toString() {
-            return "{}";
-        }
-
-        @Override
-        public int compareTo(Row other) {
-            return 0;
+    static {
+        try {
+            Class<? extends Row> rowClass = RowMaker.find(Row.class);
+            NEW_ROW = MethodHandles.lookup().findConstructor
+                (rowClass, MethodType.methodType(void.class))
+                .asType(MethodType.methodType(Row.class));
+        } catch (Throwable e) {
+            throw RowUtils.rethrow(e);
         }
     }
 
@@ -81,7 +76,11 @@ public final class IdentityTable implements Table<IdentityTable.Row>, Query<Iden
 
     @Override
     public Row newRow() {
-        return new RowImpl();
+        try {
+            return (Row) NEW_ROW.invokeExact();
+        } catch (Throwable e) {
+            throw RowUtils.rethrow(e);
+        }
     }
 
     @Override
@@ -250,7 +249,7 @@ public final class IdentityTable implements Table<IdentityTable.Row>, Query<Iden
     }
 
     private static final class ScanOne implements Scanner<Row> {
-        private static final RowImpl ROW = new RowImpl();
+        private static final Row ROW = THE.newRow();
 
         private Row mRow;
 
