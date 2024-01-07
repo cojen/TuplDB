@@ -42,25 +42,6 @@ public class ExpressionProcessor implements ExpressionVisitor {
     /**
      * @param from used for finding columns
      */
-    public static Node process(SelectItem item, RelationNode from) {
-        var processor = new ExpressionProcessor(from);
-        item.getExpression().accept(processor);
-        Node node = processor.mNode;
-
-        Alias alias = item.getAlias();
-        if (alias != null) {
-            if (alias.getAliasColumns() != null) {
-                throw fail();
-            }
-            node = node.withName(SqlUtils.unquote(alias.getName()));
-        }
-
-        return node;
-    }
-
-    /**
-     * @param from used for finding columns
-     */
     public static Node process(Expression expr, RelationNode from) {
         var processor = new ExpressionProcessor(from);
         expr.accept(processor);
@@ -303,6 +284,10 @@ public class ExpressionProcessor implements ExpressionVisitor {
         Table table = tableColumn.getTable();
         if (table != null) {
             name = table.getFullyQualifiedName() + '.' + name;
+        }
+
+        if (mFrom == null) {
+            throw new IllegalStateException("Column isn't found: " + name);
         }
 
         mNode = mFrom.findColumn(name);

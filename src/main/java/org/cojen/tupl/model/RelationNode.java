@@ -18,6 +18,7 @@
 package org.cojen.tupl.model;
 
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -90,6 +91,79 @@ public abstract class RelationNode extends Node {
      */
     public final ColumnNode findColumn(String name, String label) {
         return ColumnNode.make(this, label, type().tupleType().findColumn(name, true));
+    }
+
+    /**
+     * Put all of the columns of this relation into the given list. Each column has a fully
+     * qualified name as if it was found using findColumn.
+     */
+    public final void allColumns(List<? super ColumnNode> columns) {
+        allColumns(columns, type().tupleType(), "", "");
+    }
+
+    private void allColumns(List<? super ColumnNode> columns, TupleType tt,
+                            String namePrefix, String fieldPrefix)
+    {
+        int num = tt.numColumns();
+        for (int i=0; i<num; i++) {
+            Column column = tt.column(i);
+            String field = tt.field(i);
+            if (column.type() instanceof TupleType ctt) {
+                allColumns(columns, ctt, namePrefix + column.name() + '.',
+                           fieldPrefix + field + '.');
+            } else {
+                columns.add(ColumnNode.make(this, namePrefix + column.name(),
+                                            column.withName(fieldPrefix + field)));
+            }
+        }
+    }
+
+    /**
+     * Put all of the matching columns of this relation into the given list. Each column has a
+     * fully qualified name as if it was found using findColumn using a label which is prefixed
+     * by the given table name.
+     *
+     * @param table name of table to obtain all columns for (it's treated as if it had a
+     * wildcard at the end)
+     */
+    public final void allTableColumns(List<? super ColumnNode> columns, String table) {
+        final int originalSize = columns.size();
+
+        TupleType tt = type().tupleType();
+        int num = tt.numColumns();
+        for (int i=0; i<num; i++) {
+            Column column = tt.column(i);
+            String field = tt.field(i);
+            if (column.type() instanceof TupleType ctt) {
+                if (table.equals(column.name())) {
+                    allTableColumns(columns, ctt, column.name() + '.', field + '.');
+                }
+            } else {
+                if (table.equals(mName)) {
+                    columns.add(ColumnNode.make(this, table + '.' + column.name(),
+                                                column.withName(field)));
+                }
+            }
+        }
+
+        if (columns.size() == originalSize) {
+            throw new IllegalArgumentException("Table isn't found: " + table);
+        }
+    }
+
+    private void allTableColumns(List<? super ColumnNode> columns, TupleType tt,
+                                 String namePrefix, String fieldPrefix)
+    {
+        int num = tt.numColumns();
+        for (int i=0; i<num; i++) {
+            Column column = tt.column(i);
+            if (column.type() instanceof TupleType ctt) {
+                // FIXME: Is this possible?
+            } else {
+                columns.add(ColumnNode.make(this, namePrefix + column.name(),
+                                            column.withName(fieldPrefix + tt.field(i))));
+            }
+        }
     }
 
     /**

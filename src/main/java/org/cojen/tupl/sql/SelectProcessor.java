@@ -17,8 +17,10 @@
 
 package org.cojen.tupl.sql;
 
+import java.util.ArrayList;
 import java.util.List;
 
+import net.sf.jsqlparser.expression.Alias;
 import net.sf.jsqlparser.expression.Expression;
 
 import net.sf.jsqlparser.statement.select.*;
@@ -157,18 +159,17 @@ public class SelectProcessor implements SelectVisitor {
 
         List<SelectItem<?>> items = plainSelect.getSelectItems();
 
-        Node[] projection;
+        List<Node> projection;
         if (items == null) {
-            projection = new Node[0];
+            projection = List.of();
         } else {
-            projection = new Node[items.size()];
-            int i = 0;
+            projection = new ArrayList<>();
             for (SelectItem item : items) {
-                projection[i++] = ExpressionProcessor.process(item, from);
+                addToProjection(projection, item, from);
             }
         }
 
-        mNode = SelectNode.make(null, from, where, projection);
+        mNode = SelectNode.make(null, from, where, projection.toArray(Node[]::new));
     }
 
     private static Node andWhere(Node where, Node whereMore) {
@@ -176,6 +177,36 @@ public class SelectProcessor implements SelectVisitor {
             return whereMore;
         }
         return BinaryOpNode.make(null, BinaryOpNode.OP_AND, where, whereMore);
+    }
+
+    private static void addToProjection(List<Node> projection, SelectItem item, RelationNode from) {
+        Expression expr = item.getExpression();
+        Alias alias = item.getAlias();
+
+        if (expr instanceof AllColumns ac) {
+            if (alias != null) {
+                throw fail();
+            }
+            if (from != null) {
+                if (ac instanceof AllTableColumns atc) {
+                    from.allTableColumns(projection, atc.getTable().getFullyQualifiedName());
+                } else {
+                    from.allColumns(projection);
+                }
+            }
+            return;
+        }
+
+        Node node = ExpressionProcessor.process(expr, from);
+
+        if (alias != null) {
+            if (alias.getAliasColumns() != null) {
+                throw fail();
+            }
+            node = node.withName(SqlUtils.unquote(alias.getName()));
+        }
+
+        projection.add(node);
     }
 
     @Override
