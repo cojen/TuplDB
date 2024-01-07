@@ -31,6 +31,7 @@ import net.sf.jsqlparser.statement.select.*;
 import org.cojen.tupl.model.BinaryOpNode;
 import org.cojen.tupl.model.ConstantNode;
 import org.cojen.tupl.model.Node;
+import org.cojen.tupl.model.ParamNode;
 import org.cojen.tupl.model.RelationNode;
 
 /**
@@ -83,7 +84,7 @@ public class ExpressionProcessor implements ExpressionVisitor {
 
     @Override
     public void visit(JdbcParameter jdbcParameter) {
-        fail();
+        mNode = ParamNode.make(null, jdbcParameter.getIndex());
     }
 
     @Override

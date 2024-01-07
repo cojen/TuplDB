@@ -124,6 +124,12 @@ public abstract class DbQuery extends BasePreparedStatement {
         args[parameterIndex - 1] = x;
     }
 
+    protected static void checkParams(int expect, int actual) throws SQLException {
+        if (expect != actual) {
+            throw new SQLException("Not all parameters have been set");
+        }
+    }
+
     /**
      * Returns a new or existing ResultSet instance. Implementation must call checkClosed
      * before creating a new ResultSet.

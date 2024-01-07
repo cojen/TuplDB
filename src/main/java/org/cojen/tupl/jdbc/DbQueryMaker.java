@@ -130,14 +130,38 @@ public final class DbQueryMaker {
         int argCount = provider.argumentCount();
 
         if (argCount > 0) {
-            cm.addField(Object[].class, "args").private_().final_();
-            ctor.field("args").set(ctor.new_(Object[].class, argCount));
+            cm.addField(Object[].class, "params").private_().final_();
+            ctor.field("params").set(ctor.new_(Object[].class, argCount));
 
             MethodMaker mm = cm.addMethod(null, "clearParameters").public_().override();
-            mm.var(Arrays.class).invoke("fill", mm.field("args"), null);
+            mm.var(Arrays.class).invoke("fill", mm.field("params"), null);
+
+            // Define state bits which track which parameters have been set, and clear them
+            // when clearParameters is called.
+            for (int i = 0; i < argCount; i += 32) {
+                String fieldName = "params$" + (i >>> 5);
+                cm.addField(int.class, fieldName).private_();
+                mm.field(fieldName).set(0);
+            }
 
             mm = cm.addMethod(null, "setObject", int.class, Object.class).public_().override();
-            mm.invoke("setObject", mm.field("args"), mm.param(0), mm.param(1));
+            var indexVar = mm.param(0);
+            mm.invoke("setObject", mm.field("params"), indexVar, mm.param(1));
+
+            // Set the appropriate state bit.
+            indexVar.inc(-1);
+            var bitVar = mm.var(int.class).set(1).shl(indexVar);
+            var cases = new int[(31 + argCount) >>> 5];
+            var labels = new Label[cases.length];
+            for (int i=0; i<labels.length; i++) {
+                labels[i] = mm.label();
+            }
+            indexVar.ushr(5).switch_(labels[0], cases, labels);
+            for (int i=0; i<labels.length; i++) {
+                labels[i].here();
+                mm.field("params$" + i).set(bitVar);
+                mm.return_();
+            }
         }
 
         // Define a private method to produce a ResultSet, as the generated type. This makes it
@@ -163,6 +187,24 @@ public final class DbQueryMaker {
 
         {
             MethodMaker mm = cm.addMethod(ResultSet.class, "executeQuery").public_();
+
+            if (argCount > 0) {
+                // Check that all parameters have been set.
+                for (int i = 0;;) {
+                    var fieldVar = mm.field("params$" + (i >>> 5));
+                    i += 32;
+                    if (i <= argCount) {
+                        mm.invoke("checkParams", ~0, fieldVar);
+                        if (i == argCount) {
+                            break;
+                        }
+                    } else {
+                        mm.invoke("checkParams", (1 << (i - 31)) - 1, fieldVar);
+                        break;
+                    }
+                }
+            }
+
             Label start = mm.label().here();
             var rsVar = mm.invoke("resultSet");
             Label ready = mm.label();
@@ -194,7 +236,7 @@ public final class DbQueryMaker {
             if (argCount == 0) {
                 tableVar = providerField.invoke("table");
             } else {
-                tableVar = providerField.invoke("table", mm.field("args"));
+                tableVar = providerField.invoke("table", mm.field("params"));
             }
             mm.return_(tableVar.invoke("newScanner", rowVar, txnVar));
         }
