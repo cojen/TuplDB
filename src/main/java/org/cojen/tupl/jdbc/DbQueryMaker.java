@@ -68,13 +68,17 @@ public final class DbQueryMaker {
 
             {
                 Map<String, String> projection = provider.projection();
-                var pairs = new String[projection.size() << 1];
-                int i = 0;
-                for (Map.Entry<String, String> e : projection.entrySet()) {
-                    pairs[i++] = e.getKey().intern();
-                    pairs[i++] = e.getValue().intern();
+                if (projection == null) {
+                    mProjection = null;
+                } else {
+                    var pairs = new String[projection.size() << 1];
+                    int i = 0;
+                    for (Map.Entry<String, String> e : projection.entrySet()) {
+                        pairs[i++] = e.getKey().intern();
+                        pairs[i++] = e.getValue().intern();
+                    }
+                    mProjection = pairs;
                 }
-                mProjection = pairs;
             }
 
             mArgCount = provider.argumentCount();

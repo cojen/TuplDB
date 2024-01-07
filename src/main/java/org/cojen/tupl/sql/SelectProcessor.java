@@ -50,6 +50,29 @@ public class SelectProcessor implements SelectVisitor {
         return processor.mNode;
     }
 
+    /**
+     * @param finder used for finding fully functional Table instances
+     */
+    public static RelationNode process(ParenthesedSelect select, TableFinder finder) {
+        if (select.getPivot() != null ||
+            select.getUnPivot() != null)
+        {
+            throw fail();
+        }
+
+        RelationNode node = process(select.getSelect(), finder);
+
+        Alias alias = select.getAlias();
+        if (alias != null) {
+            if (alias.getAliasColumns() != null) {
+                throw fail();
+            }
+            node = node.withName(SqlUtils.unquote(alias.getName()));
+        }
+
+        return node;
+    }
+
     private final TableFinder mFinder;
 
     private RelationNode mNode;
@@ -60,7 +83,7 @@ public class SelectProcessor implements SelectVisitor {
 
     @Override
     public void visit(ParenthesedSelect parenthesedSelect) {
-        fail();
+        mNode = process(parenthesedSelect, mFinder);
     }
 
     @Override

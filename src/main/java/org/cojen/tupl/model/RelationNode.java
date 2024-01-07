@@ -70,6 +70,9 @@ public abstract class RelationNode extends Node {
         return mName;
     }
 
+    @Override
+    public abstract RelationNode withName(String name);
+
     /**
      * Find a column in this relation which matches the given name.
      *
@@ -90,6 +93,11 @@ public abstract class RelationNode extends Node {
      * @throws IllegalArgumentException if not found or is ambiguous
      */
     public final ColumnNode findColumn(String name, String label) {
+        int dotIx = name.indexOf('.');
+        if (dotIx >= 0 && name.startsWith(name())) {
+            name = name.substring(dotIx + 1);
+        }
+
         return ColumnNode.make(this, label, type().tupleType().findColumn(name, true));
     }
 

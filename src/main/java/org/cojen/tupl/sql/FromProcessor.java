@@ -89,7 +89,7 @@ public class FromProcessor implements FromItemVisitor {
 
     @Override
     public void visit(ParenthesedSelect selectBody) {
-        fail();
+        mNode = SelectProcessor.process(selectBody, mFinder);
     }
 
     @Override
