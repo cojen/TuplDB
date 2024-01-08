@@ -49,11 +49,17 @@ final class DbQueryMaker {
      * Returns a new Factory instance. Factory classes are cached by the provider's rowType,
      * projection, and argumentCount.
      *
+
+     * @param schema optional reference to the schema to ensure that the DbDataSource's
+     * schema cache doesn't drop the Factory reference prematurely
      * @throws SQLNonTransientException if a requested column doesn't exist
      */
-    public static DbQuery.Factory make(TableProvider<?> provider) throws SQLNonTransientException {
+    public static DbQuery.Factory make(TableProvider<?> provider, String schema)
+        throws SQLNonTransientException
+    {
         try {
-            return (DbQuery.Factory) cCache.obtain(new Key(provider), provider).invoke(provider);
+            return (DbQuery.Factory) cCache.obtain
+                (new Key(provider), provider).invoke(provider, schema);
         } catch (Throwable e) {
             throw Utils.rethrow(e);
         }
@@ -113,7 +119,8 @@ final class DbQueryMaker {
     };
 
     /**
-     * Returns a MethodHandle to a factory constructor which accepts a provider instance.
+     * Returns a MethodHandle to a factory constructor which accepts a provider instance and a
+     * schema string.
      */
     private static MethodHandle doMake(TableProvider<?> provider) throws SQLNonTransientException {
         var rsClass = ResultSetMaker.find(provider.rowType(), provider.projection(), 1);
@@ -271,11 +278,11 @@ final class DbQueryMaker {
         // collected as long as the generated factory class still exists.
         cm.addField(Object.class, "_").static_().private_();
 
+        ctor = cm.addConstructor(TableProvider.class, String.class);
+        ctor.invokeSuperConstructor();
+
         if (argCount == 0) {
             cm.addField(Table.class, "table").private_().final_();
-
-            ctor = cm.addConstructor(TableProvider.class);
-            ctor.invokeSuperConstructor();
             ctor.field("table").set(ctor.param(0).invoke("table"));
 
             MethodMaker mm = cm.addMethod(DbQuery.class, "newDbQuery", DbConnection.class);
@@ -283,9 +290,6 @@ final class DbQueryMaker {
             mm.return_(mm.new_(dbQueryClass, mm.param(0), mm.field("table")));
         } else {
             cm.addField(TableProvider.class, "provider").private_().final_();
-
-            ctor = cm.addConstructor(TableProvider.class);
-            ctor.invokeSuperConstructor();
             ctor.field("provider").set(ctor.param(0));
 
             MethodMaker mm = cm.addMethod(DbQuery.class, "newDbQuery", DbConnection.class);
@@ -293,12 +297,15 @@ final class DbQueryMaker {
             mm.return_(mm.new_(dbQueryClass, mm.param(0), mm.field("provider")));
         }
 
+        cm.addField(String.class, "schema").private_().final_();
+        ctor.field("schema").set(ctor.param(1));
+
         MethodHandles.Lookup lookup = cm.finishHidden();
         Class<?> factoryClass = lookup.lookupClass();
 
         MethodMaker mm = MethodMaker.begin
-            (lookup, DbQuery.Factory.class, null, TableProvider.class);
-        mm.return_(mm.new_(factoryClass, mm.param(0)));
+            (lookup, DbQuery.Factory.class, null, TableProvider.class, String.class);
+        mm.return_(mm.new_(factoryClass, mm.param(0), mm.param(1)));
 
         MethodHandle mh = mm.finish();
 

@@ -50,25 +50,32 @@ import org.cojen.tupl.sql.TableFinder;
  */
 public final class DbDataSource implements DataSource {
     final Database mDb;
-    final TableFinder mFinder;
 
-    private final SoftCache<String, DbQuery.Factory, TableFinder> mStatementCache;
+    private final TableFinder mFinder;
+
+    // Maps schema strings to DbDataSource instances. Is the same cache instance for this
+    // DbDataSource and all DbDataSource instances derived from this one.
+    private final SoftCache<String, DbDataSource, Object> mWithSchemaCache;
+
+    // Maps sql strings to DbQuery.Factory instances. Each DbDataSource has a distinct cache
+    // instance, and so these factories are tied to a specific schema.
+    private final SoftCache<String, DbQuery.Factory, Object> mStatementCache;
 
     public DbDataSource(Database db) {
-        this(db, null, null);
+        this(db, "", null);
     }
 
     /**
-     * @param schema base package to use for finding classes; pass null to require fully
-     * qualified names by default
+     * @param schema base package to use for finding classes; pass an empty string to require
+     * fully qualified names by default
      */
     public DbDataSource(Database db, String schema) {
         this(db, schema, null);
     }
 
     /**
-     * @param schema base package to use for finding classes; pass null to require fully
-     * qualified names by default
+     * @param schema base package to use for finding classes; pass an empty string to require
+     * fully qualified names by default
      * @param loader used to load table classes
      */
     public DbDataSource(Database db, String schema, ClassLoader loader) {
@@ -76,27 +83,33 @@ public final class DbDataSource implements DataSource {
     }
 
     public DbDataSource(Database db, TableFinder finder) {
-        mDb = Objects.requireNonNull(db);
-        mFinder = Objects.requireNonNull(finder);
+        this(null, Objects.requireNonNull(db), Objects.requireNonNull(finder));
+        // This is the "root" DbDataSource, which must be cached explicitly.
+        mWithSchemaCache.put(finder.schema(), this);
+    }
+
+    private DbDataSource(SoftCache<String, DbDataSource, Object> withSchemaCache,
+                         Database db, TableFinder finder)
+    {
+        mDb = db;
+        mFinder = finder;
+
+        if (withSchemaCache == null) {
+            withSchemaCache = new SoftCache<>() {
+                @Override
+                protected DbDataSource newValue(String schema, Object unused) {
+                    return new DbDataSource(this, mDb, mFinder.withSchema(schema));
+                }
+            };
+        }
+
+        mWithSchemaCache = withSchemaCache;
 
         mStatementCache = new SoftCache<>() {
             @Override
-            protected DbQuery.Factory newValue(String sql, TableFinder finder) {
+            protected DbQuery.Factory newValue(String sql, Object unused) {
                 try {
-                    Object stmt;
-                    try {
-                        stmt = StatementProcessor.process(sql, finder);
-                    } catch (ParseException e) {
-                        throw new SQLException(e.getMessage());
-                    } catch (IOException e) {
-                        throw new SQLException(e);
-                    }
-
-                    if (stmt instanceof RelationNode rn) {
-                        return DbQueryMaker.make(rn.makeTableProvider());
-                    }
-
-                    throw new SQLException("Unsupported statement: " + sql + ", " + stmt);
+                    return newQueryFactory(sql);
                 } catch (SQLException e) {
                     throw Utils.rethrow(e);
                 }
@@ -147,7 +160,32 @@ public final class DbDataSource implements DataSource {
         return false;
     }
 
-    DbQuery.Factory queryFactory(String sql, TableFinder finder) throws SQLException {
-        return mStatementCache.obtain(sql, finder == null ? mFinder : finder);
+    String schema() {
+        return mFinder.schema();
+    }
+
+    DbDataSource withSchema(String schema) {
+        return mFinder.schema().equals(schema) ? this : mWithSchemaCache.obtain(schema, null);
+    }
+
+    DbQuery.Factory queryFactory(String sql) throws SQLException {
+        return mStatementCache.obtain(sql, null);
+    }
+
+    private DbQuery.Factory newQueryFactory(String sql) throws SQLException {
+        Object stmt;
+        try {
+            stmt = StatementProcessor.process(sql, mFinder);
+        } catch (ParseException e) {
+            throw new SQLException(e.getMessage());
+        } catch (IOException e) {
+            throw new SQLException(e);
+        }
+
+        if (stmt instanceof RelationNode rn) {
+            return DbQueryMaker.make(rn.makeTableProvider(), schema());
+        }
+
+        throw new SQLException("Unsupported statement: " + sql + ", " + stmt);
     }
 }

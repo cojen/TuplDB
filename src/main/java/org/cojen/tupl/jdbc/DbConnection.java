@@ -19,6 +19,9 @@ package org.cojen.tupl.jdbc;
 
 import java.io.IOException;
 
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.VarHandle;
+
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.sql.Savepoint;
@@ -28,7 +31,7 @@ import org.cojen.tupl.Database;
 import org.cojen.tupl.LockMode;
 import org.cojen.tupl.Transaction;
 
-import org.cojen.tupl.sql.TableFinder;
+import org.cojen.tupl.io.Utils;
 
 /**
  * 
@@ -36,8 +39,18 @@ import org.cojen.tupl.sql.TableFinder;
  * @author Brian S. O'Neill
  */
 public final class DbConnection extends BaseConnection {
+    private static final VarHandle cDataSourceHandle;
+
+    static {
+        try {
+            cDataSourceHandle = MethodHandles.lookup().findVarHandle
+                (DbConnection.class, "mDataSource", DbDataSource.class);
+        } catch (Throwable e) {
+            throw Utils.rethrow(e);
+        }
+    }
+
     private DbDataSource mDataSource;
-    private TableFinder mFinder;
     private Transaction mTxn;
     private TxnSavepoint mLastSavepoint;
 
@@ -53,7 +66,7 @@ public final class DbConnection extends BaseConnection {
 
     @Override
     public DbQuery prepareStatement(String sql) throws SQLException {
-        return dataSource().queryFactory(sql, mFinder).newDbQuery(this);
+        return dataSource().queryFactory(sql).newDbQuery(this);
     }
 
     @Override
@@ -113,15 +126,14 @@ public final class DbConnection extends BaseConnection {
     @Override
     public void close() throws SQLException {
         rollback();
-        mDataSource = null;
-        mFinder = null;
+        cDataSourceHandle.setRelease(this, null);
         mTxn = null;
         // FIXME: Close all Statements and ResultSets too.
     }
 
     @Override
     public boolean isClosed() throws SQLException {
-        return mDataSource == null;
+        return cDataSourceHandle.getAcquire(this) == null;
     }
 
     @Override
@@ -282,16 +294,27 @@ public final class DbConnection extends BaseConnection {
 
     @Override
     public void setSchema(String schema) throws SQLException {
-        mFinder = dataSource().mFinder.withSchema(schema);
+        if (schema == null) {
+            schema = "";
+        }
+
+        while (true) {
+            DbDataSource dataSource = dataSource();
+            DbDataSource newDataSource = dataSource.withSchema(schema);
+            if (newDataSource == dataSource) {
+                return;
+            }
+            var oldDataSource = (DbDataSource) cDataSourceHandle
+                .compareAndExchange(this, dataSource, newDataSource);
+            if (oldDataSource == dataSource) {
+                return;
+            }
+        }
     }
 
     @Override
     public String getSchema() throws SQLException {
-        TableFinder finder = mFinder;
-        if (finder == null) {
-            finder = dataSource().mFinder;
-        }
-        return finder.schema();
+        return dataSource().schema();
     }
 
     Transaction txn() {
@@ -299,7 +322,7 @@ public final class DbConnection extends BaseConnection {
     }
 
     private DbDataSource dataSource() throws SQLException {
-        DbDataSource dataSource = mDataSource;
+        var dataSource = (DbDataSource) cDataSourceHandle.getAcquire(this);
         if (dataSource == null) {
             throw new SQLException("Closed");
         }

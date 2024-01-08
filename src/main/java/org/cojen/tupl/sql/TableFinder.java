@@ -36,30 +36,31 @@ public interface TableFinder {
     Table findTable(String name) throws IOException;
 
     /**
-     * @return optional base package to use for finding classes
+     * @return the base package to use for finding classes; is empty if fully qualified names
+     * are required
      */
     String schema();
 
     /**
-     * @param schema base package to use for finding classes; pass null to require fully
-     * qualified names
+     * @param schema base package to use for finding classes; pass an empty string to require
+     * fully qualified names
      */
     TableFinder withSchema(String schema);
 
     public static TableFinder using(Database db) {
-        return using(db, null, null);
+        return using(db, "", null);
     }
 
     /**
-     * @param schema base package to use for finding classes; pass null to require fully
-     * qualified names
+     * @param schema base package to use for finding classes; pass an empty string to require
+     * fully qualified names
      */
     public static TableFinder using(Database db, String schema) {
         return using(db, schema, null);
     }
 
     /**
-     * @param schema base package to use for finding classes; pass null to require fully
+     * @param schema base package to use for finding classes; pass an empty to require fully
      * qualified names
      * @param loader used to load table classes
      */
@@ -73,8 +74,8 @@ public interface TableFinder {
         private final ClassLoader mLoader;
 
         private Basic(Database db, String schema, ClassLoader loader) {
-            mDb = db;
-            mSchema = schema;
+            mDb = Objects.requireNonNull(db);
+            mSchema = Objects.requireNonNull(schema);
             if (loader == null) {
                 loader = ClassLoader.getSystemClassLoader();
             }
@@ -99,7 +100,7 @@ public interface TableFinder {
 
         private Class<?> findClass(String name) {
             try {
-                if (mSchema == null) {
+                if (mSchema.isEmpty()) {
                     return mLoader.loadClass(name);
                 }
 
