@@ -17,6 +17,12 @@
 
 package org.cojen.tupl.sql;
 
+import java.io.IOException;
+
+import net.sf.jsqlparser.parser.CCJSqlParser;
+import net.sf.jsqlparser.parser.CCJSqlParserUtil;
+import net.sf.jsqlparser.parser.ParseException;
+
 import net.sf.jsqlparser.statement.*;
 import net.sf.jsqlparser.statement.alter.*;
 import net.sf.jsqlparser.statement.alter.sequence.*;
@@ -41,6 +47,8 @@ import net.sf.jsqlparser.statement.truncate.*;
 import net.sf.jsqlparser.statement.update.*;
 import net.sf.jsqlparser.statement.upsert.*;
 
+import org.cojen.tupl.io.Utils;
+
 /**
  * 
  *
@@ -50,7 +58,17 @@ public class StatementProcessor implements StatementVisitor {
     /**
      * @param finder used for finding fully functional Table instances
      */
-    public static Object process(Statement statement, TableFinder finder) {
+    public static Object process(String sql, TableFinder finder)
+        throws ParseException, IOException
+    {
+        CCJSqlParser parser = CCJSqlParserUtil.newParser(sql);
+        return process(parser.Statement(), finder);
+    }
+
+    /**
+     * @param finder used for finding fully functional Table instances
+     */
+    public static Object process(Statement statement, TableFinder finder) throws IOException {
         var processor = new StatementProcessor(finder);
         statement.accept(processor);
         return processor.mStatement;
@@ -76,7 +94,11 @@ public class StatementProcessor implements StatementVisitor {
 
     @Override
     public void visit(Select select) {
-        mStatement = SelectProcessor.process(select, mFinder);
+        try {
+            mStatement = SelectProcessor.process(select, mFinder);
+        } catch (IOException e) {
+            throw Utils.rethrow(e);
+        }
     }
 
     @Override

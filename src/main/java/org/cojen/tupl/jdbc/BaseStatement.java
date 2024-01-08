@@ -234,7 +234,7 @@ public abstract class BaseStatement implements Statement {
     public abstract Connection getConnection() throws SQLException;
 
     /**
-     * Must set connection reference to null.
+     * Must set the connection reference to null.
      */
     @Override
     public abstract void close() throws SQLException;

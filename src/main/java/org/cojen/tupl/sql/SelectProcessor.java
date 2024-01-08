@@ -17,6 +17,8 @@
 
 package org.cojen.tupl.sql;
 
+import java.io.IOException;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -44,7 +46,7 @@ public class SelectProcessor implements SelectVisitor {
     /**
      * @param finder used for finding fully functional Table instances
      */
-    public static RelationNode process(Select select, TableFinder finder) {
+    public static RelationNode process(Select select, TableFinder finder) throws IOException {
         var processor = new SelectProcessor(finder);
         select.accept(processor);
         return processor.mNode;
@@ -53,7 +55,7 @@ public class SelectProcessor implements SelectVisitor {
     /**
      * @param finder used for finding fully functional Table instances
      */
-    public static RelationNode process(ParenthesedSelect select, TableFinder finder) {
+    static RelationNode process(ParenthesedSelect select, TableFinder finder) throws IOException {
         if (select.getPivot() != null ||
             select.getUnPivot() != null)
         {
@@ -83,7 +85,11 @@ public class SelectProcessor implements SelectVisitor {
 
     @Override
     public void visit(ParenthesedSelect parenthesedSelect) {
-        mNode = process(parenthesedSelect, mFinder);
+        try {
+            mNode = process(parenthesedSelect, mFinder);
+        } catch (Throwable e) {
+            throw Utils.rethrow(e);
+        }
     }
 
     @Override

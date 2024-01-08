@@ -17,11 +17,17 @@
 
 package org.cojen.tupl.jdbc;
 
+import java.io.IOException;
+
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 
 import org.cojen.tupl.Transaction;
+
+import org.cojen.tupl.diag.QueryPlan;
+
+import static org.cojen.tupl.rows.RowUtils.NO_ARGS;
 
 /**
  * 
@@ -144,6 +150,32 @@ public abstract class DbQuery extends BasePreparedStatement {
      */
     @Override
     public abstract ResultSet executeQuery() throws SQLException;
+
+    /**
+     * Returns an optional QueryPlan for this query.
+     */
+    public QueryPlan plan(Object... args) throws SQLException {
+        try {
+            TableProvider provider = tableProvider();
+            return provider == null ? null : provider.table(args).queryAll().scannerPlan(txn());
+        } catch (IOException e) {
+            throw new SQLException(e);
+        }
+    }
+
+    /**
+     * @hidden
+     */
+    public QueryPlan plan() throws SQLException {
+        return plan(NO_ARGS);
+    }
+
+    /**
+     * Returns an optional TableProvider for this query.
+     */
+    public TableProvider tableProvider() {
+        return null;
+    }
 
     /**
      * Close and discard the ResultSet, if any.

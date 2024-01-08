@@ -28,18 +28,21 @@ import org.cojen.tupl.Database;
 import org.cojen.tupl.LockMode;
 import org.cojen.tupl.Transaction;
 
+import org.cojen.tupl.sql.TableFinder;
+
 /**
  * 
  *
  * @author Brian S. O'Neill
  */
-public class DbConnection extends BaseConnection {
-    private Database mDb;
+public final class DbConnection extends BaseConnection {
+    private DbDataSource mDataSource;
+    private TableFinder mFinder;
     private Transaction mTxn;
     private TxnSavepoint mLastSavepoint;
 
-    public DbConnection(Database db) {
-        mDb = db;
+    DbConnection(DbDataSource dataSource) {
+        mDataSource = dataSource;
     }
 
     @Override
@@ -49,9 +52,8 @@ public class DbConnection extends BaseConnection {
     }
 
     @Override
-    public PreparedStatement prepareStatement(String sql) throws SQLException {
-        // FIXME
-        throw null;
+    public DbQuery prepareStatement(String sql) throws SQLException {
+        return dataSource().queryFactory(sql, mFinder).newDbQuery(this);
     }
 
     @Override
@@ -111,14 +113,15 @@ public class DbConnection extends BaseConnection {
     @Override
     public void close() throws SQLException {
         rollback();
-        mDb = null;
+        mDataSource = null;
+        mFinder = null;
         mTxn = null;
         // FIXME: Close all Statements and ResultSets too.
     }
 
     @Override
     public boolean isClosed() throws SQLException {
-        return mDb == null;
+        return mDataSource == null;
     }
 
     @Override
@@ -277,16 +280,34 @@ public class DbConnection extends BaseConnection {
         throw new SQLException("Unknown savepoint");
     }
 
+    @Override
+    public void setSchema(String schema) throws SQLException {
+        mFinder = dataSource().mFinder.withSchema(schema);
+    }
+
+    @Override
+    public String getSchema() throws SQLException {
+        TableFinder finder = mFinder;
+        if (finder == null) {
+            finder = dataSource().mFinder;
+        }
+        return finder.schema();
+    }
+
     Transaction txn() {
         return mTxn;
     }
 
-    private Database db() throws SQLException {
-        Database db = mDb;
-        if (db == null) {
+    private DbDataSource dataSource() throws SQLException {
+        DbDataSource dataSource = mDataSource;
+        if (dataSource == null) {
             throw new SQLException("Closed");
         }
-        return db;
+        return dataSource;
+    }
+
+    private Database db() throws SQLException {
+        return dataSource().mDb;
     }
 
     private static class TxnSavepoint implements Savepoint {

@@ -43,7 +43,7 @@ import org.cojen.tupl.rows.WeakCache;
  *
  * @author Brian S. O'Neill
  */
-public final class DbQueryMaker {
+final class DbQueryMaker {
     /**
      * Returns a new Factory instance. Factory classes are cached by the provider's rowType,
      * projection, and argumentCount.
@@ -239,6 +239,11 @@ public final class DbQueryMaker {
                 tableVar = providerField.invoke("table", mm.field("params"));
             }
             mm.return_(tableVar.invoke("newScanner", rowVar, txnVar));
+        }
+
+        {
+            MethodMaker mm = cm.addMethod(TableProvider.class, "tableProvider").public_();
+            mm.return_(mm.field("provider"));
         }
 
         assert cm.unimplementedMethods().isEmpty();

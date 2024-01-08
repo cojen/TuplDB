@@ -289,15 +289,14 @@ public abstract class BaseConnection implements Connection {
         throw new SQLFeatureNotSupportedException();
     }
 
+    /*
     @Override
     public void setSchema(String schema) throws SQLException {
-        // FIXME: maps to package name
     }
 
     @Override
     public String getSchema() throws SQLException {
-        return null;
-    }
+    */
 
     @Override
     public void abort(Executor executor) throws SQLException {

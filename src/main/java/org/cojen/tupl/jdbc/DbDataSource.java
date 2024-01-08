@@ -17,37 +17,100 @@
 
 package org.cojen.tupl.jdbc;
 
+import java.io.IOException;
 import java.io.PrintWriter;
 
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.sql.SQLFeatureNotSupportedException;
 
+import java.util.Objects;
+
 import java.util.logging.Logger;
 
 import javax.sql.DataSource;
 
+import net.sf.jsqlparser.parser.ParseException;
+
 import org.cojen.tupl.Database;
+
+import org.cojen.tupl.io.Utils;
+
+import org.cojen.tupl.model.RelationNode;
+
+import org.cojen.tupl.rows.SoftCache;
+
+import org.cojen.tupl.sql.StatementProcessor;
+import org.cojen.tupl.sql.TableFinder;
 
 /**
  * 
  *
  * @author Brian S. O'Neill
  */
-public class DbDataSource implements DataSource {
-    private final Database mDb;
+public final class DbDataSource implements DataSource {
+    final Database mDb;
+    final TableFinder mFinder;
+
+    private final SoftCache<String, DbQuery.Factory, TableFinder> mStatementCache;
 
     public DbDataSource(Database db) {
-        mDb = db;
+        this(db, null, null);
+    }
+
+    /**
+     * @param schema base package to use for finding classes; pass null to require fully
+     * qualified names by default
+     */
+    public DbDataSource(Database db, String schema) {
+        this(db, schema, null);
+    }
+
+    /**
+     * @param schema base package to use for finding classes; pass null to require fully
+     * qualified names by default
+     * @param loader used to load table classes
+     */
+    public DbDataSource(Database db, String schema, ClassLoader loader) {
+        this(db, TableFinder.using(db, schema, loader));
+    }
+
+    public DbDataSource(Database db, TableFinder finder) {
+        mDb = Objects.requireNonNull(db);
+        mFinder = Objects.requireNonNull(finder);
+
+        mStatementCache = new SoftCache<>() {
+            @Override
+            protected DbQuery.Factory newValue(String sql, TableFinder finder) {
+                try {
+                    Object stmt;
+                    try {
+                        stmt = StatementProcessor.process(sql, finder);
+                    } catch (ParseException e) {
+                        throw new SQLException(e.getMessage());
+                    } catch (IOException e) {
+                        throw new SQLException(e);
+                    }
+
+                    if (stmt instanceof RelationNode rn) {
+                        return DbQueryMaker.make(rn.makeTableProvider());
+                    }
+
+                    throw new SQLException("Unsupported statement: " + sql + ", " + stmt);
+                } catch (SQLException e) {
+                    throw Utils.rethrow(e);
+                }
+            }
+        };
     }
 
     @Override
-    public Connection getConnection() throws SQLException {
-        return new DbConnection(mDb);
+    public DbConnection getConnection() throws SQLException {
+        return new DbConnection(this);
     }
 
     @Override
-    public Connection getConnection(String username, String password) throws SQLException {
+    public DbConnection getConnection(String username, String password) throws SQLException {
         return getConnection();
     }
 
@@ -82,5 +145,9 @@ public class DbDataSource implements DataSource {
     @Override
     public boolean isWrapperFor(Class<?> iface) throws SQLException {
         return false;
+    }
+
+    DbQuery.Factory queryFactory(String sql, TableFinder finder) throws SQLException {
+        return mStatementCache.obtain(sql, finder == null ? mFinder : finder);
     }
 }
