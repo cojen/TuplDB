@@ -23,11 +23,10 @@ import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 
+import org.cojen.tupl.Table;
 import org.cojen.tupl.Transaction;
 
 import org.cojen.tupl.diag.QueryPlan;
-
-import static org.cojen.tupl.rows.RowUtils.NO_ARGS;
 
 /**
  * 
@@ -153,27 +152,32 @@ public abstract class DbQuery extends BasePreparedStatement {
 
     /**
      * Returns an optional QueryPlan for this query.
+     *
+     * @throws SQLException if not all parameters have been set
      */
-    public QueryPlan plan(Object... args) throws SQLException {
+    public QueryPlan plan() throws SQLException {
+        checkParams();
+
         try {
-            TableProvider provider = tableProvider();
-            return provider == null ? null : provider.table(args).queryAll().scannerPlan(txn());
+            Table<?> table = table();
+            return table == null ? null : table.queryAll().scannerPlan(txn());
         } catch (IOException e) {
             throw new SQLException(e);
         }
     }
 
     /**
-     * @hidden
+     * @throws SQLException if not all parameters have been set
      */
-    public QueryPlan plan() throws SQLException {
-        return plan(NO_ARGS);
+    public void checkParams() throws SQLException {
     }
 
     /**
-     * Returns an optional TableProvider for this query.
+     * Returns an optional Table for this query. This method doesn't check if all the
+     * parameters have been set, and so attempting to scan it might throw a
+     * NullPointerException when converting an unset/null parameter to a primitive type.
      */
-    public TableProvider tableProvider() {
+    public Table<?> table() {
         return null;
     }
 

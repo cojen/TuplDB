@@ -32,6 +32,7 @@ import org.cojen.maker.MethodMaker;
 import org.cojen.maker.Variable;
 
 import org.cojen.tupl.Scanner;
+import org.cojen.tupl.Table;
 import org.cojen.tupl.Transaction;
 
 import org.cojen.tupl.io.Utils;
@@ -120,14 +121,23 @@ final class DbQueryMaker {
         ClassMaker cm = CodeUtils.beginClassMaker(DbQueryMaker.class, rsClass, null, "query");
         cm.extend(DbQuery.class).implement(ScannerFactory.class).final_();
 
-        cm.addField(TableProvider.class, "provider").private_().final_();
+        int argCount = provider.argumentCount();
+
         cm.addField(rsClass, "rs").private_();
 
-        MethodMaker ctor = cm.addConstructor(DbConnection.class, TableProvider.class);
-        ctor.invokeSuperConstructor(ctor.param(0));
-        ctor.field("provider").set(ctor.param(1));
-
-        int argCount = provider.argumentCount();
+        MethodMaker ctor;
+        if (argCount == 0) {
+            // No need to ask the provider each time.
+            cm.addField(Table.class, "table").private_().final_();
+            ctor = cm.addConstructor(DbConnection.class, Table.class);
+            ctor.invokeSuperConstructor(ctor.param(0));
+            ctor.field("table").set(ctor.param(1));
+        } else {
+            cm.addField(TableProvider.class, "provider").private_().final_();
+            ctor = cm.addConstructor(DbConnection.class, TableProvider.class);
+            ctor.invokeSuperConstructor(ctor.param(0));
+            ctor.field("provider").set(ctor.param(1));
+        }
 
         if (argCount > 0) {
             cm.addField(Object[].class, "params").private_().final_();
@@ -190,19 +200,24 @@ final class DbQueryMaker {
 
             if (argCount > 0) {
                 // Check that all parameters have been set.
+
+                MethodMaker check = cm.addMethod(null, "checkParams").public_();
+
                 for (int i = 0;;) {
-                    var fieldVar = mm.field("params$" + (i >>> 5));
+                    var fieldVar = check.field("params$" + (i >>> 5));
                     i += 32;
                     if (i <= argCount) {
-                        mm.invoke("checkParams", ~0, fieldVar);
+                        check.invoke("checkParams", ~0, fieldVar);
                         if (i == argCount) {
                             break;
                         }
                     } else {
-                        mm.invoke("checkParams", (1 << (i - 31)) - 1, fieldVar);
+                        check.invoke("checkParams", (1 << (i - 31)) - 1, fieldVar);
                         break;
                     }
                 }
+
+                mm.invoke("checkParams");
             }
 
             Label start = mm.label().here();
@@ -228,22 +243,19 @@ final class DbQueryMaker {
         }
 
         {
-            MethodMaker mm = cm.addMethod(Scanner.class, "newScanner", Object.class).public_();
-            var rowVar = mm.param(0);
-            var txnVar = mm.invoke("txn");
-            var providerField = mm.field("provider");
-            Variable tableVar;
+            MethodMaker mm = cm.addMethod(Table.class, "table").public_();
             if (argCount == 0) {
-                tableVar = providerField.invoke("table");
+                mm.return_(mm.field("table"));
             } else {
-                tableVar = providerField.invoke("table", mm.field("params"));
+                mm.return_(mm.field("provider").invoke("table", mm.field("params")));
             }
-            mm.return_(tableVar.invoke("newScanner", rowVar, txnVar));
         }
 
         {
-            MethodMaker mm = cm.addMethod(TableProvider.class, "tableProvider").public_();
-            mm.return_(mm.field("provider"));
+            MethodMaker mm = cm.addMethod(Scanner.class, "newScanner", Object.class).public_();
+            var rowVar = mm.param(0);
+            var txnVar = mm.invoke("txn"); // check if closed early
+            mm.return_(mm.invoke("table").invoke("newScanner", rowVar, txnVar));
         }
 
         assert cm.unimplementedMethods().isEmpty();
@@ -259,13 +271,23 @@ final class DbQueryMaker {
         // collected as long as the generated factory class still exists.
         cm.addField(Object.class, "_").static_().private_();
 
-        cm.addField(TableProvider.class, "provider").private_().final_();
+        if (argCount == 0) {
+            cm.addField(Table.class, "table").private_().final_();
 
-        ctor = cm.addConstructor(TableProvider.class);
-        ctor.invokeSuperConstructor();
-        ctor.field("provider").set(ctor.param(0));
+            ctor = cm.addConstructor(TableProvider.class);
+            ctor.invokeSuperConstructor();
+            ctor.field("table").set(ctor.param(0).invoke("table"));
 
-        {
+            MethodMaker mm = cm.addMethod(DbQuery.class, "newDbQuery", DbConnection.class);
+            mm.public_();
+            mm.return_(mm.new_(dbQueryClass, mm.param(0), mm.field("table")));
+        } else {
+            cm.addField(TableProvider.class, "provider").private_().final_();
+
+            ctor = cm.addConstructor(TableProvider.class);
+            ctor.invokeSuperConstructor();
+            ctor.field("provider").set(ctor.param(0));
+
             MethodMaker mm = cm.addMethod(DbQuery.class, "newDbQuery", DbConnection.class);
             mm.public_();
             mm.return_(mm.new_(dbQueryClass, mm.param(0), mm.field("provider")));
