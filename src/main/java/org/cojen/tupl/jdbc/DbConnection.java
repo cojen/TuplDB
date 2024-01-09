@@ -60,8 +60,8 @@ public final class DbConnection extends BaseConnection {
 
     @Override
     public Statement createStatement() throws SQLException {
-        // FIXME
-        throw null;
+        dataSource(); // check if closed
+        return new ConStatement(this);
     }
 
     @Override

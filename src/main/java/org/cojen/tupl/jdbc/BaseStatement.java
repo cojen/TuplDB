@@ -34,16 +34,6 @@ public abstract class BaseStatement implements Statement {
     }
 
     @Override
-    public ResultSet executeQuery(String sql) throws SQLException {
-        return getConnection().prepareStatement(sql).executeQuery();
-    }
-
-    @Override
-    public int executeUpdate(String sql) throws SQLException {
-        return getConnection().prepareStatement(sql).executeUpdate();
-    }
-
-    @Override
     public int getMaxFieldSize() throws SQLException {
         return 0;
     }
@@ -96,6 +86,12 @@ public abstract class BaseStatement implements Statement {
     /*
     @Override
     public boolean execute(String sql) throws SQLException {
+
+    @Override
+    public ResultSet executeQuery(String sql) throws SQLException {
+
+    @Override
+    public int executeUpdate(String sql) throws SQLException {
 
     @Override
     public ResultSet getResultSet() throws SQLException {

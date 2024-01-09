@@ -57,6 +57,16 @@ public abstract class BasePreparedStatement extends BaseStatement implements Pre
         throw new SQLException();
     }
 
+    @Override
+    public ResultSet executeQuery(String sql) throws SQLException {
+        throw new SQLException();
+    }
+
+    @Override
+    public int executeUpdate(String sql) throws SQLException {
+        throw new SQLException();
+    }
+
     /*
     @Override
     public ResultSet executeQuery() throws SQLException {
