@@ -147,6 +147,96 @@ public sealed class ConstantNode extends Node {
         }
     }
 
+    public ConstantNode tryConvert(Type toType) {
+        quick: {
+            Class<?> clazz;
+            int typeCode;
+
+            switch (toType.typeCode) {
+            case TYPE_ULONG:
+                switch (mType.typeCode) {
+                case TYPE_BYTE: case TYPE_SHORT: case TYPE_INT: case TYPE_LONG:
+                    if (((Number) mValue).longValue() < 0L) {
+                        return null;
+                    }
+                    break;
+
+                case TYPE_FLOAT:
+                    float f = ((Float) mValue).floatValue();
+                    long i = (long) f;
+                    if (f < 0 || ((float) i) != f) {
+                        return null;
+                    }
+                    break;
+
+                case TYPE_DOUBLE:
+                    double d = ((Double) mValue).doubleValue();
+                    i = (long) d;
+                    if (d < 0 || ((double) i) != d) {
+                        return null;
+                    }
+                    break;
+
+                default:
+                    break quick;
+                }
+
+                clazz = long.class;
+                typeCode = TYPE_ULONG;
+                break;
+
+            case TYPE_FLOAT:
+                switch (mType.typeCode) {
+                case TYPE_LONG:
+                    long i = ((Long) mValue).longValue();
+                    float f = (float) i;
+                    if (((long) f) != i) {
+                        return null;
+                    }
+                    break;
+
+                default:
+                    break quick;
+                }
+
+                clazz = float.class;
+                typeCode = TYPE_FLOAT;
+                break;
+
+            case TYPE_DOUBLE:
+                switch (mType.typeCode) {
+                case TYPE_LONG:
+                    long i = ((Long) mValue).longValue();
+                    double d = (double) i;
+                    if (((long) d) != i) {
+                        return null;
+                    }
+                    break;
+
+                default:
+                    break quick;
+                }
+
+                clazz = double.class;
+                typeCode = TYPE_DOUBLE;
+                break;
+
+            default:
+                break quick;
+            }
+
+            return asType(BasicType.make(clazz, typeCode));
+        }
+
+        // TODO: Define more cases instead of relying on the brute force approach.
+
+        try {
+            return asType(toType);
+        } catch (Throwable e) {
+            return null;
+        }
+    }
+
     @Override
     public String name() {
         StringBuilder b;
@@ -248,91 +338,6 @@ public sealed class ConstantNode extends Node {
 
     public Object value() {
         return mValue;
-    }
-
-    /**
-     * Try to convert this numerical type to the given (different) numerical type if no
-     * information is lost. This only needs to be called when a conversion would create a
-     * BigDecimal or BigInteger, and so it doesn't need to cover all cases.
-     */
-    public ConstantNode tryConvert(Type toType) {
-        Class<?> clazz;
-        int typeCode;
-
-        switch (toType.typeCode) {
-        case TYPE_ULONG:
-            switch (mType.typeCode) {
-            case TYPE_BYTE: case TYPE_SHORT: case TYPE_INT: case TYPE_LONG:
-                if (((Number) mValue).longValue() < 0L) {
-                    return null;
-                }
-                break;
-
-            case TYPE_FLOAT:
-                float f = ((Float) mValue).floatValue();
-                long i = (long) f;
-                if (f < 0 || ((float) i) != f) {
-                    return null;
-                }
-                break;
-
-            case TYPE_DOUBLE:
-                double d = ((Double) mValue).doubleValue();
-                i = (long) d;
-                if (d < 0 || ((double) i) != d) {
-                    return null;
-                }
-                break;
-
-            default:
-                return null;
-            }
-
-            clazz = long.class;
-            typeCode = TYPE_ULONG;
-            break;
-
-        case TYPE_FLOAT:
-            switch (mType.typeCode) {
-            case TYPE_LONG:
-                long i = ((Long) mValue).longValue();
-                float f = (float) i;
-                if (((long) f) != i) {
-                    return null;
-                }
-                break;
-
-            default:
-                return null;
-            }
-
-            clazz = float.class;
-            typeCode = TYPE_FLOAT;
-            break;
-
-        case TYPE_DOUBLE:
-            switch (mType.typeCode) {
-            case TYPE_LONG:
-                long i = ((Long) mValue).longValue();
-                double d = (double) i;
-                if (((long) d) != i) {
-                    return null;
-                }
-                break;
-
-            default:
-                return null;
-            }
-
-            clazz = double.class;
-            typeCode = TYPE_DOUBLE;
-            break;
-
-        default:
-            return null;
-        }
-
-        return asType(BasicType.make(clazz, typeCode));
     }
 
     @Override

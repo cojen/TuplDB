@@ -42,6 +42,14 @@ public abstract class Node {
     public abstract Node asType(Type type);
 
     /**
+     * Returns a node if conversion to the given type is guaranteed to succeed without losing
+     * any information.
+     */
+    public Node tryConvert(Type toType) {
+        return null;
+    }
+
+    /**
      * Returns a non-null name, which doesn't affect the functionality of this node.
      *
      * @see #equals

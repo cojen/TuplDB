@@ -66,7 +66,7 @@ public sealed class BinaryOpNode extends Node {
      * @param name can be null to automatically assign a name
      */
     public static BinaryOpNode make(String name, int op, Node left, Node right) {
-        Type type;
+        final Type type;
 
         while (true) {
             Type leftType = left.type();
@@ -84,6 +84,34 @@ public sealed class BinaryOpNode extends Node {
                 continue;
             }
 
+            // Try finding a common type, which might involve a narrowing conversion.
+
+            Node tryLeft = left.tryConvert(rightType);
+            Node tryRight = right.tryConvert(leftType);
+
+            if (tryLeft != null) {
+                if (tryRight != null) {
+                    leftType = left.type();
+                    rightType = right.type();
+                    if (leftType.equals(rightType)) {
+                        left = tryLeft;
+                        right = tryRight;
+                        type = leftType;
+                        break;
+                    }
+                } else {
+                    left = tryLeft;
+                    type = left.type();
+                    break;
+                }
+            } else if (tryRight != null) {
+                right = tryRight;
+                type = right.type();
+                break;
+            }
+
+            // Try finding a common type, which might involve a widening conversion.
+
             ColumnInfo common = ConvertUtils.commonType(leftType, rightType, op);
 
             if (common == leftType) {
@@ -100,25 +128,6 @@ public sealed class BinaryOpNode extends Node {
                 var b = new StringBuilder("No common type for: ");
                 append(b, op, left, right);
                 throw new IllegalStateException(b.toString());
-            }
-
-            if ((common.type == BigDecimal.class || common.type == BigInteger.class) &&
-                leftType.isUnsigned() != rightType.isUnsigned())
-            {
-                // Try to use a simpler type.
-                if (left instanceof ConstantNode cn) {
-                    ConstantNode converted = cn.tryConvert(rightType);
-                    if (converted != null && !converted.equals(left)) {
-                        left = converted;
-                        continue;
-                    }
-                } else if (right instanceof ConstantNode cn) {
-                    ConstantNode converted = cn.tryConvert(leftType);
-                    if (converted != null && !converted.equals(right)) {
-                        right = converted;
-                        continue;
-                    }
-                }
             }
 
             type = BasicType.make(common);
