@@ -160,8 +160,9 @@ public final class JoinNode extends RelationNode {
 
     private String makeSpec() {
         var bob = new StringBuilder();
-        int ci = appendSpec(0, bob);
-        if (ci != type().tupleType().numColumns()) {
+        TupleType tt = type().tupleType();
+        int ci = appendSpec(tt, 0, bob);
+        if (ci != tt.numColumns()) {
             throw new AssertionError();
         }
         return bob.toString();
@@ -171,16 +172,16 @@ public final class JoinNode extends RelationNode {
      * @param ci column index
      * @return updated column index
      */
-    private int appendSpec(int ci, StringBuilder bob) {
-        ci = appendSpec(mLeft, ci, bob);
+    private int appendSpec(TupleType tt, int ci, StringBuilder bob) {
+        ci = appendSpec(mLeft, tt, ci, bob);
         bob.append(' ').append(JoinSpec.typeToString(mJoinType)).append(' ');
         RelationNode right = mRight;
         if (right instanceof JoinNode rjn) {
             bob.append('(');
-            ci = rjn.appendSpec(ci, bob);
+            ci = rjn.appendSpec(tt, ci, bob);
             bob.append(')');
         } else {
-            ci = appendSpec(right, ci, bob);
+            ci = appendSpec(right, tt, ci, bob);
         }
         return ci;
     }
@@ -189,11 +190,11 @@ public final class JoinNode extends RelationNode {
      * @param ci column index
      * @return updated column index
      */
-    private int appendSpec(RelationNode node, int ci, StringBuilder bob) {
+    private static int appendSpec(RelationNode node, TupleType tt, int ci, StringBuilder bob) {
         if (node instanceof JoinNode jn) {
-            ci = jn.appendSpec(ci, bob);
+            ci = jn.appendSpec(tt, ci, bob);
         } else {
-            bob.append(type().tupleType().field(ci++));
+            bob.append(tt.field(ci++));
         }
         return ci;
     }
