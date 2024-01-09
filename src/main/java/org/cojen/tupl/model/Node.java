@@ -37,7 +37,8 @@ public abstract class Node {
     public abstract Type type();
 
     /**
-     * @return this or a replacement node
+     * Return this or a replacement node. If a conversion is required, it might be lossy. If
+     * exact conversion is required, the caller is responsible for checking first.
      */
     public abstract Node asType(Type type);
 
@@ -71,7 +72,7 @@ public abstract class Node {
     public abstract boolean isPureFunction();
 
     /**
-     * Performs a best effort conversion of this node into a RowFilter. And nodes which cannot be
+     * Performs a best effort conversion of this node into a RowFilter. Any nodes which cannot be
      * converted are represented by OpaqueFilters which have the node attached.
      *
      * @param columns all converted columns are put into this map

@@ -41,6 +41,8 @@ import org.cojen.tupl.rows.filter.FalseFilter;
 import org.cojen.tupl.rows.filter.RowFilter;
 import org.cojen.tupl.rows.filter.TrueFilter;
 
+import org.cojen.tupl.util.Canonicalizer;
+
 import static org.cojen.tupl.rows.ColumnInfo.*;
 
 /**
@@ -96,6 +98,8 @@ public sealed class ConstantNode extends Node {
     public static ConstantNode make(double value) {
         return new ConstantNode(double.class, TYPE_DOUBLE, value);
     }
+
+    private static final Canonicalizer cCanonicalizer = new Canonicalizer();
 
     private static final SoftCache<Class, MethodHandle, Object> cConverterCache;
 
@@ -309,8 +313,15 @@ public sealed class ConstantNode extends Node {
 
     public static Variable makeEval(EvalContext context, Class type, Object value) {
         var valueVar = context.methodMaker().var(type);
-        // FIXME: Must call setExact if necessary. Use Canonicalizer.
-        return valueVar.set(value);
+
+        if (value == null || type.isPrimitive() ||
+            String.class.isAssignableFrom(type) ||
+            Class.class.isAssignableFrom(type))
+        {
+            return valueVar.set(value);
+        } else {
+            return valueVar.setExact(cCanonicalizer.apply(value));
+        }
     }
 
     @Override

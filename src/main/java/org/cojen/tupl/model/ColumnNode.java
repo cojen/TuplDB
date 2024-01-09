@@ -17,7 +17,6 @@
 
 package org.cojen.tupl.model;
 
-import java.util.List;
 import java.util.Set;
 
 import org.cojen.maker.Variable;
@@ -54,11 +53,7 @@ public final class ColumnNode extends Node {
 
     @Override
     public Node asType(Type type) {
-        if (type.equals(type())) {
-            return this;
-        }
-        // FIXME: runtime cast
-        throw null;
+        return ConversionNode.make(this, type);
     }
 
     public RelationNode from() {

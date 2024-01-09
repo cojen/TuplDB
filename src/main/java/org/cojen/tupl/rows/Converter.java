@@ -71,9 +71,9 @@ public class Converter {
      *
      * @see #convertExact
      */
-    static void convertLossy(final MethodMaker mm,
-                             final ColumnInfo srcInfo, final Variable srcVar,
-                             final ColumnInfo dstInfo, final Variable dstVar)
+    public static void convertLossy(final MethodMaker mm,
+                                    final ColumnInfo srcInfo, final Variable srcVar,
+                                    final ColumnInfo dstInfo, final Variable dstVar)
     {
         if (srcInfo.isCompatibleWith(dstInfo)) {
             dstVar.set(srcVar);
