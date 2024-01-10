@@ -32,6 +32,7 @@ import org.cojen.maker.Variable;
 
 import org.cojen.tupl.Mapper;
 import org.cojen.tupl.Table;
+import org.cojen.tupl.Untransformed;
 import org.cojen.tupl.ViewConstraintException;
 
 import org.cojen.tupl.diag.QueryPlan;
@@ -396,6 +397,7 @@ final class SelectMappedNode extends SelectNode {
             String sourceName = MappedTable.escape(source.column().name());
             String methodName = targetType.field(i) + "_to_" + sourceName;
             MethodMaker mm = cm.addMethod(columnType, methodName, columnType).public_().static_();
+            mm.addAnnotation(Untransformed.class, true);
             mm.return_(mm.param(0));
         }
     }
