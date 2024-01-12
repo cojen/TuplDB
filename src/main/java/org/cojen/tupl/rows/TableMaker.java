@@ -135,14 +135,16 @@ public class TableMaker {
 
     protected static void markAllClean(Variable rowVar, RowGen rowGen, RowGen codecGen) {
         if (rowGen == codecGen) { // isPrimaryTable, so truly mark all clean
-            int mask = 0x5555_5555;
-            int i = 0;
             String[] stateFields = rowGen.stateFields();
-            for (; i < stateFields.length - 1; i++) {
+            if (stateFields.length != 0) {
+                int mask = 0x5555_5555;
+                int i = 0;
+                for (; i < stateFields.length - 1; i++) {
+                    rowVar.field(stateFields[i]).set(mask);
+                }
+                mask >>>= (32 - ((rowGen.info.allColumns.size() & 0b1111) << 1));
                 rowVar.field(stateFields[i]).set(mask);
             }
-            mask >>>= (32 - ((rowGen.info.allColumns.size() & 0b1111) << 1));
-            rowVar.field(stateFields[i]).set(mask);
         } else {
             // Only mark columns clean that are defined by codecGen. All others are unset.
             markClean(rowVar, rowGen, codecGen.info.allColumns);
@@ -189,16 +191,18 @@ public class TableMaker {
      * Remaining states are UNSET or CLEAN.
      */
     protected static void markAllUndirty(Variable rowVar, RowInfo info) {
-        int mask = 0x5555_5555;
-        int i = 0;
         String[] stateFields = info.rowGen().stateFields();
-        for (; i < stateFields.length - 1; i++) {
+        if (stateFields.length != 0) {
+            int mask = 0x5555_5555;
+            int i = 0;
+            for (; i < stateFields.length - 1; i++) {
+                var field = rowVar.field(stateFields[i]);
+                field.set(field.and(mask));
+            }
+            mask >>>= (32 - ((info.allColumns.size() & 0b1111) << 1));
             var field = rowVar.field(stateFields[i]);
             field.set(field.and(mask));
         }
-        mask >>>= (32 - ((info.allColumns.size() & 0b1111) << 1));
-        var field = rowVar.field(stateFields[i]);
-        field.set(field.and(mask));
     }
 
     /**
