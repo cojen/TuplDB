@@ -72,15 +72,20 @@ public sealed class BinaryOpNode extends Node {
             Type leftType = left.type();
             Type rightType = right.type();
 
+            if (left.isNullable() || right.isNullable()) {
+                leftType = leftType.nullable();
+                rightType = rightType.nullable();
+            }
+
             if (leftType == AnyType.THE) {
                 if (rightType == AnyType.THE) {
                     type = leftType;
                     break;
                 }
-                left = left.asType(rightType.nullable());
+                left = left.asType(rightType);
                 continue;
             } else if (rightType == AnyType.THE) {
-                right = right.asType(leftType.nullable());
+                right = right.asType(leftType);
                 continue;
             }
 
@@ -274,13 +279,41 @@ public sealed class BinaryOpNode extends Node {
         var leftVar = mLeft.makeEval(context);
         var rightVar = mRight.makeEval(context);
 
-        Variable result = doMakeEval(context, leftVar, rightVar);
+        MethodMaker mm = context.methodMaker();
+        var resultVar = mm.var(mType.clazz());
 
-        if (resultRef != null) {
-            result = resultRef.set(result);
+        Label ready = null;
+        if (mLeft.isNullable()) {
+            ready = mm.label();
+            Label cont = mm.label();
+            leftVar.ifNe(null, cont);
+            resultVar.set(null);
+            ready.goto_();
+            cont.here();
         }
 
-        return result;
+        if (mRight.isNullable()) {
+            if (ready == null) {
+                ready = mm.label();
+            }
+            Label cont = mm.label();
+            rightVar.ifNe(null, cont);
+            resultVar.set(null);
+            ready.goto_();
+            cont.here();
+        }
+
+        resultVar.set(doMakeEval(context, leftVar, rightVar));
+
+        if (ready != null) {
+            ready.here();
+        }
+
+        if (resultRef != null) {
+            resultVar = resultRef.set(resultVar);
+        }
+
+        return resultVar;
     }
 
     private Variable doMakeEval(EvalContext context, Variable leftVar, Variable rightVar) {
@@ -288,7 +321,6 @@ public sealed class BinaryOpNode extends Node {
             // FIXME: These ops need to work for primitive numbers, BigInteger, and BigDecimal.
             // FIXME: Needs to perform exact arithmetic.
             // FIXME: Needs to support unsigned numbers.
-            // FIXME: Needs to handle nulls.
 
         case OP_ADD:
             // FIXME: Temporary hack.
