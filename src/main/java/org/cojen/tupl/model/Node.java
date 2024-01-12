@@ -39,8 +39,8 @@ public abstract sealed class Node
     public abstract Type type();
 
     /**
-     * Return this or a replacement node. If a conversion is required, it might be lossy. If
-     * exact conversion is required, the caller is responsible for checking first.
+     * Return this or a replacement node. If a conversion is required, an exact conversion is
+     * performed, which can throw an exception at runtime.
      */
     public abstract Node asType(Type type);
 

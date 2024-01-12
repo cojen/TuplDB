@@ -102,7 +102,7 @@ public final class ConversionNode extends Node {
     public Variable makeEval(EvalContext context) {
         MethodMaker mm = context.methodMaker();
         var dstVar = mm.var(mType.clazz());
-        Converter.convertLossy(mm, mNode.type(), mNode.makeEval(context), mType, dstVar);
+        Converter.convertExact(mm, name(), mNode.type(), mNode.makeEval(context), mType, dstVar);
         return dstVar;
     }
 
