@@ -65,7 +65,7 @@ public sealed class BinaryOpNode extends Node {
     /**
      * @param name can be null to automatically assign a name
      */
-    public static BinaryOpNode make(String name, int op, Node left, Node right) {
+    public static Node make(String name, int op, Node left, Node right) {
         final Type type;
 
         while (true) {
@@ -166,7 +166,18 @@ public sealed class BinaryOpNode extends Node {
             return new BinaryOpNode(type, name, op, left, right);
         }
 
-        // FIXME: If left and right are ConstantNode, return a true/false ConstantNode.
+        if (left.equals(right) && left.isPureFunction() && right.isPureFunction()) {
+            constant: {
+                // Can just return true or false.
+                boolean value;
+                switch (op) {
+                case OP_EQ, OP_GE, OP_LE: value = true; break;
+                case OP_NE, OP_LT, OP_GT: value = false; break;
+                default: break constant;
+                }
+                return ConstantNode.make(value);
+            }
+        }
 
         if (op >= OP_AND) {
             if (left.canThrowRuntimeException() && !right.canThrowRuntimeException()) {
