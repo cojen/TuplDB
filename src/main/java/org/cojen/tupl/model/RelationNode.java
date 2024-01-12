@@ -31,7 +31,9 @@ import org.cojen.maker.Variable;
  *
  * @author Brian S. O'Neill
  */
-public abstract class RelationNode extends Node {
+public abstract sealed class RelationNode extends Node
+    permits JoinNode, SelectNode, TableNode
+{
     private final RelationType mType;
     private final String mName;
 
