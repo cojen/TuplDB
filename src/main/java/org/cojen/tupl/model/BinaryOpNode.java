@@ -77,10 +77,10 @@ public sealed class BinaryOpNode extends Node {
                     type = leftType;
                     break;
                 }
-                left = left.asType(rightType);
+                left = left.asType(rightType.nullable());
                 continue;
             } else if (rightType == AnyType.THE) {
-                right = right.asType(leftType);
+                right = right.asType(leftType.nullable());
                 continue;
             }
 
@@ -288,6 +288,7 @@ public sealed class BinaryOpNode extends Node {
             // FIXME: These ops need to work for primitive numbers, BigInteger, and BigDecimal.
             // FIXME: Needs to perform exact arithmetic.
             // FIXME: Needs to support unsigned numbers.
+            // FIXME: Needs to handle nulls.
 
         case OP_ADD:
             // FIXME: Temporary hack.

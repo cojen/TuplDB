@@ -71,7 +71,7 @@ public class ExpressionProcessor implements ExpressionVisitor {
 
     @Override
     public void visit(NullValue nullValue) {
-        mNode = ConstantNode.make((Object) null);
+        mNode = ConstantNode.NULL;
     }
 
     @Override
@@ -238,9 +238,7 @@ public class ExpressionProcessor implements ExpressionVisitor {
             op = isNullExpression.isNot() ? OP_NE : OP_EQ;
         }
 
-        Node right = ConstantNode.make((Object) null);
-
-        mNode = BinaryOpNode.make(null, op, left, right);
+        mNode = BinaryOpNode.make(null, op, left, ConstantNode.NULL);
     }
 
     @Override
