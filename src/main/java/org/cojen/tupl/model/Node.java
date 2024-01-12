@@ -46,7 +46,7 @@ public abstract sealed class Node
 
     /**
      * Returns a node if conversion to the given type is guaranteed to succeed without losing
-     * any information.
+     * any information. This is only likely to succeed if this node represents a constant.
      */
     public Node tryConvert(Type toType) {
         return null;

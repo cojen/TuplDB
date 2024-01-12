@@ -60,12 +60,6 @@ public final class ConversionNode extends Node {
     }
 
     @Override
-    public Node tryConvert(Type toType) {
-        // Don't bother attempting to perform a double conversion.
-        return null;
-    }
-
-    @Override
     public String name() {
         return mNode.name();
     }

@@ -68,7 +68,7 @@ public sealed class BinaryOpNode extends Node {
     public static Node make(String name, int op, Node left, Node right) {
         final Type type;
 
-        while (true) {
+        common: {
             Type leftType = left.type();
             Type rightType = right.type();
 
@@ -80,16 +80,16 @@ public sealed class BinaryOpNode extends Node {
             if (leftType == AnyType.THE) {
                 if (rightType == AnyType.THE) {
                     type = leftType;
-                    break;
+                    break common;
                 }
-                left = left.asType(rightType);
-                continue;
+                leftType = rightType;
+                left = left.asType(leftType);
             } else if (rightType == AnyType.THE) {
-                right = right.asType(leftType);
-                continue;
+                rightType = leftType;
+                right = right.asType(rightType);
             }
 
-            // Try finding a common type, which might involve a narrowing conversion.
+            // Try finding a common type using a lossless narrowing conversion.
 
             Node tryLeft = left.tryConvert(rightType);
             Node tryRight = right.tryConvert(leftType);
@@ -102,31 +102,31 @@ public sealed class BinaryOpNode extends Node {
                         left = tryLeft;
                         right = tryRight;
                         type = leftType;
-                        break;
+                        break common;
                     }
                 } else {
                     left = tryLeft;
                     type = left.type();
-                    break;
+                    break common;
                 }
             } else if (tryRight != null) {
                 right = tryRight;
                 type = right.type();
-                break;
+                break common;
             }
 
-            // Try finding a common type, which might involve a widening conversion.
+            // Try finding a common type using a widening conversion.
 
             ColumnInfo common = ConvertUtils.commonType(leftType, rightType, op);
 
             if (common == leftType) {
                 type = leftType;
-                break;
+                break common;
             }
 
             if (common == rightType) {
                 type = rightType;
-                break;
+                break common;
             }
 
             if (common == null) {
@@ -136,7 +136,6 @@ public sealed class BinaryOpNode extends Node {
             }
 
             type = BasicType.make(common);
-            break;
         }
 
         left = left.asType(type);
