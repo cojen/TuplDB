@@ -82,6 +82,11 @@ public abstract class Node {
     }
 
     /**
+     * Returns true if any path element is null or the evaluated result can be null.
+     */
+    public abstract boolean isNullable();
+
+    /**
      * Adds into the given set the fully qualified names of all the columns that makeEval will
      * directly use.
      */

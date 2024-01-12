@@ -30,7 +30,7 @@ import org.cojen.maker.Variable;
  * @author Brian S. O'Neill
  */
 final class EvalContext {
-    private Map<Node, ResultRef> mEvaluated;
+    private Map<Object, ResultRef> mEvaluated;
     private ResultRef[] mUndoLog;
     private int mUndoSize;
 
@@ -58,8 +58,8 @@ final class EvalContext {
      * used for non-trivial nodes which are pure functions. There's no point in stashing
      * references to trivial nodes because evaluating them again is cheap.
      */
-    ResultRef refFor(Node node) {
-        Map<Node, ResultRef> evaluated = mEvaluated;
+    ResultRef refFor(Object node) {
+        Map<Object, ResultRef> evaluated = mEvaluated;
         if (evaluated == null) {
             mEvaluated = evaluated = new HashMap<>();
         }
@@ -104,6 +104,8 @@ final class EvalContext {
     class ResultRef {
         private Variable mVar;
         private boolean mIsValid;
+
+        Object attachment;
 
         /**
          * @return null if no valid result is available

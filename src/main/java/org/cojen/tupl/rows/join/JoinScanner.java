@@ -19,6 +19,8 @@ package org.cojen.tupl.rows.join;
 
 import org.cojen.tupl.Scanner;
 
+import org.cojen.tupl.io.Utils;
+
 /**
  * Base class for generated join table scanners.
  *
@@ -36,15 +38,15 @@ public abstract class JoinScanner<J> implements Scanner<J> {
         return Long.MAX_VALUE;
     }
 
+    /**
+     * @param cause required
+     */
     protected final Throwable close(J joinRow, Throwable cause) {
-        clear(joinRow);
         try {
             close();
         } catch (Throwable e) {
-            cause.addSuppressed(e);
+            Utils.suppress(cause, e);
         }
         return cause;
     }
-
-    protected abstract void clear(J joinRow);
 }

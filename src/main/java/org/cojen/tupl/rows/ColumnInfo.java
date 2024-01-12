@@ -133,6 +133,14 @@ public class ColumnInfo implements Cloneable {
         return typeCode & 0b11111;
     }
 
+    public int modifiers() {
+        return modifiers(typeCode);
+    }
+
+    public static int modifiers(int typeCode) {
+        return typeCode & ~0b11111;
+    }
+
     public int unorderedTypeCode() {
         return unorderedTypeCode(typeCode);
     }
@@ -183,7 +191,7 @@ public class ColumnInfo implements Cloneable {
         return isNullable(typeCode);
     }
 
-    static boolean isNullable(int typeCode) {
+    public static boolean isNullable(int typeCode) {
         return (typeCode & TYPE_NULLABLE) != 0;
     }
 

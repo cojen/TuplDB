@@ -17,6 +17,7 @@
 
 package org.cojen.tupl.model;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -210,12 +211,9 @@ public abstract sealed class SelectNode extends RelationNode
 
         if (projection == null) {
             type = from.type().tupleType();
-            int numColumns = type.numColumns();
-            projection = new Node[numColumns];
-            for (int i=0; i<numColumns; i++) {
-                Column column = type.column(i);
-                projection[i] = ColumnNode.make(from, column.name(), column);
-            }
+            var allColumns = new ArrayList<ColumnNode>(type.numColumns());
+            from.allColumns(allColumns);
+            projection = allColumns.toArray(new Node[allColumns.size()]);
         } else {
             type = TupleType.make(projection);
         }

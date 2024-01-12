@@ -17,8 +17,11 @@
 
 package org.cojen.tupl.model;
 
+import java.util.Objects;
 import java.util.Set;
 
+import org.cojen.maker.Label;
+import org.cojen.maker.MethodMaker;
 import org.cojen.maker.Variable;
 
 /**
@@ -39,11 +42,32 @@ public final class ColumnNode extends Node {
     private final RelationNode mFrom;
     private final String mName;
     private final Column mColumn;
+    private final Sub mLastSub;
 
     private ColumnNode(RelationNode from, String name, Column column) {
         mFrom = from;
         mName = name;
         mColumn = column;
+
+        TupleType tt = from.type().tupleType();
+        boolean nullable = false;
+        Sub sub = null;
+
+        for (String subName : mColumn.subNames()) {
+            Column subColumn = tt.fieldColumn(subName);
+            if (subColumn != null) {
+                Type subType = subColumn.type();
+                if (subType.isNullable()) {
+                    nullable = true;
+                }
+                if (subType instanceof TupleType ctt) {
+                    tt = ctt;
+                }
+            }
+            sub = new Sub(sub, subName, nullable);
+        }
+
+        mLastSub = sub;
     }
 
     @Override
@@ -84,31 +108,18 @@ public final class ColumnNode extends Node {
     }
 
     @Override
+    public boolean isNullable() {
+        return mLastSub.mNullable;
+    }
+
+    @Override
     public void evalColumns(Set<String> columns) {
         columns.add(mColumn.name());
     }
 
     @Override
     public Variable makeEval(EvalContext context) {
-        var resultRef = context.refFor(this);
-        var result = resultRef.get();
-        if (result != null) {
-            return result;
-        }
-
-        // FIXME: Cache the intermediate chain results. Do I need to define sub nodes?
-
-        // FIXME: Handle nulls.
-
-        // FIXME: Also see JoinScannerMaker.accessPath.
-
-        Variable rowVar = context.rowVar;
-
-        for (String name : mColumn.subNames()) {
-            rowVar = rowVar.invoke(name);
-        }
-
-        return resultRef.set(rowVar);
+        return mLastSub.makeEval(context);
     }
 
     @Override
@@ -133,5 +144,76 @@ public final class ColumnNode extends Node {
     @Override
     public boolean equals(Object obj) {
         return obj instanceof ColumnNode cn && mFrom.equals(cn.mFrom) && mColumn.equals(cn.mColumn);
+    }
+
+    private static final class Sub {
+        final Sub mParent;
+        final String mName;
+        final boolean mNullable;
+        final int mHashCode;
+        Sub mNext;
+
+        Sub(Sub parent, String name, boolean nullable) {
+            mParent = parent;
+            mName = name;
+            mNullable = nullable;
+            if (parent == null) {
+                mHashCode = name.hashCode() * 31;
+            } else {
+                mHashCode = parent.hashCode() * 31 + name.hashCode();
+                parent.mNext = this;
+            }
+        }
+
+        Variable makeEval(EvalContext context) {
+            var resultRef = context.refFor(this);
+            var result = resultRef.get();
+            if (result != null) {
+                return result;
+            }
+
+            final var baseVar = mParent == null ? context.rowVar : mParent.makeEval(context);
+
+            if (!mNullable) {
+                return resultRef.set(baseVar.invoke(mName));
+            }
+
+            if (mParent == null || !mParent.mNullable) {
+                resultRef.set(baseVar.invoke(mName));
+            } else {
+                // Rather than checking if the parent was null or not each time, assign a
+                // not-null or null result within the parent code blocks. See below.
+                var labels = (Label[]) context.refFor(mParent).attachment;
+                labels[0].insert(() -> resultRef.set(baseVar.invoke(mName).box()));
+                labels[1].insert(() -> resultRef.get().set(null));
+            }
+
+            if (mNext != null) {
+                // Define notNull/isNull labels for the next sub column to insert code into.
+                MethodMaker mm = context.methodMaker();
+                Label notNull = mm.label();
+                resultRef.get().ifNe(null, notNull);
+                Label isNull = mm.label().here();
+                Label cont = mm.label().goto_();
+                notNull.here();
+                cont.here();
+                resultRef.attachment = new Label[] {notNull, isNull};
+            }
+
+            return resultRef.get();
+        }
+
+        @Override
+        public int hashCode() {
+            return mHashCode;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            return obj instanceof Sub sub
+                && Objects.equals(mParent, sub.mParent)
+                && mName.equals(sub.mName)
+                && mNullable == sub.mNullable;
+        }
     }
 }

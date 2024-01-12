@@ -35,7 +35,7 @@ public final class RelationType extends Type {
     private final Cardinality mCardinality;
 
     private RelationType(TupleType type, Cardinality cardinality) {
-        super(Table.class, ColumnInfo.TYPE_REFERENCE);
+        super(Table.class, type.typeCode());
         mType = type;
         mCardinality = cardinality;
     }
@@ -43,6 +43,11 @@ public final class RelationType extends Type {
     @Override
     public int hashCode() {
         return mType.hashCode() * 31 + mCardinality.hashCode();
+    }
+
+    @Override
+    public RelationType nullable() {
+        return isNullable() ? this : new RelationType(mType.nullable(), mCardinality);
     }
 
     @Override

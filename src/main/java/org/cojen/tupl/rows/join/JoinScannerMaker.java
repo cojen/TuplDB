@@ -258,7 +258,6 @@ final class JoinScannerMaker {
         addRowMethod();
         addStepMethod();
 
-        addClearMethod();
         addCloseMethod();
 
         Label tryStart = ctor.label().here();
@@ -461,15 +460,6 @@ final class JoinScannerMaker {
         MethodMaker bridge = mClassMaker.addMethod
             (Object.class, "step", Object.class).public_().final_().bridge();
         bridge.return_(bridge.this_().invoke(mJoinType, "step", null, bridge.param(0)));
-    }
-
-    private void addClearMethod() {
-        MethodMaker mm = mClassMaker.addMethod(null, "clear", Object.class).protected_().final_();
-        var joinRow = mm.param(0);
-        Label cont = mm.label();
-        joinRow.ifEq(null, cont);
-        clearAll(joinRow.cast(mJoinType), mSpec.root());
-        cont.here();
     }
 
     private void addCloseMethod() {

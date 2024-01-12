@@ -222,6 +222,26 @@ public final class JoinSpec {
         return type == T_FULL_OUTER || type == T_FULL_ANTI;
     }
 
+    /**
+     * @return true if the left side of a join with the given type can produce null rows
+     */
+    public static boolean isLeftNullable(int type) {
+        return switch (type) {
+            default -> false;
+            case T_RIGHT_OUTER, T_FULL_OUTER, T_RIGHT_ANTI, T_FULL_ANTI -> true;
+        };
+    }
+
+    /**
+     * @return true if the right side of a join with the given type can produce null rows
+     */
+    public static boolean isRightNullable(int type) {
+        return switch (type) {
+            default -> false;
+            case T_LEFT_OUTER, T_FULL_OUTER, T_LEFT_ANTI, T_FULL_ANTI -> true;
+        };
+    }
+
     public static String typeToString(int type) {
         return switch (type) {
             default -> ":";

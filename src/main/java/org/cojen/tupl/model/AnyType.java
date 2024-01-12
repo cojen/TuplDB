@@ -28,7 +28,12 @@ public final class AnyType extends Type {
     public static final AnyType THE = new AnyType();
 
     private AnyType() {
-        super(Object.class, ColumnInfo.TYPE_REFERENCE);
+        super(Object.class, TYPE_REFERENCE | TYPE_NULLABLE);
+    }
+
+    @Override
+    public AnyType nullable() {
+        return this;
     }
 
     @Override

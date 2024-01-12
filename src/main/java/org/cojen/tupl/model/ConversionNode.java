@@ -89,6 +89,11 @@ public final class ConversionNode extends Node {
     }
 
     @Override
+    public boolean isNullable() {
+        return mType.isNullable();
+    }
+
+    @Override
     public void evalColumns(Set<String> columns) {
         mNode.evalColumns(columns);
     }

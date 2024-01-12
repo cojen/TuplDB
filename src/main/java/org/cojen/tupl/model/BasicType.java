@@ -26,14 +26,14 @@ import org.cojen.tupl.rows.ColumnInfo;
  */
 public final class BasicType extends Type {
     public static final BasicType
-        BOOLEAN = new BasicType(boolean.class, ColumnInfo.TYPE_BOOLEAN);
+        BOOLEAN = new BasicType(boolean.class, TYPE_BOOLEAN);
 
     public static BasicType make(ColumnInfo info) {
         return make(info.type, info.typeCode);
     }
 
     public static BasicType make(Class clazz, int typeCode) {
-        if (clazz == boolean.class) {
+        if (clazz == boolean.class && !isNullable(typeCode)) {
             return BOOLEAN;
         }
         // FIXME: Use more singleton types, lazily initialized. Or use Canonicalizer.
@@ -42,6 +42,20 @@ public final class BasicType extends Type {
 
     private BasicType(Class clazz, int typeCode) {
         super(clazz, typeCode);
+    }
+
+    @Override
+    public BasicType nullable() {
+        if (isNullable()) {
+            return this;
+        }
+
+        Class clazz = clazz();
+        if (clazz.isPrimitive() && unboxedType() == clazz) {
+            clazz = boxedType();
+        }
+
+        return make(clazz, typeCode() | TYPE_NULLABLE);
     }
 
     @Override

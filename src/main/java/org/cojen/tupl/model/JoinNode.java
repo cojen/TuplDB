@@ -39,25 +39,36 @@ public final class JoinNode extends RelationNode {
      * @throws IllegalArgumentException if any duplicate join relation names
      */
     public static JoinNode make(String name, int joinType, RelationNode left, RelationNode right) {
-        return new JoinNode(makeType(left, right), name, joinType, left, right);
+        boolean leftNullable = JoinSpec.isLeftNullable(joinType);
+        boolean rightNullable = JoinSpec.isRightNullable(joinType);
+        RelationType type = makeType(left, leftNullable, right, rightNullable);
+        return new JoinNode(type, name, joinType, left, right);
     }
 
-    private static RelationType makeType(RelationNode left, RelationNode right) {
+    private static RelationType makeType(RelationNode left, boolean leftNullable,
+                                         RelationNode right, boolean rightNullable)
+    {
         var columnMap = new LinkedHashMap<String, Column>();
-        flattenColumns(left, columnMap);
-        flattenColumns(right, columnMap);
+        flattenColumns(left, leftNullable, columnMap);
+        flattenColumns(right, rightNullable, columnMap);
         var columns = columnMap.values().toArray(new Column[columnMap.size()]);
         var cardinality = left.type().cardinality().multiply(right.type().cardinality());
         return RelationType.make(TupleType.make(columns), cardinality);
     }
 
-    private static void flattenColumns(RelationNode node, LinkedHashMap<String, Column> dst) {
+    private static void flattenColumns(RelationNode node, boolean nullable,
+                                       LinkedHashMap<String, Column> dst)
+    {
         if (node instanceof JoinNode jn) {
-            flattenColumns(jn.mLeft, dst);
-            flattenColumns(jn.mRight, dst);
+            flattenColumns(jn.mLeft, nullable, dst);
+            flattenColumns(jn.mRight, nullable, dst);
         } else {
             String name = node.name();
-            var column = Column.make(node.type().tupleType(), name, false);
+            TupleType type = node.type().tupleType();
+            if (nullable) {
+                type = type.nullable();
+            }
+            var column = Column.make(type, name, false);
             if (dst.putIfAbsent(name, column) != null) {
                 throw new IllegalArgumentException("Duplicate join relation name: " + name);
             }

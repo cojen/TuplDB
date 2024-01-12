@@ -56,6 +56,11 @@ public abstract class RelationNode extends Node {
     }
 
     @Override
+    public boolean isNullable() {
+        return false;
+    }
+
+    @Override
     public final void evalColumns(Set<String> columns) {
         // FIXME: revise when makeEval is implemented
     }
@@ -85,7 +90,8 @@ public abstract class RelationNode extends Node {
     }
 
     /**
-     * Find a column in this relation which matches the given name.
+     * Find a column node in this relation which matches the given name. The name of the node's
+     * column is a fully qualified field, which means that for joins, it's a dotted name.
      *
      * @param name qualified or unqualified column name to find
      * @param label label/alias to use instead of original column name (can have spaces)

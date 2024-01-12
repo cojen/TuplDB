@@ -91,6 +91,11 @@ public final class ParamNode extends Node {
     }
 
     @Override
+    public boolean isNullable() {
+        return mType.isNullable();
+    }
+
+    @Override
     public void evalColumns(Set<String> columns) {
     }
 

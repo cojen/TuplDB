@@ -40,11 +40,14 @@ public abstract sealed class Type extends ColumnInfo
         return type;
     }
 
-    // FIXME: isNullable (use the typeCode)
-
     public final int typeCode() {
         return typeCode;
     }
+
+    /**
+     * Returns a Type instance which is nullable.
+     */
+    public abstract Type nullable();
 
     @Override
     public abstract int hashCode();

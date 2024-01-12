@@ -303,6 +303,11 @@ public sealed class ConstantNode extends Node {
     }
 
     @Override
+    public boolean isNullable() {
+        return mValue == null;
+    }
+
+    @Override
     public void evalColumns(Set<String> columns) {
     }
 

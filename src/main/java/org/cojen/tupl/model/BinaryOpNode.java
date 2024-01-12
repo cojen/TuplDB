@@ -252,6 +252,11 @@ public sealed class BinaryOpNode extends Node {
     }
 
     @Override
+    public boolean isNullable() {
+        return mLeft.isNullable() || mRight.isNullable();
+    }
+
+    @Override
     public void evalColumns(Set<String> columns) {
         mLeft.evalColumns(columns);
         mRight.evalColumns(columns);

@@ -46,10 +46,12 @@ public final class TupleType extends Type {
         if (columns == null || columns.length == 0) {
             makerResult = RowTypeMaker.find(null, null);
         } else {
-            var keyTypes = new ArrayList<Class>();
-            var valueTypes = new ArrayList<Class>();
+            var keyTypes = new ArrayList<Object>();
+            var valueTypes = new ArrayList<Object>();
             for (Column column : columns) {
-                (column.key() ? keyTypes : valueTypes).add(column.type().clazz());
+                Type type = column.type();
+                Object typeObj = RowTypeMaker.columnType(type.clazz(), type.typeCode());
+                (column.key() ? keyTypes : valueTypes).add(typeObj);
             }
             makerResult = RowTypeMaker.find(keyTypes, valueTypes);
         }
@@ -107,10 +109,14 @@ public final class TupleType extends Type {
 
         for (int i=0; i<projection.length; i++) {
             Node node = projection[i];
-            // FIXME: Try to infer if column is a key or not. If full primary key is composite,
-            // then all of its columns must be projected in order for any columns to have
-            // key=true.
-            columns[i] = Column.make(node.type(), node.name(), false);
+            Type type = node.type();
+            if (node.isNullable()) {
+                type = type.nullable();
+            }
+            // FIXME: Try to infer if the column is a key or not. If full primary key is
+            // composite, then all of its columns must be projected in order for any columns to
+            // have key=true.
+            columns[i] = Column.make(type, node.name(), false);
         }
 
         return make(columns);
@@ -138,13 +144,25 @@ public final class TupleType extends Type {
     private final Column[] mColumns;
     private final String[] mFields;
 
+    private Map<String, Column> mFieldToColumnMap;
+
     private Map<String, Integer> mColumnMap;
     private Map<String, Integer> mCaseInsensitiveMap;
 
     private TupleType(Class clazz, Column[] columns, String[] fields) {
-        super(clazz, ColumnInfo.TYPE_REFERENCE);
+        this(clazz, TYPE_REFERENCE, columns, fields);
+    }
+
+    private TupleType(Class clazz, int typeCode, Column[] columns, String[] fields) {
+        super(clazz, typeCode);
         mColumns = columns;
         mFields = fields;
+    }
+
+    @Override
+    public TupleType nullable() {
+        return isNullable() ? this
+            : new TupleType(clazz(), TYPE_REFERENCE | TYPE_NULLABLE, mColumns, mFields);
     }
 
     @Override
@@ -197,6 +215,21 @@ public final class TupleType extends Type {
      */
     public String field(int index) {
         return mFields[index];
+    }
+
+    /**
+     * @return null if not found
+     */
+    public Column fieldColumn(String name) {
+        Map<String, Column> map = mFieldToColumnMap;
+        if (map == null) {
+            map = new HashMap<>();
+            for (int i=0; i<mFields.length; i++) {
+                map.put(mFields[i], mColumns[i]);
+            }
+            mFieldToColumnMap = map;
+        }
+        return map.get(name);
     }
 
     /**
