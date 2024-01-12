@@ -89,32 +89,6 @@ public sealed class BinaryOpNode extends Node {
                 right = right.asType(rightType);
             }
 
-            // Try finding a common type using a lossless narrowing conversion.
-
-            Node tryLeft = left.tryConvert(rightType);
-            Node tryRight = right.tryConvert(leftType);
-
-            if (tryLeft != null) {
-                if (tryRight != null) {
-                    leftType = left.type();
-                    rightType = right.type();
-                    if (leftType.equals(rightType)) {
-                        left = tryLeft;
-                        right = tryRight;
-                        type = leftType;
-                        break common;
-                    }
-                } else {
-                    left = tryLeft;
-                    type = left.type();
-                    break common;
-                }
-            } else if (tryRight != null) {
-                right = tryRight;
-                type = right.type();
-                break common;
-            }
-
             // Try finding a common type using a widening conversion.
 
             ColumnInfo common = ConvertUtils.commonType(leftType, rightType, op);

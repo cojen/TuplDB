@@ -45,14 +45,6 @@ public abstract sealed class Node
     public abstract Node asType(Type type);
 
     /**
-     * Returns a node if conversion to the given type is guaranteed to succeed without losing
-     * any information. This is only likely to succeed if this node represents a constant.
-     */
-    public Node tryConvert(Type toType) {
-        return null;
-    }
-
-    /**
      * Apply an arithmetic negation operation.
      */
     public Node negate() {
