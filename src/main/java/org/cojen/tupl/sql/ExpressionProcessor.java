@@ -81,7 +81,13 @@ public class ExpressionProcessor implements ExpressionVisitor {
 
     @Override
     public void visit(SignedExpression signedExpression) {
-        fail();
+        signedExpression.getExpression().accept(this);
+        char sign = signedExpression.getSign();
+        if (sign == '-') {
+            mNode = mNode.negate();
+        } else if (sign != '+') {
+            fail();
+        }
     }
 
     @Override

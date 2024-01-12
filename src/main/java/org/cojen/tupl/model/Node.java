@@ -53,6 +53,13 @@ public abstract sealed class Node
     }
 
     /**
+     * Apply an arithmetic negation operation.
+     */
+    public Node negate() {
+        return BinaryOpNode.make(null, BinaryOpNode.OP_SUB, ConstantNode.make(0), this);
+    }
+
+    /**
      * Apply a boolean not operation.
      */
     public Node not() {

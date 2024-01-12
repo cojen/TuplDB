@@ -244,8 +244,45 @@ public sealed class ConstantNode extends Node {
     }
 
     @Override
+    public Node negate() {
+        if (mValue == null) {
+            return this;
+        }
+
+        if (mValue instanceof Number num) isNum: {
+            Object newValue;
+
+            if (num instanceof Integer n) {
+                newValue = Integer.valueOf(-n);
+            } else if (num instanceof Double n) {
+                newValue = Double.valueOf(-n);
+            } else if (num instanceof Long n) {
+                newValue = Long.valueOf(-n);
+            } else if (num instanceof BigDecimal n) {
+                newValue = n.negate();
+            } else if (num instanceof BigInteger n) {
+                newValue = n.negate();
+            } else if (num instanceof Float n) {
+                newValue = Float.valueOf(-n);
+            } else if (num instanceof Short n) {
+                newValue = Short.valueOf((short) -n);
+            } else if (num instanceof Byte n) {
+                newValue = Byte.valueOf((byte) -n);
+            } else {
+                break isNum;
+            }
+
+            return new ConstantNode(mType, newValue);
+        }
+
+        return super.negate();
+    }
+
+    @Override
     public Node not() {
-        if (mValue instanceof Boolean bool) {
+        if (mValue == null) {
+            return this;
+        } else if (mValue instanceof Boolean bool) {
             return make(!bool);
         } else {
             return super.not();
