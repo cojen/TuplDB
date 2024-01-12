@@ -200,11 +200,6 @@ public sealed class BinaryOpNode extends Node {
         if (mType.equals(type)) {
             return this;
         }
-
-        if (mOp < OP_ADD) {
-            throw new IllegalStateException("Cannot convert " + mType + " to " + type);
-        }
-
         // Convert the sources to avoid calculation errors.
         return new BinaryOpNode(type, mName, mOp, mLeft.asType(type), mRight.asType(type));
     }
@@ -382,6 +377,27 @@ public sealed class BinaryOpNode extends Node {
     public static final class Filtered extends BinaryOpNode {
         private Filtered(String name, int op, Node left, Node right) {
             super(BasicType.BOOLEAN, name, op, left, right);
+        }
+
+        @Override
+        public Node asType(Type type) {
+            if (mType.equals(type)) {
+                return this;
+            }
+            throw new IllegalStateException("Cannot convert " + mType + " to " + type);
+        }
+
+        @Override
+        public Node not() {
+            int op = mOp;
+            if (op < OP_AND) {
+                op = ColumnFilter.flipOperator(op);
+                return new Filtered(null, op, mLeft, mRight);
+            } else if (op <= OP_OR) {
+                return new Filtered(null, op ^ 1, mLeft.not(), mRight.not());
+            } else {
+                throw new AssertionError();
+            }
         }
 
         @Override

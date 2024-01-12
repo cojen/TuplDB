@@ -53,6 +53,14 @@ public abstract sealed class Node
     }
 
     /**
+     * Apply a boolean not operation.
+     */
+    public Node not() {
+        return BinaryOpNode.make
+            (null, BinaryOpNode.OP_EQ, asType(BasicType.BOOLEAN), ConstantNode.make(false));
+    }
+
+    /**
      * Returns a non-null name, which doesn't affect the functionality of this node.
      *
      * @see #equals

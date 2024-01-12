@@ -455,7 +455,8 @@ public class ExpressionProcessor implements ExpressionVisitor {
 
     @Override
     public void visit(NotExpression aThis) {
-        fail();
+        aThis.getExpression().accept(this);
+        mNode = mNode.not();
     }
 
     @Override

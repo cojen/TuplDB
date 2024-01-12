@@ -72,7 +72,7 @@ public final class BasicType extends Type {
     @Override
     public String toString() {
         String str = clazz().getCanonicalName();
-        if (isUnsigned()) {
+        if (isUnsigned() && this != BOOLEAN) {
             str = "unsigned " + str;
         }
         return str;

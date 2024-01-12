@@ -242,6 +242,15 @@ public sealed class ConstantNode extends Node {
     }
 
     @Override
+    public Node not() {
+        if (mValue instanceof Boolean bool) {
+            return make(!bool);
+        } else {
+            return super.not();
+        }
+    }
+
+    @Override
     public String name() {
         StringBuilder b;
 
