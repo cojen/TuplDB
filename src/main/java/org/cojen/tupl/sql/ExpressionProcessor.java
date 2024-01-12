@@ -34,6 +34,8 @@ import org.cojen.tupl.model.Node;
 import org.cojen.tupl.model.ParamNode;
 import org.cojen.tupl.model.RelationNode;
 
+import static org.cojen.tupl.model.BinaryOpNode.*;
+
 /**
  * 
  *
@@ -151,12 +153,12 @@ public class ExpressionProcessor implements ExpressionVisitor {
 
     @Override
     public void visit(Addition addition) {
-        visitBinaryOp(addition, BinaryOpNode.OP_ADD);
+        visitBinaryOp(addition, OP_ADD);
     }
 
     @Override
     public void visit(Division division) {
-        visitBinaryOp(division, BinaryOpNode.OP_DIV);
+        visitBinaryOp(division, OP_DIV);
     }
 
     @Override
@@ -166,22 +168,22 @@ public class ExpressionProcessor implements ExpressionVisitor {
 
     @Override
     public void visit(Multiplication multiplication) {
-        visitBinaryOp(multiplication, BinaryOpNode.OP_MUL);
+        visitBinaryOp(multiplication, OP_MUL);
     }
 
     @Override
     public void visit(Subtraction subtraction) {
-        visitBinaryOp(subtraction, BinaryOpNode.OP_SUB);
+        visitBinaryOp(subtraction, OP_SUB);
     }
 
     @Override
     public void visit(AndExpression andExpression) {
-        visitBinaryOp(andExpression, BinaryOpNode.OP_AND);
+        visitBinaryOp(andExpression, OP_AND);
     }
 
     @Override
     public void visit(OrExpression orExpression) {
-        visitBinaryOp(orExpression, BinaryOpNode.OP_OR);
+        visitBinaryOp(orExpression, OP_OR);
     }
 
     @Override
@@ -201,17 +203,17 @@ public class ExpressionProcessor implements ExpressionVisitor {
 
     @Override
     public void visit(EqualsTo equalsTo) {
-        visitBinaryOp(equalsTo, BinaryOpNode.OP_EQ);
+        visitBinaryOp(equalsTo, OP_EQ);
     }
 
     @Override
     public void visit(GreaterThan greaterThan) {
-        visitBinaryOp(greaterThan, BinaryOpNode.OP_GT);
+        visitBinaryOp(greaterThan, OP_GT);
     }
 
     @Override
     public void visit(GreaterThanEquals greaterThanEquals) {
-        visitBinaryOp(greaterThanEquals, BinaryOpNode.OP_GE);
+        visitBinaryOp(greaterThanEquals, OP_GE);
     }
 
     @Override
@@ -226,7 +228,19 @@ public class ExpressionProcessor implements ExpressionVisitor {
 
     @Override
     public void visit(IsNullExpression isNullExpression) {
-        fail();
+        isNullExpression.getLeftExpression().accept(this);
+        Node left = mNode;
+
+        int op;
+        if (isNullExpression.isUseNotNull()) {
+            op = isNullExpression.isNot() ? OP_EQ : OP_NE;
+        } else {
+            op = isNullExpression.isNot() ? OP_NE : OP_EQ;
+        }
+
+        Node right = ConstantNode.make((Object) null);
+
+        mNode = BinaryOpNode.make(null, op, left, right);
     }
 
     @Override
@@ -241,17 +255,17 @@ public class ExpressionProcessor implements ExpressionVisitor {
 
     @Override
     public void visit(MinorThan minorThan) {
-        visitBinaryOp(minorThan, BinaryOpNode.OP_LT);
+        visitBinaryOp(minorThan, OP_LT);
     }
 
     @Override
     public void visit(MinorThanEquals minorThanEquals) {
-        visitBinaryOp(minorThanEquals, BinaryOpNode.OP_LE);
+        visitBinaryOp(minorThanEquals, OP_LE);
     }
 
     @Override
     public void visit(NotEqualsTo notEqualsTo) {
-        visitBinaryOp(notEqualsTo, BinaryOpNode.OP_NE);
+        visitBinaryOp(notEqualsTo, OP_NE);
     }
 
     @Override
@@ -351,7 +365,7 @@ public class ExpressionProcessor implements ExpressionVisitor {
 
     @Override
     public void visit(Modulo modulo) {
-        visitBinaryOp(modulo, BinaryOpNode.OP_REM);
+        visitBinaryOp(modulo, OP_REM);
     }
 
     @Override

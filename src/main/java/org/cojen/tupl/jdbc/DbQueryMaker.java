@@ -49,7 +49,6 @@ final class DbQueryMaker {
      * Returns a new Factory instance. Factory classes are cached by the provider's rowType,
      * projection, and argumentCount.
      *
-
      * @param schema optional reference to the schema to ensure that the DbDataSource's
      * schema cache doesn't drop the Factory reference prematurely
      * @throws SQLNonTransientException if a requested column doesn't exist
