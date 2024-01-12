@@ -249,7 +249,13 @@ public class ExpressionProcessor implements ExpressionVisitor {
 
     @Override
     public void visit(IsBooleanExpression isBooleanExpression) {
-        fail();
+        isBooleanExpression.getLeftExpression().accept(this);
+        Node left = mNode;
+
+        boolean value = isBooleanExpression.isTrue();
+        int op = isBooleanExpression.isNot() ? OP_NE : OP_EQ;
+
+        mNode = BinaryOpNode.make(null, op, left, ConstantNode.make(value));
     }
 
     @Override
