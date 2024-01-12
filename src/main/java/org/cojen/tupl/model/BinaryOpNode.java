@@ -201,7 +201,7 @@ public sealed class BinaryOpNode extends Node {
     }
 
     @Override
-    public Node asType(Type type) {
+    public BinaryOpNode asType(Type type) {
         if (mType.equals(type)) {
             return this;
         }
@@ -413,11 +413,16 @@ public sealed class BinaryOpNode extends Node {
         }
 
         @Override
-        public Node asType(Type type) {
+        public Filtered asType(Type type) {
             if (mType.equals(type)) {
                 return this;
             }
             throw new IllegalStateException("Cannot convert " + mType + " to " + type);
+        }
+
+        @Override
+        public Filtered withName(String name) {
+            return name.equals(mName) ? this : new Filtered(name, mOp, mLeft, mRight);
         }
 
         @Override
