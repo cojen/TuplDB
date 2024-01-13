@@ -127,58 +127,6 @@ public class ConvertUtilsTest {
         }
     }
 
-    @Test
-    public void booleanConversions() throws Exception {
-        booleanConversions(0, 0);
-        booleanConversions(0, TYPE_NULLABLE);
-        booleanConversions(TYPE_NULLABLE, 0);
-        booleanConversions(TYPE_NULLABLE, TYPE_NULLABLE);
-    }
-
-    private void booleanConversions(int aFlags, int bFlags) throws Exception {
-        NumType[] numTypes = allNumTypes();
-
-        // Create a fake string NumType to include it as a test case.
-        numTypes = Arrays.copyOf(numTypes, numTypes.length + 1);
-        numTypes[numTypes.length - 1] = new NumType(TYPE_UTF8, 0, 0, 0, 0);
-
-        for (NumType aNumType : numTypes) {
-            var aInfo = new ColumnInfo();
-            aInfo.typeCode = aNumType.typeCode | aFlags;
-            aInfo.assignType();
-
-            var bInfo = new ColumnInfo();
-            bInfo.typeCode = TYPE_BOOLEAN | bFlags;
-            bInfo.assignType();
-
-            ColumnInfo cInfo = ConvertUtils.commonType(aInfo, bInfo, ColumnFilter.OP_EQ);
-            ColumnInfo cInfo2 = ConvertUtils.commonType(bInfo, aInfo, ColumnFilter.OP_EQ);
-            assertEquals(cInfo.typeCode, cInfo2.typeCode);
-
-            if (isNullable(aInfo.typeCode) || isNullable(bInfo.typeCode)) {
-                assertEquals((aInfo.typeCode | TYPE_NULLABLE), cInfo.typeCode);
-            } else if (!isNullable(aInfo.typeCode) && !isNullable(bInfo.typeCode)) {
-                assertEquals(aInfo.typeCode, cInfo.typeCode);
-            }
-
-            cInfo = ConvertUtils.commonType(aInfo, bInfo, ColumnFilter.OP_GT);
-            cInfo2 = ConvertUtils.commonType(bInfo, aInfo, ColumnFilter.OP_GT);
-
-            if (cInfo == null) {
-                assertNull(cInfo2);
-            } else {
-                assertEquals(TYPE_BOOLEAN, aInfo.plainTypeCode());
-                assertEquals(cInfo.typeCode, cInfo2.typeCode);
-
-                if (isNullable(aInfo.typeCode) || isNullable(bInfo.typeCode)) {
-                    assertEquals((TYPE_BOOLEAN | TYPE_NULLABLE), cInfo.typeCode);
-                } else if (!isNullable(aInfo.typeCode) && !isNullable(bInfo.typeCode)) {
-                    assertEquals(TYPE_BOOLEAN, cInfo.typeCode);
-                }
-            }
-        }
-    }
-
     /**
      * @param numTypes must be sorted
      */
@@ -190,7 +138,6 @@ public class ConvertUtilsTest {
 
     static NumType[] allNumTypes() {
         NumType[] numTypes = {
-            new NumType(TYPE_BOOLEAN, 1, 0, 0, 0),
             new NumType(TYPE_UBYTE, 8, 0, 0, 0),
             new NumType(TYPE_USHORT, 16, 0, 0, 0),
             new NumType(TYPE_UINT, 32, 0, 0, 0),

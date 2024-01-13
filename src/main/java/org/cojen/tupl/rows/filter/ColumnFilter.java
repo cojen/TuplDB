@@ -148,7 +148,7 @@ public abstract sealed class ColumnFilter extends TermFilter
      * @return true if operator is OP_EQ or OP_NE
      */
     public static boolean isExact(int op) {
-        return op <= OP_NE;
+        return op == OP_EQ || op == OP_NE;
     }
 
     /**
