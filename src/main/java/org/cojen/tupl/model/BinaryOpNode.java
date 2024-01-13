@@ -30,7 +30,6 @@ import org.cojen.maker.Variable;
 import org.cojen.tupl.rows.ColumnInfo;
 import org.cojen.tupl.rows.ColumnSet;
 import org.cojen.tupl.rows.CompareUtils;
-import org.cojen.tupl.rows.ConvertUtils;
 import org.cojen.tupl.rows.RowInfo;
 
 import org.cojen.tupl.rows.filter.ColumnFilter;
@@ -66,56 +65,22 @@ public sealed class BinaryOpNode extends Node {
      * @param name can be null to automatically assign a name
      */
     public static Node make(String name, int op, Node left, Node right) {
-        final Type type;
+        final Type type = Type.commonType(left, right, op);
 
-        common: {
-            Type leftType = left.type();
-            Type rightType = right.type();
-
-            if (left.isNullable() || right.isNullable()) {
-                leftType = leftType.nullable();
-                rightType = rightType.nullable();
-            }
-
-            if (leftType == AnyType.THE) {
-                if (rightType == AnyType.THE) {
-                    type = leftType;
-                    break common;
-                }
-                leftType = rightType;
-                left = left.asType(leftType);
-            } else if (rightType == AnyType.THE) {
-                rightType = leftType;
-                right = right.asType(rightType);
-            }
-
-            // Try finding a common type using a widening conversion.
-
-            ColumnInfo common = ConvertUtils.commonType(leftType, rightType, op);
-
-            if (common == leftType) {
-                type = leftType;
-                break common;
-            }
-
-            if (common == rightType) {
-                type = rightType;
-                break common;
-            }
-
-            if (common == null) {
-                var b = new StringBuilder("No common type for: ");
-                append(b, op, left, right);
-                throw new IllegalStateException(b.toString());
-            }
-
-            type = BasicType.make(common);
+        if (type == null) {
+            throw fail("No common type", op, left, right);
         }
+
+        if (OP_AND <= op && op <= OP_OR && type != BasicType.BOOLEAN) {
+            throw fail("Boolean operation not allowed", op, left, right);
+        }
+
+        System.out.println("op: " + op + ", " + type);
 
         left = left.asType(type);
         right = right.asType(type);
 
-        if (type == BasicType.BOOLEAN && op <= OP_NE
+        if (type == BasicType.BOOLEAN && ColumnFilter.isExact(op)
             /*&& left.isPureFilter() && right.isPureFilter()*/)
         {
             /* FIXME: Transform some forms into xor:
@@ -136,6 +101,7 @@ public sealed class BinaryOpNode extends Node {
         }
 
         if (op > OP_OR) {
+            // Arithmetic operator.
             return new BinaryOpNode(type, name, op, left, right);
         }
 
@@ -164,6 +130,12 @@ public sealed class BinaryOpNode extends Node {
         }
 
         return new Filtered(name, op, left, right);
+    }
+
+    private static IllegalStateException fail(String message, int op, Node left, Node right) {
+        var b = new StringBuilder(message + " for: ");
+        append(b, op, left, right);
+        throw new IllegalStateException(b.toString());
     }
 
     protected final Type mType;
@@ -375,8 +347,10 @@ public sealed class BinaryOpNode extends Node {
             case OP_LT  -> "<";
             case OP_LE  -> "<=";
             case OP_GT  -> ">";
-            case OP_AND -> "&&";
-            case OP_OR  -> "||";
+
+            // Prefer symbols which don't clash with SQL.
+            case OP_AND -> "and";
+            case OP_OR  -> "or";
 
             case OP_ADD -> "+";
             case OP_SUB -> "-";

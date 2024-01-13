@@ -18,6 +18,7 @@
 package org.cojen.tupl.model;
 
 import org.cojen.tupl.rows.ColumnInfo;
+import org.cojen.tupl.rows.ConvertUtils;
 
 /**
  * Design note: this class extends ColumnInfo to simplify interoperability with APIs that work
@@ -57,4 +58,38 @@ public abstract sealed class Type extends ColumnInfo
 
     @Override
     public abstract String toString();
+
+    /**
+     * Finds a common type which two nodes can be converted to without loss or abiguity.
+     *
+     * @param op defined in ColumnFilter; pass -1 if not performing a comparison operation
+     * @return null if a common type cannot be inferred or is ambiguous
+     */
+    public static Type commonType(Node left, Node right, int op) {
+        Type leftType = left.type();
+        Type rightType = right.type();
+
+        if (left.isNullable() || right.isNullable()) {
+            leftType = leftType.nullable();
+            rightType = rightType.nullable();
+        }
+
+        if (leftType == AnyType.THE) {
+            return rightType;
+        } else if (rightType == AnyType.THE) {
+            return leftType;
+        }
+
+        // Try finding a common type using a widening conversion.
+
+        ColumnInfo common = ConvertUtils.commonType(leftType, rightType, op);
+
+        if (common == leftType) {
+            return leftType;
+        } else if (common == rightType) {
+            return rightType;
+        }
+
+        return common == null ? null : BasicType.make(common);
+    }
 }
