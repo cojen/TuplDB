@@ -720,6 +720,41 @@ public class FilteringTest {
         assertTrue(str.contains("array2 in [[4294967295, 2], [4294967293, 4]]"));
     }
 
+    @Test
+    public void filterString2() throws Exception {
+        Database db = Database.open(new DatabaseConfig().directPageAccess(false));
+        Table<MyRow2> table = db.openTable(MyRow2.class);
+
+        {
+            MyRow2 row = table.newRow();
+            row.id(1);
+            row.name1("a");
+            row.name2("a");
+            table.insert(null, row);
+            row.id(2);
+            row.name1("a");
+            row.name2("b");
+            table.insert(null, row);
+            row.id(3);
+            row.name1("b");
+            row.name2("a");
+            table.insert(null, row);
+            row.id(4);
+            row.name1("b");
+            row.name2("b");
+            table.insert(null, row);
+        }
+
+        String query = "(name2 == ?1 || name1 == ?2) && (name1 != ?2 || name2 != ?1)";
+        try (var scanner = table.newScanner(null, query, "a", "b")) {
+            var row = scanner.row();
+            assertEquals("{id=1, name1=a, name2=a}", row.toString());
+            row = scanner.step();
+            assertEquals("{id=4, name1=b, name2=b}", row.toString());
+            assertNull(scanner.step());
+        }
+    }
+
     @PrimaryKey("id")
     public interface MyRow3 {
         int id();
