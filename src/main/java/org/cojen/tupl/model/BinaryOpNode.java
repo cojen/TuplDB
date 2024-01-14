@@ -105,17 +105,27 @@ public sealed class BinaryOpNode extends Node {
             return new BinaryOpNode(type, name, op, left, right);
         }
 
-        if (left.equals(right) && left.isPureFunction() && right.isPureFunction()) {
-            constant: {
-                // Can just return true or false.
-                boolean value;
-                switch (op) {
-                case OP_EQ, OP_GE, OP_LE: value = true; break;
-                case OP_NE, OP_LT, OP_GT: value = false; break;
-                default: break constant;
+        if (left.isPureFunction() && right.isPureFunction()) constant: {
+            // Might be able to just return true or false.
+
+            boolean value;
+
+            if (left.equals(right)) {
+                value = true;
+            } else {
+                if (!(left instanceof ConstantNode && right instanceof ConstantNode)) {
+                    break constant;
                 }
-                return ConstantNode.make(value);
+                value = false;
             }
+            
+            switch (op) {
+            case OP_EQ, OP_GE, OP_LE: break;
+            case OP_NE, OP_LT, OP_GT: value = !value; break;
+            default: break constant;
+            }
+
+            return ConstantNode.make(value);
         }
 
         if (op >= OP_AND) {
@@ -445,6 +455,11 @@ public sealed class BinaryOpNode extends Node {
 
         private static ColumnInfo tryFindColumn(RowInfo info, ColumnNode node) {
             return ColumnSet.findColumn(info.allColumns, node.column().name());
+        }
+
+        @Override
+        public boolean isNullable() {
+            return false;
         }
 
         @Override
