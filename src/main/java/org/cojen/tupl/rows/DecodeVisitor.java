@@ -598,6 +598,13 @@ class DecodeVisitor implements Visitor {
                 }
             }
             mHighestLocatedKey = i - 1;
+            for (; i<numKeys; i++) {
+                LocatedColumn col = mLocatedKeys[i];
+                if (col == null) {
+                    break;
+                }
+                col.unlocated();
+            }
         }
 
         if (mLocatedValues != null) {
@@ -610,6 +617,13 @@ class DecodeVisitor implements Visitor {
                 }
             }
             mHighestLocatedValue = i - 1;
+            for (; i<numValues; i++) {
+                LocatedColumn col = mLocatedValues[i];
+                if (col == null) {
+                    break;
+                }
+                col.unlocated();
+            }
         }
     }
 
@@ -648,6 +662,12 @@ class DecodeVisitor implements Visitor {
                 mState = state;
             }
             return state == UNLOCATED;
+        }
+
+        void unlocated() {
+            mDecodedQuick = null;
+            mDecodedVar = null;
+            mState = UNLOCATED;
         }
 
         boolean isLocated() {
