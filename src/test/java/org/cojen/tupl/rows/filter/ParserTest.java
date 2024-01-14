@@ -95,6 +95,7 @@ public class ParserTest {
         pf("{~a}", "Must include wildcard");
         pf("a<=?0", "at least one");
         pf("? in a", "Unsupported operator");
+        pf("()!)", "Unexpected trailing");
     }
 
     // pf: parse failure
@@ -117,32 +118,54 @@ public class ParserTest {
 
     @Test
     public void basic() throws Exception {
-        pass("{}");
-        pass("{*}");
-        pass("{~b, *}", "{a, c\u1f600}");
-        pass("{*, ~a}", "{b, c\u1f600}");
-        pass("{*, ~ a}", "{b, c\u1f600}");
-        pass("{+a}");
-        pass("{+ a}", "{+a}");
-        pass("{+a, *}");
-        pass("{+ a, *}", "{+a, *}");
-        pass("{+ !a}", "{+!a}");
-        pass("{+ ! a}", "{+!a}");
-        pass("{-b, + ! a, -a}", "{-b, +!a}");
-        pass("{-b, + ! a}", "{-b, +!a}");
+        passQuery("{}");
+        passQuery("{*}");
+        passQuery("{~b, *}", "{a, c\u1f600}");
+        passQuery("{*, ~a}", "{b, c\u1f600}");
+        passQuery("{*, ~ a}", "{b, c\u1f600}");
+        passQuery("{+a}");
+        passQuery("{+ a}", "{+a}");
+        passQuery("{+a, *}");
+        passQuery("{+ a, *}", "{+a, *}");
+        passQuery("{+ !a}", "{+!a}");
+        passQuery("{+ ! a}", "{+!a}");
+        passQuery("{-b, + ! a, -a}", "{-b, +!a}");
+        passQuery("{-b, + ! a}", "{-b, +!a}");
 
-        pass("a == ?", "a == ?1");
-        pass("a < ?2", "a < ?2");
-        pass("? == a", "a == ?1");
-        pass("?2 < a", "a > ?2");
+        passQuery("a == ?", "a == ?1");
+        passQuery("a < ?2", "a < ?2");
+        passQuery("? == a", "a == ?1");
+        passQuery("?2 < a", "a > ?2");
     }
 
-    private void pass(String filterStr) throws Exception {
-        pass(filterStr, filterStr);
+    private void passQuery(String filterStr) throws Exception {
+        passQuery(filterStr, filterStr);
     }
 
-    private void pass(String filterStr, String expect) throws Exception {
+    private void passQuery(String filterStr, String expect) throws Exception {
         QuerySpec q = new Parser(mColumnMap, filterStr).parseQuery(null);
         assertEquals(expect, q.toString());
+    }
+
+    @Test
+    public void trueFalse() throws Exception {
+        RowFilter filter = parseFilter("()");
+        assertEquals(TrueFilter.THE, filter);
+        assertEquals("()", filter.toString());
+
+        assertEquals(TrueFilter.THE, parseFilter("( )"));
+
+        filter = parseFilter("!()");
+        assertEquals(FalseFilter.THE, filter);
+        assertEquals("!()", filter.toString());
+
+        assertEquals(FalseFilter.THE, parseFilter("!()"));
+        assertEquals(FalseFilter.THE, parseFilter("!( )"));
+        assertEquals(FalseFilter.THE, parseFilter("! ()"));
+        assertEquals(FalseFilter.THE, parseFilter("! ( )"));
+    }
+
+    private RowFilter parseFilter(String filterStr) throws Exception {
+        return new Parser(mColumnMap, filterStr).parseFilter();
     }
 }

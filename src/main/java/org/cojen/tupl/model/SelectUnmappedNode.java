@@ -120,8 +120,6 @@ final class SelectUnmappedNode extends SelectNode {
             return source;
         }
 
-        // FIXME: Use an empty query if the filter is false.
-
         Map<String, String> projectionMap;
 
         // Build up the full query string.
