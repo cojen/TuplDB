@@ -87,7 +87,7 @@ import static org.cojen.tupl.rows.RowUtils.NO_ARGS;
  * RowFilter    = AndFilter { "||" AndFilter }
  * AndFilter    = EntityFilter { "&&" EntityFilter }
  * EntityFilter = ColumnFilter | ParenFilter
- * ParenFilter  = [ "!" ] "(" RowFilter ")"
+ * ParenFilter  = [ "!" ] "(" [ RowFilter ] ")"
  * ColumnFilter = ColumnName RelOp ( ArgRef | ColumnName )
  *              | ColumnName "in" ArgRef
  *              | ArgRef RelOp ColumnName

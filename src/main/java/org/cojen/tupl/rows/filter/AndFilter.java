@@ -97,7 +97,7 @@ public sealed class AndFilter extends GroupFilter permits TrueFilter {
     @Override
     public final void appendTo(StringBuilder b) {
         if (mSubFilters.length == 0) {
-            b.append('T');
+            b.append("()");
         } else {
             super.appendTo(b);
         }

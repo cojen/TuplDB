@@ -248,7 +248,7 @@ public final class Parser extends SimpleParser {
      * RowFilter    = AndFilter { "||" AndFilter }
      * AndFilter    = EntityFilter { "&&" EntityFilter }
      * EntityFilter = ColumnFilter | ParenFilter
-     * ParenFilter  = [ "!" ] "(" RowFilter ")"
+     * ParenFilter  = [ "!" ] "(" [ RowFilter ] ")"
      * ColumnFilter = ColumnName RelOp ( ArgRef | ColumnName )
      *              | ColumnName "in" ArgRef
      *              | ArgRef RelOp ColumnName
@@ -442,6 +442,12 @@ public final class Parser extends SimpleParser {
 
     // Left paren has already been consumed.
     private RowFilter parseParenFilter() {
+        int c = nextCharIgnoreWhitespace();
+        if (c == ')') {
+            return TrueFilter.THE;
+        } else {
+            mPos--;
+        }
         RowFilter filter = doParseFilter();
         if (nextCharIgnoreWhitespace() != ')') {
             mPos--;
