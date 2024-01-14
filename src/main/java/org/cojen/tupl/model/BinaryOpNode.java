@@ -50,15 +50,15 @@ public sealed class BinaryOpNode extends Node {
         OP_EQ = ColumnFilter.OP_EQ, OP_NE = ColumnFilter.OP_NE,
         OP_GE = ColumnFilter.OP_GE, OP_LT = ColumnFilter.OP_LT,
         OP_LE = ColumnFilter.OP_LE, OP_GT = ColumnFilter.OP_GT,
-        OP_AND = 6, OP_OR = 7;
+        OP_AND = 6, OP_OR = 7, OP_XOR = 8;
 
     // Arithmetic operators.
-    public static final int OP_ADD = 8, OP_SUB = 9, OP_MUL = 10, OP_DIV = 11, OP_REM = 12;
+    public static final int OP_ADD = 9, OP_SUB = 10, OP_MUL = 11, OP_DIV = 12, OP_REM = 13;
 
     /*
     // Bitwise arithmetic operators.
-    public static final int OP_BAND = 13, OP_BOR = 14, OP_XOR = 15,
-        OP_SHL = 16, OP_SHR = 17, OP_USHR = 17;
+    public static final int OP_BAND = 14, OP_BOR = 15, OP_XOR = 16,
+        OP_SHL = 17, OP_SHR = 18, OP_USHR = 19;
     */
 
     /**
@@ -71,36 +71,36 @@ public sealed class BinaryOpNode extends Node {
             throw fail("No common type", op, left, right);
         }
 
-        if (OP_AND <= op && op <= OP_OR && type != BasicType.BOOLEAN) {
-            throw fail("Boolean operation not allowed", op, left, right);
+        if (OP_AND <= op && op <= OP_XOR) {
+            if (type != BasicType.BOOLEAN) {
+                throw fail("Boolean operation not allowed", op, left, right);
+            }
+            if (op == OP_XOR) {
+                op = OP_NE;
+            }
         }
-
-        System.out.println("op: " + op + ", " + type);
 
         left = left.asType(type);
         right = right.asType(type);
 
         if (type == BasicType.BOOLEAN && ColumnFilter.isExact(op)
-            /*&& left.isPureFilter() && right.isPureFilter()*/)
+            && left.isPureFunction() && right.isPureFunction())
         {
-            /* FIXME: Transform some forms into xor:
-
-               A == B  -->    A ^ B
-               A != B  -->  ~(A ^ B)
-
-               Transform using UnaryOpNode with OP_NOT, although OP_NOT could just apply De
-               Morgan's law.
-
-               a b  xor  !a  !b  (!a && b)  (a && !b)  ||
-               --------------------------------------------
-               0 0  0    1   1   0           0         0
-               0 1  1    1   0   1           0         1
-               1 0  1    0   1   0           1         1
-               1 1  0    0   0   0           0         0
-            */
+            // Transform some forms into xor.
+            if (op == OP_NE) {
+                // a != b -->   a ^ b  --> (!a && b) || (a && !b)
+                return make(null, OP_OR,
+                            make(null, OP_AND, left.not(), right),
+                            make(null, OP_AND, left, right.not()));
+            } else if (op == OP_EQ) {
+                // a == b --> !(a ^ b) --> (a || !b) && (!a || b)
+                return make(null, OP_AND,
+                            make(null, OP_OR, left, right.not()),
+                            make(null, OP_OR, left.not(), right));
+            }
         }
 
-        if (op > OP_OR) {
+        if (op >= OP_ADD) {
             // Arithmetic operator.
             return new BinaryOpNode(type, name, op, left, right);
         }

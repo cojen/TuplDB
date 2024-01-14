@@ -194,7 +194,7 @@ public class ExpressionProcessor implements ExpressionVisitor {
 
     @Override
     public void visit(XorExpression orExpression) {
-        fail();
+        visitBinaryOp(orExpression, OP_XOR);
     }
 
     @Override
