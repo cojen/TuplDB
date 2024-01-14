@@ -64,7 +64,7 @@ public abstract class WrappedTable<S, T> extends SoftCache<String, Query<T>, Obj
 
     @Override
     public boolean isClosed() {
-        return false;
+        return mSource.isClosed();
     }
 
     protected final Table<S> source() {
