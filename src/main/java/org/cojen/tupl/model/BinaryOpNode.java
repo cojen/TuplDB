@@ -65,6 +65,9 @@ public sealed class BinaryOpNode extends Node {
      * @param name can be null to automatically assign a name
      */
     public static Node make(String name, int op, Node left, Node right) {
+        final Node originalLeft = left;
+        final Node originalRight = right;
+
         final Type type = Type.commonType(left, right, op);
 
         if (type == null) {
@@ -139,7 +142,7 @@ public sealed class BinaryOpNode extends Node {
             }
         }
 
-        return new Filtered(name, op, left, right);
+        return new Filtered(name, op, originalLeft, originalRight, left, right);
     }
 
     private static IllegalStateException fail(String message, int op, Node left, Node right) {
@@ -376,8 +379,13 @@ public sealed class BinaryOpNode extends Node {
      * Only used by pure filter operators.
      */
     public static final class Filtered extends BinaryOpNode {
-        private Filtered(String name, int op, Node left, Node right) {
+        protected final Node mOriginalLeft, mOriginalRight;
+
+        private Filtered(String name, int op,
+                         Node originalLeft, Node originalRight, Node left, Node right) {
             super(BasicType.BOOLEAN, name, op, left, right);
+            mOriginalLeft = originalLeft;
+            mOriginalRight = originalRight;
         }
 
         @Override
@@ -390,17 +398,18 @@ public sealed class BinaryOpNode extends Node {
 
         @Override
         public Filtered withName(String name) {
-            return name.equals(mName) ? this : new Filtered(name, mOp, mLeft, mRight);
+            return name.equals(mName) ? this
+                : new Filtered(name, mOp, mOriginalLeft, mOriginalRight, mLeft, mRight);
         }
 
         @Override
         public Node not() {
             int op = mOp;
             if (op < OP_AND) {
-                op = ColumnFilter.flipOperator(op);
-                return new Filtered(null, op, mLeft, mRight);
+                return make(null, ColumnFilter.flipOperator(op), mOriginalLeft, mOriginalRight);
             } else if (op <= OP_OR) {
-                return new Filtered(null, op ^ 1, mLeft.not(), mRight.not());
+                // Apply De Morgan's law.
+                return make(null, op ^ 1, mOriginalLeft.not(), mOriginalRight.not());
             } else {
                 throw new AssertionError();
             }
@@ -414,10 +423,14 @@ public sealed class BinaryOpNode extends Node {
                 return mLeft.toRowFilter(info, columns).or(mRight.toRowFilter(info, columns));
             }
 
-            if (mLeft instanceof ColumnNode left) {
+            // Attempt to push down the original nodes, not the ones which have been converted
+            // to a common type. The lower filtering layer will perform any conversions itself
+            // if necessary.
+
+            if (mOriginalLeft instanceof ColumnNode left) {
                 ColumnInfo leftCol = tryFindColumn(info, left);
                 if (leftCol != null) {
-                    if (mRight instanceof ColumnNode right) {
+                    if (mOriginalRight instanceof ColumnNode right) {
                         ColumnInfo rightCol = tryFindColumn(info, right);
                         if (rightCol != null) {
                             var filter = ColumnToColumnFilter.tryMake(leftCol, mOp, rightCol);
@@ -427,22 +440,22 @@ public sealed class BinaryOpNode extends Node {
                                 return filter;
                             }
                         }
-                    } else if (mRight instanceof ParamNode right) {
+                    } else if (mOriginalRight instanceof ParamNode right) {
                         columns.putIfAbsent(leftCol.name, left);
                         return new ColumnToArgFilter(leftCol, mOp, right.ordinal());
-                    } else if (mRight instanceof ConstantNode right) {
+                    } else if (mOriginalRight instanceof ConstantNode right) {
                         columns.putIfAbsent(leftCol.name, left);
                         return new ColumnToConstantFilter(leftCol, mOp, right.value());
                     }
                 }
-            } else if (mRight instanceof ColumnNode right) {
+            } else if (mOriginalRight instanceof ColumnNode right) {
                 ColumnInfo rightCol = tryFindColumn(info, right);
                 if (rightCol != null) {
-                    if (mLeft instanceof ParamNode left) {
+                    if (mOriginalLeft instanceof ParamNode left) {
                         int op = ColumnFilter.reverseOperator(mOp);
                         columns.putIfAbsent(rightCol.name, right);
                         return new ColumnToArgFilter(rightCol, op, left.ordinal());
-                    } else if (mLeft instanceof ConstantNode left) {
+                    } else if (mOriginalLeft instanceof ConstantNode left) {
                         int op = ColumnFilter.reverseOperator(mOp);
                         columns.putIfAbsent(rightCol.name, right);
                         return new ColumnToConstantFilter(rightCol, op, left.value());
