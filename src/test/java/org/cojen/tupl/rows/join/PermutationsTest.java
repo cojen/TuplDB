@@ -56,6 +56,8 @@ public class PermutationsTest {
 
     private static final String[] TYPES = {":", "::", ">:", ":<", ">:<"};
 
+    private boolean mSameRow;
+
     @BeforeClass
     public static void setupAll() throws Exception {
         cDb = Database.open(new DatabaseConfig());
@@ -81,6 +83,9 @@ public class PermutationsTest {
 
         if (cCon != null) {
             Filler.dropSQL(cCon);
+            try (var st = cCon.createStatement()) {
+                st.execute("SHUTDOWN");
+            }
             cCon.close();
             cCon = null;
         }
@@ -93,6 +98,13 @@ public class PermutationsTest {
 
     @Test
     public void permute() throws Exception {
+        mSameRow = false;
+        permute(new String[] {"employee", "department", "company"});
+    }
+
+    @Test
+    public void permuteSameRow() throws Exception {
+        mSameRow = true;
         permute(new String[] {"employee", "department", "company"});
     }
 
@@ -155,13 +167,15 @@ public class PermutationsTest {
         String query = "department.id == employee.departmentId && " +
             "department.companyId == company.id";
 
-        QueryPlan plan = mJoin.scannerPlan(null, query);
+        QueryPlan plan = mJoin.query(query).scannerPlan(null);
         //System.out.println(plan);
 
         var rows = new TreeSet<String>();
 
         try (var scanner = mJoin.newScanner(null, query)) {
-            for (var row = scanner.row(); row != null; row = scanner.step(row)) {
+            for (var row = scanner.row(); row != null;
+                 row = mSameRow ? scanner.step(row) : scanner.step())
+            {
                 String rowStr = row.toString();
                 assertTrue(rows.add(rowStr));
             }

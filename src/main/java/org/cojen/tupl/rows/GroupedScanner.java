@@ -23,6 +23,7 @@ import java.util.Comparator;
 
 import org.cojen.tupl.Grouper;
 import org.cojen.tupl.Scanner;
+import org.cojen.tupl.Table;
 
 /**
  * 
@@ -30,10 +31,10 @@ import org.cojen.tupl.Scanner;
  * @author Brian S. O'Neill
  * @see GroupedTable
  */
-public final class GroupedScanner<S, T> implements Scanner<T> {
+public class GroupedScanner<S, T> implements Scanner<T> {
     private final GroupedTable<S, T> mGroupedTable;
     private final Scanner<S> mSource;
-    private final Comparator<T> mComparator;
+    private final Comparator<S> mComparator;
 
     private Grouper<S, T> mGrouper;
     private S mHeader;
@@ -41,16 +42,13 @@ public final class GroupedScanner<S, T> implements Scanner<T> {
     private S mSourceRow;
     private T mTargetRow;
 
-    /**
-     * @param comparator defines the target ordering; is null if not applicable
-     */
     public GroupedScanner(GroupedTable<S, T> groupedTable, Scanner<S> source,
-                          Comparator<T> comparator, T targetRow, Grouper<S, T> grouper)
+                          T targetRow, Grouper<S, T> grouper)
         throws IOException
     {
         mGroupedTable = groupedTable;
         mSource = source;
-        mComparator = comparator;
+        mComparator = groupedTable.mGroupComparator;
 
         try {
             S sourceRow = source.row();
@@ -61,10 +59,11 @@ public final class GroupedScanner<S, T> implements Scanner<T> {
             }
 
             mGrouper = grouper;
-            mHeader = groupedTable.newSourceRow();
+            Table<S> sourceTable = groupedTable.source();
+            mHeader = sourceTable.newRow();
 
-            groupedTable.copySourceRow(sourceRow, mHeader);
-            mSourceRow = mGrouper.begin(sourceRow);
+            sourceTable.copyRow(sourceRow, mHeader);
+            mSourceRow = grouper.begin(sourceRow);
         } catch (Throwable e) {
             try {
                 close();
@@ -78,12 +77,12 @@ public final class GroupedScanner<S, T> implements Scanner<T> {
     }
 
     @Override
-    public T row() {
+    public final T row() {
         return mTargetRow;
     }
 
     @Override
-    public T step(T targetRow) throws IOException {
+    public final T step(T targetRow) throws IOException {
         Grouper<S, T> grouper = mGrouper;
 
         if (grouper == null) {
@@ -91,45 +90,68 @@ public final class GroupedScanner<S, T> implements Scanner<T> {
             return null;
         }
 
-        T finishedTargetRow;
+        T actualTargetRow = mTargetRow;
 
-        try {
-            S sourceRow = mSourceRow;
+        doStep: try {
+            S sourceRow;
+
+            if (actualTargetRow == null) {
+                sourceRow = mSourceRow;
+            } else {
+                targetRow = prepareTargetRow(targetRow);
+
+                while ((actualTargetRow = grouper.step(targetRow)) != null) {
+                    if (finish(actualTargetRow)) {
+                        mGroupedTable.cleanRow(actualTargetRow);
+                        mTargetRow = actualTargetRow;
+                        return actualTargetRow;
+                    }
+                }
+
+                sourceRow = mSourceRow;
+
+                if (sourceRow == null) {
+                    break doStep;
+                }
+
+                mGroupedTable.source().copyRow(sourceRow, mHeader);
+                sourceRow = grouper.begin(sourceRow);
+            }
 
             while (true) {
                 if ((sourceRow = mSource.step(sourceRow)) != null
-                    && mGroupedTable.compareSourceRows(mHeader, sourceRow) == 0)
+                    && mComparator.compare(mHeader, sourceRow) == 0)
                 {
                     sourceRow = grouper.accumulate(sourceRow);
                     continue;
                 }
 
-                if (targetRow == null) {
-                    targetRow = mGroupedTable.newRow();
-                } else {
-                    mGroupedTable.unsetRow(targetRow);
-                }
+                mSourceRow = sourceRow;
+                targetRow = prepareTargetRow(targetRow);
+                actualTargetRow = grouper.process(targetRow);
 
-                if ((finishedTargetRow = grouper.finish(targetRow)) != null) {
-                    mGroupedTable.finishTarget(mHeader, finishedTargetRow);
-
-                    if (sourceRow == null) {
-                        break;
+                if (actualTargetRow != null) {
+                    if (finish(actualTargetRow)) {
+                        mGroupedTable.cleanRow(actualTargetRow);
+                        mTargetRow = actualTargetRow;
+                        return actualTargetRow;
                     }
 
-                    mTargetRow = finishedTargetRow;
-
-                    mGroupedTable.copySourceRow(sourceRow, mHeader);
-                    mSourceRow = grouper.begin(sourceRow);
-
-                    return finishedTargetRow;
+                    while ((actualTargetRow = grouper.step(targetRow)) != null) {
+                        if (finish(actualTargetRow)) {
+                            mGroupedTable.cleanRow(actualTargetRow);
+                            mTargetRow = actualTargetRow;
+                            return actualTargetRow;
+                        }
+                    }
                 }
 
                 if (sourceRow == null) {
+                    mTargetRow = actualTargetRow;
                     break;
                 }
 
-                mGroupedTable.copySourceRow(sourceRow, mHeader);
+                mGroupedTable.source().copyRow(sourceRow, mHeader);
                 sourceRow = grouper.begin(sourceRow);
             }
         } catch (Throwable e) {
@@ -143,8 +165,6 @@ public final class GroupedScanner<S, T> implements Scanner<T> {
 
         mGrouper = null;
         mHeader = null;
-        mSourceRow = null;
-        mTargetRow = finishedTargetRow;
 
         try {
             grouper.close();
@@ -152,12 +172,30 @@ public final class GroupedScanner<S, T> implements Scanner<T> {
             mTargetRow = null;
             throw e;
         }
-        
-        return finishedTargetRow;
+
+        return actualTargetRow;
+    }
+
+    private T prepareTargetRow(T targetRow) {
+        if (targetRow == null) {
+            targetRow = mGroupedTable.newRow();
+        } else {
+            mGroupedTable.unsetRow(targetRow);
+        }
+        return targetRow;
+    }
+
+    /**
+     * Override to apply a custom finishing operation to the target row.
+     *
+     * @return false if filtered out
+     */
+    protected boolean finish(T targetRow) {
+        return true;
     }
 
     @Override
-    public void close() throws IOException {
+    public final void close() throws IOException {
         mHeader = null;
         mSourceRow = null;
         mTargetRow = null;
@@ -173,21 +211,12 @@ public final class GroupedScanner<S, T> implements Scanner<T> {
     }
 
     @Override
-    public long estimateSize() {
-        return mGroupedTable.estimateSize();
+    public final long estimateSize() {
+        return Long.MAX_VALUE;
     }
 
     @Override
-    public int characteristics() {
-        return mGroupedTable.characteristics(mSource);
-    }
-
-    @Override
-    public Comparator<? super T> getComparator() {
-        Comparator<T> cmp = mComparator;
-        if (cmp == null) {
-            throw new IllegalStateException();
-        }
-        return cmp;
+    public final int characteristics() {
+        return NONNULL;
     }
 }

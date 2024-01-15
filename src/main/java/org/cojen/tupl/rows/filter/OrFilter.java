@@ -28,7 +28,7 @@ import org.cojen.tupl.rows.ColumnInfo;
  *
  * @author Brian S O'Neill
  */
-public class OrFilter extends GroupFilter {
+public sealed class OrFilter extends GroupFilter permits FalseFilter {
     /**
      * Combines the given filters together into a flattened OrFilter or just one RowFilter.
      * This operation isn't recursive -- it only applies one round of flattening.
@@ -86,21 +86,21 @@ public class OrFilter extends GroupFilter {
     }
 
     @Override
-    public void accept(Visitor visitor) {
+    public final void accept(Visitor visitor) {
         visitor.visit(this);
     }
 
     @Override
-    public void appendTo(StringBuilder b) {
+    public final void appendTo(StringBuilder b) {
         if (mSubFilters.length == 0) {
-            b.append('F');
+            b.append("!()");
         } else {
             super.appendTo(b);
         }
     }
 
     @Override
-    RowFilter expandOperators(boolean force) {
+    final RowFilter expandOperators(boolean force) {
         RowFilter expanded = super.expandOperators(force);
         if (expanded == this) {
             return this;
@@ -110,7 +110,7 @@ public class OrFilter extends GroupFilter {
     }
 
     @Override
-    public boolean isDnf() {
+    public final boolean isDnf() {
         if ((mFlags & FLAG_DNF_SET) != 0) {
             return (mFlags & FLAG_IS_DNF) != 0;
         }
@@ -126,7 +126,7 @@ public class OrFilter extends GroupFilter {
     }
 
     @Override
-    public boolean isCnf() {
+    public final boolean isCnf() {
         if ((mFlags & FLAG_CNF_SET) != 0) {
             return (mFlags & FLAG_IS_CNF) != 0;
         }
@@ -142,7 +142,7 @@ public class OrFilter extends GroupFilter {
     }
 
     @Override
-    public int isMatch(RowFilter filter) {
+    public final int isMatch(RowFilter filter) {
         if (equals(filter)) {
             return 1; // equal
         }
@@ -161,7 +161,7 @@ public class OrFilter extends GroupFilter {
     }
 
     @Override
-    public RowFilter retain(Predicate<String> pred, boolean strict, RowFilter undecided) {
+    public final RowFilter retain(Predicate<String> pred, boolean strict, RowFilter undecided) {
         RowFilter[] subFilters = mSubFilters;
         if (subFilters.length == 0) {
             return this;
@@ -184,8 +184,8 @@ public class OrFilter extends GroupFilter {
     }
 
     @Override
-    public RowFilter[][] multiRangeExtract(boolean disjoint,
-                                           boolean reverse, ColumnInfo... keyColumns)
+    public final RowFilter[][] multiRangeExtract(boolean disjoint,
+                                                 boolean reverse, ColumnInfo... keyColumns)
     {
         if (mSubFilters.length <= 1) {
             return super.multiRangeExtract(disjoint, reverse, keyColumns);
@@ -260,7 +260,7 @@ public class OrFilter extends GroupFilter {
     }
 
     @Override
-    public boolean uniqueColumn(String columnName) {
+    public final boolean uniqueColumn(String columnName) {
         // To return true, none of the sub filters can match more than one, and all of the sub
         // filters must be the same. In practice, this method will always return false due to
         // filter reduction.

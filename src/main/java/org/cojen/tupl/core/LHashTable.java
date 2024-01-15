@@ -29,6 +29,9 @@ public abstract class LHashTable<E extends LHashTable.Entry<E>> {
         public V value;
     }
 
+    /**
+     * Defines an LHashTable of Object entries.
+     */
     public static final class Obj<V> extends LHashTable<ObjEntry<V>> {
         public Obj(int capacity) {
             super(capacity);
@@ -53,6 +56,9 @@ public abstract class LHashTable<E extends LHashTable.Entry<E>> {
         public int value;
     }
 
+    /**
+     * Defines an LHashTable of int entries.
+     */
     public static final class Int extends LHashTable<IntEntry> {
         Int(int capacity) {
             super(capacity);
@@ -60,6 +66,22 @@ public abstract class LHashTable<E extends LHashTable.Entry<E>> {
 
         protected IntEntry newEntry() {
             return new IntEntry();
+        }
+    }
+
+    public static final class SetEntry extends Entry<SetEntry> {
+    }
+
+    /**
+     * Defines an LHashTable of empty entries, which is effectively a hash set.
+     */
+    public static final class Set extends LHashTable<SetEntry> {
+        Set(int capacity) {
+            super(capacity);
+        }
+
+        protected SetEntry newEntry() {
+            return new SetEntry();
         }
     }
 
@@ -112,12 +134,31 @@ public abstract class LHashTable<E extends LHashTable.Entry<E>> {
     /**
      * @return new entry if inserted, existing entry otherwise
      */
-    public final E insert(long key) {
+    public final E put(long key) {
         E[] entries = mEntries;
         int index = ((int) key) & (entries.length - 1);
         for (E e = entries[index]; e != null; e = e.next) {
             if (e.key == key) {
                 return e;
+            }
+        }
+        if (grow()) {
+            entries = mEntries;
+            index = ((int) key) & (entries.length - 1);
+        }
+        mSize++;
+        return entries[index] = newEntry(key, entries[index]);
+    }
+
+    /**
+     * @return new entry if inserted or else null if an entry already exists
+     */
+    public final E insert(long key) {
+        E[] entries = mEntries;
+        int index = ((int) key) & (entries.length - 1);
+        for (E e = entries[index]; e != null; e = e.next) {
+            if (e.key == key) {
+                return null;
             }
         }
         if (grow()) {

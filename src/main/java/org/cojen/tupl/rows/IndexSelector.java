@@ -36,7 +36,7 @@ import org.cojen.tupl.rows.filter.ColumnFilter;
 import org.cojen.tupl.rows.filter.ColumnToArgFilter;
 import org.cojen.tupl.rows.filter.ColumnToColumnFilter;
 import org.cojen.tupl.rows.filter.OrFilter;
-import org.cojen.tupl.rows.filter.Query;
+import org.cojen.tupl.rows.filter.QuerySpec;
 import org.cojen.tupl.rows.filter.RowFilter;
 import org.cojen.tupl.rows.filter.TrueFilter;
 import org.cojen.tupl.rows.filter.Visitor;
@@ -48,7 +48,7 @@ import org.cojen.tupl.rows.filter.Visitor;
  */
 final class IndexSelector<R> {
     private final RowInfo mPrimaryInfo;
-    private final Query mQuery;
+    private final QuerySpec mQuery;
     private final boolean mForUpdate;
 
     private NavigableSet<ColumnSet> mAlternateKeys;
@@ -62,7 +62,7 @@ final class IndexSelector<R> {
 
     private ColumnSet[] mSelectedIndexes;
     private BaseTable[] mSelectedIndexTables;
-    private Query[] mSelectedQueries;
+    private QuerySpec[] mSelectedQueries;
     private boolean[] mSelectedReverse;
     private OrderBy mOrderBy;
     private OrderBy mGrouping;
@@ -74,7 +74,7 @@ final class IndexSelector<R> {
      * verification
      * @throws IOException only can be thrown if a table was provided
      */
-    IndexSelector(BaseTable<R> table, RowInfo primaryInfo, Query query, boolean forUpdate)
+    IndexSelector(BaseTable<R> table, RowInfo primaryInfo, QuerySpec query, boolean forUpdate)
         throws IOException
     {
         mPrimaryInfo = primaryInfo;
@@ -349,7 +349,7 @@ final class IndexSelector<R> {
             entries.sort(Comparator.comparingInt(e -> e.getValue().numTerms()));
 
             mSelectedIndexes = new ColumnSet[entries.size()];
-            mSelectedQueries = new Query[mSelectedIndexes.length];
+            mSelectedQueries = new QuerySpec[mSelectedIndexes.length];
 
             Iterator<Map.Entry<ColumnSet, RowFilter>> it = entries.iterator();
             RowFilter reject = null;
@@ -373,7 +373,7 @@ final class IndexSelector<R> {
 
         // Reached when only one index was selected.
         mSelectedIndexes = new ColumnSet[] {theOne};
-        mSelectedQueries = new Query[] {mQuery.withOrderBy(null)};
+        mSelectedQueries = new QuerySpec[] {mQuery.withOrderBy(null)};
     }
 
     /**
@@ -386,7 +386,7 @@ final class IndexSelector<R> {
     /**
      * Returns the constructor parameter.
      */
-    Query query() {
+    QuerySpec query() {
         return mQuery;
     }
 
@@ -420,7 +420,7 @@ final class IndexSelector<R> {
      * Returns a query for the selected index with the effective projection and filter that
      * must still be applied.
      */
-    Query selectedQuery(int i) {
+    QuerySpec selectedQuery(int i) {
         return mSelectedQueries[i];
     }
 
@@ -456,6 +456,23 @@ final class IndexSelector<R> {
      */
     boolean forUpdateRuleChosen() {
         return mForUpdateRule;
+    }
+
+    /**
+     * Returns true if none of the selected indexes need to join to a primary. Projection isn't
+     * considered because even when a selected index is covering, a join might still be needed
+     * if a double check filter is needed against the primary row.
+     *
+     * @throws NullPointerException if no base table was provided to the constructor
+     */
+    boolean noJoins() {
+        int numSelected = numSelected();
+        for (int i=0; i<numSelected; i++) {
+            if (selectedIndexTable(i).joinedPrimaryTableClass() != null) {
+                return false;
+            }
+        }
+        return true;
     }
 
     /**

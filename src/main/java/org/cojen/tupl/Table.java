@@ -23,21 +23,23 @@ import java.io.IOException;
 import java.util.Comparator;
 
 import java.util.function.Predicate;
-import java.util.function.Supplier;
 
 import java.util.stream.Stream;
-import java.util.stream.StreamSupport;
-
-import org.cojen.tupl.diag.QueryPlan;
 
 import org.cojen.tupl.io.Utils;
 
+import org.cojen.tupl.rows.AggregatedTable;
 import org.cojen.tupl.rows.ComparatorMaker;
 import org.cojen.tupl.rows.GroupedTable;
 import org.cojen.tupl.rows.MappedTable;
 import org.cojen.tupl.rows.PlainPredicateMaker;
+import org.cojen.tupl.rows.ViewedTable;
 
 import org.cojen.tupl.rows.join.JoinTableMaker;
+
+import org.cojen.tupl.rows.RowUtils;
+
+import static org.cojen.tupl.rows.RowUtils.NO_ARGS;
 
 /**
  * Defines a relational collection of persistent rows. A row is defined by an interface
@@ -85,9 +87,10 @@ import org.cojen.tupl.rows.join.JoinTableMaker;
  * RowFilter    = AndFilter { "||" AndFilter }
  * AndFilter    = EntityFilter { "&&" EntityFilter }
  * EntityFilter = ColumnFilter | ParenFilter
- * ParenFilter  = [ "!" ] "(" RowFilter ")"
+ * ParenFilter  = [ "!" ] "(" [ RowFilter ] ")"
  * ColumnFilter = ColumnName RelOp ( ArgRef | ColumnName )
  *              | ColumnName "in" ArgRef
+ *              | ArgRef RelOp ColumnName
  * RelOp        = "==" | "!=" | ">=" | "<" | "<=" | ">"
  * Projection   = "{" ProjColumns "}"
  * ProjColumns  = [ ProjColumn { "," ProjColumn } ]
@@ -95,6 +98,9 @@ import org.cojen.tupl.rows.join.JoinTableMaker;
  * ColumnName   = string
  * ArgRef       = "?" [ uint ]
  * }</pre></blockquote>
+ *
+ * Note that a query projection specifies the minimum set of requested columns, but additional
+ * ones might be provided if they were needed by the query implementation.
  *
  * @author Brian S O'Neill
  * @see Database#openTable Database.openTable
@@ -132,19 +138,27 @@ public interface Table<R> extends Closeable {
     public void copyRow(R from, R to);
 
     /**
+     * Returns true if the given row column is set.
+     *
+     * @throws IllegalArgumentException if column is unknown
+     */
+    public boolean isSet(R row, String name);
+
+    /**
      * Returns a new scanner for all rows of this table.
      *
      * @param txn optional transaction for the scanner to use; pass null for auto-commit mode
      * @return a new scanner positioned at the first row in the table
      * @throws IllegalStateException if transaction belongs to another database instance
-     * @see #scannerPlan scannerPlan
      */
-    public Scanner<R> newScanner(Transaction txn) throws IOException;
+    public default Scanner<R> newScanner(Transaction txn) throws IOException {
+        return newScanner(null, txn);
+    }
 
     /**
      * @hidden
      */
-    public Scanner<R> newScannerWith(Transaction txn, R row) throws IOException;
+    public Scanner<R> newScanner(R row, Transaction txn) throws IOException;
 
     /**
      * Returns a new scanner for a subset of rows from this table, as specified by the query
@@ -153,16 +167,34 @@ public interface Table<R> extends Closeable {
      * @param txn optional transaction for the scanner to use; pass null for auto-commit mode
      * @return a new scanner positioned at the first row in the table accepted by the query
      * @throws IllegalStateException if transaction belongs to another database instance
-     * @see #scannerPlan scannerPlan
      */
-    public Scanner<R> newScanner(Transaction txn, String query, Object... args)
+    public default Scanner<R> newScanner(Transaction txn, String query, Object... args)
+        throws IOException
+    {
+        return newScanner(null, txn, query, args);
+    }
+
+    /**
+     * @hidden
+     */
+    public default Scanner<R> newScanner(Transaction txn, String query) throws IOException {
+        return newScanner(txn, query, NO_ARGS);
+    }
+
+    /**
+     * @hidden
+     */
+    public Scanner<R> newScanner(R row, Transaction txn, String query, Object... args)
         throws IOException;
 
     /**
      * @hidden
      */
-    public Scanner<R> newScannerWith(Transaction txn, R row, String query, Object... args)
-        throws IOException;
+    public default Scanner<R> newScanner(R row, Transaction txn, String query)
+        throws IOException
+    {
+        return newScanner(row, txn, query, NO_ARGS);
+    }
 
     /**
      * Returns a new updater for all rows of this table.
@@ -176,7 +208,6 @@ public interface Table<R> extends Closeable {
      * @param txn optional transaction for the updater to use; pass null for auto-commit mode
      * @return a new updater positioned at the first row in the table
      * @throws IllegalStateException if transaction belongs to another database instance
-     * @see #updaterPlan updaterPlan
      */
     public default Updater<R> newUpdater(Transaction txn) throws IOException {
         throw new UnmodifiableViewException();
@@ -195,12 +226,18 @@ public interface Table<R> extends Closeable {
      * @param txn optional transaction for the updater to use; pass null for auto-commit mode
      * @return a new updater positioned at the first row in the table accepted by the query
      * @throws IllegalStateException if transaction belongs to another database instance
-     * @see #updaterPlan updaterPlan
      */
     public default Updater<R> newUpdater(Transaction txn, String query, Object... args)
         throws IOException
     {
         throw new UnmodifiableViewException();
+    }
+
+    /**
+     * @hidden
+     */
+    public default Updater<R> newUpdater(Transaction txn, String query) throws IOException {
+        return newUpdater(txn, query, NO_ARGS);
     }
 
     /**
@@ -211,11 +248,10 @@ public interface Table<R> extends Closeable {
      * @param txn optional transaction for the stream to use; pass null for auto-commit mode
      * @return a new stream positioned at the first row in the table
      * @throws IllegalStateException if transaction belongs to another database instance
-     * @see #streamPlan streamPlan
      */
     public default Stream<R> newStream(Transaction txn) {
         try {
-            return newStream(newScanner(txn));
+            return RowUtils.newStream(newScanner(txn));
         } catch (IOException e) {
             throw Utils.rethrow(e);
         }
@@ -230,14 +266,33 @@ public interface Table<R> extends Closeable {
      * @param txn optional transaction for the stream to use; pass null for auto-commit mode
      * @return a new stream positioned at the first row in the table accepted by the query
      * @throws IllegalStateException if transaction belongs to another database instance
-     * @see #streamPlan streamPlan
      */
     public default Stream<R> newStream(Transaction txn, String query, Object... args) {
         try {
-            return newStream(newScanner(txn, query, args));
+            return RowUtils.newStream(newScanner(txn, query, args));
         } catch (IOException e) {
             throw Utils.rethrow(e);
         }
+    }
+
+    /**
+     * @hidden
+     */
+    public default Stream<R> newStream(Transaction txn, String query) {
+        return newStream(txn, query, NO_ARGS);
+    }
+
+    /**
+     * Returns a query for a subset of rows from this table, as specified by the query
+     * expression.
+     */
+    public Query<R> query(String query) throws IOException;
+
+    /**
+     * Returns a query for all rows of this table.
+     */
+    public default Query<R> queryAll() throws IOException {
+        return query("{*}");
     }
 
     /**
@@ -248,19 +303,16 @@ public interface Table<R> extends Closeable {
      * @see #isEmpty
      */
     public default boolean anyRows(Transaction txn) throws IOException {
-        // FIXME: Subclasses should provide an optimized implementation.
-        return anyRowsWith(txn, null);
+        // TODO: Subclasses should provide an optimized implementation.
+        return anyRows(null, txn);
     }
 
     /**
      * @hidden
      */
-    public default boolean anyRowsWith(Transaction txn, R row) throws IOException {
-        // FIXME: Subclasses should provide an optimized implementation.
-        Scanner<R> s = newScannerWith(txn, row);
-        boolean result = s.row() != null;
-        s.close();
-        return result;
+    public default boolean anyRows(R row, Transaction txn) throws IOException {
+        // TODO: Subclasses should provide an optimized implementation.
+        return anyRows(row, txn, "{}", NO_ARGS);
     }
 
     /**
@@ -273,31 +325,35 @@ public interface Table<R> extends Closeable {
     public default boolean anyRows(Transaction txn, String query, Object... args)
         throws IOException
     {
-        // FIXME: Subclasses should provide an optimized implementation.
-        return anyRowsWith(txn, null, query, args);
+        // TODO: Subclasses should provide an optimized implementation.
+        return anyRows(null, txn, query, args);
     }
 
     /**
      * @hidden
      */
-    public default boolean anyRowsWith(Transaction txn, R row, String query, Object... args)
+    public default boolean anyRows(Transaction txn, String query) throws IOException {
+        return anyRows(txn, query, NO_ARGS);
+    }
+
+    /**
+     * @hidden
+     */
+    public default boolean anyRows(R row, Transaction txn, String query, Object... args)
         throws IOException
     {
-        // FIXME: Subclasses should provide an optimized implementation.
-        Scanner<R> s = newScannerWith(txn, row, query, args);
+        // TODO: Subclasses should provide an optimized implementation.
+        Scanner<R> s = newScanner(row, txn, query, args);
         boolean result = s.row() != null;
         s.close();
         return result;
     }
 
-    private static <R> Stream<R> newStream(Scanner<R> scanner) {
-        return StreamSupport.stream(scanner, false).onClose(() -> {
-            try {
-                scanner.close();
-            } catch (Throwable e) {
-                Utils.rethrow(e);
-            }
-        });
+    /**
+     * @hidden
+     */
+    public default boolean anyRows(R row, Transaction txn, String query) throws IOException {
+        return anyRows(row, txn, query, NO_ARGS);
     }
 
     /**
@@ -359,22 +415,21 @@ public interface Table<R> extends Closeable {
     /**
      * Stores the given row when a corresponding row doesn't exist.
      *
-     * @return false if a corresponding row already exists and nothing was inserted
      * @throws IllegalStateException if any required columns aren't set
-     * @throws UniqueConstraintException if a conflicting alternate key exists
+     * @throws UniqueConstraintException if a conflicting primary or alternate key exists
      */
-    public default boolean insert(Transaction txn, R row) throws IOException {
+    public default void insert(Transaction txn, R row) throws IOException {
         throw new UnmodifiableViewException();
     }
 
     /**
      * Stores the given row when a corresponding row already exists.
      *
-     * @return false if a corresponding row doesn't exist
      * @throws IllegalStateException if any required columns aren't set
+     * @throws NoSuchRowException if a corresponding row doesn't exist
      * @throws UniqueConstraintException if a conflicting alternate key exists
      */
-    public default boolean replace(Transaction txn, R row) throws IOException {
+    public default void replace(Transaction txn, R row) throws IOException {
         throw new UnmodifiableViewException();
     }
 
@@ -382,11 +437,11 @@ public interface Table<R> extends Closeable {
      * Updates an existing row with the modified columns of the given row, but the resulting
      * row isn't loaded back.
      *
-     * @return false if a corresponding row doesn't exist
      * @throws IllegalStateException if primary key isn't fully specified
+     * @throws NoSuchRowException if a corresponding row doesn't exist
      * @throws UniqueConstraintException if a conflicting alternate key exists
      */
-    public default boolean update(Transaction txn, R row) throws IOException {
+    public default void update(Transaction txn, R row) throws IOException {
         throw new UnmodifiableViewException();
     }
 
@@ -394,11 +449,11 @@ public interface Table<R> extends Closeable {
      * Updates an existing row with the modified columns of the given row, and then loads the
      * result back into the given row.
      *
-     * @return false if a corresponding row doesn't exist
      * @throws IllegalStateException if primary key isn't fully specified
+     * @throws NoSuchRowException if a corresponding row doesn't exist
      * @throws UniqueConstraintException if a conflicting alternate key exists
      */
-    public default boolean merge(Transaction txn, R row) throws IOException {
+    public default void merge(Transaction txn, R row) throws IOException {
         throw new UnmodifiableViewException();
     }
 
@@ -410,6 +465,23 @@ public interface Table<R> extends Closeable {
      */
     public default boolean delete(Transaction txn, R row) throws IOException {
         throw new UnmodifiableViewException();
+    }
+
+    /**
+     * Returns a view backed by this table, whose rows and natural ordering are defined by the
+     * given query. The returned table instance will throw a {@link ViewConstraintException}
+     * for operations against rows which are restricted by the query, and closing the table has
+     * no effect.
+     */
+    public default Table<R> view(String query, Object... args) {
+        return ViewedTable.view(this, query, args);
+    }
+
+    /**
+     * @hidden
+     */
+    public default Table<R> view(String query) {
+        return view(query, NO_ARGS);
     }
 
     /**
@@ -430,13 +502,31 @@ public interface Table<R> extends Closeable {
      * the resulting table has one row, which is the aggregate result of all the rows of this
      * table. The view returned by this method is unmodifiable, and closing it has no effect.
      *
-     * @param supplier is called to generate a new {@link Grouper} instance for every query
-     * against the returned table
      * @throws NullPointerException if any parameter is null
      * @throws IllegalArgumentException if target primary key is malformed
      */
-    public default <T> Table<T> group(Class<T> targetType, Supplier<Grouper<R, T>> supplier) {
-        return GroupedTable.group(this, targetType, supplier);
+    public default <T> Table<T> aggregate(Class<T> targetType, Aggregator.Factory<R, T> factory) {
+        return AggregatedTable.aggregate(this, targetType, factory);
+    }
+
+    /**
+     * Returns a view backed by this table, which processes groups of source rows into groups
+     * of target rows. The view returned by this method is unmodifiable, closing it has no
+     * effect, and a {@link ViewConstraintException} is thrown from operations which act upon a
+     * primary key.
+     *
+     * @param groupBy grouping {@link #comparator specification}; pass an empty string to group
+     * all source rows together
+     * @param orderBy ordering specification within each group; pass an empty string if
+     * undefined
+     * @throws NullPointerException if any parameter is null
+     * @throws IllegalArgumentException if groupBy or orderBy specification is malformed
+     * @throws IllegalStateException if any groupBy or orderBy columns don't exist
+     */
+    public default <T> Table<T> group(String groupBy, String orderBy,
+                                      Class<T> targetType, Grouper.Factory<R, T> factory)
+    {
+        return GroupedTable.group(this, groupBy, orderBy, targetType, factory);
     }
 
     /**
@@ -503,41 +593,10 @@ public interface Table<R> extends Closeable {
     }
 
     /**
-     * Returns a query plan used by {@link #newScanner(Transaction, String, Object...)
-     * newScanner}.
-     *
-     * @param txn optional transaction to be used; pass null for auto-commit mode
-     * @param query optional query expression
-     * @param args optional query arguments
+     * @hidden
      */
-    public QueryPlan scannerPlan(Transaction txn, String query, Object... args) throws IOException;
-
-    /**
-     * Returns a query plan used by {@link #newUpdater(Transaction, String, Object...)
-     * newUpdater}.
-     *
-     * @param txn optional transaction to be used; pass null for auto-commit mode
-     * @param query optional query expression
-     * @param args optional query arguments
-     */
-    public default QueryPlan updaterPlan(Transaction txn, String query, Object... args)
-        throws IOException
-    {
-        throw new UnmodifiableViewException();
-    }
-
-    /**
-     * Returns a query plan used by {@link #newStream(Transaction, String, Object...)
-     * newStream}.
-     *
-     * @param txn optional transaction to be used; pass null for auto-commit mode
-     * @param query optional query expression
-     * @param args optional query arguments
-     */
-    public default QueryPlan streamPlan(Transaction txn, String query, Object... args)
-        throws IOException
-    {
-        return scannerPlan(txn, query, args);
+    public default Predicate<R> predicate(String query) {
+        return predicate(query, NO_ARGS);
     }
 
     /**

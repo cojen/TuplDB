@@ -34,6 +34,7 @@ import org.cojen.maker.Variable;
 import org.cojen.tupl.Cursor;
 import org.cojen.tupl.Entry;
 import org.cojen.tupl.LockResult;
+import org.cojen.tupl.NoSuchRowException;
 import org.cojen.tupl.Transaction;
 
 import org.cojen.tupl.diag.QueryPlan;
@@ -134,14 +135,16 @@ public class TableMaker {
 
     protected static void markAllClean(Variable rowVar, RowGen rowGen, RowGen codecGen) {
         if (rowGen == codecGen) { // isPrimaryTable, so truly mark all clean
-            int mask = 0x5555_5555;
-            int i = 0;
             String[] stateFields = rowGen.stateFields();
-            for (; i < stateFields.length - 1; i++) {
+            if (stateFields.length != 0) {
+                int mask = 0x5555_5555;
+                int i = 0;
+                for (; i < stateFields.length - 1; i++) {
+                    rowVar.field(stateFields[i]).set(mask);
+                }
+                mask >>>= (32 - ((rowGen.info.allColumns.size() & 0b1111) << 1));
                 rowVar.field(stateFields[i]).set(mask);
             }
-            mask >>>= (32 - ((rowGen.info.allColumns.size() & 0b1111) << 1));
-            rowVar.field(stateFields[i]).set(mask);
         } else {
             // Only mark columns clean that are defined by codecGen. All others are unset.
             markClean(rowVar, rowGen, codecGen.info.allColumns);
@@ -188,16 +191,18 @@ public class TableMaker {
      * Remaining states are UNSET or CLEAN.
      */
     protected static void markAllUndirty(Variable rowVar, RowInfo info) {
-        int mask = 0x5555_5555;
-        int i = 0;
         String[] stateFields = info.rowGen().stateFields();
-        for (; i < stateFields.length - 1; i++) {
+        if (stateFields.length != 0) {
+            int mask = 0x5555_5555;
+            int i = 0;
+            for (; i < stateFields.length - 1; i++) {
+                var field = rowVar.field(stateFields[i]);
+                field.set(field.and(mask));
+            }
+            mask >>>= (32 - ((info.allColumns.size() & 0b1111) << 1));
             var field = rowVar.field(stateFields[i]);
             field.set(field.and(mask));
         }
-        mask >>>= (32 - ((info.allColumns.size() & 0b1111) << 1));
-        var field = rowVar.field(stateFields[i]);
-        field.set(field.and(mask));
     }
 
     /**
@@ -216,52 +221,19 @@ public class TableMaker {
     /**
      * Mark all columns except for the excluded ones as UNSET.
      */
-    protected static void markUnset(final Variable rowVar, final RowGen rowGen,
-                                    final Map<String, ColumnInfo> exclude)
+    protected static void markUnset(Variable rowVar, RowGen rowGen,
+                                    Map<String, ColumnInfo> excluded)
     {
-        final int maxNum = rowGen.info.allColumns.size();
-
-        int num = 0, mask = 0;
-
-        for (int step = 0; step < 2; step++) {
-            // Key columns are numbered before value columns. Add checks in two steps.
-            // Note that the codecs are accessed, to match encoding order.
-            var baseCodecs = step == 0 ? rowGen.keyCodecs() : rowGen.valueCodecs();
-
-            for (ColumnCodec codec : baseCodecs) {
-                if (!exclude.containsKey(codec.info.name)) {
-                    mask |= RowGen.stateFieldMask(num);
-                }
-                if ((++num & 0b1111) == 0 || num >= maxNum) {
-                    Field field = rowVar.field(rowGen.stateField(num - 1));
-                    mask = ~mask;
-                    if (mask == 0) {
-                        field.set(mask);
-                    } else {
-                        field.set(field.and(mask));
-                        mask = 0;
-                    }
-                }
-            }
-        }
+        rowGen.markUnset(rowVar, name -> !excluded.containsKey(name));
     }
 
     /**
-     * Unset all columns except for the excluded ones.
+     * Unset and clear all columns except for the excluded ones.
      *
      * @param rowVar type must be the row implementation class
      */
     protected static void unset(RowInfo info, Variable rowVar, Map<String, ColumnInfo> excluded) {
-        markUnset(rowVar, info.rowGen(), excluded);
-
-        // Clear the unset target column fields that refer to objects.
-
-        for (ColumnInfo target : info.allColumns.values()) {
-            String name = target.name;
-            if (!excluded.containsKey(name) && !target.type.isPrimitive()) {
-                rowVar.field(name).set(null);
-            }
-        }
+        info.rowGen().unsetAndClear(rowVar, name -> !excluded.containsKey(name));
     }
 
     /**
@@ -607,12 +579,12 @@ public class TableMaker {
      * Adds a method which does most of the work for the update and merge methods. The
      * transaction parameter must not be null, which is committed when changes are made.
      *
-     *     boolean doUpdate(Transaction txn, ActualRow row, boolean merge);
+     *     void doUpdate(Transaction txn, ActualRow row, boolean merge);
      */
     protected void addDoUpdateMethod() {
         // Override the inherited abstract method.
         MethodMaker mm = mClassMaker.addMethod
-            (boolean.class, "doUpdate", Transaction.class, mRowClass, boolean.class).protected_();
+            (null, "doUpdate", Transaction.class, mRowClass, boolean.class).protected_();
         addDoUpdateMethod(mm);
     }
 
@@ -630,6 +602,9 @@ public class TableMaker {
         final var keyVar = mm.invoke("encodePrimaryKey", rowVar);
         final var source = mm.field("mSource");
         final var cursorVar = source.invoke("newCursor", txnVar);
+
+        // Must enable redoPredicateMode before openAcquire to have any effect.
+        mm.invoke("redoPredicateMode", txnVar);
 
         Label cursorStart = mm.label().here();
 
@@ -656,30 +631,33 @@ public class TableMaker {
                 prepareForTrigger(mm, mm.this_(), triggerVar, skipLabel);
                 triggerStart = mm.label().here();
 
+                Variable closerVar = mm.field("mIndexLock").invoke("openAcquire", txnVar, rowVar);
+                Label opStart = mm.label().here();
                 cursorVar.invoke("find", keyVar);
+                mm.finally_(opStart, () -> closerVar.invoke("close"));
                 var oldValueVar = cursorVar.invoke("value");
                 Label replace = mm.label();
                 oldValueVar.ifNe(null, replace);
-                mm.return_(false);
+                mm.new_(NoSuchRowException.class).throw_();
                 replace.here();
                 var valueVar = mm.invoke("encodeValue", rowVar);
                 cursorVar.invoke("store", valueVar);
-                // Only need to enable redoPredicateMode for the trigger, since it might insert
-                // new secondary index entries (and call openAcquire).
-                mm.invoke("redoPredicateMode", txnVar);
                 triggerVar.invoke("store", txnVar, rowVar, keyVar, oldValueVar, valueVar);
                 txnVar.invoke("commit");
                 markAllClean(rowVar);
-                mm.return_(true);
+                mm.return_();
 
                 skipLabel.here();
             }
 
+            Variable closerVar = mm.field("mIndexLock").invoke("openAcquire", txnVar, rowVar);
+            Label opStart = mm.label().here();
             cursorVar.invoke("autoload", false);
             cursorVar.invoke("find", keyVar);
+            mm.finally_(opStart, () -> closerVar.invoke("close"));
             Label replace = mm.label();
             cursorVar.invoke("value").ifNe(null, replace);
-            mm.return_(false);
+            mm.new_(NoSuchRowException.class).throw_();
             replace.here();
             cursorVar.invoke("commit", mm.invoke("encodeValue", rowVar));
 
@@ -688,7 +666,7 @@ public class TableMaker {
             }
 
             markAllClean(rowVar);
-            mm.return_(true);
+            mm.return_();
 
             if (cont == null) {
                 return;
@@ -697,18 +675,9 @@ public class TableMaker {
             cont.here();
         }
 
-        cursorVar.invoke("find", keyVar);
-
-        Label hasValue = mm.label();
-        cursorVar.invoke("value").ifNe(null, hasValue);
-        mm.return_(false);
-        hasValue.here();
-
         // The bulk of the method might not be implemented until needed, delaying
         // acquisition/creation of the current schema version.
-        finishDoUpdate(mm, rowVar, mergeVar, cursorVar);
-
-        mm.return_(true);
+        finishDoUpdate(mm, rowVar, mergeVar, keyVar, cursorVar);
 
         mm.finally_(cursorStart, () -> cursorVar.invoke("reset"));
     }
@@ -716,8 +685,8 @@ public class TableMaker {
     /**
      * Subclass must override this method in order for the addDoUpdateMethod to work.
      */
-    protected void finishDoUpdate(MethodMaker mm,
-                                  Variable rowVar, Variable mergeVar, Variable cursorVar)
+    protected void finishDoUpdate(MethodMaker mm, Variable rowVar, Variable mergeVar,
+                                  Variable keyVar, Variable cursorVar)
     {
         throw new UnsupportedOperationException();
     }
@@ -726,14 +695,28 @@ public class TableMaker {
      * @param triggers 0 for false, 1 for true
      */
     protected static void finishDoUpdate(MethodMaker mm, RowInfo rowInfo, int schemaVersion,
-                                         int triggers, boolean returnTrue, Variable tableVar,
-                                         Variable rowVar, Variable mergeVar, Variable cursorVar)
+                                         int triggers, Variable tableVar, Variable rowVar,
+                                         Variable mergeVar, Variable keyVar, Variable cursorVar)
     {
+        Label findLabel = mm.label().here();
+        var resultVar = cursorVar.invoke("find", keyVar);
+
+        Label hasValue = mm.label();
+        cursorVar.invoke("value").ifNe(null, hasValue);
+        mm.new_(NoSuchRowException.class).throw_();
+        hasValue.here();
+
+        var txnVar = cursorVar.invoke("link");
         Variable valueVar = cursorVar.invoke("value");
 
         var ue = encodeUpdateValue(mm, rowInfo, schemaVersion, tableVar, rowVar, valueVar);
         Variable newValueVar = ue.newEntryVar;
         Variable[] offsetVars = ue.offsetVars;
+
+        var acquiredVar = tableVar.invoke("tryOpenAcquireP", txnVar, rowVar, keyVar,
+                                          cursorVar, resultVar, newValueVar);
+
+        acquiredVar.ifFalse(findLabel); // loop back and try again
 
         if (triggers == 0) {
             cursorVar.invoke("commit", newValueVar);
@@ -750,11 +733,6 @@ public class TableMaker {
 
             cursorVar.invoke("store", newValueVar);
 
-            // Only need to enable redoPredicateMode for the trigger, since it might insert
-            // new secondary index entries (and call openAcquire).
-            var txnVar = cursorVar.invoke("link");
-            tableVar.invoke("redoPredicateMode", txnVar);
-            var keyVar = cursorVar.invoke("key");
             triggerVar.invoke("storeP", txnVar, rowVar, keyVar, valueVar, newValueVar);
             txnVar.invoke("commit");
             Label cont = mm.label().goto_();
@@ -770,11 +748,7 @@ public class TableMaker {
 
         tableVar.invoke("cleanRow", rowVar);
 
-        if (returnTrue) {
-            mm.return_(true);
-        } else {
-            mm.return_();
-        }
+        mm.return_();
 
         doMerge.here();
 
@@ -813,8 +787,6 @@ public class TableMaker {
             prepareForTrigger(mm, tableVar, triggerVar, skipLabel);
             Label triggerStart = mm.label().here();
 
-            var txnVar = cursorVar.invoke("link");
-            var keyVar = cursorVar.invoke("key");
             triggerVar.invoke("store", txnVar, rowVar, keyVar, valueVar, newValueVar);
             cursorVar.invoke("commit", newValueVar);
             Label cont = mm.label().goto_();

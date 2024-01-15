@@ -33,14 +33,18 @@ import org.cojen.tupl.rows.OrderBy;
  * @param filter never null
  * @see Parser#parseQuery
  */
-public record Query(Map<String, ColumnInfo> projection, OrderBy orderBy, RowFilter filter) {
-    public Query withOrderBy(OrderBy ob) {
+public record QuerySpec(Map<String, ColumnInfo> projection, OrderBy orderBy, RowFilter filter) {
+    public QuerySpec withProjection(Map<String, ColumnInfo> proj) {
+        return proj.equals(projection) ? this : new QuerySpec(proj, orderBy, filter);
+    }
+
+    public QuerySpec withOrderBy(OrderBy ob) {
         if (Objects.equals(orderBy, ob)) {
             return this;
         }
 
         if (ob == null || projection == null || projection.keySet().containsAll(ob.keySet())) {
-            return new Query(projection, ob, filter);
+            return new QuerySpec(projection, ob, filter);
         }
 
         // Expand the projection to include the additional orderBy columns.
@@ -52,14 +56,14 @@ public record Query(Map<String, ColumnInfo> projection, OrderBy orderBy, RowFilt
             proj.putIfAbsent(column.name, column);
         }
 
-        return new Query(proj, ob, filter);
+        return new QuerySpec(proj, ob, filter);
     }
 
-    public Query withFilter(RowFilter rf) {
-        return rf.equals(filter) ? this : new Query(projection, orderBy, rf);
+    public QuerySpec withFilter(RowFilter rf) {
+        return rf.equals(filter) ? this : new QuerySpec(projection, orderBy, rf);
     }
 
-    public Query reduce() {
+    public QuerySpec reduce() {
         return withFilter(filter.reduce());
     }
 

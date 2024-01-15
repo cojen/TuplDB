@@ -156,12 +156,12 @@ public class MappedTest {
         } catch (UnmodifiableViewException e) {
         }
 
-        QueryPlan.Mapper plan = (QueryPlan.Mapper) mapped.scannerPlan(null, null);
+        QueryPlan.Mapper plan = (QueryPlan.Mapper) mapped.queryAll().scannerPlan(null);
         assertEquals(TestRow.class.getName(), plan.target);
         assertTrue(plan.using.contains("org.cojen.tupl.rows.MappedTest"));
-        assertEquals(mTable.scannerPlan(null, null), plan.source);
+        assertEquals(mTable.queryAll().scannerPlan(null), plan.source);
 
-        QueryPlan plan2 = mapped.scannerPlan(null, "{*}");
+        QueryPlan plan2 = mapped.query("{*}").scannerPlan(null);
         assertEquals(plan, plan2);
         assertEquals(plan.hashCode(), plan2.hashCode());
         assertEquals(plan.toString(), plan2.toString());
@@ -216,7 +216,7 @@ public class MappedTest {
             assertNull(scanner.step());
         }
 
-        try (var scanner = mapped.newScannerWith(null, mapped.newRow())) {
+        try (var scanner = mapped.newScanner(mapped.newRow(), null)) {
             row = scanner.row();
             assertEquals("{id=2, num=234, str=123}", row.toString());
             row = scanner.step(row);
@@ -224,7 +224,7 @@ public class MappedTest {
             assertNull(scanner.step(row));
         }
 
-        try (var scanner = mapped.newScannerWith(null, mapped.newRow(), "{*}")) {
+        try (var scanner = mapped.newScanner(mapped.newRow(), null, "{*}")) {
             row = scanner.row();
             assertEquals("{id=2, num=234, str=123}", row.toString());
             row = scanner.step();
@@ -250,9 +250,9 @@ public class MappedTest {
             assertNull(scanner.step());
         }
 
-        var plan3 = (QueryPlan.Sort) mapped.scannerPlan(null, "{-str, id}");
+        var plan3 = (QueryPlan.Sort) mapped.query("{-str, id}").scannerPlan(null);
         assertEquals("[-str]", Arrays.toString(plan3.sortColumns));
-        assertEquals(mTable.scannerPlan(null, null), ((QueryPlan.Mapper) plan3.source).source);
+        assertEquals(mTable.queryAll().scannerPlan(null), ((QueryPlan.Mapper) plan3.source).source);
 
         try (var scanner = mapped.newScanner(null, "{-str, id}")) {
             row = scanner.row();
@@ -305,7 +305,11 @@ public class MappedTest {
 
         assertTrue(mapped.exists(null, row));
 
-        assertFalse(mapped.insert(null, row));
+        try {
+            mapped.insert(null, row);
+            fail();
+        } catch (UniqueConstraintException e) {
+        }
 
         try {
             row.str("xxx");
@@ -354,44 +358,56 @@ public class MappedTest {
         row.id(1000);
         row.num(1000);
         row.str("1000");
-        assertTrue(mapped.insert(null, row));
+        mapped.insert(null, row);
         assertEquals("{id=1000, num=1000, str=1000}", row.toString());
         assertTrue(mapped.load(null, row));
         assertEquals("{id=1000, num=1000, str=1000}", row.toString());
 
         row.num(1);
-        assertTrue(mapped.replace(null, row));
+        mapped.replace(null, row);
         assertEquals("{id=1000, num=1, str=1000}", row.toString());
         assertTrue(mapped.load(null, row));
         assertEquals("{id=1000, num=1, str=1000}", row.toString());
 
         row.id(0);
-        assertFalse(mapped.replace(null, row));
+        try {
+            mapped.replace(null, row);
+            fail();
+        } catch (NoSuchRowException e) {
+        }
         assertEquals("{*id=0, num=1, str=1000}", row.toString());
 
         row.id(1000);
         row.num(2);
-        assertTrue(mapped.update(null, row));
+        mapped.update(null, row);
         assertEquals("{id=1000, num=2, str=1000}", row.toString());
         assertTrue(mapped.load(null, row));
         assertEquals("{id=1000, num=2, str=1000}", row.toString());
 
         row.id(0);
         row.num(9);
-        assertFalse(mapped.update(null, row));
+        try {
+            mapped.update(null, row);
+            fail();
+        } catch (NoSuchRowException e) {
+        }
         assertEquals("{*id=0, *num=9, str=1000}", row.toString());
 
         row = mapped.newRow();
         row.id(1000);
         row.num(99);
-        assertTrue(mapped.merge(null, row));
+        mapped.merge(null, row);
         assertEquals("{id=1000, num=99, str=1000}", row.toString());
         assertTrue(mapped.load(null, row));
         assertEquals("{id=1000, num=99, str=1000}", row.toString());
 
         row.id(0);
         row.num(91);
-        assertFalse(mapped.merge(null, row));
+        try {
+            mapped.merge(null, row);
+            fail();
+        } catch (NoSuchRowException e) {
+        }
         assertEquals("{*id=0, *num=91, str=1000}", row.toString());
 
         row.id(1000);
@@ -399,7 +415,7 @@ public class MappedTest {
         mTable.store(null, row);
 
         row.str("111");
-        assertTrue(mapped.merge(null, row));
+        mapped.merge(null, row);
         assertEquals("{}", row.toString());
         row.id(1000);
         assertFalse(mapped.load(null, row));
@@ -415,7 +431,7 @@ public class MappedTest {
             assertNull(scanner.step(row));
         }
 
-        var plan = (QueryPlan.Mapper) mapped.scannerPlan(null, "num == ? && str == ?");
+        var plan = (QueryPlan.Mapper) mapped.query("num == ? && str == ?").scannerPlan(null);
         var sub1 = (QueryPlan.Filter) plan.source;
         assertEquals("num == ?4", sub1.expression);
         var sub2 = (QueryPlan.PrimaryJoin) sub1.source;
@@ -449,9 +465,9 @@ public class MappedTest {
             assertNull(scanner.step(row));
         }
 
-        var plan2 = (QueryPlan.Sort) mapped.scannerPlan(null, "{-str, id}");
+        var plan2 = (QueryPlan.Sort) mapped.query("{-str, id}").scannerPlan(null);
         assertEquals("[-str]", Arrays.toString(plan2.sortColumns));
-        assertEquals(mTable.scannerPlan(null, null), ((QueryPlan.Mapper) plan2.source).source);
+        assertEquals(mTable.queryAll().scannerPlan(null), ((QueryPlan.Mapper) plan2.source).source);
 
         try (var scanner = mapped.newScanner(null, "{-str, id}")) {
             row = scanner.row();
@@ -461,7 +477,7 @@ public class MappedTest {
             assertNull(scanner.step(row));
         }
 
-        plan = (QueryPlan.Mapper) mapped.scannerPlan(null, "{-id}");
+        plan = (QueryPlan.Mapper) mapped.query("{-id}").scannerPlan(null);
         assertTrue(((QueryPlan.FullScan) plan.source).reverse);
 
         try (var scanner = mapped.newScanner(null, "{-id, *}")) {
@@ -522,7 +538,7 @@ public class MappedTest {
         row = mTable.newRow();
         row.id(999);
         row.str("hello");
-        assertTrue(mTable.update(null, row));
+        mTable.update(null, row);
 
         try (var updater = mapped.newUpdater(null)) {
             row = updater.row();
@@ -549,7 +565,7 @@ public class MappedTest {
     /**
      * Swaps the str and num columns.
      */
-    public static class Swapper implements Mapper.Identity<TestRow, TestRow> {
+    public static class Swapper implements Mapper<TestRow, TestRow> {
         @Override
         public TestRow map(TestRow source, TestRow target) {
             assertEquals("{}", target.toString());
@@ -561,6 +577,35 @@ public class MappedTest {
                 return null;
             }
             return target;
+        }
+
+        @Override
+        public void checkStore(Table<TestRow> table, TestRow row) throws ViewConstraintException {
+            try {
+                Integer.parseInt(row.str());
+            } catch (NumberFormatException e) {
+                throw new ViewConstraintException();
+            }
+        }
+
+        @Override
+        public void checkUpdate(Table<TestRow> table, TestRow row) throws ViewConstraintException {
+            if (table.isSet(row, "str")) {
+                try {
+                    Integer.parseInt(row.str());
+                } catch (NumberFormatException e) {
+                    throw new ViewConstraintException();
+                }
+            }
+        }
+
+        @Override
+        public void checkDelete(Table<TestRow> table, TestRow row) throws ViewConstraintException {
+        }
+
+        @Untransformed
+        public static long id_to_id(long id) {
+            return id;
         }
 
         public static String num_to_str(int num) {
@@ -604,7 +649,7 @@ public class MappedTest {
             assertNull(scanner.step());
         }
 
-        var plan = (QueryPlan.Mapper) mapped.scannerPlan(null, "string > ? && number != ?");
+        var plan = (QueryPlan.Mapper) mapped.query("string > ? && number != ?").scannerPlan(null);
         var sub1 = (QueryPlan.Filter) plan.source;
         assertEquals("str > ?3 && num != ?4", sub1.expression);
 
@@ -624,9 +669,9 @@ public class MappedTest {
 
         String query = "{-string, identifier} string >= ?";
 
-        var plan2 = (QueryPlan.Sort) mapped.scannerPlan(null, query);
+        var plan2 = (QueryPlan.Sort) mapped.query(query).scannerPlan(null);
         assertEquals("[-string]", Arrays.toString(plan2.sortColumns));
-        assertEquals(mTable.scannerPlan(null, "str >= ?2"),
+        assertEquals(mTable.query("str >= ?2").scannerPlan(null),
                      ((QueryPlan.Mapper) plan2.source).source);
 
         try (var scanner = mapped.newScanner(null, query, "a")) {
@@ -639,14 +684,13 @@ public class MappedTest {
 
         query = "{-identifier} string >= ?";
 
-        var plan3 = mapped.scannerPlan(null, query);
+        var plan3 = mapped.query(query).scannerPlan(null);
         assertEquals("""
-- sort: -identifier
-  - map: org.cojen.tupl.rows.MappedTest$Renamed
-    using: Renamer
-    - filter: str >= ?2
-      - full scan over primary key: org.cojen.tupl.rows.MappedTest$TestRow
-        key columns: +id
+- map: org.cojen.tupl.rows.MappedTest$Renamed
+  using: Renamer
+  - filter: str >= ?2
+    - reverse full scan over primary key: org.cojen.tupl.rows.MappedTest$TestRow
+      key columns: +id
                      """, plan3.toString());
 
         try (var scanner = mapped.newScanner(null, query, "a")) {
@@ -679,6 +723,19 @@ public class MappedTest {
             return target;
         }
 
+        @Override
+        public void checkStore(Table<TestRow> table, TestRow row) throws ViewConstraintException {
+        }
+
+        @Override
+        public void checkUpdate(Table<TestRow> table, TestRow row) throws ViewConstraintException {
+        }
+
+        @Override
+        public void checkDelete(Table<TestRow> table, TestRow row) throws ViewConstraintException {
+        }
+
+        @Untransformed
         public static long identifier_to_id(long id) {
             return id;
         }
@@ -712,7 +769,7 @@ public class MappedTest {
     private void sortMany(int amount) throws Exception {
         Table<Renamed> mapped = mTable.map(Renamed.class, new Renamer());
 
-        var plan = (QueryPlan.Sort) mapped.scannerPlan(null, "{+number, *}");
+        var plan = (QueryPlan.Sort) mapped.query("{+number, *}").scannerPlan(null);
         assertEquals("[+number]", Arrays.toString(plan.sortColumns));
 
         var rnd = new Random(amount);
@@ -744,5 +801,26 @@ public class MappedTest {
 
         assertEquals(amount, num);
         assertEquals(checksum, actualChecksum);
+    }
+
+    @Test
+    public void brokenMapping() throws Exception {
+        {
+            TestRow row = mTable.newRow();
+            row.id(1);
+            row.str("hello");
+            row.num(123);
+            mTable.store(null, row);
+        }
+
+        Table<Renamed> mapped = mTable.map(Renamed.class, (source, target) -> {
+            return target;
+        });
+
+        try {
+            mapped.newScanner(null, "identifier == ?", 0);
+            fail();
+        } catch (UnsetColumnException e) {
+        }
     }
 }

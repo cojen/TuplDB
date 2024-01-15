@@ -71,8 +71,13 @@ abstract class ArrayScanner<R> implements Scanner<R> {
         int pos = mPosition;
         rows[pos++] = null; // help GC
         if (pos < rows.length) {
-            mTable.copyRow(rows[pos], dst);
-            rows[pos] = dst;
+            R row = rows[pos];
+            if (dst == null) {
+                dst = row;
+            } else {
+                mTable.copyRow(row, dst);
+                rows[pos] = dst;
+            }
             mPosition = pos;
             return dst;
         }

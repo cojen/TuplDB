@@ -921,10 +921,7 @@ public class _BTreeCursor extends CoreValueAccessor implements Cursor {
                 return null;
             }
 
-            node = frame.acquireShared();
-            if (node.mSplit != null) {
-                node = mTree.finishSplitShared(frame, node);
-            }
+            node = acquireSharedNotSplit(frame);
 
             while (true) {
                 if (!node.isBottomInternal()) {
@@ -1071,10 +1068,7 @@ public class _BTreeCursor extends CoreValueAccessor implements Cursor {
             return count;
         }
 
-        node = frame.acquireShared();
-        if (node.mSplit != null) {
-            node = mTree.finishSplitShared(frame, node);
-        }
+        node = acquireSharedNotSplit(frame);
 
         while (true) {
             if (!node.isBottomInternal()) {
@@ -1544,10 +1538,7 @@ public class _BTreeCursor extends CoreValueAccessor implements Cursor {
                 return null;
             }
 
-            node = frame.acquireShared();
-            if (node.mSplit != null) {
-                node = mTree.finishSplitShared(frame, node);
-            }
+            node = acquireSharedNotSplit(frame);
 
             while (true) {
                 if (!node.isBottomInternal()) {
@@ -1997,10 +1988,7 @@ public class _BTreeCursor extends CoreValueAccessor implements Cursor {
             frame = new _CursorFrame();
             node = latchRootNode();
         } else {
-            node = frame.acquireShared();
-            if (node.mSplit != null) {
-                node = mTree.finishSplitShared(frame, node);
-            }
+            node = acquireSharedNotSplit(frame);
 
             int startPos = frame.mNodePos;
             if (startPos < 0) {
@@ -2076,11 +2064,8 @@ public class _BTreeCursor extends CoreValueAccessor implements Cursor {
 
                 node.releaseShared();
                 frame = parent;
-                node = frame.acquireShared();
 
-                if (node.mSplit != null) {
-                    node = mTree.finishSplitShared(frame, node);
-                }
+                node = acquireSharedNotSplit(frame);
 
                 try {
                     pos = _Node.internalPos(node.binarySearch(key, frame.mNodePos));
@@ -2651,10 +2636,7 @@ public class _BTreeCursor extends CoreValueAccessor implements Cursor {
         }
 
         try {
-            _Node node = leaf.acquireShared();
-            if (node.mSplit != null) {
-                node = mTree.finishSplitShared(leaf, node);
-            }
+            _Node node = acquireSharedNotSplit(leaf);
             try {
                 int pos = leaf.mNodePos;
                 mValue = pos < 0 ? null
@@ -2820,10 +2802,7 @@ public class _BTreeCursor extends CoreValueAccessor implements Cursor {
         }
 
         try {
-            _Node node = leaf.acquireShared();
-            if (node.mSplit != null) {
-                node = mTree.finishSplitShared(leaf, node);
-            }
+            _Node node = acquireSharedNotSplit(leaf);
             try {
                 int pos = leaf.mNodePos;
                 mValue = pos < 0 ? null
@@ -2893,10 +2872,7 @@ public class _BTreeCursor extends CoreValueAccessor implements Cursor {
         }
 
         try {
-            _Node node = leaf.acquireShared();
-            if (node.mSplit != null) {
-                node = mTree.finishSplitShared(leaf, node);
-            }
+            _Node node = acquireSharedNotSplit(leaf);
             try {
                 int pos = leaf.mNodePos;
                 mValue = pos < 0 ? null : node.retrieveLeafValue(pos);
@@ -4933,10 +4909,7 @@ public class _BTreeCursor extends CoreValueAccessor implements Cursor {
      * @return false if compaction should stop
      */
     private boolean compactInternalNode(long highestNodeId, _CursorFrame frame) throws IOException {
-        _Node node = frame.acquireShared();
-        if (node.mSplit != null) {
-            node = mTree.finishSplitShared(frame, node);
-        }
+        _Node node = acquireSharedNotSplit(frame);
         boolean result;
         if (!node.isInternal() || frame.mNodePos >= node.highestInternalPos()) {
             result = true;
@@ -5086,12 +5059,12 @@ public class _BTreeCursor extends CoreValueAccessor implements Cursor {
         _Node childNode;
 
         if (parentFrame == null) {
-            childNode = frame.acquireShared();
+            childNode = acquireSharedNotSplit(frame);
         } else {
             _Node parentNode = parentFrame.mNode;
             int parentLevel = level - 1;
             if (parentLevel > 0 && stack[parentLevel] != parentNode) {
-                parentNode = parentFrame.acquireShared();
+                parentNode = acquireSharedNotSplit(parentFrame);
                 parentNode.releaseShared();
                 if (stack[parentLevel] != parentNode) {
                     stack[parentLevel] = parentNode;
@@ -5101,25 +5074,42 @@ public class _BTreeCursor extends CoreValueAccessor implements Cursor {
                 }
             }
 
-            parentNode = parentFrame.acquireShared();
-            try {
-                childNode = frame.acquireShared();
+            while (true) {
+                parentNode = acquireSharedNotSplit(parentFrame);
 
-                boolean result;
                 try {
-                    result = verifyParentChildFrames
-                        (level, parentFrame, parentNode, frame, childNode, observer);
+                    childNode = frame.acquireShared();
                 } catch (Throwable e) {
-                    childNode.releaseShared();
+                    parentNode.releaseShared();
                     throw e;
                 }
 
-                if (!result) {
+                if (childNode.mSplit != null) {
+                    parentNode.releaseShared();
+                    mTree.finishSplitShared(frame, childNode);
                     childNode.releaseShared();
-                    return false;
+                    continue;
                 }
-            } finally {
-                parentNode.releaseShared();
+
+                try {
+                    boolean result;
+                    try {
+                        result = verifyParentChildFrames
+                            (level, parentFrame, parentNode, frame, childNode, observer);
+                    } catch (Throwable e) {
+                        childNode.releaseShared();
+                        throw e;
+                    }
+
+                    if (!result) {
+                        childNode.releaseShared();
+                        return false;
+                    }
+
+                    break;
+                } finally {
+                    parentNode.releaseShared();
+                }
             }
         }
 
@@ -5292,6 +5282,14 @@ public class _BTreeCursor extends CoreValueAccessor implements Cursor {
             mTree.finishSplitShared(frame, node);
         }
         return frame;
+    }
+
+    private _Node acquireSharedNotSplit(_CursorFrame frame) throws IOException {
+        _Node node = frame.acquireShared();
+        if (node.mSplit != null) {
+            node = mTree.finishSplitShared(frame, node);
+        }
+        return node;
     }
 
     /**

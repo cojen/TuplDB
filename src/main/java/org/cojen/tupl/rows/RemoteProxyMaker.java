@@ -1053,15 +1053,14 @@ public final class RemoteProxyMaker {
         throws IOException
     {
         attempt: {
-            boolean result;
             try {
-                result = table.insertAndTrigger(txn, row, key, value);
+                table.insertAndTrigger(txn, row, key, value);
             } catch (Throwable e) {
                 pipe.writeObject(e);
                 break attempt;
             }
             pipe.writeNull(); // no exception
-            writeResult(result, pipe);
+            pipe.writeByte(1); // success
         }
 
         pipe.flush();
@@ -1077,15 +1076,14 @@ public final class RemoteProxyMaker {
         throws IOException
     {
         attempt: {
-            boolean result;
             try {
-                result = table.replaceAndTrigger(txn, row, key, value);
+                table.replaceAndTrigger(txn, row, key, value);
             } catch (Throwable e) {
                 pipe.writeObject(e);
                 break attempt;
             }
             pipe.writeNull(); // no exception
-            writeResult(result, pipe);
+            pipe.writeByte(1); // success
         }
 
         pipe.flush();
@@ -1109,7 +1107,7 @@ public final class RemoteProxyMaker {
                 break attempt;
             }
             pipe.writeNull(); // no exception
-            pipe.writeByte(newValue != null ? 1 : 0); // success or failure
+            pipe.writeByte(1); // success
         }
 
         pipe.flush();
@@ -1135,12 +1133,8 @@ public final class RemoteProxyMaker {
                 break attempt;
             }
             pipe.writeNull(); // no exception
-            if (newValue == null) {
-                pipe.writeByte(0);
-            } else {
-                pipe.writeByte(1);
-                return newValue;
-            }
+            pipe.writeByte(1); // success
+            return newValue;
         }
 
         pipe.flush();
@@ -1160,20 +1154,15 @@ public final class RemoteProxyMaker {
         throws IOException
     {
         attempt: {
-            boolean result;
             try {
-                result = table.replaceAndTrigger(txn, row, key, value);
+                table.replaceAndTrigger(txn, row, key, value);
             } catch (Throwable e) {
                 pipe.writeObject(e);
                 break attempt;
             }
             pipe.writeNull(); // no exception
-            if (!result) {
-                pipe.writeByte(0);
-            } else {
-                pipe.writeByte(1);
-                return true;
-            }
+            pipe.writeByte(1); // success
+            return true;
         }
 
         pipe.flush();
@@ -1402,11 +1391,7 @@ public final class RemoteProxyMaker {
 
             autoCheck(isAutoVar, rowVar, pipeVar, finish);
 
-            if (variant == "store") {
-                pipeVar.invoke("writeByte", 1); // success
-            } else {
-                makerVar.invoke("writeResult", resultVar, pipeVar);
-            }
+            pipeVar.invoke("writeByte", 1); // success
         } else {
             // Enter a transaction scope to roll back the operation if the call to
             // encodeValueColumns throws an exception.
@@ -1506,8 +1491,8 @@ public final class RemoteProxyMaker {
 
         var makerVar = mm.var(RemoteProxyMaker.class);
 
-        if (variant != "merge") {
-            var resultVar = mm.field("table").invoke(variant, txnVar, rowVar);
+        if (variant == "update") {
+            mm.field("table").invoke(variant, txnVar, rowVar);
 
             mm.catch_(opTryStart, Throwable.class, exVar -> {
                 pipeVar.invoke("writeObject", exVar);
@@ -1515,17 +1500,14 @@ public final class RemoteProxyMaker {
             });
 
             pipeVar.invoke("writeNull"); // no exception
-            makerVar.invoke("writeResult", resultVar, pipeVar);
+            pipeVar.invoke("writeByte", 1); // success
         } else {
             // Enter a transaction scope to roll back the operation if the call to
             // encodeValueColumns throws an exception.
             txnVar.set(mm.field("table").invoke("enterScope", txnVar));
             Label txnStart = mm.label().here();
 
-            var resultVar = mm.field("table").invoke(variant, txnVar, rowVar);
-
-            Label noOperation = mm.label();
-            resultVar.ifFalse(noOperation);
+            mm.field("table").invoke(variant, txnVar, rowVar);
 
             var bytesVar = mm.invoke("encodeValueColumns", rowVar.cast(mRowClass), true);
 
@@ -1542,11 +1524,6 @@ public final class RemoteProxyMaker {
             bytesVar.aset(0, 1); // set the result code
 
             pipeVar.invoke("write", bytesVar);
-            finish.goto_();
-
-            noOperation.here();
-            pipeVar.invoke("writeNull"); // no exception
-            pipeVar.invoke("writeByte", 0);
         }
 
         finish.here();

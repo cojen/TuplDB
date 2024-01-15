@@ -32,7 +32,7 @@ import static java.util.Spliterator.*;
  *
  * @author Brian S O'Neill
  */
-public final class DisjointUnionQueryLauncher<R> implements QueryLauncher<R> {
+public final class DisjointUnionQueryLauncher<R> extends QueryLauncher<R> {
     private final QueryLauncher<R>[] mLaunchers;
 
     /**
@@ -44,7 +44,7 @@ public final class DisjointUnionQueryLauncher<R> implements QueryLauncher<R> {
     }
 
     @Override
-    public Scanner<R> newScannerWith(Transaction txn, R row, Object... args) throws IOException {
+    public Scanner<R> newScanner(R row, Transaction txn, Object... args) throws IOException {
         return new ConcatScanner<R>(row) {
             private int mWhich;
 
@@ -54,7 +54,7 @@ public final class DisjointUnionQueryLauncher<R> implements QueryLauncher<R> {
                 if (which >= mLaunchers.length) {
                     return null;
                 } else {
-                    Scanner<R> next = mLaunchers[which].newScannerWith(txn, dst, args);
+                    Scanner<R> next = mLaunchers[which].newScanner(dst, txn, args);
                     mWhich = which + 1;
                     return next;
                 }
@@ -63,7 +63,7 @@ public final class DisjointUnionQueryLauncher<R> implements QueryLauncher<R> {
     }
 
     @Override
-    public Updater<R> newUpdaterWith(Transaction txn, R row, Object... args) throws IOException {
+    public Updater<R> newUpdater(R row, Transaction txn, Object... args) throws IOException {
         return new ConcatUpdater<R>(row) {
             private int mWhich;
 
@@ -73,7 +73,7 @@ public final class DisjointUnionQueryLauncher<R> implements QueryLauncher<R> {
                 if (which >= mLaunchers.length) {
                     return null;
                 } else {
-                    Updater<R> next = mLaunchers[which].newUpdaterWith(txn, dst, args);
+                    Updater<R> next = mLaunchers[which].newUpdater(dst, txn, args);
                     mWhich = which + 1;
                     return next;
                 }
@@ -91,7 +91,7 @@ public final class DisjointUnionQueryLauncher<R> implements QueryLauncher<R> {
     }
 
     @Override
-    public QueryPlan scannerPlan(Transaction txn, Object... args) {
+    public QueryPlan scannerPlan(Transaction txn, Object... args) throws IOException {
         var subPlans = new QueryPlan[mLaunchers.length];
         for (int i=0; i<subPlans.length; i++) {
             subPlans[i] = mLaunchers[i].scannerPlan(txn, args);
@@ -100,7 +100,7 @@ public final class DisjointUnionQueryLauncher<R> implements QueryLauncher<R> {
     }
 
     @Override
-    public QueryPlan updaterPlan(Transaction txn, Object... args) {
+    public QueryPlan updaterPlan(Transaction txn, Object... args) throws IOException {
         var subPlans = new QueryPlan[mLaunchers.length];
         for (int i=0; i<subPlans.length; i++) {
             subPlans[i] = mLaunchers[i].updaterPlan(txn, args);
@@ -109,9 +109,9 @@ public final class DisjointUnionQueryLauncher<R> implements QueryLauncher<R> {
     }
 
     @Override
-    public void close() throws IOException {
+    public void closeIndexes() throws IOException {
         for (QueryLauncher launcher : mLaunchers) {
-            launcher.close();
+            launcher.closeIndexes();
         }
     }
 }

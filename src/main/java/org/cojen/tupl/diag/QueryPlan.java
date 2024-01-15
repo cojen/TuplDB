@@ -41,7 +41,7 @@ public abstract sealed class QueryPlan implements Serializable {
         return b.toString();
     }
 
-    public void printTo(PrintStream out) {
+    public final void printTo(PrintStream out) {
         try {
             appendTo((Appendable) out);
         } catch (IOException e) {
@@ -49,7 +49,7 @@ public abstract sealed class QueryPlan implements Serializable {
         }
     }
 
-    public void appendTo(StringBuilder b) {
+    public final void appendTo(StringBuilder b) {
         try {
             appendTo((Appendable) b);
         } catch (IOException e) {
@@ -57,7 +57,7 @@ public abstract sealed class QueryPlan implements Serializable {
         }
     }
 
-    public void appendTo(Appendable a) throws IOException {
+    public final void appendTo(Appendable a) throws IOException {
         appendTo(a, "- ", "  ");
     }
 
@@ -312,6 +312,29 @@ public abstract sealed class QueryPlan implements Serializable {
     }
 
     /**
+     * Query plan node which represents a single row with no columns.
+     */
+    public static final class Identity extends QueryPlan {
+        public Identity() {
+        }
+
+        @Override
+        void appendTo(Appendable a, String in1, String in2) throws IOException {
+            a.append(in1).append("identity").append('\n');
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            return obj instanceof Identity;
+        }
+
+        @Override
+        public int hashCode() {
+            return -630610878;
+        }
+    }
+
+    /**
      * Query plan node which filters out rows.
      */
     public static final class Filter extends QueryPlan {
@@ -405,24 +428,86 @@ public abstract sealed class QueryPlan implements Serializable {
     /**
      * Query plan node which applies aggregation.
      */
+    public static final class Aggregator extends QueryPlan {
+        private static final long serialVersionUID = 1L;
+
+        public final String target;
+        public final String using;
+        public final String[] groupBy;
+        public final QueryPlan source;
+
+        /**
+         * @param target describes the target row type
+         * @param using describes the aggregate operation (optional)
+         * @param groupBy group-by columns (or null if none)
+         * @param source child plan node
+         */
+        public Aggregator(String target, String using, String[] groupBy, QueryPlan source) {
+            this.target = target;
+            this.using = using;
+            this.groupBy = groupBy;
+            this.source = source;
+        }
+
+        @Override
+        void appendTo(Appendable a, String in1, String in2) throws IOException {
+            a.append(in1).append("aggregate").append(": ").append(target).append('\n');
+            if (using != null) {
+                appendItem(a, in2, "using").append(using).append('\n');
+            }
+            if (groupBy != null && groupBy.length != 0) {
+                appendItem(a, in2, "group by");
+                appendArray(a, groupBy).append('\n');
+            }
+            appendSub(a, in2, null, source);
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            return obj instanceof Aggregator aggregator && matches(aggregator);
+        }
+
+        boolean matches(Aggregator other) {
+            return Objects.equals(target, other.target) && Objects.equals(using, other.using) &&
+                Arrays.equals(groupBy, other.groupBy) && Objects.equals(source, other.source);
+        }
+
+        @Override
+        public int hashCode() {
+            int hash = Objects.hashCode(target);
+            hash = hash * 31 + Objects.hashCode(using);
+            hash = hash * 31 + Arrays.hashCode(groupBy);
+            hash = hash * 31 + Objects.hashCode(source);
+            return hash ^ -356180746;
+        }
+    }
+
+    /**
+     * Query plan node which applies grouping.
+     */
     public static final class Grouper extends QueryPlan {
         private static final long serialVersionUID = 1L;
 
         public final String target;
         public final String using;
-        public final String[] columns;
+        public final String[] groupBy, orderBy;
         public final QueryPlan source;
 
         /**
          * @param target describes the target row type
          * @param using describes the group operation (optional)
-         * @param columns group-by columns (or null if none)
+         * @param groupBy group-by columns (or null if none)
+         * @param orderBy order-by columns (or null if none)
          * @param source child plan node
          */
-        public Grouper(String target, String using, String[] columns, QueryPlan source) {
+        public Grouper(String target, String using,
+                       String[] groupBy, String[] orderBy,
+                       QueryPlan source)
+        {
             this.target = target;
             this.using = using;
-            this.columns = columns;
+            this.groupBy = groupBy;
+            this.orderBy = orderBy;
             this.source = source;
         }
 
@@ -432,9 +517,13 @@ public abstract sealed class QueryPlan implements Serializable {
             if (using != null) {
                 appendItem(a, in2, "using").append(using).append('\n');
             }
-            if (columns != null && columns.length != 0) {
-                appendItem(a, in2, "columns");
-                appendArray(a, columns).append('\n');
+            if (groupBy != null && groupBy.length != 0) {
+                appendItem(a, in2, "group by");
+                appendArray(a, groupBy).append('\n');
+            }
+            if (orderBy != null && orderBy.length != 0) {
+                appendItem(a, in2, "order by");
+                appendArray(a, orderBy).append('\n');
             }
             appendSub(a, in2, null, source);
         }
@@ -446,16 +535,18 @@ public abstract sealed class QueryPlan implements Serializable {
 
         boolean matches(Grouper other) {
             return Objects.equals(target, other.target) && Objects.equals(using, other.using) &&
-                Arrays.equals(columns, other.columns) && Objects.equals(source, other.source);
+                Arrays.equals(groupBy, other.groupBy) && Arrays.equals(orderBy, other.orderBy) &&
+                Objects.equals(source, other.source);
         }
 
         @Override
         public int hashCode() {
             int hash = Objects.hashCode(target);
             hash = hash * 31 + Objects.hashCode(using);
-            hash = hash * 31 + Arrays.hashCode(columns);
+            hash = hash * 31 + Arrays.hashCode(groupBy);
+            hash = hash * 31 + Arrays.hashCode(orderBy);
             hash = hash * 31 + Objects.hashCode(source);
-            return hash ^ -356180746;
+            return hash ^ -1001713878;
         }
     }
 

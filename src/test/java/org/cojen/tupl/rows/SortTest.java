@@ -73,7 +73,7 @@ public class SortTest {
             TestRow row = table.newRow();
             row.v1((byte) rnd.nextInt());
             row.v2(rnd.nextInt());
-            assertTrue(table.insert(null, row));
+            table.insert(null, row);
         }
 
         byte lastV1 = Byte.MIN_VALUE;
@@ -111,13 +111,6 @@ public class SortTest {
         lastV2 = Integer.MAX_VALUE;
         total = 0;
 
-        try {
-            table.newUpdater(null, "{-v1, -v2}");
-            fail();
-        } catch (IllegalStateException e) {
-            assertTrue(e.getMessage().contains("primary key"));
-        }
-
         try (Updater<TestRow> s = table.newUpdater(null, "{-v1, -v2, id}")) {
             for (TestRow row = s.row(); row != null; row = s.step(row)) {
                 byte v1 = row.v1();
@@ -144,7 +137,7 @@ public class SortTest {
 
         long expected = 0;
 
-        try (Updater<TestRow> s = table.newUpdater(null, "{+v1, -v2, id}")) {
+        try (Updater<TestRow> s = table.newUpdater(null, "{+v1, -v2}")) {
             for (TestRow row = s.row(); row != null; ) {
                 if (row.v2() == 0) {
                     row.v2(-1);

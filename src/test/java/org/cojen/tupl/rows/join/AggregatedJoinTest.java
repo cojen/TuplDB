@@ -27,9 +27,9 @@ import org.cojen.tupl.*;
  *
  * @author Brian S. O'Neill
  */
-public class GroupedJoinTest {
+public class AggregatedJoinTest {
     public static void main(String[] args) throws Exception {
-        org.junit.runner.JUnitCore.main(GroupedJoinTest.class.getName());
+        org.junit.runner.JUnitCore.main(AggregatedJoinTest.class.getName());
     }
 
     private static Database mDb;
@@ -82,7 +82,7 @@ public class GroupedJoinTest {
         void agg(AggByCompany agg);
     }
 
-    public static class Grouper1<T extends Agg> implements Grouper<Department, T> {
+    public static class Aggregator1<T extends Agg> implements Aggregator<Department, T> {
         private int count;
 
         @Override
@@ -111,18 +111,19 @@ public class GroupedJoinTest {
 
     @Test
     public void joinOrder() throws Exception {
-        // Test that grouped tables are ordered first in the join.
+        // Test that aggregated tables are ordered first in the join.
 
-        Table<Agg> grouped = mDepartment.group(Agg.class, Grouper1::new);
+        Table<Agg> aggregated = mDepartment.aggregate(Agg.class, Aggregator1::new);
 
         String spec = "employee : agg";
-        Table<EmployeeJoinAgg> joined = Table.join(EmployeeJoinAgg.class, spec, mEmployee, grouped);
+        Table<EmployeeJoinAgg> joined = Table.join
+            (EmployeeJoinAgg.class, spec, mEmployee, aggregated);
 
         String plan = """
 - nested loops join
   - first
-    - group: org.cojen.tupl.rows.join.GroupedJoinTest$Agg
-      using: Grouper1
+    - aggregate: org.cojen.tupl.rows.join.AggregatedJoinTest$Agg
+      using: Aggregator1
       - full scan over primary key: org.cojen.tupl.rows.join.Department
         key columns: +id
   - join
@@ -144,8 +145,8 @@ public class GroupedJoinTest {
         plan = """
 - nested loops join
   - first
-    - group: org.cojen.tupl.rows.join.GroupedJoinTest$Agg
-      using: Grouper1
+    - aggregate: org.cojen.tupl.rows.join.AggregatedJoinTest$Agg
+      using: Aggregator1
       - full scan over primary key: org.cojen.tupl.rows.join.Department
         key columns: +id
   - join
@@ -163,22 +164,23 @@ public class GroupedJoinTest {
     }
 
     @Test
-    public void joinOrderWithGroupBy() throws Exception {
-        // Test that grouped tables are ordered first in the join.
+    public void joinOrderWithAggregate() throws Exception {
+        // Test that aggregated tables are ordered first in the join.
 
-        Table<AggByCompany> grouped = mDepartment.group(AggByCompany.class, Grouper1::new);
+        Table<AggByCompany> aggregated = mDepartment.aggregate
+            (AggByCompany.class, Aggregator1::new);
 
         String spec = "department : agg";
 
         Table<DepartmentJoinAggByCompany> joined = Table.join
-            (DepartmentJoinAggByCompany.class, spec, mDepartment, grouped);
+            (DepartmentJoinAggByCompany.class, spec, mDepartment, aggregated);
 
         String plan = """
 - nested loops join
   - first
-    - group: org.cojen.tupl.rows.join.GroupedJoinTest$AggByCompany
-      using: Grouper1
-      columns: companyId
+    - aggregate: org.cojen.tupl.rows.join.AggregatedJoinTest$AggByCompany
+      using: Aggregator1
+      group by: companyId
       - sort: +companyId
         - full scan over primary key: org.cojen.tupl.rows.join.Department
           key columns: +id
@@ -203,9 +205,9 @@ public class GroupedJoinTest {
         plan = """
 - nested loops join
   - first
-    - group: org.cojen.tupl.rows.join.GroupedJoinTest$AggByCompany
-      using: Grouper1
-      columns: companyId
+    - aggregate: org.cojen.tupl.rows.join.AggregatedJoinTest$AggByCompany
+      using: Aggregator1
+      group by: companyId
       - sort: +companyId
         - full scan over primary key: org.cojen.tupl.rows.join.Department
           key columns: +id
@@ -233,9 +235,9 @@ public class GroupedJoinTest {
         key columns: +id
     assignments: ?2 = department.companyId
   - join
-    - group: org.cojen.tupl.rows.join.GroupedJoinTest$AggByCompany
-      using: Grouper1
-      columns: companyId
+    - aggregate: org.cojen.tupl.rows.join.AggregatedJoinTest$AggByCompany
+      using: Aggregator1
+      group by: companyId
       - filter: companyId == ?2
         - full scan over primary key: org.cojen.tupl.rows.join.Department
           key columns: +id
@@ -252,9 +254,9 @@ public class GroupedJoinTest {
         plan = """
 - nested loops join
   - first
-    - group: org.cojen.tupl.rows.join.GroupedJoinTest$AggByCompany
-      using: Grouper1
-      columns: companyId
+    - aggregate: org.cojen.tupl.rows.join.AggregatedJoinTest$AggByCompany
+      using: Aggregator1
+      group by: companyId
       - filter: companyId == ?1
         - full scan over primary key: org.cojen.tupl.rows.join.Department
           key columns: +id
@@ -278,7 +280,7 @@ public class GroupedJoinTest {
     private void eval(Table join, String plan, String[] results, String query, Object... args)
         throws Exception 
     {
-        String actualPlan = join.scannerPlan(null, query, args).toString();
+        String actualPlan = join.query(query).scannerPlan(null, args).toString();
         assertEquals(plan, actualPlan);
 
         int resultNum = 0;
@@ -295,7 +297,7 @@ public class GroupedJoinTest {
     @SuppressWarnings("unchecked")
     private static void dump(Table table, String query, Object... args) throws Exception {
         System.out.println(query);
-        System.out.println(table.scannerPlan(null, query, args));
+        System.out.println(table.query(query).scannerPlan(null, args));
 
         try (var scanner = table.newScanner(null, query, args)) {
             for (var row = scanner.row(); row != null; row = scanner.step(row)) {

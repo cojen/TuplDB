@@ -23,7 +23,7 @@ import static org.junit.Assert.*;
 import org.cojen.tupl.*;
 
 import org.cojen.tupl.rows.filter.Parser;
-import org.cojen.tupl.rows.filter.Query;
+import org.cojen.tupl.rows.filter.QuerySpec;
 
 /**
  * 
@@ -290,7 +290,7 @@ public class IndexSelectorTest {
         }
     }
 
-    private Query parse(String filter) {
+    private QuerySpec parse(String filter) {
         return new Parser(mInfo.allColumns, filter).parseQuery(null);
     }
 

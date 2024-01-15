@@ -48,14 +48,11 @@ public final class OrderBy extends LinkedHashMap<String, OrderBy.Rule> {
 
     public static OrderBy forSpec(Map<String, ? extends ColumnInfo> columns, String spec) {
         try {
-            OrderBy orderBy = parseSpec(columns, spec);
-            if (!orderBy.isEmpty()) {
-                return orderBy;
-            }
+            return parseSpec(columns, spec);
         } catch (IndexOutOfBoundsException e) {
         }
 
-        throw new IllegalArgumentException("Malformed ordering specification: " + spec);
+        throw malformed(spec);
     }
 
     public OrderBy() {
@@ -98,13 +95,42 @@ public final class OrderBy extends LinkedHashMap<String, OrderBy.Rule> {
         return ob;
     }
 
+    /**
+     * Return an OrderBy which only preserves the first set of rules which are in the available
+     * projection. If the no rules remain, then null is returned.
+     *
+     * @param projection can be null if projection is all columns
+     */
+    OrderBy truncate(Map<String, ColumnInfo> projection) {
+        if (projection == null || projection.keySet().containsAll(keySet())) {
+            return this;
+        }
+
+        OrderBy ob = null;
+
+        for (var e : entrySet()) {
+            if (!projection.containsKey(e.getKey())) {
+                break;
+            }
+            if (ob == null) {
+                ob = new OrderBy();
+            }
+            ob.put(e.getKey(), e.getValue());
+        }
+
+        return ob;
+    }
+
     public String spec() {
+        if (isEmpty()) {
+            return "";
+        }
         var b = new StringBuilder();
         for (OrderBy.Rule rule : values()) {
             rule.appendTo(b);
         }
-        // Call intern to reduce duplication. This method is only expected to be called when
-        // constructing Comparators and SortedQueryLaunchers, which are then cached.
+        // Call intern to reduce duplication under the expectation that callers will cache the
+        // string instance.
         return b.toString().intern();
     }
 
@@ -179,7 +205,7 @@ public final class OrderBy extends LinkedHashMap<String, OrderBy.Rule> {
             if (order == '-') {
                 type |= TYPE_DESCENDING;
             } else if (order != '+') {
-                break;
+                throw malformed(spec);
             }
 
             if (spec.charAt(pos) == '!') {
@@ -197,36 +223,20 @@ public final class OrderBy extends LinkedHashMap<String, OrderBy.Rule> {
             }
 
             if (end == pos) {
-                break;
+                throw malformed(spec);
             }
 
             String name = spec.substring(pos, end);
-            ColumnInfo column = columns.get(name);
+            ColumnInfo column = ColumnSet.findColumn(columns, name);
 
-            if (column != null) {
-                if (column.isPrimitive()) {
-                    // Can't be null.
-                    type &= ~TYPE_NULL_LOW;
-                }
-            } else subColumn: {
-                int ix = name.indexOf('.');
-                if (ix > 0) {
-                    ColumnInfo base = columns.get(name.substring(0, ix));
-                    if (base != null) {
-                        column = base.subColumn(name.substring(ix + 1));
-                        if (column != null) {
-                            var pathColumn = new ColumnInfo();
-                            pathColumn.name = name;
-                            pathColumn.type = column.type;
-                            pathColumn.typeCode = column.typeCode;
-                            column = pathColumn;
-                            break subColumn;
-                        }
-                    }
-                }
-
+            if (column == null) {
                 throw new IllegalStateException
                     ("Unknown column \"" + name + "\" in ordering specification: " + spec);
+            }
+
+            if (column.isPrimitive() && column.prefix() == null) {
+                // Can't be null.
+                type &= ~TYPE_NULL_LOW;
             }
 
             if (!orderBy.containsKey(name)) {
@@ -238,5 +248,9 @@ public final class OrderBy extends LinkedHashMap<String, OrderBy.Rule> {
         }
 
         return orderBy;
+    }
+
+    private static IllegalArgumentException malformed(String spec) {
+        return new IllegalArgumentException("Malformed ordering specification: " + spec);
     }
 }

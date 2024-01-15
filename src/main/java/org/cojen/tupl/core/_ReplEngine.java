@@ -176,7 +176,7 @@ class _ReplEngine implements RedoVisitor, ThreadFactory {
                 long scrambledTxnId = fibHash(te.key);
                 _LocalTransaction txn = te.value;
                 if (!txn.recoveryCleanup(false)) {
-                    txnTable.insert(scrambledTxnId).mTxn = txn;
+                    txnTable.put(scrambledTxnId).mTxn = txn;
                 }
                 // Delete entry.
                 return true;
@@ -195,7 +195,7 @@ class _ReplEngine implements RedoVisitor, ThreadFactory {
 
             cursors.traverse(ce -> {
                 long scrambledCursorId = fibHash(ce.key);
-                cursorTable.insert(scrambledCursorId).recovered(ce.value);
+                cursorTable.put(scrambledCursorId).recovered(ce.value);
                 // Delete entry.
                 return true;
             });
@@ -362,7 +362,7 @@ class _ReplEngine implements RedoVisitor, ThreadFactory {
 
         if (remaining != null) {
             remaining.traverse(entry -> {
-                mTransactions.insert(entry.key).mTxn = entry.value;
+                mTransactions.put(entry.key).mTxn = entry.value;
                 return false;
             });
         }
@@ -390,7 +390,7 @@ class _ReplEngine implements RedoVisitor, ThreadFactory {
                         _LocalTransaction txn = te.mTxn;
                         if (!txn.recoveryCleanup(true)) {
                             synchronized (remaining) {
-                                remaining.insert(te.key).value = txn;
+                                remaining.put(te.key).value = txn;
                             }
                         }
                     }
@@ -606,7 +606,7 @@ class _ReplEngine implements RedoVisitor, ThreadFactory {
 
         if (te == null) {
             // Create a new transaction.
-            mTransactions.insert(scrambledTxnId).mTxn = newTransaction(txnId);
+            mTransactions.put(scrambledTxnId).mTxn = newTransaction(txnId);
         } else {
             // Enter nested scope of an existing transaction.
 
@@ -690,7 +690,7 @@ class _ReplEngine implements RedoVisitor, ThreadFactory {
         if (te == null) {
             // Create a new transaction.
             _LocalTransaction txn = newTransaction(txnId);
-            te = mTransactions.insert(scrambledTxnId);
+            te = mTransactions.put(scrambledTxnId);
             te.mTxn = txn;
 
             // Acquire the lock on behalf of the transaction, but push it using the correct thread.
@@ -912,7 +912,7 @@ class _ReplEngine implements RedoVisitor, ThreadFactory {
             tc.mCursorId = cursorId;
             register(tc);
             synchronized (mCursors) {
-                mCursors.insert(scrambledCursorId).mCursor = tc;
+                mCursors.put(scrambledCursorId).mCursor = tc;
             }
         }
         return true;
@@ -1460,7 +1460,7 @@ class _ReplEngine implements RedoVisitor, ThreadFactory {
 
         mDecodeLatch.acquireExclusive();
         try {
-            mTransactions.insert(scrambledTxnId).mTxn = txn;
+            mTransactions.put(scrambledTxnId).mTxn = txn;
             if (mStashedCond != null) {
                 mStashedCond.signal(mDecodeLatch);
             }
@@ -1579,7 +1579,7 @@ class _ReplEngine implements RedoVisitor, ThreadFactory {
             // Create transaction on demand if necessary. Startup transaction recovery only
             // applies to those which generated undo log entries.
             _LocalTransaction txn = newTransaction(txnId);
-            te = mTransactions.insert(scrambledTxnId);
+            te = mTransactions.put(scrambledTxnId);
             te.mTxn = txn;
         }
 
@@ -1697,7 +1697,7 @@ class _ReplEngine implements RedoVisitor, ThreadFactory {
         var ref = new SoftReference<Index>(ix);
 
         synchronized (mIndexes) {
-            mIndexes.insert(indexId).value = ref;
+            mIndexes.put(indexId).value = ref;
 
             if (cleanup != null) {
                 // Remove entries for all other cleared references, freeing up memory.

@@ -33,6 +33,7 @@ public class BasicJoinTest {
     }
 
     private static Database mDb;
+    private static Table<Company> mCompany;
     private static Table<Department> mDepartment;
     private static Table<Employee> mEmployee;
 
@@ -41,9 +42,10 @@ public class BasicJoinTest {
     @BeforeClass
     public static void setupAll() throws Exception {
         mDb = Database.open(new DatabaseConfig());
+        mCompany = mDb.openTable(Company.class);
         mDepartment = mDb.openTable(Department.class);
         mEmployee = mDb.openTable(Employee.class);
-        Filler.fillCompany(null, mDepartment, mEmployee);
+        Filler.fillCompany(mCompany, mDepartment, mEmployee);
     }
 
     @AfterClass
@@ -52,6 +54,7 @@ public class BasicJoinTest {
             mDb.close();
             mDb = null;
         }
+        mCompany = null;
         mDepartment = null;
         mEmployee = null;
     }
@@ -794,15 +797,77 @@ public class BasicJoinTest {
         eval(plan, results, "first.country == second.country && first.id < second.id");
     }
 
+    @Test
+    public void projection() throws Exception {
+        join("employee : department");
+
+        var plan = """
+            - nested loops join
+              - first
+                - full scan over primary key: org.cojen.tupl.rows.join.Employee
+                  key columns: +id
+                assignments: ?1 = employee.departmentId
+              - join
+                - load one using primary key: org.cojen.tupl.rows.join.Department
+                  key columns: +id
+                  filter: id == ?1
+            """;
+
+        var results = new String[] {
+            "{department={name=Sales}, employee={departmentId=31, country=Australia}}",
+            "{department={name=Engineering}, employee={departmentId=33, country=Australia}}",
+            "{department={name=Engineering}, employee={departmentId=33, country=Australia}}",
+            "{department={name=Clerical}, employee={departmentId=34, country=United States}}",
+            "{department={name=Clerical}, employee={departmentId=34, country=Germany}}",
+        };
+
+        eval(plan, results,
+             "{department.name, employee.country} department.id == employee.departmentId");
+
+        join3("company >: department : employee");
+
+        plan = """
+            - nested loops join
+              - first
+                - full scan over primary key: org.cojen.tupl.rows.join.Company
+                  key columns: +id
+              - outer join
+                - filter: company.id == department.companyId
+                  - full scan over primary key: org.cojen.tupl.rows.join.Department
+                    key columns: +id
+                assignments: ?1 = department.id
+              - join
+                - filter: departmentId == ?1
+                  - full scan over primary key: org.cojen.tupl.rows.join.Employee
+                    key columns: +id
+            """;
+
+        results = new String[] {
+            "{company={id=1, name=Hooli}, department={id=31, companyId=1, name=Sales}, employee={country=Australia}}",
+            "{company={id=1, name=Hooli}, department={id=34, companyId=1, name=Clerical}, employee={country=United States}}",
+            "{company={id=1, name=Hooli}, department={id=34, companyId=1, name=Clerical}, employee={country=Germany}}",
+            "{company={id=2, name=Initech}, department={id=33, companyId=2, name=Engineering}, employee={country=Australia}}",
+            "{company={id=2, name=Initech}, department={id=33, companyId=2, name=Engineering}, employee={country=Australia}}",
+        };
+
+        eval(plan, results,
+             "{company.name, department.name, employee.country} " +
+             "department.id == employee.departmentId && company.id == department.companyId");
+    }
+
     private void join(String spec) throws Exception {
         mJoin = mDb.openJoinTable(EmployeeJoinDepartment.class, spec);
+    }
+
+    private void join3(String spec) throws Exception {
+        mJoin = mDb.openJoinTable(EmployeeJoinDepartmentJoinCompany.class, spec);
     }
 
     @SuppressWarnings("unchecked")
     private void eval(String plan, String[] results, String query, Object... args)
         throws Exception 
     {
-        String actualPlan = mJoin.scannerPlan(null, query, args).toString();
+        String actualPlan = mJoin.query(query).scannerPlan(null, args).toString();
         assertEquals(plan, actualPlan);
 
         int resultNum = 0;
@@ -819,7 +884,7 @@ public class BasicJoinTest {
     @SuppressWarnings("unchecked")
     private void dump(String query, Object... args) throws Exception {
         System.out.println(query);
-        System.out.println(mJoin.scannerPlan(null, query, args));
+        System.out.println(mJoin.query(query).scannerPlan(null, args));
 
         try (var scanner = mJoin.newScanner(null, query, args)) {
             for (var row = scanner.row(); row != null; row = scanner.step(row)) {

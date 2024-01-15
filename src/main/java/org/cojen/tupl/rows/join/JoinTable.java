@@ -29,11 +29,10 @@ import java.util.Comparator;
 import java.util.function.Predicate;
 
 import org.cojen.tupl.DurabilityMode;
+import org.cojen.tupl.Query;
 import org.cojen.tupl.Scanner;
 import org.cojen.tupl.Table;
 import org.cojen.tupl.Transaction;
-
-import org.cojen.tupl.diag.QueryPlan;
 
 import org.cojen.tupl.rows.QueryLauncher;
 import org.cojen.tupl.rows.RowInfo;
@@ -73,27 +72,15 @@ public abstract class JoinTable<J> implements Table<J> {
     }
 
     @Override
-    public final Scanner<J> newScanner(Transaction txn) throws IOException {
-        return newScannerWith(txn, null);
+    public final Scanner<J> newScanner(J row, Transaction txn) throws IOException {
+        return newScanner(row, txn, "{*}", (Object[]) null);
     }
 
     @Override
-    public final Scanner<J> newScannerWith(Transaction txn, J row) throws IOException {
-        return newScannerWith(txn, row, "{*}", (Object[]) null);
-    }
-
-    @Override
-    public final Scanner<J> newScanner(Transaction txn, String query, Object... args)
+    public final Scanner<J> newScanner(J row, Transaction txn, String query, Object... args)
         throws IOException
     {
-        return newScannerWith(txn, null, query, args);
-    }
-
-    @Override
-    public final Scanner<J> newScannerWith(Transaction txn, J row, String query, Object... args)
-        throws IOException
-    {
-        return scannerQueryLauncher(query).newScannerWith(txn, row, args);
+        return scannerQueryLauncher(query).newScanner(row, txn, args);
     }
 
     @Override
@@ -112,6 +99,11 @@ public abstract class JoinTable<J> implements Table<J> {
     }
 
     @Override
+    public Query<J> query(String query) throws IOException {
+        return scannerQueryLauncher(query);
+    }
+
+    @Override
     public boolean load(Transaction txn, J row) throws IOException {
         throw new UnsupportedOperationException();
     }
@@ -124,14 +116,6 @@ public abstract class JoinTable<J> implements Table<J> {
     @Override
     public Predicate<J> predicate(String query, Object... args) {
         return JoinPredicateMaker.newInstance(rowType(), query, args);
-    }
-
-    @Override
-    public QueryPlan scannerPlan(Transaction txn, String query, Object... args) throws IOException {
-        if (query == null) {
-            query = "{*}";
-        }
-        return scannerQueryLauncher(query).scannerPlan(txn, args);
     }
 
     @Override

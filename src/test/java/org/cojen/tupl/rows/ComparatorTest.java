@@ -86,7 +86,7 @@ public class ComparatorTest {
 
     @Test
     public void bad() throws Exception {
-        String[] bad = {"", "+", "!id", "--id", "id"};
+        String[] bad = {"+", "!id", "--id", "id"};
 
         for (String spec : bad) {
             try {
@@ -130,6 +130,8 @@ public class ComparatorTest {
         row1.array2(new byte[] {2});
 
         assertEquals(-1, row1.compareTo(row2));
+
+        assertEquals( 0, mTable.comparator("").compare(row1, row2));
 
         assertEquals(-1, mTable.comparator("+id").compare(row1, row2));
         assertEquals( 1, mTable.comparator("-id").compare(row1, row2));

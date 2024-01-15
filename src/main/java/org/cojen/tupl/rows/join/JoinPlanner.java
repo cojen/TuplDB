@@ -30,8 +30,6 @@ import org.cojen.tupl.rows.filter.ColumnToArgFilter;
 import org.cojen.tupl.rows.filter.ColumnToColumnFilter;
 import org.cojen.tupl.rows.filter.ComplexFilterException;
 import org.cojen.tupl.rows.filter.RowFilter;
-import org.cojen.tupl.rows.filter.TrueFilter;
-import org.cojen.tupl.rows.filter.Visitor;
 
 /**
  * 
@@ -497,21 +495,23 @@ final class JoinPlanner implements JoinSpec.Visitor {
         }
 
         private Integer argNumFor(JoinSpec.Source node, ColumnInfo column) {
+            String prefix = column.prefix();
+
+            JoinSpec.Source source = mArgSources.get(prefix);
+            if (source == null) {
+                return null;
+            }
+
             String name = column.name;
             Integer argNum = mArgMap.get(name);
 
             if (argNum == null) {
-                JoinSpec.Source source = mArgSources.get(column.prefix());
-                if (source == null) {
-                    return null;
-                }
                 argNum = mOriginalNumArgs + mArgMap.size() + 1;
                 source.addArgAssignment(argNum, column);
                 mArgMap.put(name, argNum);
             }
 
-            // TODO: No need to add a source dependency when it's never null (inner join).
-            node.addArgSource(column.prefix());
+            node.addArgSource(prefix, source);
 
             return argNum;
         }

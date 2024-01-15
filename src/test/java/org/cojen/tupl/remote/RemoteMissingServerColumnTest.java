@@ -210,7 +210,7 @@ public class RemoteMissingServerColumnTest {
             TestRow row = mTable.newRow();
             row.id(1);
             row.str1("hello");
-            assertTrue(mTable.update(null, row));
+            mTable.update(null, row);
         }
 
         {

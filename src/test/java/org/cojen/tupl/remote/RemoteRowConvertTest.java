@@ -102,7 +102,7 @@ public class RemoteRowConvertTest {
         row1.num2(2);
         row1.num3(3);
         row1.num4(4);
-        assertTrue(mTable.insert(null, row1));
+        mTable.insert(null, row1);
 
         {
             TestRow row = mTable.newRow();
@@ -132,7 +132,7 @@ public class RemoteRowConvertTest {
         row2.id(1);
         row2.num1(10);
         row2.num2(20);
-        assertTrue(mTable.merge(null, row2));
+        mTable.merge(null, row2);
 
         {
             TestRow row = mTable.newRow();
@@ -145,7 +145,7 @@ public class RemoteRowConvertTest {
         row3.id(1);
         row3.num3(30);
         row3.num4(40);
-        assertTrue(mTable.update(null, row3));
+        mTable.update(null, row3);
 
         {
             TestRow row = mTable.newRow();
@@ -268,7 +268,7 @@ public class RemoteRowConvertTest {
                 num2.invoke(row, Integer.MAX_VALUE - 3);
                 num3.invoke(row, 3);
                 num4.invoke(row, 4.0f);
-                assertTrue(table.insert(null, row));
+                table.insert(null, row);
             }
 
             {
@@ -278,7 +278,7 @@ public class RemoteRowConvertTest {
                 num2.invoke(row, 2);
                 num3.invoke(row, (Integer) null);
                 num4.invoke(row, 4.0f);
-                assertTrue(table.insert(null, row));
+                table.insert(null, row);
             }
 
             {
@@ -288,7 +288,7 @@ public class RemoteRowConvertTest {
                 num2.invoke(row, 2);
                 num3.invoke(row, 3);
                 num4.invoke(row, -4.0f);
-                assertTrue(table.insert(null, row));
+                table.insert(null, row);
             }
         }
 

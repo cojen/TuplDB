@@ -221,7 +221,7 @@
           <parallel>classes</parallel>
           <perCoreThreadCount>false</perCoreThreadCount>
           <threadCount>6</threadCount>
-          <argLine>--enable-preview</argLine>
+          <argLine>-Xmx5g --enable-preview</argLine>
         </configuration>
       </plugin>
 

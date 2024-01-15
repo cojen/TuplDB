@@ -60,10 +60,10 @@ public class ConvertUtils {
     }
 
     /**
-     * Finds a common type which two columns can be converted to without loss. The name of the
-     * returned ColumnInfo is undefined (it might be null).
+     * Finds a common type which two columns can be converted to without loss or abiguity. The
+     * name of the returned ColumnInfo is undefined (it might be null).
      *
-     * @param op defined in ColumnFilter
+     * @param op defined in ColumnFilter; pass -1 if not performing a comparison operation
      * @return null if a common type cannot be inferred or is ambiguous
      */
     public static ColumnInfo commonType(ColumnInfo aInfo, ColumnInfo bInfo, int op) {
@@ -110,30 +110,6 @@ public class ConvertUtils {
             cPlainCode = aPlainCode;
         } else {
             switch (aPlainCode) {
-            case TYPE_BOOLEAN:
-                if (!ColumnFilter.isExact(op)) {
-                    return null;
-                }
-                // Note: Boolean to number is always 0 or 1. Boolean to char is 'f' or 't', and
-                // boolean to string is "false" or "true".
-                switch (bPlainCode) {
-                case TYPE_UBYTE:
-                case TYPE_USHORT:
-                case TYPE_UINT:
-                case TYPE_ULONG:
-                case TYPE_BYTE:
-                case TYPE_SHORT:
-                case TYPE_INT:
-                case TYPE_LONG:
-                case TYPE_FLOAT:
-                case TYPE_DOUBLE:
-                case TYPE_CHAR:
-                case TYPE_UTF8:
-                case TYPE_BIG_INTEGER:
-                case TYPE_BIG_DECIMAL: cPlainCode = bPlainCode; break select;
-                default: return null;
-                }
-
             case TYPE_UBYTE:
                 switch (bPlainCode) {
                 case TYPE_USHORT: cPlainCode = TYPE_USHORT; break select;
@@ -176,8 +152,8 @@ public class ConvertUtils {
                 case TYPE_SHORT:
                 case TYPE_INT:
                 case TYPE_LONG: cPlainCode = TYPE_LONG; break select;
-                case TYPE_FLOAT: cPlainCode = TYPE_DOUBLE; break select;
-                case TYPE_DOUBLE: cPlainCode = TYPE_BIG_DECIMAL; break select;
+                case TYPE_FLOAT:
+                case TYPE_DOUBLE: cPlainCode = TYPE_DOUBLE; break select;
                 case TYPE_CHAR: cPlainCode = TYPE_UINT; break select;
                 case TYPE_UTF8: cPlainCode = -1; break select;
                 case TYPE_BIG_INTEGER: cPlainCode = TYPE_BIG_INTEGER; break select;

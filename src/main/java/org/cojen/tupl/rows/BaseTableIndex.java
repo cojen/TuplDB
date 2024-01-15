@@ -27,8 +27,6 @@ import org.cojen.tupl.UnmodifiableViewException;
 
 import org.cojen.tupl.core.RowPredicateLock;
 
-import org.cojen.tupl.diag.QueryPlan;
-
 /**
  * Base class for the tables returned by viewAlternateKey and viewSecondaryIndex.
  *
@@ -42,97 +40,93 @@ public abstract class BaseTableIndex<R> extends BaseTable<R> {
     }
 
     @Override
-    boolean isEvolvable() {
+    final boolean isEvolvable() {
         return false;
     }
 
     @Override
-    boolean supportsSecondaries() {
+    final boolean supportsSecondaries() {
         return false;
     }
 
     @Override
-    public void store(Transaction txn, R row) throws IOException {
+    public final void store(Transaction txn, R row) throws IOException {
         throw new UnmodifiableViewException();
     }
 
     @Override
-    public R exchange(Transaction txn, R row) throws IOException {
+    public final R exchange(Transaction txn, R row) throws IOException {
         throw new UnmodifiableViewException();
     }
 
     @Override
-    public boolean insert(Transaction txn, R row) throws IOException {
+    public final void insert(Transaction txn, R row) throws IOException {
         throw new UnmodifiableViewException();
     }
 
     @Override
-    public boolean replace(Transaction txn, R row) throws IOException {
+    public final void replace(Transaction txn, R row) throws IOException {
         throw new UnmodifiableViewException();
     }
 
     @Override
-    public boolean update(Transaction txn, R row) throws IOException {
+    public final void update(Transaction txn, R row) throws IOException {
         throw new UnmodifiableViewException();
     }
 
     @Override
-    public boolean merge(Transaction txn, R row) throws IOException {
+    public final void merge(Transaction txn, R row) throws IOException {
         throw new UnmodifiableViewException();
     }
 
     @Override
-    public boolean delete(Transaction txn, R row) throws IOException {
+    public final boolean delete(Transaction txn, R row) throws IOException {
         throw new UnmodifiableViewException();
     }
 
     @Override
-    protected BaseTableIndex<R> viewAlternateKey(String... columns) throws IOException {
+    protected final BaseTableIndex<R> viewAlternateKey(String... columns) throws IOException {
         throw new IllegalStateException();
     }
 
     @Override
-    protected BaseTableIndex<R> viewSecondaryIndex(String... columns) throws IOException {
+    protected final BaseTableIndex<R> viewSecondaryIndex(String... columns) throws IOException {
         throw new IllegalStateException();
     }
 
     @Override
-    public Scanner<R> newScannerWith(Transaction txn, R row, String filter, Object... args)
+    public Scanner<R> newScanner(R row, Transaction txn, String filter, Object... args)
         throws IOException
     {
         return newScannerThisTable(txn, row, filter, args);
     }
 
     @Override
-    protected Updater<R> newUpdaterWith(Transaction txn, R row, String filter, Object... args)
+    protected Updater<R> newUpdater(R row, Transaction txn, String filter, Object... args)
         throws IOException
     {
         // By default, this will throw an UnmodifiableViewException. See below.
-        return newUpdaterThisTable(txn, row, filter, args);
+        return newUpdaterThisTable(row, txn, filter, args);
     }
 
     @Override
-    protected Updater<R> newUpdaterWith(Transaction txn, R row, ScanController<R> controller)
+    protected Updater<R> newUpdater(R row, Transaction txn, ScanController<R> controller)
         throws IOException
     {
         throw new UnmodifiableViewException();
     }
 
-    protected Updater<R> newJoinedUpdater(Transaction txn, R row,
+    protected Updater<R> newJoinedUpdater(R row, Transaction txn,
                                           ScanController<R> controller,
                                           BaseTable<R> primaryTable)
         throws IOException
     {
-        return primaryTable.newUpdaterWith(txn, row, controller, this);
+        return primaryTable.newUpdater(row, txn, controller, this);
     }
 
     @Override
-    public QueryPlan scannerPlan(Transaction txn, String filter, Object... args) {
-        return scannerPlanThisTable(txn, filter, args);
-    }
-
-    @Override
-    public QueryPlan updaterPlan(Transaction txn, String filter, Object... args) {
-        return scannerPlan(txn, filter, args);
+    public QueryLauncher.Delegate<R> query(String queryStr) {
+        // Not cached because this method is just used by the test suite.
+        return new QueryLauncher.Delegate<>(this, queryStr);
     }
 }

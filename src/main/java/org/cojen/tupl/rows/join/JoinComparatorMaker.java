@@ -80,18 +80,23 @@ final class JoinComparatorMaker<J> {
         return mOrderBy.spec();
     }
 
+    @SuppressWarnings("unchecked")
     Comparator<J> finish() {
+        if (mOrderBy.isEmpty()) {
+            return ComparatorMaker.ZERO;
+        }
+
         ClassMaker cm = RowGen.beginClassMaker
             (JoinComparatorMaker.class, mJoinType, mJoinInfo.name, null, "comparator")
             .implement(Comparator.class).final_();
 
         // Keep a singleton instance, in order for a weakly cached reference to the comparator
         // to stick around until the class is unloaded.
-        cm.addField(Comparator.class, "THE").private_().static_();
+        cm.addField(Comparator.class, "_").private_().static_();
 
         MethodMaker mm = cm.addConstructor().private_();
         mm.invokeSuperConstructor();
-        mm.field("THE").set(mm.this_());
+        mm.field("_").set(mm.this_());
 
         mm = cm.addMethod(int.class, "compare", mJoinType, mJoinType).public_();
         ComparatorMaker.makeCompare(mm, mOrderBy);

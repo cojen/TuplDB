@@ -148,7 +148,8 @@ public class RowPredicateMaker {
 
     /**
      * Returns a class which contains filtering fields and is constructed with an Object[]
-     * parameter for filter arguments.
+     * parameter for filter arguments. Columns are accessed via their fields, and so they're
+     * not checked if they're set or not.
      *
      * Note: This RowPredicateMaker instance should have been constructed for making a full
      * RowPredicate class.
@@ -195,7 +196,8 @@ public class RowPredicateMaker {
 
     /**
      * Returns a MethodHandle which constructs a plain Predicate (not a RowPredicate) from an
-     * Object[] parameter for the filter arguments.
+     * Object[] parameter for the filter arguments. Columns are accessed via their methods, and
+     * so they're checked if they're set or not.
      *
      * Note: This RowPredicateMaker instance should have been constructed for making a plain
      * Predicate class.
@@ -204,12 +206,7 @@ public class RowPredicateMaker {
         makeAllFields(new HashMap<String, ColumnCodec>(), mFilter, false, true);
         addDirectRowTestMethod();
 
-        // Doesn't work with hidden class because the predicate instance (this class) must be
-        // passed along, and it must be specified in a NameAndType structure. Hidden classes
-        // don't have names. Two alternatives: Implement the method eagerly or else call
-        // finishLookup. The problem with finishLookup is that the class won't be unloaded
-        // unless a single-use ClassLoader instance is used.
-        //addToStringMethod();
+        addToStringMethod();
 
         MethodHandles.Lookup lookup = mClassMaker.finishHidden();
 
@@ -289,6 +286,11 @@ public class RowPredicateMaker {
 
             mDefined.put(argFieldName, codec);
         }
+
+        @Override
+        public void visit(ColumnToColumnFilter filter) {
+            // Ignore.
+        }
     }
 
     /**
@@ -327,8 +329,8 @@ public class RowPredicateMaker {
     private void addToStringMethod() {
         MethodMaker mm = mClassMaker.addMethod(String.class, "toString").public_();
         var indy = mm.var(RowPredicateMaker.class).indy
-            ("indyToString", mRowType, mFilterRef, mFilterStr);
-        mm.return_(indy.invoke(String.class, "toString", null, mm.this_()));
+            ("indyToString", mRowType, mm.class_(), mFilterRef, mFilterStr);
+        mm.return_(indy.invoke(String.class, "toString", new Object[]{Object.class}, mm.this_()));
     }
 
     private void addRowTestMethod() {
@@ -341,12 +343,12 @@ public class RowPredicateMaker {
     }
 
     /**
-     * Variant which doesn't rely on indy.
+     * Variant which doesn't rely on indy. Used by plain predicate.
      */
     private void addDirectRowTestMethod() {
         MethodMaker mm = mClassMaker.addMethod(boolean.class, "test", Object.class).public_();
         Class<?> rowClass = RowMaker.find(mRowType);
-        var tm = new RowTestMaker(mm, mm.param(0).cast(rowClass), mm.this_());
+        var tm = new RowTestMaker(mm, mm.param(0).cast(rowClass), mm.this_(), true);
         mFilter.accept(tm);
         tm.finish();
     }
@@ -365,7 +367,7 @@ public class RowPredicateMaker {
             filter = BaseTable.parseFilter(rowType, filterStr);
         }
         MethodMaker mm = MethodMaker.begin(lookup, name, mt);
-        var tm = new RowTestMaker(mm, mm.param(0), mm.param(1));
+        var tm = new RowTestMaker(mm, mm.param(0), mm.param(1), false);
         filter.accept(tm);
         tm.finish();
         return new ConstantCallSite(mm.finish());
@@ -377,12 +379,17 @@ public class RowPredicateMaker {
     private static class RowTestMaker implements Visitor {
         private final MethodMaker mMaker;
         private final Variable mRowVar, mPredicateVar;
+        private final boolean mChecked;
         private Label mPass, mFail;
 
-        RowTestMaker(MethodMaker mm, Variable rowVar, Variable predicateVar) {
+        /**
+         * @param checked is true to use accessor methods, which check if columns are set
+         */
+        RowTestMaker(MethodMaker mm, Variable rowVar, Variable predicateVar, boolean checked) {
             mMaker = mm;
             mRowVar = rowVar;
             mPredicateVar = predicateVar;
+            mChecked = checked;
             mPass = mm.label();
             mFail = mm.label();
         }
@@ -424,7 +431,7 @@ public class RowPredicateMaker {
         public void visit(ColumnToArgFilter filter) {
             ColumnInfo ci = filter.column();
             String colName = ci.name;
-            var colVar = mRowVar.field(colName);
+            var colVar = accessColumn(colName);
             String argFieldName = ColumnCodec.argFieldName(colName, filter.argument());
             var argVar = mPredicateVar.field(argFieldName);
             CompareUtils.compare(mMaker, ci, colVar, ci, argVar, filter.operator(), mPass, mFail);
@@ -433,9 +440,9 @@ public class RowPredicateMaker {
         @Override
         public void visit(ColumnToColumnFilter filter) {
             ColumnInfo c1 = filter.column();
-            Variable c1Var = mRowVar.field(c1.name);
+            Variable c1Var = accessColumn(c1.name);
             ColumnInfo c2 = filter.otherColumn();
-            Variable c2Var = mRowVar.field(c2.name);
+            Variable c2Var = accessColumn(c2.name);
 
             if (c1Var.classType() != c2Var.classType()) {
                 ColumnInfo ci = filter.common();
@@ -452,6 +459,14 @@ public class RowPredicateMaker {
             }
 
             CompareUtils.compare(mMaker, c1, c1Var, c2, c2Var, filter.operator(), mPass, mFail);
+        }
+
+        private Variable accessColumn(String name) {
+            if (mChecked) {
+                return mRowVar.invoke(name);
+            } else {
+                return mRowVar.field(name);
+            }
         }
     }
 
@@ -644,7 +659,7 @@ public class RowPredicateMaker {
     }
 
     public static CallSite indyToString(MethodHandles.Lookup lookup, String name, MethodType mt,
-                                        Class<?> rowType,
+                                        Class<?> rowType, Class<?> rowPredicateClass,
                                         WeakReference<RowFilter> filterRef, String filterStr)
     {
         RowFilter filter = filterRef.get();
@@ -652,7 +667,10 @@ public class RowPredicateMaker {
             filter = BaseTable.parseFilter(rowType, filterStr);
         }
         MethodMaker mm = MethodMaker.begin(lookup, name, mt);
-        var sm = new ToStringMaker(mm, mm.param(0));
+        // Cannot define the parameter as the rowPredicateClass itself because it might be a
+        // hidden class, and so it cannot appear in the method signature. This is because it
+        // doesn't have a valid name. Instead, define the param as an object and cast it.
+        var sm = new ToStringMaker(mm, mm.param(0).cast(rowPredicateClass));
         filter.accept(sm);
         mm.return_(sm.mBuilderVar.invoke("toString"));
         return new ConstantCallSite(mm.finish());

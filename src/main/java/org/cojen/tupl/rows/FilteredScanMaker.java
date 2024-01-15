@@ -48,6 +48,7 @@ import org.cojen.tupl.diag.QueryPlan;
 import org.cojen.tupl.rows.codec.ColumnCodec;
 
 import org.cojen.tupl.rows.filter.ColumnToArgFilter;
+import org.cojen.tupl.rows.filter.ColumnToColumnFilter;
 import org.cojen.tupl.rows.filter.RowFilter;
 import org.cojen.tupl.rows.filter.TrueFilter;
 import org.cojen.tupl.rows.filter.Visitor;
@@ -202,13 +203,17 @@ public class FilteredScanMaker<R> {
     private static boolean isCovering(RowGen rowGen, RowGen primaryRowGen,
                                       RowFilter joinFilter, Map<String, ColumnInfo> projection)
     {
-        if (joinFilter != null && joinFilter != TrueFilter.THE) {
+        if (doesFilter(joinFilter)) {
             return false;
         }
         if (projection == null) {
             projection = primaryRowGen.info.allColumns;
         }
         return rowGen.info.allColumns.keySet().containsAll(projection.keySet());
+    }
+
+    private static boolean doesFilter(RowFilter filter) {
+        return filter != null && filter != TrueFilter.THE;
     }
 
     public ScanControllerFactory<R> finish() {
@@ -433,6 +438,11 @@ public class FilteredScanMaker<R> {
 
                 argVars[pos++] = argVar;
             }
+
+            @Override
+            public void visit(ColumnToColumnFilter filter) {
+                // Ignore.
+            }
         };
 
         bound.accept(visitor);
@@ -574,10 +584,9 @@ public class FilteredScanMaker<R> {
     }
 
     private void addEvalRowMethod() {
-        if (mProjectionSpec == null && // requesting all columns
-            (mFilter == null || (mSecondaryDescriptor == null && mFilter == TrueFilter.THE)))
-        {
-            // No remainder filter, so rely on inherited method.
+        // Check if projecting all columns and there's no remainder filter. If so, the original
+        // inherited method works just fine.
+        if (mProjectionSpec == null && !doesFilter(mFilter) && !doesFilter(mJoinFilter)) {
             return;
         }
 
@@ -729,7 +738,7 @@ public class FilteredScanMaker<R> {
         var primaryKeyVar = mm.param(1);
         var primaryValueVar = mm.param(2);
 
-        if (mJoinFilter == null || mJoinFilter == TrueFilter.THE) {
+        if (!doesFilter(mJoinFilter)) {
             // Can call the eval method because no redundant filtering will be applied.
             mm.return_(mm.invoke("joinedEval", primaryKeyVar, primaryValueVar, rowVar));
             return;
@@ -773,7 +782,7 @@ public class FilteredScanMaker<R> {
         WeakReference<RowFilter> filterRef = null;
         String filterStr = null;
 
-        if (mJoinFilter != null && mJoinFilter != TrueFilter.THE) {
+        if (doesFilter(mJoinFilter)) {
             filterRef = new WeakReference<>(mJoinFilter);
             filterStr = mJoinFilter.toString();
         }
@@ -933,7 +942,7 @@ public class FilteredScanMaker<R> {
     }
 
     private static String toString(RowFilter filter) {
-        return (filter == null || filter == TrueFilter.THE) ? null : filter.toString();
+        return doesFilter(filter) ? filter.toString() : null;
     }
 
     /**

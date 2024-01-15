@@ -177,6 +177,12 @@ public interface Transaction extends Flushable {
     void reset(Throwable cause);
 
     /**
+     * Rollback all uncommitted changes within the current transaction scope. The transaction
+     * is still valid after this method is called, unless an exception is thrown.
+     */
+    void rollback() throws IOException;
+
+    /**
      * Attempts to acquire a shared lock for the given key, denying exclusive locks. If return
      * value is {@linkplain LockResult#isAlreadyOwned owned}, transaction already owns a strong
      * enough lock, and no extra unlock should be performed.
@@ -395,6 +401,15 @@ public interface Transaction extends Flushable {
      * @return locked key (not cloned), or null if no locks are held
      */
     byte[] lastLockedKey();
+
+    /**
+     * Checks if the last acquired lock was against the given index id and key.
+     *
+     * <p><i>Note: This method is intended for advanced use cases.</i>
+     *
+     * @return true if lock matches and was just acquired
+     */
+    boolean wasAcquired(long indexId, byte[] key);
 
     /**
      * Fully releases the last lock or group acquired, within the current scope. If the last

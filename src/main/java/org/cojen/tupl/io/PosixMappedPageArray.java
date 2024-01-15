@@ -49,12 +49,22 @@ class PosixMappedPageArray extends MappedPageArray {
             prot |= 2; // PROT_WRITE
         }
 
-        int flags = 1; // MAP_SHARED
-
         if (file == null) {
-            flags |= PosixFileIO.OSX ? 0x1000 : 0x20; // MAP_ANONYMOUS
+            int flags = 2; // MAP_PRIVATE
+            flags |= PosixFileIO.OS_TYPE == PosixFileIO.OSX ? 0x1000 : 0x20; // MAP_ANONYMOUS
 
-            setMappingPtr(PosixFileIO.mmapFd(pageSize * pageCount, prot, flags, -1, 0));
+            long mappingSize = pageSize * pageCount;
+            long addr = PosixFileIO.mmapFd(mappingSize, prot, flags, -1, 0);
+
+            if (mappingSize >= (1L << 30) && PosixFileIO.OS_TYPE == PosixFileIO.LINUX) {
+                try {
+                    PosixFileIO.madvisePtr(addr, mappingSize, 14); // 14 = MADV_HUGEPAGE
+                } catch (IOException e) {
+                    // Ignore if it doesn't work.
+                }
+            }
+
+            setMappingPtr(addr);
 
             mFileDescriptor = -1;
             mEmpty = true;
@@ -110,6 +120,7 @@ class PosixMappedPageArray extends MappedPageArray {
 
         long addr;
         try {
+            int flags = 1; // MAP_SHARED
             addr = PosixFileIO.mmapFd(mappingSize, prot, flags, fd, 0);
 
             if (options.contains(OpenOption.RANDOM_ACCESS)) {

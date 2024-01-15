@@ -248,7 +248,7 @@ public class EvolutionTest {
                 setters[j].invoke(row, RowTestUtils.randomValue(rnd, spec, j));
             }
             // Collision is possible here, although unlikely.
-            assertTrue(table.insert(null, row));
+            table.insert(null, row);
             inserted[i] = row;
         }
 

@@ -158,6 +158,13 @@ public final class RowStore {
         });
     }
 
+    /**
+     * Is called when the database is closing, to stop any background tasks.
+     */
+    public void shutdown() {
+        mTableManagers.clear(TableManager::shutdown);
+    }
+
     WeakReference<RowStore> ref() {
         return mSelfRef;
     }
@@ -252,7 +259,7 @@ public final class RowStore {
             if (lock == null) {
                 lock = mDatabase.newRowPredicateLock(indexId);
                 VarHandle.storeStoreFence();
-                mIndexLocks.insert(indexId).value = lock;
+                mIndexLocks.put(indexId).value = lock;
             }
             return lock;
         }

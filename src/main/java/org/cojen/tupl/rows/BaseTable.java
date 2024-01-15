@@ -26,20 +26,26 @@ import java.lang.invoke.VarHandle;
 
 import java.lang.ref.WeakReference;
 
+import java.util.Arrays;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
 
 import org.cojen.tupl.ClosedIndexException;
+import org.cojen.tupl.Cursor;
 import org.cojen.tupl.DatabaseException;
 import org.cojen.tupl.DurabilityMode;
 import org.cojen.tupl.Entry;
 import org.cojen.tupl.Index;
-import org.cojen.tupl.LockFailureException;
 import org.cojen.tupl.LockMode;
+import org.cojen.tupl.LockResult;
+import org.cojen.tupl.NoSuchRowException;
+import org.cojen.tupl.Query;
 import org.cojen.tupl.Scanner;
 import org.cojen.tupl.Updater;
 import org.cojen.tupl.Table;
 import org.cojen.tupl.Transaction;
+import org.cojen.tupl.UniqueConstraintException;
 
 import org.cojen.tupl.core.RowPredicate;
 import org.cojen.tupl.core.RowPredicateLock;
@@ -51,7 +57,7 @@ import org.cojen.tupl.diag.QueryPlan;
 import org.cojen.tupl.rows.filter.ComplexFilterException;
 import org.cojen.tupl.rows.filter.FalseFilter;
 import org.cojen.tupl.rows.filter.Parser;
-import org.cojen.tupl.rows.filter.Query;
+import org.cojen.tupl.rows.filter.QuerySpec;
 import org.cojen.tupl.rows.filter.RowFilter;
 import org.cojen.tupl.rows.filter.TrueFilter;
 
@@ -73,12 +79,29 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
 
     protected final Index mSource;
 
-    // MultiCache types.
-    private static final int PLAIN = 0b00, DOUBLE_CHECK = 0b01,
+    // MultiCache and QueryLauncher types.
+    static final int PLAIN = 0b00, DOUBLE_CHECK = 0b01,
         FOR_UPDATE = 0b10, FOR_UPDATE_DOUBLE_CHECK = FOR_UPDATE | DOUBLE_CHECK;
 
-    private final MultiCache<String, ScanControllerFactory<R>, Query> mFilterFactoryCache;
-    private final MultiCache<String, QueryLauncher<R>, IndexSelector> mQueryLauncherCache;
+    private final MultiCache<String, ScanControllerFactory<R>, QuerySpec> mFilterFactoryCache;
+
+    class QueryCache extends SoftCache<String, QueryLauncher.Delegate<R>, QuerySpec> {
+        @Override
+        public QueryLauncher.Delegate<R> newValue(String queryStr, QuerySpec query) {
+            if (query != null) {
+                return new QueryLauncher.Delegate<>(BaseTable.this, query);
+            }
+            var launcher = new QueryLauncher.Delegate<>(BaseTable.this, queryStr);
+            String canonicalStr = launcher.canonicalQueryString();
+            if (canonicalStr.equals(queryStr)) {
+                return launcher;
+            } else { 
+                return obtain(canonicalStr, launcher.canonicalQuery());
+            }
+        }
+    }
+
+    private final QueryCache mQueryCache;
 
     private Trigger<R> mTrigger;
     private static final VarHandle cTriggerHandle;
@@ -120,25 +143,15 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
         }
 
         if (supportsSecondaries()) {
-            int[] typeMap = {PLAIN, DOUBLE_CHECK, FOR_UPDATE, FOR_UPDATE_DOUBLE_CHECK};
-            if (joinedPrimaryTableClass() == null) {
-                // Won't need to double check.
-                typeMap[DOUBLE_CHECK] = PLAIN;
-                typeMap[FOR_UPDATE_DOUBLE_CHECK] = FOR_UPDATE;
-            }
-            mQueryLauncherCache = MultiCache.newSoftCache(typeMap, (type, queryStr, selector) -> {
-                try {
-                    return newQueryLauncher(type, queryStr, selector);
-                } catch (IOException e) {
-                    throw RowUtils.rethrow(e);
-                }
-            });
+            mQueryCache = new QueryCache();
 
             var trigger = new Trigger<R>();
             trigger.mMode = Trigger.SKIP;
             cTriggerHandle.setRelease(this, trigger);
         } else {
-            mQueryLauncherCache = null;
+            // This table implements a secondary index which doesn't join to the primary table,
+            // and it's not expected to be directly queried.
+            mQueryCache = null;
         }
     }
 
@@ -147,65 +160,18 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
     }
 
     @Override
-    public final Scanner<R> newScanner(Transaction txn) throws IOException {
-        return newScannerWith(txn, (R) null);
+    public final Scanner<R> newScanner(R row, Transaction txn) throws IOException {
+        return newScanner(row, txn, unfiltered());
     }
 
     @Override
-    public final Scanner<R> newScannerWith(Transaction txn, R row) throws IOException {
-        return newScannerWith(txn, row, unfiltered());
-    }
-
-    @Override
-    public final Scanner<R> newScanner(Transaction txn, String queryStr, Object... args)
+    public Scanner<R> newScanner(R row, Transaction txn, String queryStr, Object... args)
         throws IOException
     {
-        return newScannerWith(txn, (R) null, queryStr, args);
+        return query(queryStr).newScanner(row, txn, args);
     }
 
-    @Override
-    public Scanner<R> newScannerWith(Transaction txn, R row, String queryStr, Object... args)
-        throws IOException
-    {
-        QueryLauncher<R> launcher = scannerQueryLauncher(txn, queryStr);
-
-        while (true) {
-            try {
-                return launcher.newScannerWith(txn, row, args);
-            } catch (Throwable e) {
-                launcher = newScannerRetry(txn, queryStr, launcher, e);
-            }
-        }
-    }
-
-    /**
-     * To be called when attempting to launch a new scanner and an exception is thrown. An
-     * index might have been dropped, so check and retry. Returns a new QueryLauncher to use or
-     * else throws the original exception.
-     */
-    private QueryLauncher<R> newScannerRetry(Transaction txn, String queryStr,
-                                             QueryLauncher<R> launcher, Throwable cause)
-    {
-        // A ClosedIndexException could have come from the dropped index directly, and a
-        // LockFailureException could be caused while waiting for the index lock. Other
-        // exceptions aren't expected so don't bother trying to obtain a new launcher.
-        if (cause instanceof ClosedIndexException || cause instanceof LockFailureException) {
-            QueryLauncher<R> newLauncher;
-            try {
-                newLauncher = scannerQueryLauncher(txn, queryStr);
-                if (newLauncher != launcher) {
-                    // Only return the launcher if it changed.
-                    return newLauncher;
-                }
-            } catch (Throwable e) {
-                cause.addSuppressed(e);
-            }
-        }
-
-        throw Utils.rethrow(cause);
-    }
-
-    final Scanner<R> newScannerWith(Transaction txn, R row, ScanController<R> controller)
+    final Scanner<R> newScanner(R row, Transaction txn, ScanController<R> controller)
         throws IOException
     {
         final BasicScanner<R> scanner;
@@ -265,7 +231,7 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
                                          String queryStr, Object... args)
         throws IOException
     {
-        return newScannerWith(txn, row, scannerFilteredFactory(txn, queryStr).scanController(args));
+        return newScanner(row, txn, scannerFilteredFactory(txn, queryStr).scanController(args));
     }
 
     private ScanControllerFactory<R> scannerFilteredFactory(Transaction txn, String queryStr) {
@@ -275,83 +241,39 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
         return mFilterFactoryCache.obtain(type, queryStr, null);
     }
 
-    private QueryLauncher<R> scannerQueryLauncher(Transaction txn, String queryStr)
-        throws IOException
-    {
-        // Might need to double check the filter after joining to the primary, in case there
-        // were any changes after the secondary entry was loaded.
-        int type = RowUtils.isUnlocked(txn) ? DOUBLE_CHECK : PLAIN;
-        return mQueryLauncherCache.obtain(type, queryStr, null);
-    }
-
     @Override
     public final Updater<R> newUpdater(Transaction txn) throws IOException {
-        return newUpdaterWith(txn, (R) null);
+        return newUpdater(null, txn);
     }
 
-    final Updater<R> newUpdaterWith(Transaction txn, R row) throws IOException {
-        return newUpdaterWith(txn, row, unfiltered());
+    final Updater<R> newUpdater(R row, Transaction txn) throws IOException {
+        return newUpdater(row, txn, unfiltered());
     }
 
     @Override
     public final Updater<R> newUpdater(Transaction txn, String queryStr, Object... args)
         throws IOException
     {
-        return newUpdaterWith(txn, (R) null, queryStr, args);
+        return newUpdater(null, txn, queryStr, args);
     }
 
-    protected Updater<R> newUpdaterWith(Transaction txn, R row, String queryStr, Object... args)
+    protected Updater<R> newUpdater(R row, Transaction txn, String queryStr, Object... args)
         throws IOException
     {
-        QueryLauncher<R> launcher = updaterQueryLauncher(txn, queryStr);
-
-        while (true) {
-            try {
-                return launcher.newUpdaterWith(txn, row, args);
-            } catch (Throwable e) {
-                launcher = newUpdaterRetry(txn, queryStr, launcher, e);
-            }
-        }
+        return query(queryStr).newUpdater(row, txn, args);
     }
 
-    /**
-     * To be called when attempting to launch a new updater and an exception is thrown. An
-     * index might have been dropped, so check and retry. Returns a new QueryLauncher to use or
-     * else throws the original exception.
-     */
-    private QueryLauncher<R> newUpdaterRetry(Transaction txn, String queryStr,
-                                             QueryLauncher<R> launcher, Throwable cause)
-    {
-        // A ClosedIndexException could have come from the dropped index directly, and a
-        // LockFailureException could be caused while waiting for the index lock. Other
-        // exceptions aren't expected so don't bother trying to obtain a new launcher.
-        if (cause instanceof ClosedIndexException || cause instanceof LockFailureException) {
-            QueryLauncher<R> newLauncher;
-            try {
-                newLauncher = updaterQueryLauncher(txn, queryStr);
-                if (newLauncher != launcher) {
-                    // Only return the launcher if it changed.
-                    return newLauncher;
-                }
-            } catch (Throwable e) {
-                cause.addSuppressed(e);
-            }
-        }
-
-        throw Utils.rethrow(cause);
-    }
-
-    protected Updater<R> newUpdaterWith(Transaction txn, R row, ScanController<R> controller)
+    protected Updater<R> newUpdater(R row, Transaction txn, ScanController<R> controller)
         throws IOException
     {
-        return newUpdaterWith(txn, row, controller, null);
+        return newUpdater(row, txn, controller, null);
     }
 
     /**
      * @param secondary non-null if joining from a secondary index to this primary table
      */
-    final Updater<R> newUpdaterWith(Transaction txn, R row, ScanController<R> controller,
-                                    BaseTableIndex<R> secondary)
+    final Updater<R> newUpdater(R row, Transaction txn, ScanController<R> controller,
+                                BaseTableIndex<R> secondary)
         throws IOException
     {
         final BasicUpdater<R> updater;
@@ -430,11 +352,11 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
     /**
      * Note: Doesn't support orderBy.
      */
-    final Updater<R> newUpdaterThisTable(Transaction txn, R row,
+    final Updater<R> newUpdaterThisTable(R row, Transaction txn,
                                          String queryStr, Object... args)
         throws IOException
     {
-        return newUpdaterWith(txn, row, updaterFilteredFactory(txn, queryStr).scanController(args));
+        return newUpdater(row, txn, updaterFilteredFactory(txn, queryStr).scanController(args));
     }
 
     private ScanControllerFactory<R> updaterFilteredFactory(Transaction txn, String queryStr) {
@@ -446,12 +368,9 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
         return mFilterFactoryCache.obtain(type, queryStr, null);
     }
 
-    private QueryLauncher<R> updaterQueryLauncher(Transaction txn, String queryStr) {
-        // Might need to double check the filter after joining to the primary, in case there
-        // were any changes after the secondary entry was loaded. Note that no double check is
-        // needed with READ_UNCOMMITTED, because the updater for it still acquires locks.
-        int type = RowUtils.isUnsafe(txn) ? FOR_UPDATE_DOUBLE_CHECK : FOR_UPDATE;
-        return mQueryLauncherCache.obtain(type, queryStr, null);
+    @Override
+    public QueryLauncher.Delegate<R> query(String queryStr) {
+        return mQueryCache.obtain(queryStr, null);
     }
 
     @Override
@@ -473,7 +392,7 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
         var writer = new RowWriter<R>(out);
 
         // Pass the writer as if it's a row, but it's actually a RowConsumer.
-        Scanner<R> scanner = newScannerWith(txn, (R) writer);
+        Scanner<R> scanner = newScanner((R) writer, txn);
         try {
             while (scanner.step((R) writer) != null);
         } catch (Throwable e) {
@@ -489,13 +408,29 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
      * Scan and write a subset of rows from this table to a remote endpoint. This method
      * doesn't flush the output stream.
      */
-    @SuppressWarnings("unchecked")
     public final void scanWrite(Transaction txn, DataOutput out, String queryStr, Object... args)
         throws IOException
     {
         var writer = new RowWriter<R>(out);
 
-        scannerQueryLauncher(txn, queryStr).scanWrite(txn, writer, args);
+        query(queryStr).scanWrite(txn, writer, args);
+
+        // Write the scan terminator. See RowWriter.writeHeader.
+        out.writeByte(0);
+    }
+
+    /**
+     * Scan and write a subset of rows from this table to a remote endpoint. This method
+     * doesn't flush the output stream.
+     *
+     * @param query expected to be a Query object obtained from this BaseTable
+     */
+    public final void scanWrite(Transaction txn, DataOutput out, Query<R> query, Object... args)
+        throws IOException
+    {
+        var writer = new RowWriter<R>(out);
+
+        ((QueryLauncher) query).scanWrite(txn, writer, args);
 
         // Write the scan terminator. See RowWriter.writeHeader.
         out.writeByte(0);
@@ -512,24 +447,8 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
     }
 
     @Override
-    public final RowPredicate<R> predicate(String queryStr, Object... args) {
-        if (queryStr == null) {
-            return RowPredicate.all();
-        } else {
-            return mFilterFactoryCache.obtain(PLAIN, queryStr, null).predicate(args);
-        }
-    }
-
-    @Override
     public int characteristics() {
         return NONNULL | ORDERED | CONCURRENT | DISTINCT;
-    }
-
-    /**
-     * Returns a view of this table which doesn't perform automatic index selection.
-     */
-    protected Table<R> viewPrimaryKey() {
-        return new PrimaryTable<>(this);
     }
 
     /**
@@ -578,39 +497,6 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
     }
 
     @Override
-    public QueryPlan scannerPlan(Transaction txn, String queryStr, Object... args)
-        throws IOException
-    {
-        if (queryStr == null) {
-            return plan(args);
-        } else {
-            return scannerQueryLauncher(txn, queryStr).scannerPlan(txn, args);
-        }
-    }
-
-    @Override
-    public QueryPlan updaterPlan(Transaction txn, String queryStr, Object... args)
-        throws IOException
-    {
-        if (queryStr == null) {
-            return plan(args);
-        } else {
-            return updaterQueryLauncher(txn, queryStr).updaterPlan(txn, args);
-        }
-    }
-
-    /**
-     * Note: Doesn't support orderBy.
-     */
-    final QueryPlan scannerPlanThisTable(Transaction txn, String queryStr, Object... args) {
-        if (queryStr == null) {
-            return plan(args);
-        } else {
-            return scannerFilteredFactory(txn, queryStr).plan(args);
-        }
-    }
-
-    @Override
     public void close() throws IOException {
         mSource.close();
 
@@ -619,10 +505,10 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
         // forces any in-progress scans to abort. Scans over sorted results aren't necessarily
         // affected, athough it would be nice if those always aborted too.
 
-        if (mQueryLauncherCache != null) {
-            mQueryLauncherCache.clear((QueryLauncher<R> launcher) -> {
+        if (mQueryCache != null) {
+            mQueryCache.clear((QueryLauncher.Delegate<R> launcher) -> {
                 try {
-                    launcher.close();
+                    launcher.closeIndexes();
                 } catch (IOException e) {
                     throw Utils.rethrow(e);
                 }
@@ -699,7 +585,8 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
      * @param queryStr the parsed and reduced query string; can be null initially
      */
     @SuppressWarnings("unchecked")
-    private ScanControllerFactory<R> newFilteredFactory(int type, String queryStr, Query query) {
+    private ScanControllerFactory<R> newFilteredFactory(int type, String queryStr, QuerySpec query)
+    {
         Class<?> rowType = rowType();
         RowInfo rowInfo = RowInfo.find(rowType);
         Map<String, ColumnInfo> allColumns = rowInfo.allColumns;
@@ -854,42 +741,35 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
 
     /**
      * @param type PLAIN, DOUBLE_CHECK, etc.
+     * @param selector must be provided
+     * @return null if type is FOR_UPDATE but it should just be PLAIN
      */
     @SuppressWarnings("unchecked")
-    private QueryLauncher<R> newQueryLauncher(int type, String queryStr, IndexSelector selector)
-        throws IOException
-    {
+    QueryLauncher<R> newQueryLauncher(int type, IndexSelector selector) throws IOException {
         checkClosed();
 
-        RowInfo rowInfo;
+        RowInfo rowInfo = selector.primaryInfo();
 
-        if (selector != null) {
-            rowInfo = selector.primaryInfo();
-        } else {
-            rowInfo = RowInfo.find(rowType());
-            Map<String, ColumnInfo> allColumns = rowInfo.allColumns;
-            Query query = new Parser(allColumns, queryStr).parseQuery(allColumns).reduce();
-            selector = new IndexSelector<R>(this, rowInfo, query, (type & FOR_UPDATE) != 0);
-        }
-
-        if ((type & FOR_UPDATE) != 0) {
+        if ((type & FOR_UPDATE) != 0) forUpdate: {
             if (selector.orderBy() != null) {
                 // The Updater needs to have a sort step applied, and so it needs access to
                 // the primary key. This is because the update/delete operation is performed
                 // by calling Table.update or Table.delete. See WrappedUpdater.
-                // TODO: Remove this requirement by automatically decoding the primary key and
-                // hiding the result.
-                Map<String, ColumnInfo> proj = selector.query().projection();
+                QuerySpec query = selector.query();
+                Map<String, ColumnInfo> proj = query.projection();
                 if (proj != null && !proj.keySet().containsAll(rowInfo.keyColumns.keySet())) {
-                    throw new IllegalStateException
-                        ("Sorted Updater query must select all primary key columns");
+                    proj = new LinkedHashMap<>(proj);
+                    proj.putAll(rowInfo.keyColumns);
+                    query = query.withProjection(proj);
+                    selector = new IndexSelector<R>(this, rowInfo, query, true);
+                    break forUpdate;
                 }
             }
 
             if (!selector.forUpdateRuleChosen()) {
                 // Don't actually return a specialized updater instance because it will be the
                 // same as the scanner instance.
-                return mQueryLauncherCache.obtain(type & ~FOR_UPDATE, queryStr, selector);
+                return null;
             }
         }
 
@@ -919,15 +799,22 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
      */
     private QueryLauncher<R> newSubLauncher(int type, IndexSelector<R> selector, int i) {
         BaseTable<R> subTable = selector.selectedIndexTable(i);
-        Query subQuery = selector.selectedQuery(i);
+        QuerySpec subQuery = selector.selectedQuery(i);
         String subQueryStr = subQuery.toString();
 
         ScanControllerFactory<R> subFactory =
             subTable.mFilterFactoryCache.obtain(type & ~FOR_UPDATE, subQueryStr, subQuery);
 
         if ((type & FOR_UPDATE) == 0 && subFactory.loadsOne()) {
-            // Return an optimized launcher.
-            return new LoadOneQueryLauncher<>(subTable, subFactory);
+            if (subTable.joinedPrimaryTableClass() != null) {
+                // FIXME: This optimization doesn't work because JoinedScanController needs a
+                // real Cursor. Can I obtain a different subFactory which creates controllers
+                // whose evaluator validates using a double check? It also needs to combine
+                // locks such that they can both be unlocked when rows are filtered out.
+            } else {
+                // Return an optimized launcher.
+                return new LoadOneQueryLauncher<>(subTable, subFactory);
+            }
         }
 
         if (selector.selectedReverse(i)) {
@@ -941,8 +828,8 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
      * To be called when the set of available secondary indexes and alternate keys has changed.
      */
     void clearQueryCache() {
-        if (mQueryLauncherCache != null) {
-            mQueryLauncherCache.clear();
+        if (mQueryCache != null) {
+            mQueryCache.traverse(QueryLauncher.Delegate::clear);
         }
     }
 
@@ -1151,7 +1038,7 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
     /**
      * Called when no trigger is installed.
      */
-    protected final boolean insertNoTrigger(Transaction txn, R row, byte[] key, byte[] value)
+    protected final void insertNoTrigger(Transaction txn, R row, byte[] key, byte[] value)
         throws IOException
     {
         Index source = mSource;
@@ -1169,17 +1056,39 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
             txn.exit();
         }
 
-        return result;
+        if (!result) {
+            throw new UniqueConstraintException("Primary key");
+        }
     }
 
     /**
      * Called when no trigger is installed.
      */
-    protected final boolean replaceNoTrigger(Transaction txn, R row, byte[] key, byte[] value)
+    protected final void replaceNoTrigger(Transaction txn, R row, byte[] key, byte[] value)
         throws IOException
     {
-        // Nothing is ever inserted, and so no need to use a predicate lock.
-        return mSource.replace(txn, key, value);
+        Index source = mSource;
+
+        // Note that although that calling replace doesn't insert a new physical row,
+        // it can insert a logical row, depending on which query predicates now match.
+        // For this reason, it needs to always call openAcquire.
+
+        // RowPredicateLock requires a non-null transaction.
+        txn = ViewUtils.enterScope(source, txn);
+        boolean result;
+        try {
+            redoPredicateMode(txn);
+            try (var closer = mIndexLock.openAcquire(txn, row)) {
+                result = source.replace(txn, key, value);
+            }
+            txn.commit();
+        } finally {
+            txn.exit();
+        }
+
+        if (!result) {
+            throw new NoSuchRowException();
+        }
     }
 
     /**
@@ -1197,25 +1106,28 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
         // Note that this method resembles the same code that is generated by TableMaker and
         // StaticTableMaker. One major difference is that the row columns aren't marked clean.
 
-        while (true) {
-            Trigger<R> trigger = trigger();
-            trigger.acquireShared();
-            try {
-                int mode = trigger.mode();
+        Index source = mSource;
 
-                if (mode == Trigger.SKIP) {
-                    mSource.store(txn, key, value);
-                    return;
-                }
+        // RowPredicateLock and Trigger require a non-null transaction.
+        txn = ViewUtils.enterScope(source, txn);
+        try {
+            redoPredicateMode(txn);
 
-                if (mode != Trigger.DISABLED) {
-                    Index source = mSource;
+            while (true) {
+                Trigger<R> trigger = trigger();
+                trigger.acquireShared();
+                try {
+                    int mode = trigger.mode();
 
-                    // RowPredicateLock and Trigger require a non-null transaction.
-                    txn = ViewUtils.enterScope(source, txn);
-                    try {
-                        redoPredicateMode(txn);
+                    if (mode == Trigger.SKIP) {
+                        try (var closer = mIndexLock.openAcquireP(txn, row, key, value)) {
+                            source.store(txn, key, value);
+                        }
+                        txn.commit();
+                        return;
+                    }
 
+                    if (mode != Trigger.DISABLED) {
                         try (var c = source.newCursor(txn)) {
                             try (var closer = mIndexLock.openAcquireP(txn, row, key, value)) {
                                 c.find(key);
@@ -1227,16 +1139,15 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
                                 trigger.storeP(txn, row, key, oldValue, value);
                             }
                             c.commit(value);
+                            return;
                         }
-                    } finally {
-                        txn.exit();
                     }
-
-                    return;
+                } finally {
+                    trigger.releaseShared();
                 }
-            } finally {
-                trigger.releaseShared();
             }
+        } finally {
+            txn.exit();
         }
     }
 
@@ -1252,24 +1163,29 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
     {
         // See comments in storeAndTrigger.
 
-        while (true) {
-            Trigger<R> trigger = trigger();
-            trigger.acquireShared();
-            try {
-                int mode = trigger.mode();
+        Index source = mSource;
 
-                if (mode == Trigger.SKIP) {
-                    return mSource.exchange(txn, key, value);
-                }
+        // RowPredicateLock and Trigger require a non-null transaction.
+        txn = ViewUtils.enterScope(source, txn);
+        try {
+            redoPredicateMode(txn);
 
-                if (mode != Trigger.DISABLED) {
-                    Index source = mSource;
+            while (true) {
+                Trigger<R> trigger = trigger();
+                trigger.acquireShared();
+                try {
+                    int mode = trigger.mode();
 
-                    // RowPredicateLock and Trigger require a non-null transaction.
-                    txn = ViewUtils.enterScope(source, txn);
-                    try {
-                        redoPredicateMode(txn);
+                    if (mode == Trigger.SKIP) {
+                        byte[] oldValue;
+                        try (var closer = mIndexLock.openAcquireP(txn, row, key, value)) {
+                            oldValue = source.exchange(txn, key, value);
+                        }
+                        txn.commit();
+                        return oldValue;
+                    }
 
+                    if (mode != Trigger.DISABLED) {
                         try (var c = source.newCursor(txn)) {
                             try (var closer = mIndexLock.openAcquireP(txn, row, key, value)) {
                                 c.find(key);
@@ -1283,13 +1199,13 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
                             c.commit(value);
                             return oldValue;
                         }
-                    } finally {
-                        txn.exit();
                     }
+                } finally {
+                    trigger.releaseShared();
                 }
-            } finally {
-                trigger.releaseShared();
             }
+        } finally {
+            txn.exit();
         }
     }
 
@@ -1299,49 +1215,57 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
      *
      * @see RemoteProxyMaker
      */
-    final boolean insertAndTrigger(Transaction txn, R row, byte[] key, byte[] value)
+    final void insertAndTrigger(Transaction txn, R row, byte[] key, byte[] value)
         throws IOException
     {
         // See comments in storeAndTrigger.
 
-        while (true) {
-            Trigger<R> trigger = trigger();
-            trigger.acquireShared();
-            try {
-                int mode = trigger.mode();
+        Index source = mSource;
 
-                if (mode == Trigger.SKIP) {
-                    return mSource.insert(txn, key, value);
-                }
+        // RowPredicateLock and Trigger require a non-null transaction.
+        txn = ViewUtils.enterScope(source, txn);
+        try {
+            redoPredicateMode(txn);
 
-                if (mode != Trigger.DISABLED) {
-                    Index source = mSource;
+            while (true) {
+                Trigger<R> trigger = trigger();
+                trigger.acquireShared();
+                try {
+                    int mode = trigger.mode();
 
-                    // RowPredicateLock and Trigger require a non-null transaction.
-                    txn = ViewUtils.enterScope(source, txn);
-                    try {
-                        redoPredicateMode(txn);
+                    if (mode == Trigger.SKIP) {
+                        boolean result;
+                        try (var closer = mIndexLock.openAcquireP(txn, row, key, value)) {
+                            result = source.insert(txn, key, value);
+                        }
+                        txn.commit();
+                        if (result) {
+                            return;
+                        }
+                        throw new UniqueConstraintException("Primary key");
+                    }
 
+                    if (mode != Trigger.DISABLED) {
                         try (var c = source.newCursor(txn)) {
                             c.autoload(false);
                             try (var closer = mIndexLock.openAcquireP(txn, row, key, value)) {
                                 c.find(key);
                             }
                             if (c.value() != null) {
-                                return false;
+                                throw new UniqueConstraintException("Primary key");
                             } else {
                                 trigger.insertP(txn, row, key, value);
                                 c.commit(value);
-                                return true;
+                                return;
                             }
                         }
-                    } finally {
-                        txn.exit();
                     }
+                } finally {
+                    trigger.releaseShared();
                 }
-            } finally {
-                trigger.releaseShared();
             }
+        } finally {
+            txn.exit();
         }
     }
 
@@ -1351,46 +1275,59 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
      *
      * @see RemoteProxyMaker
      */
-    final boolean replaceAndTrigger(Transaction txn, R row, byte[] key, byte[] value)
+    final void replaceAndTrigger(Transaction txn, R row, byte[] key, byte[] value)
         throws IOException
     {
         // See comments in storeAndTrigger.
 
-        while (true) {
-            Trigger<R> trigger = trigger();
-            trigger.acquireShared();
-            try {
-                int mode = trigger.mode();
+        Index source = mSource;
 
-                if (mode == Trigger.SKIP) {
-                    return mSource.replace(txn, key, value);
-                }
+        // Note that although that calling replace doesn't insert a new physical row,
+        // it can insert a logical row, depending on which query predicates now match.
+        // For this reason, it needs to always call openAcquire.
 
-                if (mode != Trigger.DISABLED) {
-                    Index source = mSource;
+        // RowPredicateLock and Trigger require a non-null transaction.
+        txn = ViewUtils.enterScope(source, txn);
+        try {
+            redoPredicateMode(txn);
 
-                    // RowPredicateLock and Trigger require a non-null transaction.
-                    txn = ViewUtils.enterScope(source, txn);
-                    try (var c = source.newCursor(txn)) {
-                        c.find(key);
-                        byte[] oldValue = c.value();
-                        if (oldValue == null) {
-                            return false;
+            while (true) {
+                Trigger<R> trigger = trigger();
+                trigger.acquireShared();
+                try {
+                    int mode = trigger.mode();
+
+                    if (mode == Trigger.SKIP) {
+                        try (var closer = mIndexLock.openAcquireP(txn, row, key, value)) {
+                            if (source.replace(txn, key, value)) {
+                                txn.commit();
+                                return;
+                            }
                         }
-                        c.store(value);
-                        // Only need to enable redoPredicateMode for the trigger, since it
-                        // might insert new secondary index entries (and call openAcquire).
-                        redoPredicateMode(txn);
-                        trigger.storeP(txn, row, key, oldValue, value);
-                        txn.commit();
-                        return true;
-                    } finally {
-                        txn.exit();
+                        throw new NoSuchRowException();
                     }
+
+                    if (mode != Trigger.DISABLED) {
+                        try (var c = source.newCursor(txn)) {
+                            try (var closer = mIndexLock.openAcquireP(txn, row, key, value)) {
+                                c.find(key);
+                            }
+                            byte[] oldValue = c.value();
+                            if (oldValue == null) {
+                                throw new NoSuchRowException();
+                            }
+                            c.store(value);
+                            trigger.storeP(txn, row, key, oldValue, value);
+                            txn.commit();
+                            return;
+                        }
+                    }
+                } finally {
+                    trigger.releaseShared();
                 }
-            } finally {
-                trigger.releaseShared();
             }
+        } finally {
+            txn.exit();
         }
     }
 
@@ -1400,7 +1337,7 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
     @FunctionalInterface
     public static interface ValueUpdater {
         /**
-         * Given an existing encoded row value, return a new encode row value which has a
+         * Given an existing encoded row value, return a new encoded row value which has a
          * schema version encoded.
          */
         byte[] updateValue(byte[] value);
@@ -1411,24 +1348,33 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
      * be empty, and it's never modified by this method.
      *
      * @see RemoteProxyMaker
-     * @return the new value, or null if none
+     * @return the new value
      */
     final byte[] updateAndTrigger(Transaction txn, R row, byte[] key, ValueUpdater updater)
         throws IOException
     {
         // See comments in storeAndTrigger.
 
+        // Note that although that calling update doesn't insert a new physical row,
+        // it can insert a logical row, depending on which query predicates now match.
+        // For this reason, it needs to always call openAcquire.
+
         // RowPredicateLock and Trigger require a non-null transaction.
         txn = ViewUtils.enterScope(mSource, txn);
         try (var c = mSource.newCursor(txn)) {
-            c.find(key);
+            byte[] originalValue, newValue;
 
-            byte[] originalValue = c.value();
-            if (originalValue == null) {
-                return null;
+            while (true) {
+                LockResult result = c.find(key);
+                originalValue = c.value();
+                if (originalValue == null) {
+                    throw new NoSuchRowException();
+                }
+                newValue = updater.updateValue(originalValue);
+                if (tryOpenAcquireP(txn, row, key, c, result, newValue)) {
+                    break;
+                }
             }
-
-            byte[] newValue = updater.updateValue(originalValue);
 
             while (true) {
                 Trigger<R> trigger = trigger();
@@ -1443,9 +1389,6 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
 
                     if (mode != Trigger.DISABLED) {
                         c.store(newValue);
-                        // Only need to enable redoPredicateMode for the trigger, since it
-                        // might insert new secondary index entries (and call openAcquire).
-                        redoPredicateMode(txn);
                         trigger.storeP(txn, row, key, originalValue, newValue);
                         txn.commit();
                         return newValue;
@@ -1460,8 +1403,64 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
     }
 
     /**
-     * Delete a fully encoded key and invoke a trigger. The given row instance is expected to
-     * be empty, and it's never modified by this method.
+     * Attempt to acquire the predicate lock after acquiring the row lock, which is the
+     * opposite of the canonical lock acquisition order, and can lead to deadlock.
+     *
+     * <p>This method must be public to be accessible by code generated by
+     * DynamicTableMaker.indyDoUpdate. The generated code won't be a subclass of BaseTable, and
+     * so it cannot access this method if it was protected.
+     *
+     * @param txn non-null
+     * @param row row being updated; can be partially filled in
+     * @param c cursor positioned at the key
+     * @param result result from finding the key
+     * @param newValue the new binary value for the row
+     * @return false if attempt failed and caller should start over by finding the key again
+     */
+    public final boolean tryOpenAcquireP(Transaction txn, R row, byte[] key,
+                                         Cursor c, LockResult result, byte[] newValue)
+        throws IOException
+    {
+        redoPredicateMode(txn);
+
+        if (result != LockResult.ACQUIRED) {
+            // The row lock was already held, and so nothing special can be done here to
+            // prevent deadlock.
+            mIndexLock.openAcquireP(txn, row, key, newValue).close();
+            return true;
+        }
+
+        // Note that a null row instance is passed to this method because it assumes that a
+        // non-null row instance is completely filled in.
+        var closer = mIndexLock.tryOpenAcquire(txn, null, key, newValue);
+
+        if (closer != null) {
+            closer.close();
+            return true;
+        }
+
+        // Unlock the row, acquire the predicate lock, and load the row again.
+
+        txn.unlock();
+        byte[] originalValue = c.value();
+
+        try (var closer2 = mIndexLock.openAcquireP(txn, row, key, newValue)) {
+            c.find(key);
+        }
+
+        if (Arrays.equals(originalValue, c.value())) {
+            return true;
+        }
+
+        // The row changed, so rollback and start over.
+        txn.rollback();
+        Thread.yield();
+
+        return false;
+    }
+
+    /**
+     * Delete a fully encoded key and invoke a trigger.
      *
      * @see RemoteProxyMaker
      */
@@ -1593,7 +1592,7 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
     }
 
     /**
-     * Note: Is overridden by BaseTableIndex.
+     * Note: Is overridden by BaseTableIndex to always return false.
      */
     boolean supportsSecondaries() {
         return true;

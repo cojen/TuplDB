@@ -85,22 +85,22 @@ public abstract class ClientTableHelper<R> implements Table<R> {
     /**
      * @param pipe is recycled or closed as a side effect
      */
-    public abstract boolean insert(R row, Pipe pipe) throws IOException;
+    public abstract void insert(R row, Pipe pipe) throws IOException;
 
     /**
      * @param pipe is recycled or closed as a side effect
      */
-    public abstract boolean replace(R row, Pipe pipe) throws IOException;
+    public abstract void replace(R row, Pipe pipe) throws IOException;
 
     /**
      * @param pipe is recycled or closed as a side effect
      */
-    public abstract boolean update(R row, Pipe pipe) throws IOException;
+    public abstract void update(R row, Pipe pipe) throws IOException;
 
     /**
      * @param pipe is recycled or closed as a side effect
      */
-    public abstract boolean merge(R row, Pipe pipe) throws IOException;
+    public abstract void merge(R row, Pipe pipe) throws IOException;
 
     /**
      * @param pipe is recycled or closed as a side effect
@@ -203,13 +203,13 @@ public abstract class ClientTableHelper<R> implements Table<R> {
 
         // Keep a singleton instance, in order for a weakly cached reference to the helper to
         // stick around until the class is unloaded.
-        cm.addField(ClientTableHelper.class, "THE").private_().static_().final_();
+        cm.addField(ClientTableHelper.class, "_").private_().static_().final_();
 
         cm.addField(boolean.class, "assert").private_().static_().final_();
 
         {
             MethodMaker mm = cm.addClinit();
-            mm.field("THE").set(mm.new_(cm));
+            mm.field("_").set(mm.new_(cm));
             mm.field("assert").set(mm.class_().invoke("desiredAssertionStatus"));
         }
 
@@ -231,8 +231,8 @@ public abstract class ClientTableHelper<R> implements Table<R> {
 
         addStoreMethod("store", null, cm, rowGen, rowClass);
         addStoreMethod("exchange", rowType, cm, rowGen, rowClass);
-        addStoreMethod("insert", boolean.class, cm, rowGen, rowClass);
-        addStoreMethod("replace", boolean.class, cm, rowGen, rowClass);
+        addStoreMethod("insert", null, cm, rowGen, rowClass);
+        addStoreMethod("replace", null, cm, rowGen, rowClass);
 
         addUpdateMethod("update", cm, rowGen, rowClass);
         addUpdateMethod("merge", cm, rowGen, rowClass);
@@ -254,7 +254,7 @@ public abstract class ClientTableHelper<R> implements Table<R> {
 
         try {
             var clazz = lookup.lookupClass();
-            var vh = lookup.findStaticVarHandle(clazz, "THE", ClientTableHelper.class);
+            var vh = lookup.findStaticVarHandle(clazz, "_", ClientTableHelper.class);
             return (ClientTableHelper<?>) vh.get();
         } catch (Throwable e) {
             throw RowUtils.rethrow(e);
@@ -367,17 +367,17 @@ public abstract class ClientTableHelper<R> implements Table<R> {
             } else if (variant == "insert") {
                 TableMaker.markAllClean(rowVar, rowGen, rowGen);
                 mm.invoke("success", pipeVar);
-                mm.return_(true);
+                mm.return_();
             }
 
             noAutoKey.here();
         }
 
-        if (variant == "store") {
+        if (variant != "exchange") {
             TableMaker.markAllClean(rowVar, rowGen, rowGen);
             mm.invoke("success", pipeVar);
             mm.return_();
-        } else if (variant == "exchange") {
+        } else {
             TableMaker.markAllClean(rowVar, rowGen, rowGen);
             Variable oldRowVar = mm.var(rowClass).set(null);
             Label noOldRow = mm.label();
@@ -389,13 +389,6 @@ public abstract class ClientTableHelper<R> implements Table<R> {
             noOldRow.here();
             mm.invoke("success", pipeVar);
             mm.return_(oldRowVar);
-        } else {
-            Label noOperation = mm.label();
-            resultVar.ifEq(0, noOperation);
-            TableMaker.markAllClean(rowVar, rowGen, rowGen);
-            noOperation.here();
-            mm.invoke("success", pipeVar);
-            mm.return_(resultVar.ne(0));
         }
 
         mm.catch_(tryStart, Throwable.class, exVar -> {
@@ -410,7 +403,7 @@ public abstract class ClientTableHelper<R> implements Table<R> {
     private static void addUpdateMethod(String variant,
                                         ClassMaker cm, RowGen rowGen, Class<?> rowClass)
     {
-        MethodMaker mm = cm.addMethod(boolean.class, variant, Object.class, Pipe.class).public_();
+        MethodMaker mm = cm.addMethod(null, variant, Object.class, Pipe.class).public_();
 
         var rowVar = mm.param(0).cast(rowClass);
         var pipeVar = mm.param(1);
@@ -433,7 +426,7 @@ public abstract class ClientTableHelper<R> implements Table<R> {
 
         noOperation.here();
         mm.invoke("success", pipeVar);
-        mm.return_(resultVar.ne(0));
+        mm.return_();
 
         mm.catch_(tryStart, Throwable.class, exVar -> {
             mm.invoke("fail", pipeVar, exVar);

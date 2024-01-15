@@ -26,18 +26,15 @@ import java.lang.invoke.MethodType;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 
-import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
-import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 
-import java.util.function.Function;
 import java.util.function.Predicate;
 
 import org.cojen.maker.ClassMaker;
@@ -45,9 +42,9 @@ import org.cojen.maker.Label;
 import org.cojen.maker.MethodMaker;
 import org.cojen.maker.Variable;
 
-import org.cojen.tupl.DurabilityMode;
 import org.cojen.tupl.LockMode;
 import org.cojen.tupl.Mapper;
+import org.cojen.tupl.Query;
 import org.cojen.tupl.Scanner;
 import org.cojen.tupl.Table;
 import org.cojen.tupl.Transaction;
@@ -57,13 +54,8 @@ import org.cojen.tupl.ViewConstraintException;
 
 import org.cojen.tupl.diag.QueryPlan;
 
-import org.cojen.tupl.rows.filter.ColumnFilter;
-import org.cojen.tupl.rows.filter.ColumnToArgFilter;
-import org.cojen.tupl.rows.filter.ColumnToColumnFilter;
-import org.cojen.tupl.rows.filter.ComplexFilterException;
-import org.cojen.tupl.rows.filter.Parser;
 import org.cojen.tupl.rows.filter.RowFilter;
-import org.cojen.tupl.rows.filter.Query;
+import org.cojen.tupl.rows.filter.QuerySpec;
 import org.cojen.tupl.rows.filter.TrueFilter;
 
 /**
@@ -72,12 +64,9 @@ import org.cojen.tupl.rows.filter.TrueFilter;
  * @author Brian S O'Neill
  * @see Table#map
  */
-public abstract class MappedTable<S, T> implements Table<T> {
-    /**
-     * Although the generated factories only depend on the targetType, a full key is needed
-     * because the mScannerFactoryCache and mInverse* fields rely on code which is generated
-     * against the source and target type.
-     */
+public abstract class MappedTable<S, T> extends AbstractMappedTable<S, T>
+    implements QueryFactoryCache.Helper
+{
     private record FactoryKey(Class<?> sourceType, Class<?> targetType, Class<?> mapperClass) { }
 
     private static final WeakCache<FactoryKey, MethodHandle, Object> cFactoryCache;
@@ -95,8 +84,10 @@ public abstract class MappedTable<S, T> implements Table<T> {
                                                Mapper<S, T> mapper)
     {
         Objects.requireNonNull(targetType);
+
+        var key = new FactoryKey(source.rowType(), targetType, mapper.getClass());
+
         try {
-            var key = new FactoryKey(source.rowType(), targetType, mapper.getClass());
             return (MappedTable<S, T>) cFactoryCache.obtain(key, null).invokeExact(source, mapper);
         } catch (Throwable e) {
             throw RowUtils.rethrow(e);
@@ -116,12 +107,13 @@ public abstract class MappedTable<S, T> implements Table<T> {
 
         {
             MethodMaker ctor = tableMaker.addConstructor(Table.class, Mapper.class).private_();
-            ctor.invokeSuperConstructor(ctor.param(0), ctor.param(1));
+            var cacheVar = ctor.var(QueryFactoryCache.class).setExact(new QueryFactoryCache());
+            ctor.invokeSuperConstructor(cacheVar, ctor.param(0), ctor.param(1));
         }
 
         // Keep a reference to the MethodHandle instance, to prevent it from being garbage
         // collected as long as the generated table class still exists.
-        tableMaker.addField(MethodHandle.class, "_").static_().private_();
+        tableMaker.addField(Object.class, "_").static_().private_();
 
         addMarkValuesUnset(key, info, tableMaker);
 
@@ -136,7 +128,7 @@ public abstract class MappedTable<S, T> implements Table<T> {
 
         try {
             // Assign the singleton reference.
-            lookup.findStaticVarHandle(tableClass, "_", MethodHandle.class).set(mh);
+            lookup.findStaticVarHandle(tableClass, "_", Object.class).set(mh);
         } catch (Throwable e) {
             throw RowUtils.rethrow(e);
         }
@@ -171,8 +163,9 @@ public abstract class MappedTable<S, T> implements Table<T> {
                 continue;
             }
 
-            String sourceName = name.substring(ix + "_to_".length());
-            if (!sourceInfo.keyColumns.containsKey(sourceName)) {
+            String sourceName = unescape(name.substring(ix + "_to_".length()));
+
+            if (ColumnSet.findColumn(sourceInfo.keyColumns, sourceName) == null) {
                 continue;
             }
 
@@ -180,15 +173,6 @@ public abstract class MappedTable<S, T> implements Table<T> {
             ColumnInfo target = targetInfo.allColumns.get(targetName);
             if (target != null) {
                 mapToSource.put(targetName, target);
-            }
-        }
-
-        if (Mapper.Identity.class.isAssignableFrom(key.mapperClass())) {
-            for (ColumnInfo target : targetInfo.allColumns.values()) {
-                String name = target.name;
-                if (!mapToSource.containsKey(name) && sourceInfo.keyColumns.containsKey(name)) {
-                    mapToSource.put(name, target);
-                }
             }
         }
 
@@ -201,78 +185,38 @@ public abstract class MappedTable<S, T> implements Table<T> {
         TableMaker.unset(targetInfo, targetRowVar, mapToSource);
     }
 
-    private final Table<S> mSource;
-    private final Mapper<S, T> mMapper;
+    private final QueryFactoryCache mQueryFactoryCache;
 
-    private final SoftCache<String, ScannerFactory<S, T>, Query> mScannerFactoryCache;
+    private final Mapper<S, T> mMapper;
 
     private InverseMapper<S, T> mInversePk, mInverseFull, mInverseUpdate;
 
-    protected MappedTable(Table<S> source, Mapper<S, T> mapper) {
-        mSource = source;
+    protected MappedTable(QueryFactoryCache queryFactoryCache,
+                          Table<S> source, Mapper<S, T> mapper)
+    {
+        super(source);
+        mQueryFactoryCache = queryFactoryCache;
         mMapper = mapper;
-
-        mScannerFactoryCache = new SoftCache<>() {
-            @Override
-            protected ScannerFactory<S, T> newValue(String queryStr, Query query) {
-                if (query == null) {
-                    RowInfo rowInfo = RowInfo.find(rowType());
-                    query = new Parser(rowInfo.allColumns, queryStr).parseQuery(null);
-                    String canonical = query.toString();
-                    if (!canonical.equals(queryStr)) {
-                        return obtain(canonical, query);
-                    }
-                }
-                return makeScannerFactory(query);
-            }
-        };
     }
 
     @Override
-    public final Scanner<T> newScanner(Transaction txn) throws IOException {
-        return newScannerWith(txn, null);
-    }
-
-    @Override
-    public final Scanner<T> newScannerWith(Transaction txn, T targetRow) throws IOException {
-        return new MappedScanner<>(this, mSource.newScanner(txn), targetRow, mMapper);
-    }
-
-    @Override
-    public final Scanner<T> newScanner(Transaction txn, String query, Object... args)
+    public final Scanner<T> newScanner(T targetRow, Transaction txn,
+                                       String query, Object... args)
         throws IOException
     {
-        return newScannerWith(txn, null, query, args);
-    }
-
-    @Override
-    public final Scanner<T> newScannerWith(Transaction txn, T targetRow,
-                                           String query, Object... args)
-        throws IOException
-    {
-        return mScannerFactoryCache.obtain(query, null).newScannerWith(this, txn, targetRow, args);
+        return query(query).newScanner(targetRow, txn, args);
     }
 
     @Override
     public final Updater<T> newUpdater(Transaction txn) throws IOException {
-        return new MappedUpdater<>(this, mSource.newUpdater(txn), null, mMapper);
+        return newUpdater(txn, "{*}", (Object[]) null);
     }
 
     @Override
     public final Updater<T> newUpdater(Transaction txn, String query, Object... args)
         throws IOException
     {
-        return mScannerFactoryCache.obtain(query, null).newUpdaterWith(this, txn, null, args);
-    }
-
-    @Override
-    public final Transaction newTransaction(DurabilityMode durabilityMode) {
-        return mSource.newTransaction(durabilityMode);
-    }
-
-    @Override
-    public final boolean isEmpty() throws IOException {
-        return mSource.isEmpty() || !anyRows(Transaction.BOGUS);
+        return query(query).newUpdater(txn, args);
     }
 
     @Override
@@ -302,6 +246,7 @@ public abstract class MappedTable<S, T> implements Table<T> {
     public final void store(Transaction txn, T targetRow) throws IOException {
         Objects.requireNonNull(targetRow);
         S sourceRow = inverseFull().inverseMap(mSource, targetRow);
+        mMapper.checkStore(mSource, sourceRow);
         mSource.store(txn, sourceRow);
         cleanRow(targetRow);
     }
@@ -310,6 +255,7 @@ public abstract class MappedTable<S, T> implements Table<T> {
     public final T exchange(Transaction txn, T targetRow) throws IOException {
         Objects.requireNonNull(targetRow);
         S sourceRow = inverseFull().inverseMap(mSource, targetRow);
+        mMapper.checkStore(mSource, sourceRow);
         S oldSourceRow = mSource.exchange(txn, sourceRow);
         cleanRow(targetRow);
         if (oldSourceRow == null) {
@@ -323,45 +269,38 @@ public abstract class MappedTable<S, T> implements Table<T> {
     }
 
     @Override
-    public final boolean insert(Transaction txn, T targetRow) throws IOException {
+    public final void insert(Transaction txn, T targetRow) throws IOException {
         Objects.requireNonNull(targetRow);
         S sourceRow = inverseFull().inverseMap(mSource, targetRow);
-        if (!mSource.insert(txn, sourceRow)) {
-            return false;
-        }
+        mMapper.checkStore(mSource, sourceRow);
+        mSource.insert(txn, sourceRow);
         cleanRow(targetRow);
-        return true;
     }
 
     @Override
-    public final boolean replace(Transaction txn, T targetRow) throws IOException {
+    public final void replace(Transaction txn, T targetRow) throws IOException {
         Objects.requireNonNull(targetRow);
         S sourceRow = inverseFull().inverseMap(mSource, targetRow);
-        if (!mSource.replace(txn, sourceRow)) {
-            return false;
-        }
+        mMapper.checkStore(mSource, sourceRow);
+        mSource.replace(txn, sourceRow);
         cleanRow(targetRow);
-        return true;
     }
 
     @Override
-    public final boolean update(Transaction txn, T targetRow) throws IOException {
+    public final void update(Transaction txn, T targetRow) throws IOException {
         Objects.requireNonNull(targetRow);
         S sourceRow = inverseUpdate().inverseMap(mSource, targetRow);
-        if (!mSource.update(txn, sourceRow)) {
-            return false;
-        }
+        mMapper.checkUpdate(mSource, sourceRow);
+        mSource.update(txn, sourceRow);
         cleanRow(targetRow);
-        return true;
     }
 
     @Override
-    public final boolean merge(Transaction txn, T targetRow) throws IOException {
+    public final void merge(Transaction txn, T targetRow) throws IOException {
         Objects.requireNonNull(targetRow);
         S sourceRow = inverseUpdate().inverseMap(mSource, targetRow);
-        if (!mSource.merge(txn, sourceRow)) {
-            return false;
-        }
+        mMapper.checkUpdate(mSource, sourceRow);
+        mSource.merge(txn, sourceRow);
         T mappedRow = mMapper.map(sourceRow, newRow());
         if (mappedRow != null) {
             cleanRow(mappedRow);
@@ -372,50 +311,23 @@ public abstract class MappedTable<S, T> implements Table<T> {
             // columns allows the operation to complete and signal that something is amiss.
             unsetRow(targetRow);
         }
-        return true;
     }
 
     @Override
     public final boolean delete(Transaction txn, T targetRow) throws IOException {
         Objects.requireNonNull(targetRow);
         S sourceRow = inversePk().inverseMap(mSource, targetRow);
+        mMapper.checkDelete(mSource, sourceRow);
         return mSource.delete(txn, sourceRow);
     }
 
     @Override
-    public final QueryPlan scannerPlan(Transaction txn, String query, Object... args)
-        throws IOException
-    {
-        if (query == null) {
-            return decorate(mSource.scannerPlan(txn, null));
-        } else {
-            return mScannerFactoryCache.obtain(query, null).plan(false, this, txn, args);
+    protected final Query<T> newQuery(String query) throws IOException {
+        try {
+            return (Query<T>) mQueryFactoryCache.obtain(query, this).invoke(this);
+        } catch (Throwable e) {
+            throw RowUtils.rethrow(e);
         }
-    }
-
-    @Override
-    public final QueryPlan updaterPlan(Transaction txn, String query, Object... args)
-        throws IOException
-    {
-        if (query == null) {
-            return decorate(mSource.updaterPlan(txn, null));
-        } else {
-            return mScannerFactoryCache.obtain(query, null).plan(true, this, txn, args);
-        }
-    }
-
-    private QueryPlan decorate(QueryPlan plan) {
-        return mMapper.plan(new QueryPlan.Mapper(rowType().getName(), mMapper.toString(), plan));
-    }
-
-    @Override
-    public final void close() throws IOException {
-        // Do nothing.
-    }
-
-    @Override
-    public final boolean isClosed() {
-        return false;
     }
 
     /**
@@ -516,12 +428,12 @@ public abstract class MappedTable<S, T> implements Table<T> {
 
             if (set == null) {
                 set = new TreeSet<>((a, b) -> {
-                    // Prefer identity mappers, so order them first.
-                    if (a.function() == null) {
-                        if (b.function() != null) {
+                    // Prefer untransformed mappers, so order them first.
+                    if (a.isUntransformed()) {
+                        if (!b.isUntransformed()) {
                             return -1;
                         }
-                    } else if (b.function() == null) {
+                    } else if (b.isUntransformed()) {
                         return 1;
                     }
 
@@ -558,14 +470,25 @@ public abstract class MappedTable<S, T> implements Table<T> {
         MethodMaker mm = cm.addMethod(null, "inverseMap", Object.class, Object.class);
         mm.public_();
 
+        // Only attempt to check that the source columns are set if the source table type is
+        // expected to have the special check methods defined.
+        boolean checkSet = BaseTable.class.isAssignableFrom(mSource.getClass());
+
+        Class<?> sourceRowType = mSource.rowType();
+        if (checkSet) {
+            // The special methods act upon the implementation class.
+            sourceRowType = RowMaker.find(sourceRowType);
+        }
+
         var targetRowVar = mm.param(1).cast(RowMaker.find(rowType()));
-        var sourceRowVar = mm.param(0).cast(mSource.rowType());
+        var sourceRowVar = mm.param(0).cast(sourceRowType);
 
         Map<String, Integer> targetColumnNumbers = targetGen.columnNumbers();
 
         for (Map.Entry<String, Set<ColumnFunction>> e : toTargetMap.entrySet()) {
             String sourceColumnName = e.getKey();
-            ColumnInfo sourceColumnInfo = sourceInfo.allColumns.get(sourceColumnName);
+            ColumnInfo sourceColumnInfo = ColumnSet.findColumn
+                (sourceInfo.allColumns, sourceColumnName);
 
             Label nextSource = mm.label();
 
@@ -591,9 +514,8 @@ public abstract class MappedTable<S, T> implements Table<T> {
                 var targetColumnVar = targetRowVar.field(targetColumn.name);
                 Variable sourceColumnVar;
 
-                Method fun = targetColumnFun.function();
-
-                if (fun != null) {
+                if (!targetColumnFun.isUntransformed()) {
+                    Method fun = targetColumnFun.function();
                     sourceColumnVar = mm.var
                         (fun.getDeclaringClass()).invoke(fun.getName(), targetColumnVar);
                 } else {
@@ -617,6 +539,21 @@ public abstract class MappedTable<S, T> implements Table<T> {
             nextSource.here();
         }
 
+        if (checkSet) {
+            var sourceVar = mm.var(mSource.getClass());
+            Label ok = mm.label();
+
+            if (mode == 2) { // full
+                sourceVar.invoke("checkAllSet", sourceRowVar).ifTrue(ok);
+                sourceVar.invoke("requireAllSet", sourceRowVar);
+            } else {
+                sourceVar.invoke("checkPrimaryKeySet", sourceRowVar).ifTrue(ok);
+                mm.new_(IllegalStateException.class, "Primary key isn't fully specified").throw_();
+            }
+
+            ok.here();
+        }
+
         try {
             MethodHandles.Lookup lookup = cm.finishHidden();
             MethodHandle mh = lookup.findConstructor
@@ -627,150 +564,32 @@ public abstract class MappedTable<S, T> implements Table<T> {
         }
     }
 
-    private ScannerFactory<S, T> makeScannerFactory(Query targetQuery) {
-        final RowFilter targetFilter;
-        {
-            RowFilter filter = targetQuery.filter();
-            try {
-                filter = filter.cnf();
-            } catch (ComplexFilterException e) {
-                // The split won't be as effective, and so the remainder mapper will do more work.
-            }
-            targetFilter = filter;
-        }
-
-        record ArgMapper(int targetArgNum, Method function) { } 
-
-        RowInfo sourceInfo = RowInfo.find(mSource.rowType());
-        var finder = new InverseFinder(sourceInfo.allColumns);
-
-        var checker = new Function<ColumnFilter, RowFilter>() {
-            Map<ArgMapper, Integer> argMappers;
-            int maxArg;
-
-            @Override
-            public RowFilter apply(ColumnFilter cf) {
-                ColumnFunction source = finder.tryFindSource(cf.column());
-                if (source == null) {
-                    return null;
-                }
-
-                if (cf instanceof ColumnToArgFilter c2a) {
-                    c2a = c2a.withColumn(source.column());
-                    if (source.function() == null) {
-                        return c2a;
-                    }
-                    if (argMappers == null) {
-                        argMappers = new HashMap<>();
-                        maxArg = targetFilter.maxArgument();
-                    }
-                    var argMapper = new ArgMapper(c2a.argument(), source.function());
-                    Integer sourceArg = argMappers.get(argMapper);
-                    if (sourceArg == null) {
-                        sourceArg = ++maxArg;
-                        argMappers.put(argMapper, sourceArg);
-                    }
-                    return c2a.withArgument(sourceArg);
-                } else if (cf instanceof ColumnToColumnFilter c2c) {
-                    // Can only convert to a source filter when both columns rely on an
-                    // identity mapping, and a common type exists. It's unlikely that a common
-                    // type doesn't exist.
-                    if (source.function() != null) {
-                        return null;
-                    }
-                    ColumnFunction otherSource = finder.tryFindSource(c2c.otherColumn());
-                    if (otherSource == null || otherSource.function() != null) {
-                        return null;
-                    }
-                    return c2c.tryWithColumns(source.column(), otherSource.column());
-                }
-
-                return null;
-            }
-
-            void addPrepareArgsMethod(ClassMaker cm) {
-                if (argMappers == null) {
-                    // No special method is needed.
-                    return;
-                }
-
-                MethodMaker mm = cm.addMethod(Object[].class, "prepareArgs", Object[].class)
-                    .varargs().static_().final_();
-
-                // Generate the necessary source query arguments from the provided target
-                // arguments.
-
-                Label ready = mm.label();
-                var argsVar = mm.param(0);
-                argsVar.ifEq(null, ready);
-
-                argsVar.set(mm.var(Arrays.class).invoke("copyOf", argsVar, maxArg));
-
-                for (Map.Entry<ArgMapper, Integer> e : argMappers.entrySet()) {
-                    ArgMapper argMapper = e.getKey();
-                    var argVar = argsVar.aget(argMapper.targetArgNum - 1);
-                    Label cont = mm.label();
-                    argVar.ifEq(null, cont);
-                    Method fun = argMapper.function();
-                    var targetArgVar = ConvertCallSite.make(mm, fun.getParameterTypes()[0], argVar);
-                    var sourceArgVar =
-                        mm.var(fun.getDeclaringClass()).invoke(fun.getName(), targetArgVar);
-                    argsVar.aset(e.getValue() - 1, sourceArgVar);
-
-                    cont.here();
-                }
-
-                ready.here();
-                mm.return_(argsVar);
-            }
-
-            Variable prepareArgs(Variable argsVar) {
-                if (argMappers == null) {
-                    // No special method was defined.
-                    return argsVar;
-                } else {
-                    return argsVar.methodMaker().invoke("prepareArgs", argsVar);
-                }
-            }
-        };
-
-        var split = new RowFilter[2];
-        targetFilter.split(checker, split);
-
-        RowFilter sourceFilter = split[0];
-        RowFilter targetRemainder = split[1];
-
-        Query sourceQuery;
-
-        String sourceProjection = mMapper.sourceProjection();
-        if (sourceProjection == null) {
-            sourceQuery = new Query(null, null, sourceFilter);
-        } else {
-            sourceQuery = new Parser(sourceInfo.allColumns, '{' + sourceProjection + '}')
-                .parseQuery(null).withFilter(sourceFilter);
-        }
-
-        SortPlan sortPlan = finder.analyzeSort(targetQuery);
-
-        if (sortPlan != null && sortPlan.sourceOrder != null) {
-            sourceQuery = sourceQuery.withOrderBy(sortPlan.sourceOrder);
-        } else if (sourceQuery.projection() == null && sourceQuery.filter() == TrueFilter.THE) {
-            // There's no orderBy, all columns are projected, there's no filter, so just do a
-            // full scan.
-            sourceQuery = null;
-        }
+    @Override
+    public MethodHandle makeQueryFactory(QuerySpec targetQuery) {
+        var splitter = new Splitter(targetQuery);
 
         Class<T> targetType = rowType();
         RowInfo targetInfo = RowInfo.find(targetType);
 
         ClassMaker cm = targetInfo.rowGen().beginClassMaker
-            (MappedTable.class, targetType, null).final_().implement(ScannerFactory.class);
+            (MappedTable.class, targetType, "query").final_().extend(BaseQuery.class);
 
-        cm.addConstructor().private_();
+        {
+            MethodMaker mm = cm.addConstructor(MappedTable.class).private_();
+            var tableVar = mm.param(0);
+            QuerySpec sourceQuery = splitter.mSourceQuery;
+            if (sourceQuery == null) {
+                mm.invokeSuperConstructor(tableVar);
+            } else {
+                mm.invokeSuperConstructor(tableVar, sourceQuery.toString());
+            }
+        }
+
+        RowFilter targetRemainder = splitter.mTargetRemainder;
 
         if (targetRemainder != TrueFilter.THE || targetQuery.projection() != null) {
-            // Allow factory instances to serve as Mapper wrappers for supporting predicate
-            // testing and projection.
+            // Allow unbound query instances to serve as Mapper wrappers for supporting
+            // predicate testing and projection.
 
             cm.implement(Mapper.class);
 
@@ -781,7 +600,7 @@ public abstract class MappedTable<S, T> implements Table<T> {
             mm.field("mapper").set(mm.param(0));
 
             if (targetRemainder != TrueFilter.THE) {
-                cm.addField(Predicate.class, "predicate").private_();
+                cm.addField(Predicate.class, "predicate").private_().final_();
                 MethodHandle mh = PlainPredicateMaker
                     .predicateHandle(targetType, targetRemainder.toString());
                 mm.field("predicate").set(mm.invoke(mh, mm.param(1)));
@@ -815,29 +634,31 @@ public abstract class MappedTable<S, T> implements Table<T> {
             mm.return_(targetRowVar);
         }
 
-        checker.addPrepareArgsMethod(cm);
+        splitter.addPrepareArgsMethod(cm);
 
         for (int which = 1; which <= 2; which++) {
             String methodName = which == 1 ? "newScanner" : "newUpdater";
 
             MethodMaker mm = cm.addMethod
-                (which == 1 ? Scanner.class : Updater.class, methodName + "With",
-                 MappedTable.class, Transaction.class, Object.class, Object[].class)
+                (which == 1 ? Scanner.class : Updater.class, methodName,
+                 Object.class, Transaction.class, Object[].class)
                 .public_().varargs();
 
-            var tableVar = mm.param(0);
+            var targetRowVar = mm.param(0);
             var txnVar = mm.param(1);
-            var targetRowVar = mm.param(2);
-            var argsVar = mm.param(3);
+            var argsVar = mm.param(2);
+            var tableVar = mm.field("table");
 
-            if (which != 1 && sortPlan != null && sortPlan.sortOrder != null) {
+            SortPlan sortPlan = splitter.mSortPlan;
+
+            if (which != 1 && sortPlan.sortOrder != null) {
                 // Use a WrappedUpdater around a sorted Scanner.
                 mm.return_(tableVar.invoke
                            ("newWrappedUpdater", mm.this_(), txnVar, targetRowVar, argsVar));
                 continue;
             }
 
-            argsVar = checker.prepareArgs(argsVar);
+            argsVar = splitter.prepareArgs(argsVar);
 
             var mapperVar = tableVar.invoke("mapper");
 
@@ -845,19 +666,11 @@ public abstract class MappedTable<S, T> implements Table<T> {
                 mapperVar.set(mm.new_(cm, mapperVar, argsVar));
             }
 
-            var sourceTableVar = tableVar.invoke("source");
-            Variable sourceScannerVar;
-
-            if (sourceQuery == null) {
-                sourceScannerVar = sourceTableVar.invoke(methodName, txnVar);
-            } else {
-                sourceScannerVar = sourceTableVar.invoke
-                    (methodName, txnVar, sourceQuery.toString(), argsVar);
-            }
+            var sourceScannerVar = mm.field("squery").invoke(methodName, txnVar, argsVar);
 
             Variable resultVar;
 
-            if (sortPlan != null && sortPlan.sortOrder != null) {
+            if (sortPlan.sortOrder != null) {
                 if (which != 1) {
                     throw new AssertionError();
                 }
@@ -891,29 +704,26 @@ public abstract class MappedTable<S, T> implements Table<T> {
 
         {
             MethodMaker mm = cm.addMethod(QueryPlan.class, "plan", boolean.class,
-                                          MappedTable.class, Transaction.class, Object[].class)
-                .public_().varargs();
+                                          Transaction.class, Object[].class)
+                .protected_().varargs();
 
             var forUpdaterVar = mm.param(0);
-            var tableVar = mm.param(1);
-            var txnVar = mm.param(2);
-            var argsVar = checker.prepareArgs(mm.param(3));
+            var txnVar = mm.param(1);
+            var argsVar = splitter.prepareArgs(mm.param(2));
+            var sourceQueryVar = mm.field("squery");
 
-            String sourceQueryStr = sourceQuery == null ? null : sourceQuery.toString();
-
-            var sourceTableVar = tableVar.invoke("source");
-            var planVar = mm.var(QueryPlan.class);
+            final var planVar = mm.var(QueryPlan.class);
 
             Label forUpdater = mm.label();
             forUpdaterVar.ifTrue(forUpdater);
-            planVar.set(sourceTableVar.invoke("scannerPlan", txnVar, sourceQueryStr, argsVar));
+            planVar.set(sourceQueryVar.invoke("scannerPlan", txnVar, argsVar));
             Label ready = mm.label().goto_();
             forUpdater.here();
-            planVar.set(sourceTableVar.invoke("updaterPlan", txnVar, sourceQueryStr, argsVar));
+            planVar.set(sourceQueryVar.invoke("updaterPlan", txnVar, argsVar));
             ready.here();
 
             var targetVar = mm.var(Class.class).set(targetType).invoke("getName");
-            var mapperVar = tableVar.invoke("mapper");
+            var mapperVar = mm.field("table").invoke("mapper");
             var usingVar = mapperVar.invoke("toString");
 
             var mapperPlanVar = mm.new_(QueryPlan.Mapper.class, targetVar, usingVar, planVar);
@@ -923,7 +733,9 @@ public abstract class MappedTable<S, T> implements Table<T> {
                 planVar.set(mm.new_(QueryPlan.Filter.class, targetRemainder.toString(), planVar));
             }
 
-            if (sortPlan != null && sortPlan.sortOrder != null) {
+            SortPlan sortPlan = splitter.mSortPlan;
+
+            if (sortPlan.sortOrder != null) {
                 var columnsVar = mm.var(OrderBy.class).invoke("splitSpec", sortPlan.sortOrderSpec);
                 planVar.set(mm.new_(QueryPlan.Sort.class, columnsVar, planVar));
             }
@@ -931,59 +743,93 @@ public abstract class MappedTable<S, T> implements Table<T> {
             mm.return_(planVar);
         }
 
-        try {
-            MethodHandles.Lookup lookup = cm.finishHidden();
-            MethodHandle mh = lookup.findConstructor
-                (lookup.lookupClass(), MethodType.methodType(void.class));
-            return (ScannerFactory<S, T>) mh.invoke();
-        } catch (Throwable e) {
-            throw RowUtils.rethrow(e);
+        // Keep a reference to the MethodHandle instance, to prevent it from being garbage
+        // collected as long as the generated query class still exists.
+        cm.addField(Object.class, "handle").private_().static_();
+
+        return QueryFactoryCache.ctorHandle(cm.finishLookup(), MappedTable.class);
+    }
+
+    @Override
+    protected String sourceProjection() {
+        return mMapper.sourceProjection();
+    }
+
+    @Override
+    protected Class<?> inverseFunctions() {
+        return mMapper.getClass();
+    }
+
+    @Override
+    protected SortPlan analyzeSort(InverseFinder finder, QuerySpec targetQuery) {
+        OrderBy targetOrder = targetQuery.orderBy();
+
+        var plan = new SortPlan();
+
+        if (targetOrder == null) {
+            return plan;
         }
-    }
 
-    public interface ScannerFactory<S, T> {
-        Scanner<T> newScannerWith(MappedTable<S, T> table,
-                                  Transaction txn, T targetRow, Object... args)
-            throws IOException;
+        OrderBy sourceOrder = null;
 
-        Updater<T> newUpdaterWith(MappedTable<S, T> table,
-                                  Transaction txn, T targetRow, Object... args)
-            throws IOException;
+        for (var rule : targetOrder.values()) {
+            ColumnFunction source = finder.tryFindSource(rule.column());
+            if (source == null || !source.isUntransformed()) {
+                break;
+            }
+            if (sourceOrder == null) {
+                sourceOrder = new OrderBy();
+            }
+            ColumnInfo sourceColumn = source.column();
+            sourceOrder.put(sourceColumn.name, new OrderBy.Rule(sourceColumn, rule.type()));
+        }
 
-        QueryPlan plan(boolean forUpdater, MappedTable<S, T> table, Transaction txn, Object... args)
-            throws IOException;
+        if (sourceOrder != null && sourceOrder.size() >= targetOrder.size()) {
+            // Can push the entire sort operation to the source.
+            plan.sourceOrder = sourceOrder;
+            return plan;
+        }
+
+        /*
+          Apply the entire sort operation on the target scanner. It's possible for a partial
+          ordering to be performed on the source, but it's a bit complicated. The key is to
+          ensure that no sort operation is performed against the source. A double sort doesn't
+          make any sense.
+
+          For now partial ordering isn't supported, but here's what needs to happen:
+
+          Examine the source query plan with the sourceOrder applied to it. If no sort is
+          performed, then a partial sort is possible. Otherwise, examine the sort and remove
+          the ordering columns that the sort applies to. Examine the surviving ordering
+          columns, and keep the leading contiguous ones. If none remain, then no partial sort
+          is possible. If a partial sort is still possible, examine the source query plan again
+          to verify that no sort will be applied.
+
+          The target sorter needs to be given the sourceComparator, which identifies row
+          groups. The final sort only needs to apply these groups and not the whole set.
+        */
+
+        plan.sortOrder = targetOrder;
+        String targetSpec = targetOrder.spec();
+        plan.sortOrderSpec = targetSpec;
+        plan.sortComparator = ComparatorMaker.comparator(rowType(), targetOrder, targetSpec);
+
+        return plan;
     }
 
     /**
-     * Called by the generated ScannerFactory.
-     */
-    public final Table<S> source() {
-        return mSource;
-    }
-
-    /**
-     * Called by the generated ScannerFactory.
+     * Called by generated Query instances.
      */
     public final Mapper<S, T> mapper() {
         return mMapper;
     }
 
     /**
-     * Called by the generated ScannerFactory.
-     */
-    public final Scanner<T> sort(Scanner<T> source, Comparator<T> comparator,
-                                 Set<String> projection, String orderBySpec)
-        throws IOException
-    {
-        return RowSorter.sort(this, source, comparator, projection, orderBySpec);
-    }
-
-    /**
-     * Called by the generated ScannerFactory.
+     * Called by generated Query instances.
      *
-     * @see SortedQueryLauncher#newUpdaterWith
+     * @see SortedQueryLauncher#newUpdater
      */
-    public final Updater<T> newWrappedUpdater(ScannerFactory<S, T> factory,
+    public final Updater<T> newWrappedUpdater(Query<T> query,
                                               Transaction txn, T targetRow, Object... args)
         throws IOException
     {
@@ -994,7 +840,7 @@ public abstract class MappedTable<S, T> implements Table<T> {
 
             Scanner<T> scanner;
             try {
-                scanner = factory.newScannerWith(this, txn, targetRow, args);
+                scanner = query.newScanner(targetRow, txn, args);
                 // Commit the transaction scope to promote and keep all the locks which were
                 // acquired by the sort operation.
                 txn.commit();
@@ -1015,13 +861,45 @@ public abstract class MappedTable<S, T> implements Table<T> {
 
         Scanner<T> scanner;
         try {
-            scanner = factory.newScannerWith(this, txn, targetRow, args);
+            scanner = query.newScanner(targetRow, txn, args);
         } catch (Throwable e) {
             txn.exit();
             throw e;
         }
 
         return new WrappedUpdater.EndCommit<>(this, txn, scanner);
+    }
+
+    public static abstract class BaseQuery<S, T> implements Query<T> {
+        protected final MappedTable<S, T> table;
+        protected final Query<S> squery;
+
+        protected BaseQuery(MappedTable<S, T> table) throws IOException {
+            this.table = table;
+            this.squery = table.mSource.queryAll();
+        }
+
+        protected BaseQuery(MappedTable<S, T> table, String queryStr) throws IOException {
+            this.table = table;
+            this.squery = table.mSource.query(queryStr);
+        }
+
+        // Used when Query is also a Mapper.
+        protected BaseQuery() {
+            this.table = null;
+            this.squery = null;
+        }
+
+        public final QueryPlan scannerPlan(Transaction txn, Object... args) throws IOException {
+            return plan(false, txn, args);
+        }
+
+        public final QueryPlan updaterPlan(Transaction txn, Object... args) throws IOException {
+            return plan(true, txn, args);
+        }
+
+        protected abstract QueryPlan plan(boolean forUpdater, Transaction txn, Object... args)
+            throws IOException;
     }
 
     public interface InverseMapper<S, T> {
@@ -1081,155 +959,5 @@ public abstract class MappedTable<S, T> implements Table<T> {
         public Object inverseMapForLoad(Table source, Object targetRow) throws IOException {
             throw new ViewConstraintException();
         }
-    }
-
-    /**
-     * @param function is null for identity mapping
-     */
-    private record ColumnFunction(ColumnInfo column, Method function) { }
-
-    /**
-     * Finds inverse mapping functions defined in a Mapper implementation.
-     */
-    private class InverseFinder {
-        private final boolean mIdentity;
-        private final Map<String, ColumnInfo> mSourceColumns;
-        private final TreeMap<String, Method> mAllMethods;
-
-        InverseFinder(Map<String, ColumnInfo> sourceColumns) {
-            Class<? extends Mapper> mapperClass = mMapper.getClass();
-
-            mIdentity = Mapper.Identity.class.isAssignableFrom(mapperClass);
-            mSourceColumns = sourceColumns;
-
-            mAllMethods = new TreeMap<>();
-            for (Method m : mapperClass.getMethods()) {
-                mAllMethods.put(m.getName(), m);
-            }
-        }
-
-        ColumnFunction tryFindSource(ColumnInfo targetColumn) {
-            String prefix = targetColumn.name + "_to_";
-
-            for (Method candidate : mAllMethods.tailMap(prefix).values()) {
-                String name = candidate.getName();
-                if (!name.startsWith(prefix)) {
-                    break;
-                }
-
-                if (!Modifier.isStatic(candidate.getModifiers())) {
-                    continue;
-                }
-
-                Class<?> retType = candidate.getReturnType();
-                if (retType == null || retType == void.class) {
-                    continue;
-                }
-
-                Class<?>[] paramTypes = candidate.getParameterTypes();
-                if (paramTypes.length != 1) {
-                    continue;
-                }
-
-                if (!paramTypes[0].isAssignableFrom(targetColumn.type)) {
-                    continue;
-                }
-
-                ColumnInfo sourceColumn = mSourceColumns.get(name.substring(prefix.length()));
-                if (sourceColumn == null) {
-                    continue;
-                }
-
-                if (!sourceColumn.type.isAssignableFrom(retType)) {
-                    continue;
-                }
-
-                return new ColumnFunction(sourceColumn, candidate);
-            }
-
-            if (!mIdentity) {
-                return null;
-            }
-
-            ColumnInfo sourceColumn = mSourceColumns.get(targetColumn.name);
-
-            return sourceColumn == null ? null : new ColumnFunction(sourceColumn, null);
-        }
-
-        /**
-         * @return null if nothing special needs to be done for sorting
-         */
-        SortPlan analyzeSort(Query targetQuery) {
-            OrderBy targetOrder = targetQuery.orderBy();
-
-            if (targetOrder == null) {
-                return null;
-            }
-
-            var plan = new SortPlan();
-
-            OrderBy sourceOrder = null;
-
-            for (var rule : targetOrder.values()) {
-                ColumnFunction source = tryFindSource(rule.column());
-                if (source == null || source.function() != null) {
-                    break;
-                }
-                if (sourceOrder == null) {
-                    sourceOrder = new OrderBy();
-                }
-                ColumnInfo sourceColumn = source.column();
-                sourceOrder.put(sourceColumn.name, new OrderBy.Rule(sourceColumn, rule.type()));
-            }
-
-            if (sourceOrder != null && sourceOrder.size() >= targetOrder.size()) {
-                // Can push the entire sort operation to the source.
-                plan.sourceOrder = sourceOrder;
-                return plan;
-            }
-
-            /*
-              Apply the entire sort operation on the target scanner. It's possible for a
-              partial ordering to be performed on the source, it's a bit complicated. The key
-              is to ensure that no sort operation is performed against the source. A double
-              sort doesn't make any sense.
-
-              For now partial ordering isn't supported, but here's what needs to happen:
-
-              Examine the source query plan with the sourceOrder applied to it. If no sort is
-              performed, then a partial sort is possible. Otherwise, examine the sort and
-              remove the ordering columns that the sort applies to. Examine the surviving
-              ordering columns, and keep the leading contiguous ones. If none remain, then no
-              partial sort is possible. If a partial sort is still possible, examine the source
-              query plan again to verify that no sort will be applied.
-
-              The target sorter needs to be given the sourceComparator, which identifies row
-              groups. The final sort only needs to apply these groups and not the whole set.
-            */
-
-            plan.sortOrder = targetOrder;
-            String targetSpec = targetOrder.spec();
-            plan.sortOrderSpec = targetSpec;
-            plan.sortComparator = ComparatorMaker.comparator(rowType(), targetOrder, targetSpec);
-
-            return plan;
-        }
-    }
-
-    private static class SortPlan {
-        // Optional ordering to apply to the source scanner.
-        OrderBy sourceOrder;
-
-        // Defines a partial order, and is required when sourceOrder and sortOrder is defined.
-        //Comparator sourceComparator;
-
-        // Optional sort order to apply to the target scanner.
-        OrderBy sortOrder;
-
-        // Is required when sortOrder is defined.
-        String sortOrderSpec;
-
-        // Is required when sortOrder is defined.
-        Comparator sortComparator;
     }
 }

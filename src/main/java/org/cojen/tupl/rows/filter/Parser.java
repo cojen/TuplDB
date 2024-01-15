@@ -35,6 +35,7 @@ import org.cojen.tupl.rows.SimpleParser;
  */
 public final class Parser extends SimpleParser {
     private final Map<String, ? extends ColumnInfo> mAllColumns;
+    private final int mArgDelta;
 
     private int mNextArg;
     private Map<Integer, Boolean> mInArgs;
@@ -44,8 +45,16 @@ public final class Parser extends SimpleParser {
     private OrderBy mOrderBy;
 
     public Parser(Map<String, ? extends ColumnInfo> allColumns, String filter) {
+        this(allColumns, filter, 0);
+    }
+
+    /**
+     * @param argDelta amount to add to each argument number after being parsed
+     */
+    public Parser(Map<String, ? extends ColumnInfo> allColumns, String filter, int argDelta) {
         super(filter);
         mAllColumns = allColumns;
+        mArgDelta = argDelta;
     }
 
     /**
@@ -53,9 +62,9 @@ public final class Parser extends SimpleParser {
      *
      * @param availableColumns can pass null if same as all columns
      */
-    public Query parseQuery(Map<String, ? extends ColumnInfo> availableColumns) {
+    public QuerySpec parseQuery(Map<String, ? extends ColumnInfo> availableColumns) {
         parseProjection(availableColumns);
-        return new Query(mProjection, mOrderBy, parseFilter());
+        return new QuerySpec(mProjection, mOrderBy, parseFilter());
     }
 
     /**
@@ -63,10 +72,11 @@ public final class Parser extends SimpleParser {
      * ProjColumns  = [ ProjColumn { "," ProjColumn } ]
      * ProjColumn   = ( ( ( ( "+" | "-" ) [ "!" ] ) | "~" ) ColumnName ) | "*"
      *
-     * Returns null if string doesn't start with a projection or if the projection is all of
-     * the available columns. If the projection ends with a non-whitespace character, then a
-     * subsequent call to parseFilter expects a filter. If only whitespace characters remain,
-     * parseFilter expects nothing, and so it returns TrueFilter.
+     * Assigns mProjection and mOrderBy as a side-effect. The mProjection field is null if the
+     * string doesn't start with a projection or if the projection is all of the available
+     * columns. If the projection ends with a non-whitespace character, then a subsequent call
+     * to parseFilter expects a filter. If only whitespace characters remain, parseFilter
+     * expects nothing, and so it returns TrueFilter.
      *
      * @param availableColumns can pass null if same as all columns
      */
@@ -238,9 +248,10 @@ public final class Parser extends SimpleParser {
      * RowFilter    = AndFilter { "||" AndFilter }
      * AndFilter    = EntityFilter { "&&" EntityFilter }
      * EntityFilter = ColumnFilter | ParenFilter
-     * ParenFilter  = [ "!" ] "(" RowFilter ")"
+     * ParenFilter  = [ "!" ] "(" [ RowFilter ] ")"
      * ColumnFilter = ColumnName RelOp ( ArgRef | ColumnName )
      *              | ColumnName "in" ArgRef
+     *              | ArgRef RelOp ColumnName
      * RelOp        = "==" | "!=" | ">=" | "<" | "<=" | ">"
      * ColumnName   = string
      * ArgRef       = "?" [ uint ]
@@ -352,93 +363,43 @@ public final class Parser extends SimpleParser {
             return parseParenFilter().not();
         } else if (c == '(') {
             return parseParenFilter();
+        } else if (c == '?') {
+            // arg-to-column comparison
+
+            int arg = parseArgNumber();
+
+            int startPos = mPos;
+            int op = parseOp();
+
+            if (op > ColumnFilter.OP_GT) {
+                mPos = startPos;
+                skipWhitespace();
+                throw error("Unsupported operator");
+            }
+
+            skipWhitespace();
+            ColumnInfo column = parseColumn(null);
+
+            op = ColumnFilter.reverseOperator(op);
+            var filter = new ColumnToArgFilter(column, op, arg);
+            inArgCheck(startPos, filter);
+
+            return filter;
         }
 
         mPos--;
 
-        // parseColumnFilter
-
         int startPos = mPos;
         ColumnInfo column = parseColumn(null);
 
-        c = nextCharIgnoreWhitespace();
-
-        int op;
-        switch (c) {
-            case '=' -> {
-                c = nextChar();
-                if (c == '=') {
-                    op = ColumnFilter.OP_EQ;
-                } else {
-                    mPos -= 2;
-                    throw error("Equality operator must be specified as '=='");
-                }
-                operatorCheck();
-            }
-            case '!' -> {
-                c = nextChar();
-                if (c == '=') {
-                    op = ColumnFilter.OP_NE;
-                } else {
-                    mPos -= 2;
-                    throw error("Inequality operator must be specified as '!='");
-                }
-                operatorCheck();
-            }
-            case '<' -> {
-                c = nextChar();
-                if (c == '=') {
-                    op = ColumnFilter.OP_LE;
-                } else {
-                    mPos--;
-                    op = ColumnFilter.OP_LT;
-                }
-                operatorCheck();
-            }
-            case '>' -> {
-                c = nextChar();
-                if (c == '=') {
-                    op = ColumnFilter.OP_GE;
-                } else {
-                    mPos--;
-                    op = ColumnFilter.OP_GT;
-                }
-                operatorCheck();
-            }
-            case 'i' -> {
-                c = nextChar();
-                if (c == 'n') {
-                    op = ColumnFilter.OP_IN;
-                } else {
-                    mPos -= 2;
-                    throw error("Unknown operator");
-                }
-                operatorCheck(true);
-            }
-            case '?' -> {
-                mPos--;
-                throw error("Relational operator missing");
-            }
-            case '*' -> {
-                mPos--;
-                throw error("Wildcard disallowed here");
-            }
-            case -1 -> throw error("Relational operator expected");
-            default -> {
-                mPos--;
-                throw error("Unknown operator");
-            }
-        }
+        int op = parseOp();
 
         c = nextCharIgnoreWhitespace();
 
         int arg;
         if (c == '?') {
             // column-to-arg comparison
-            arg = tryParseArgNumber();
-            if (arg < 0) {
-                arg = ++mNextArg;
-            }
+            arg = parseArgNumber();
         } else {
             // column-to-column comparison
 
@@ -460,27 +421,33 @@ public final class Parser extends SimpleParser {
         }
 
         ColumnToArgFilter filter;
-        Boolean in;
-
         if (op < ColumnFilter.OP_IN) {
             filter = new ColumnToArgFilter(column, op, arg);
-            in = Boolean.FALSE;
         } else {
             filter = new InFilter(column, arg);
-            in = Boolean.TRUE;
         }
 
-        Boolean existing = mInArgs.putIfAbsent(arg, in);
-
-        if (existing != null && existing != in) {
-            throw error("Mismatched argument usage with 'in' operator", startPos);
-        }
+        inArgCheck(startPos, filter);
 
         return filter;
     }
 
+    private void inArgCheck(int startPos, ColumnToArgFilter filter) {
+        Boolean in = filter.operator() >= ColumnFilter.OP_IN;
+        Boolean existing = mInArgs.putIfAbsent(filter.argument(), in);
+        if (existing != null && existing != in) {
+            throw error("Mismatched argument usage with 'in' operator", startPos);
+        }
+    }
+
     // Left paren has already been consumed.
     private RowFilter parseParenFilter() {
+        int c = nextCharIgnoreWhitespace();
+        if (c == ')') {
+            return TrueFilter.THE;
+        } else {
+            mPos--;
+        }
         RowFilter filter = doParseFilter();
         if (nextCharIgnoreWhitespace() != ')') {
             mPos--;
@@ -575,6 +542,91 @@ public final class Parser extends SimpleParser {
         } while (Character.isJavaIdentifierPart(c));
 
         return mText.substring(start, --mPos);
+    }
+
+    private int parseOp() {
+        int c = nextCharIgnoreWhitespace();
+
+        int op;
+        switch (c) {
+            case '=' -> {
+                c = nextChar();
+                if (c == '=') {
+                    op = ColumnFilter.OP_EQ;
+                } else {
+                    mPos -= 2;
+                    throw error("Equality operator must be specified as '=='");
+                }
+                operatorCheck();
+            }
+            case '!' -> {
+                c = nextChar();
+                if (c == '=') {
+                    op = ColumnFilter.OP_NE;
+                } else {
+                    mPos -= 2;
+                    throw error("Inequality operator must be specified as '!='");
+                }
+                operatorCheck();
+            }
+            case '<' -> {
+                c = nextChar();
+                if (c == '=') {
+                    op = ColumnFilter.OP_LE;
+                } else {
+                    mPos--;
+                    op = ColumnFilter.OP_LT;
+                }
+                operatorCheck();
+            }
+            case '>' -> {
+                c = nextChar();
+                if (c == '=') {
+                    op = ColumnFilter.OP_GE;
+                } else {
+                    mPos--;
+                    op = ColumnFilter.OP_GT;
+                }
+                operatorCheck();
+            }
+            case 'i' -> {
+                c = nextChar();
+                if (c == 'n') {
+                    op = ColumnFilter.OP_IN;
+                } else {
+                    mPos -= 2;
+                    throw error("Unknown operator");
+                }
+                operatorCheck(true);
+            }
+            case '?' -> {
+                mPos--;
+                throw error("Relational operator missing");
+            }
+            case '*' -> {
+                mPos--;
+                throw error("Wildcard disallowed here");
+            }
+            case -1 -> throw error("Relational operator expected");
+            default -> {
+                mPos--;
+                throw error("Unknown operator");
+            }
+        }
+
+        return op;
+    }
+
+    /**
+     * Returns a parsed argument or generates the next one.
+     */
+    private int parseArgNumber() {
+        int arg = tryParseArgNumber();
+        if (arg < 0) {
+            arg = ++mNextArg;
+        }
+        arg += mArgDelta;
+        return arg;
     }
 
     /**

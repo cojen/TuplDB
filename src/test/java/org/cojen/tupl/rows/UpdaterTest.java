@@ -63,7 +63,7 @@ public class UpdaterTest {
         {
             // Full scan with a projection might choose the secondary index because it has
             // fewer columns.
-            QueryPlan plan = table.scannerPlan(null, "{name, id} id == ? || name == ?");
+            QueryPlan plan = table.query("{name, id} id == ? || name == ?").scannerPlan(null);
             assertEquals(new QueryPlan.Filter
                          ("id == ?1 || name == ?2", new QueryPlan.FullScan
                           (TestRow.class.getName(), "secondary index",
@@ -74,7 +74,7 @@ public class UpdaterTest {
         {
             // Full scan for update with chooses the primary index to avoid an extra join, as
             // needed by the update operation itself.
-            QueryPlan plan = table.updaterPlan(null, "{name, id} id == ? || name == ?");
+            QueryPlan plan = table.query("{name, id} id == ? || name == ?").updaterPlan(null);
             assertEquals(new QueryPlan.Filter
                          ("id == ?1 || name == ?2", new QueryPlan.FullScan
                           (TestRow.class.getName(), "primary key",

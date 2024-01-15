@@ -591,7 +591,7 @@ public final class _LocalTransaction extends _Locker implements CoreTransaction 
         ParentScope parentScope = mParentScope;
         if (parentScope == null) {
             try {
-                doRollback(mHasState);
+                doRollbackAll(mHasState);
             } catch (Throwable e) {
                 borked(e, true, null); // rollback = true, rethrow = maybe
             }
@@ -630,7 +630,7 @@ public final class _LocalTransaction extends _Locker implements CoreTransaction 
     public final void reset() {
         if (mBorked == null) {
             try {
-                rollback();
+                rollbackAll();
             } catch (Throwable e) {
                 borked(e, true, null); // rollback = true, rethrow = maybe
             }
@@ -653,7 +653,19 @@ public final class _LocalTransaction extends _Locker implements CoreTransaction 
         borked(cause, true, false); // rollback = true, rethrow = false
     }
 
-    private void rollback() throws IOException {
+    @Override
+    public void rollback() throws IOException {
+        if (!isNested()) {
+            reset();
+        } else {
+            LockMode lockMode = mLockMode;
+            exit();
+            enter();
+            mLockMode = lockMode;
+        }
+    }
+
+    private void rollbackAll() throws IOException {
         int hasState = mHasState;
         ParentScope parentScope = mParentScope;
         while (parentScope != null) {
@@ -661,10 +673,10 @@ public final class _LocalTransaction extends _Locker implements CoreTransaction 
             parentScope = parentScope.mParentScope;
         }
 
-        doRollback(hasState);
+        doRollbackAll(hasState);
     }
 
-    private void doRollback(int hasState) throws IOException {
+    private void doRollbackAll(int hasState) throws IOException {
         if (hasState != 0) {
             if ((hasState & HAS_PREPARE) != 0 && tryPreparedRollback()) {
                 return;
@@ -1813,7 +1825,7 @@ public final class _LocalTransaction extends _Locker implements CoreTransaction 
             } else if (rollback) {
                 // Attempt to rollback the mess and release the locks.
                 try {
-                    rollback();
+                    rollbackAll();
                 } catch (Throwable rollbackFailed) {
                     if (mBorked != null) {
                         // Rollback already took care of borking the transaction.

@@ -1271,7 +1271,7 @@ final class _TransactionContext extends Latch implements Flushable {
         if (mUncommitted == null) {
             mUncommitted = new LHashTable.Obj<>(4);
         }
-        mUncommitted.insert(txnId);
+        mUncommitted.put(txnId);
     }
 
     /**
@@ -1305,7 +1305,7 @@ final class _TransactionContext extends Latch implements Flushable {
                 return uncommitted;
             }
             uncommitted.traverse(e -> {
-                dest.insert(e.key);
+                dest.put(e.key);
                 return false;
             });
         }
@@ -1334,7 +1334,7 @@ final class _TransactionContext extends Latch implements Flushable {
                 if (dest == null) {
                     dest = new LHashTable.Obj<>(4);
                 }
-                dest.insert(log.mTxnId);
+                dest.put(log.mTxnId);
             }
         }
         return dest;

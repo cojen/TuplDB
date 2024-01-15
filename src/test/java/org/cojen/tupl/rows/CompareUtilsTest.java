@@ -89,7 +89,7 @@ public class CompareUtilsTest {
                                    ColumnInfo rightInfo, long rightValue)
         throws Throwable
     {
-        MethodMaker mm = MethodMaker.begin(MethodHandles.lookup(), null, null);
+        MethodMaker mm = MethodMaker.begin(MethodHandles.lookup(), null, "_");
 
         Variable leftVar = mm.var(long.class).set(leftValue).cast(leftInfo.type);
         Variable rightVar = mm.var(long.class).set(rightValue).cast(rightInfo.type);

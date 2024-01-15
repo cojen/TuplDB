@@ -779,7 +779,7 @@ final class _LocalDatabase extends CoreDatabase {
                         // Assign after any find operation, because it will reset the cursor id.
                         cursor.mCursorId = cursorId;
 
-                        cursors.insert(cursorId).value = cursor;
+                        cursors.put(cursorId).value = cursor;
                     }
 
                     cursorRegistry.forceClose();
@@ -1926,7 +1926,7 @@ final class _LocalDatabase extends CoreDatabase {
 
                     mOpenTreesLatch.acquireExclusive();
                     try {
-                        mOpenTreesById.insert(treeId).value = treeRef;
+                        mOpenTreesById.put(treeId).value = treeRef;
                     } finally {
                         mOpenTreesLatch.releaseExclusive();
                     }
@@ -2281,7 +2281,7 @@ final class _LocalDatabase extends CoreDatabase {
         H handler = findRecoveryHandler(name, handlers);
 
         synchronized (handlersById) {
-            handlersById.insert(scrambledId).value = handler;
+            handlersById.put(scrambledId).value = handler;
         }
 
         return handler;
@@ -2852,6 +2852,8 @@ final class _LocalDatabase extends CoreDatabase {
     }
 
     private class FreeListScan implements Runnable, LongConsumer {
+        private final IdSet mIdSet = new IdSet(mTempFileManager);
+
         private Object mFinished;
 
         @Override
@@ -2878,7 +2880,13 @@ final class _LocalDatabase extends CoreDatabase {
 
         @Override
         public void accept(long id) {
-            // TODO: check for duplicates
+            try {
+                if (!mIdSet.add(id)) {
+                    throw new CorruptDatabaseException("Duplicate page id in free list: " + id);
+                }
+            } catch (Throwable e) {
+                throw rethrow(e);
+            }
         }
 
         synchronized void waitFor() throws IOException {
@@ -2888,6 +2896,16 @@ final class _LocalDatabase extends CoreDatabase {
                 }
             } catch (InterruptedException e) {
                 return;
+            }
+
+            try {
+                mIdSet.close();
+            } catch (Throwable e) {
+                if (mFinished instanceof Throwable t) {
+                    suppress(t, e);
+                } else {
+                    throw e;
+                }
             }
 
             if (mFinished instanceof Throwable t) {
@@ -3050,6 +3068,8 @@ final class _LocalDatabase extends CoreDatabase {
                     Thread.yield();
                 }
 
+                RowStore rs;
+
                 try {
                     trees = new ArrayList<>(mOpenTreesById.size());
 
@@ -3075,7 +3095,8 @@ final class _LocalDatabase extends CoreDatabase {
                     trees.add(mPreparedTxns);
                     mPreparedTxns = null;
 
-                    if (mRowStore != null) {
+                    rs = mRowStore;
+                    if (rs != null) {
                         trees.add((Tree) mRowStore.schemata());
                         mRowStore = null;
                     }
@@ -3105,6 +3126,10 @@ final class _LocalDatabase extends CoreDatabase {
 
                 if (mRegistry != null) {
                     mRegistry.forceClose();
+                }
+
+                if (rs != null) {
+                    rs.shutdown();
                 }
             }
 
@@ -3897,7 +3922,7 @@ final class _LocalDatabase extends CoreDatabase {
                         mOpenTrees.put(name, treeRef);
                     }
                     try {
-                        mOpenTreesById.insert(treeId).value = treeRef;
+                        mOpenTreesById.put(treeId).value = treeRef;
                     } catch (Throwable e) {
                         if (name != null) {
                             mOpenTrees.remove(name);

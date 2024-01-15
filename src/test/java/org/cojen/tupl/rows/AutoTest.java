@@ -61,7 +61,7 @@ public class AutoTest {
                 row.id(i);
             }
             row.val("val-" + i);
-            assertTrue(table.insert(null, row));
+            table.insert(null, row);
             if ((i & 1) == 0) {
                 assertEquals(i, row.id());
             } else {
@@ -107,7 +107,7 @@ public class AutoTest {
                 row.id(i);
             }
             row.val("val-" + i);
-            assertTrue(table.insert(null, row));
+            table.insert(null, row);
             if ((i & 1) == 0) {
                 assertEquals(i, row.id());
             } else {
@@ -175,7 +175,7 @@ public class AutoTest {
                 row.id(i);
             }
             row.val("val-" + i);
-            assertTrue(table.insert(null, row));
+            table.insert(null, row);
             if ((i & 1) == 0) {
                 assertEquals(i, row.id());
             } else {
@@ -241,7 +241,7 @@ public class AutoTest {
                 row.id(i);
             }
             row.val("val-" + i);
-            assertTrue(table.insert(null, row));
+            table.insert(null, row);
             if ((i & 1) == 0) {
                 assertEquals(i, row.id());
             } else {
@@ -281,7 +281,7 @@ public class AutoTest {
                 row.id(i);
             }
             row.val("val-" + i);
-            assertTrue(table.insert(null, row));
+            table.insert(null, row);
             if ((i & 1) == 0) {
                 assertEquals(i, row.id());
             } else {
@@ -321,7 +321,7 @@ public class AutoTest {
                 row.id(i);
             }
             row.val("val-" + i);
-            assertTrue(table.insert(null, row));
+            table.insert(null, row);
             if ((i & 1) == 0) {
                 assertEquals(i, row.id());
             } else {
@@ -360,7 +360,7 @@ public class AutoTest {
             while (i <= 1000) {
                 var row = table.newRow();
                 row.val("val-" + i);
-                assertTrue(table.insert(null, row));
+                table.insert(null, row);
                 i++;
             }
             fail();
@@ -400,7 +400,7 @@ public class AutoTest {
             while (i <= 1000) {
                 var row = table.newRow();
                 row.val("val-" + i);
-                assertTrue(table.insert(null, row));
+                table.insert(null, row);
                 i++;
             }
             fail();
@@ -489,7 +489,7 @@ public class AutoTest {
             while (i <= 1000) {
                 var row = table.newRow();
                 row.val("val-" + i);
-                assertTrue(table.insert(null, row));
+                table.insert(null, row);
                 i++;
             }
             fail();
@@ -519,7 +519,7 @@ public class AutoTest {
             while (i <= 1000) {
                 var row = table.newRow();
                 row.val("val-" + i);
-                assertTrue(table.insert(null, row));
+                table.insert(null, row);
                 i++;
             }
             fail();

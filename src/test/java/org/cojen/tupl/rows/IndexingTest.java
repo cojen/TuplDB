@@ -319,7 +319,7 @@ public class IndexingTest {
             row.path("path5");
             row.name("name5");
             row.num(new BigDecimal("555"));
-            assertTrue(table.insert(null, row));
+            table.insert(null, row);
         }
 
         scanExpect(alt, "{id=1, path=no-path}", "{id=5, path=path5}");
@@ -343,7 +343,7 @@ public class IndexingTest {
             }
 
             row.path("path5");
-            assertTrue(table.replace(null, row));
+            table.replace(null, row);
         }
 
         scanExpect(alt, "{id=1, path=no-path}", "{id=5, path=path5}");
@@ -358,7 +358,7 @@ public class IndexingTest {
             row.path("!path5");
             row.name("!name55");
             row.num(new BigDecimal("55"));
-            assertTrue(table.update(null, row));
+            table.update(null, row);
         }
 
         scanExpect(alt, "{id=5, path=!path5}", "{id=1, path=no-path}");
@@ -372,7 +372,7 @@ public class IndexingTest {
             TestRow row = table.newRow();
             row.id(1);
             row.name("name1");
-            assertTrue(table.update(null, row));
+            table.update(null, row);
         }
 
         scanExpect(alt, "{id=5, path=!path5}", "{id=1, path=no-path}");
@@ -385,7 +385,7 @@ public class IndexingTest {
             TestRow row = table.newRow();
             row.id(5);
             row.name("name5");
-            assertTrue(table.merge(null, row));
+            table.merge(null, row);
             assertTrue(row.toString().contains("{id=5, name=name5, num=55, path=!path5}"));
         }
 
@@ -1494,7 +1494,7 @@ public class IndexingTest {
         TestRow row = table.newRow();
         row.id(1);
         row.path("xxx");
-        assertTrue(table.update(txn1, row));
+        table.update(txn1, row);
         txn1.commit();
 
         task.join();
@@ -1750,6 +1750,65 @@ public class IndexingTest {
 
         try (Scanner s = secondary.newScanner(null)) {
             assertNull(s.row());
+        }
+    }
+
+    @Test
+    public void loadOneViaSecondary() throws Exception {
+        // Test joining to the primary index when only one row is loaded.
+
+        Database db = Database.open(new DatabaseConfig().directPageAccess(false));
+        Table<TestRow> table = db.openTable(TestRow.class);
+
+        TestRow row = table.newRow();
+        row.id(1);
+        row.path("path-1");
+        row.name("name-1");
+        row.num(BigDecimal.ONE);
+        table.insert(null, row);
+
+        try (var scanner = table.newScanner(null, "path == ?", "path-1")) {
+            row = scanner.row();
+            assertEquals(1, row.id());
+        }
+    }
+
+    @Test
+    public void doubleCheck() throws Exception {
+        // Test that READ_UNCOMMITTED transaction double checks the primary row because it
+        // might have been concurrently modified.
+
+        Database db = Database.open(new DatabaseConfig().directPageAccess(false));
+        Index ix = db.openIndex("test");
+        Table<TestRow> table = ix.asTable(TestRow.class);
+
+        TestRow row = table.newRow();
+        row.id(1);
+        row.path("path-1");
+        row.name("name-1");
+        row.num(BigDecimal.ONE);
+        table.insert(null, row);
+
+        // Update the row without updating the secondary indexes to simulate concurrent
+        // modification.
+        try (Cursor c = ix.newCursor(null)) {
+            c.first();
+            byte[] value = c.value();
+            // Expected to update to "path-2".
+            value[value.length - 1]++;
+            c.store(value);
+        }
+
+        Transaction txn = db.newTransaction();
+        try {
+            txn.lockMode(LockMode.READ_UNCOMMITTED);
+
+            try (var scanner = table.newScanner(txn, "path == ?", "path-1")) {
+                // Filtered out.
+                assertNull(scanner.row());
+            }
+        } finally {
+            txn.reset();
         }
     }
 }

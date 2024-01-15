@@ -284,8 +284,7 @@ class DecodeVisitor implements Visitor {
 
         // Only the state observed on the left tree path can be preserved, because it's
         // guaranteed to have executed.
-        final int hk = mHighestLocatedKey;
-        final int hv = mHighestLocatedValue;
+        final int[] states = copyLocatedStates();
 
         for (int i=1; i<subFilters.length; i++) {
             mFail = mMaker.label();
@@ -293,8 +292,7 @@ class DecodeVisitor implements Visitor {
             mFail.here();
         }
 
-        resetHighestLocatedKey(hk);
-        resetHighestLocatedValue(hv);
+        resetLocatedStates(states);
 
         mMaker.goto_(originalFail);
         mFail = originalFail;
@@ -317,8 +315,7 @@ class DecodeVisitor implements Visitor {
 
         // Only the state observed on the left tree path can be preserved, because it's
         // guaranteed to have executed.
-        final int hk = mHighestLocatedKey;
-        final int hv = mHighestLocatedValue;
+        final int[] states = copyLocatedStates();
 
         for (int i=1; i<subFilters.length; i++) {
             mPass = mMaker.label();
@@ -326,8 +323,7 @@ class DecodeVisitor implements Visitor {
             mPass.here();
         }
 
-        resetHighestLocatedKey(hk);
-        resetHighestLocatedValue(hv);
+        resetLocatedStates(states);
 
         mMaker.goto_(originalPass);
         mPass = originalPass;
@@ -485,7 +481,7 @@ class DecodeVisitor implements Visitor {
             highestNum = 0;
         }
 
-        if (colNum < highestNum) {
+        if (colNum <= highestNum) {
             LocatedColumn col = located[colNum];
             if (col.isDecoded(quick)) {
                 return col;
@@ -562,41 +558,76 @@ class DecodeVisitor implements Visitor {
         return located[colNum];
     }
 
-    /**
-     * Reset the highest located key column. The trailing LocatedColumn instances can be
-     * re-used, reducing the number of Variables created.
-     */
-    private void resetHighestLocatedKey(int colNum) {
-        if (colNum < mHighestLocatedKey) {
-            mHighestLocatedKey = colNum;
-            finishReset(mLocatedKeys, colNum);
-        }
-    }
-
-    /**
-     * Reset the highest located value column. The trailing LocatedColumn instances can be
-     * re-used, reducing the number of Variables created.
-     *
-     * @param colNum column number among all value columns
-     */
-    private void resetHighestLocatedValue(int colNum) {
-        if (colNum < mHighestLocatedValue) {
-            mHighestLocatedValue = colNum;
-            finishReset(mLocatedValues, colNum);
-        }
-    }
-
-    private static void finishReset(LocatedColumn[] columns, int colNum) {
-        while (++colNum < columns.length) {
-            var col = columns[colNum];
-            if (col == null) {
-                break;
+    private int[] copyLocatedStates() {
+        int numKeys = mKeyCodecs.length;
+        int numValues = mValueCodecs.length;
+        var states = new int[numKeys + numValues];
+        
+        if (mLocatedKeys != null) {
+            for (int i=0; i<numKeys; i++) {
+                LocatedColumn col = mLocatedKeys[i];
+                if (col == null) {
+                    break;
+                }
+                states[i] = col.state();
             }
-            col.unlocated();
+        }
+
+        if (mLocatedValues != null) {
+            for (int i=0; i<numValues; i++) {
+                LocatedColumn col = mLocatedValues[i];
+                if (col == null) {
+                    break;
+                }
+                states[numKeys + i] = col.state();
+            }
+        }
+
+        return states;
+    }
+
+    private void resetLocatedStates(int[] states) {
+        int numKeys = mKeyCodecs.length;
+
+        if (mLocatedKeys != null) {
+            int i = 0;
+            for (; i<numKeys; i++) {
+                LocatedColumn col = mLocatedKeys[i];
+                if (col == null || col.resetState(states[i])) {
+                    break;
+                }
+            }
+            mHighestLocatedKey = i - 1;
+            for (; i<numKeys; i++) {
+                LocatedColumn col = mLocatedKeys[i];
+                if (col == null) {
+                    break;
+                }
+                col.unlocated();
+            }
+        }
+
+        if (mLocatedValues != null) {
+            int numValues = mValueCodecs.length;
+            int i = 0;
+            for (; i<numValues; i++) {
+                LocatedColumn col = mLocatedValues[i];
+                if (col == null || col.resetState(states[numKeys + i])) {
+                    break;
+                }
+            }
+            mHighestLocatedValue = i - 1;
+            for (; i<numValues; i++) {
+                LocatedColumn col = mLocatedValues[i];
+                if (col == null) {
+                    break;
+                }
+                col.unlocated();
+            }
         }
     }
 
-    private static class LocatedColumn {
+    private static final class LocatedColumn {
         // Used by mState field.
         private static final int UNLOCATED = 0, LOCATED = 1, DECODED = 2;
 
@@ -615,6 +646,28 @@ class DecodeVisitor implements Visitor {
         Variable mDecodedVar;
 
         LocatedColumn() {
+        }
+
+        int state() {
+            return mState;
+        }
+
+        /**
+         * @return true if state is unlocated
+         */
+        boolean resetState(int state) {
+            if (state <= LOCATED) {
+                mDecodedQuick = null;
+                mDecodedVar = null;
+                mState = state;
+            }
+            return state == UNLOCATED;
+        }
+
+        void unlocated() {
+            mDecodedQuick = null;
+            mDecodedVar = null;
+            mState = UNLOCATED;
         }
 
         boolean isLocated() {
@@ -656,12 +709,6 @@ class DecodeVisitor implements Visitor {
             }
             mDecodedVar = decodedVar;
             mState = DECODED;
-        }
-
-        void unlocated() {
-            mDecodedQuick = null;
-            mDecodedVar = null;
-            mState = UNLOCATED;
         }
     }
 }

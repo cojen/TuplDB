@@ -33,7 +33,9 @@ import org.cojen.tupl.rows.ColumnInfo;
  * @author Brian S O'Neill
  * @see Parser
  */
-public abstract class RowFilter implements Comparable<RowFilter> {
+public abstract sealed class RowFilter implements Comparable<RowFilter>
+    permits TermFilter, GroupFilter
+{
     private final int mHash;
 
     RowFilter(int hash) {
@@ -44,12 +46,15 @@ public abstract class RowFilter implements Comparable<RowFilter> {
 
     public abstract int numTerms();
 
-    public int maxArgument() {
+    /**
+     * @return 0 if filter has no arguments
+     */
+    public final int maxArgument() {
         return maxArgument(0);
     }
 
     /**
-     * @retur 0 if filter has no arguments
+     * @return 0 if filter has no arguments
      */
     protected abstract int maxArgument(int max);
 
@@ -61,7 +66,7 @@ public abstract class RowFilter implements Comparable<RowFilter> {
     /**
      * Attempt a more aggressive reduction.
      */
-    public RowFilter reduceMore() {
+    public final RowFilter reduceMore() {
         RowFilter filter = reduce();
         int numTerms = -1;
 
@@ -241,7 +246,7 @@ public abstract class RowFilter implements Comparable<RowFilter> {
     /**
      * Split variant which operates against a column map.
      */
-    public void split(Map<String, ?> columns, RowFilter[] split) {
+    public final void split(Map<String, ? extends ColumnInfo> columns, RowFilter[] split) {
         split((ColumnFilter filter) -> filter.canSplit(columns) ? filter : null, split);
     }
 
@@ -320,7 +325,9 @@ public abstract class RowFilter implements Comparable<RowFilter> {
      * @param columns columns to extract
      * @param ranges result from calling multiRangeExtract
      */
-    public static void splitRemainders(Map<String, ?> columns, RowFilter[]... ranges) {
+    public static void splitRemainders(Map<String, ? extends ColumnInfo> columns,
+                                       RowFilter[]... ranges)
+    {
         splitRemainders((ColumnFilter filter) -> filter.canSplit(columns) ? filter : null, ranges);
     }
 

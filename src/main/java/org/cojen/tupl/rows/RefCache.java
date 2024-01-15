@@ -40,6 +40,11 @@ abstract class RefCache<K, V, H> extends ReferenceQueue<Object> {
     public abstract void clear(Consumer<V> c);
 
     /**
+     * Traverse all values while synchronized.
+     */
+    public abstract void traverse(Consumer<V> c);
+
+    /**
      * Can be called without explicit synchronization, but entries can appear to go missing.
      * Double check with synchronization.
      */
@@ -67,7 +72,7 @@ abstract class RefCache<K, V, H> extends ReferenceQueue<Object> {
      * UnsupportedOperationException can be thrown.
      */
     @SuppressWarnings({"unchecked"})
-    public V obtain(K key, H helper) {
+    public final V obtain(K key, H helper) {
         Latch latch;
         while (true) {
             Object value = get(key);

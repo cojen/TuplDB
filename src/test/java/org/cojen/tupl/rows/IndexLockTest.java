@@ -1206,6 +1206,44 @@ public class IndexLockTest {
         }
     }
 
+    @Test
+    public void secondaryPredicate() throws Exception {
+        // Test that a scan over a secondary index is protected by a predicate lock.
+
+        var table = mDatabase.openTable(TestRow2.class);
+        fill(table, 1, 4);
+
+        Transaction txn1 = mDatabase.newTransaction();
+        txn1.lockMode(LockMode.READ_COMMITTED);
+
+        var scanner1 = table.newScanner(txn1, "name >= ? && name <= ?", "name-2", "name-4");
+        assertEquals("name-2", scanner1.row().name());
+        scanner1.step();
+        assertEquals("name-3", scanner1.row().name());
+
+        var row = table.newRow();
+        row.id(2);
+        row.name("xname");
+        // Can update the row because no row lock is held.
+        table.update(null, row);
+
+        row.name("name-4");
+        try {
+            table.update(null, row);
+            fail();
+        } catch (LockTimeoutException e) {
+            // Cannot move the row into the scan range.
+        }
+
+        scanner1.step();
+        assertEquals("name-4", scanner1.row().name());
+        assertNull(scanner1.step());
+        txn1.reset();
+
+        // Update should work now.
+        table.update(null, row);
+    }
+
     private static <R extends TestRow> void fill(Table<R> table, int start, int end)
         throws Exception
     {

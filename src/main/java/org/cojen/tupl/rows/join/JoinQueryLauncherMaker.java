@@ -25,6 +25,7 @@ import java.lang.ref.Reference;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
@@ -34,6 +35,7 @@ import org.cojen.maker.Label;
 import org.cojen.maker.MethodMaker;
 import org.cojen.maker.Variable;
 
+import org.cojen.tupl.Query;
 import org.cojen.tupl.Scanner;
 import org.cojen.tupl.Table;
 import org.cojen.tupl.Transaction;
@@ -53,7 +55,7 @@ import org.cojen.tupl.rows.WeakCache;
 
 import org.cojen.tupl.rows.filter.FalseFilter;
 import org.cojen.tupl.rows.filter.Parser;
-import org.cojen.tupl.rows.filter.Query;
+import org.cojen.tupl.rows.filter.QuerySpec;
 import org.cojen.tupl.rows.filter.RowFilter;
 import org.cojen.tupl.rows.filter.TrueFilter;
 
@@ -111,15 +113,14 @@ final class JoinQueryLauncherMaker {
         }
     }
 
-    // FIXME: Support projection and ordering.
-
     private final JoinSpec mTableSpec;
     private final Class<?> mJoinType;
     private final RowInfo mJoinInfo;
-    private final Query mQuery;
+    private final QuerySpec mQuery;
 
     private JoinPlanner mPlanner;
-    private Class<?> mScannerClass;
+    private ClassMaker mScannerMaker;
+    private Map<String, Map<QuerySpec, MethodMaker>> mQueryMethods;
     private ClassMaker mClassMaker;
     private JoinSpec.Source[] mSources;
 
@@ -138,30 +139,29 @@ final class JoinQueryLauncherMaker {
         mPlanner = new JoinPlanner(mTableSpec, mQuery.filter());
 
         JoinSpec spec = mPlanner.spec();
-        mScannerClass = JoinScannerMaker.make(mJoinType, spec);
+        var scannerMaker = new JoinScannerMaker(mJoinType, spec, mQuery);
 
-        mClassMaker = RowGen.anotherClassMaker
-            (getClass(), mJoinInfo.name, mScannerClass, "launcher")
-            .implement(QueryLauncher.class).public_().final_();
+        mClassMaker = scannerMaker.anotherClassMaker(getClass(), "launcher")
+            .extend(QueryLauncher.class).public_().final_();
 
-        mSources = spec.copySources();
+        mQueryMethods = new LinkedHashMap<>();
+        mScannerMaker = scannerMaker.classMaker();
+        scannerMaker.finish(mClassMaker, mQueryMethods);
 
-        // Define fields for referencing all the joined tables.
-        for (JoinSpec.Source source : mSources) {
-            mClassMaker.addField(Table.class, source.name()).private_().final_();
-        }
+        addConstructorAndQueryMethods();
 
-        addConstructor();
         addNewScannerMethod();
         addScanWriteMethod();
+
+        mSources = spec.copySources();
         addScannerPlanMethod();
 
         return mClassMaker.finish();
     }
 
-    private void addConstructor() {
-        MethodMaker mm = mClassMaker.addConstructor(Table[].class).public_();
-        mm.invokeSuperConstructor();
+    private void addConstructorAndQueryMethods() {
+        MethodMaker ctor = mClassMaker.addConstructor(Table[].class).public_();
+        ctor.invokeSuperConstructor();
 
         var arrayIndexes = new HashMap<String, Integer>();
 
@@ -183,21 +183,78 @@ final class JoinQueryLauncherMaker {
             }
         });
 
-        var tablesVar = mm.param(0);
+        var tablesVar = ctor.param(0);
 
-        for (JoinSpec.Source source : mSources) {
-            String name = source.name();
-            mm.field(name).set(tablesVar.aget(arrayIndexes.get(name)));
+        for (var e1 : mQueryMethods.entrySet()) {
+            String sourceName = e1.getKey();
+            Map<QuerySpec, MethodMaker> methods = e1.getValue();
+
+            var tableVar = tablesVar.aget(arrayIndexes.get(sourceName));
+
+            if (methods.size() == 1) {
+                // The Table field isn't needed if all Query instances are eagerly assigned.
+            } else {
+                mClassMaker.addField(Table.class, sourceName).private_().final_();
+                ctor.field(sourceName).set(tableVar);
+            }
+
+            int n = 0;
+            
+            for (var e2 : methods.entrySet()) {
+                QuerySpec spec = e2.getKey();
+                MethodMaker mm = e2.getValue();
+
+                n++;
+
+                if (n <= 2) {
+                    // Stash a direct reference to the Query instance.
+                    var queryField = mClassMaker.addField(Query.class, mm.name()).private_();
+
+                    if (n == 1) {
+                        // Assign the first Query field eagerly.
+                        queryField.final_();
+                        ctor.field(mm.name()).set(obtainQuery(tableVar, spec));
+                        mm.return_(mm.field(mm.name()));
+                        continue;
+                    }
+
+                    // Assign the second Query field lazily, in case it's infrequently used.
+
+                    var fieldVar = mm.field(mm.name());
+                    var queryVar = fieldVar.get();
+
+                    queryVar.ifEq(null, () -> {
+                        queryVar.set(obtainQuery(mm.field(sourceName), spec));
+                        fieldVar.set(queryVar);
+                    });
+
+                    mm.return_(queryVar);
+                    continue;
+                }
+
+                // All other Query instances are never stashed, to avoid defining fields for
+                // cases assumed to be rare.
+
+                mm.return_(obtainQuery(mm.field(sourceName), spec));
+            }
+        }
+    }
+
+    private static Variable obtainQuery(Variable tableVar, QuerySpec spec) {
+        if (spec.isFullScan()) {
+            return tableVar.invoke("queryAll");
+        } else {
+            return tableVar.invoke("query", spec.toString());
         }
     }
 
     private void addNewScannerMethod() {
         MethodMaker mm = mClassMaker.addMethod
-            (Scanner.class, "newScannerWith", Transaction.class, Object.class, Object[].class)
+            (Scanner.class, "newScanner", Object.class, Transaction.class, Object[].class)
             .public_().varargs();
 
-        var txnVar = mm.param(0);
-        var joinRowVar = mm.param(1).cast(mJoinType);
+        var joinRowVar = mm.param(0).cast(mJoinType);
+        var txnVar = mm.param(1);
         var argsVar = mm.param(2);
 
         Label enoughArgs = mm.label();
@@ -223,16 +280,7 @@ final class JoinQueryLauncherMaker {
         joinRowVar.set(mm.new_(joinClass));
         notNull.here();
 
-        var params = new Object[2 + mSources.length + 1];
-        params[0] = txnVar;
-        params[1] = joinRowVar;
-        params[params.length - 1] = argsVar;
-
-        for (int i=0; i<mSources.length; i++) {
-            params[2 + i] = mm.field(mSources[i].name());
-        }
-
-        mm.return_(mm.new_(mScannerClass, params));
+        mm.return_(mm.new_(mScannerMaker, txnVar, joinRowVar, mm.this_(), argsVar));
     }
 
     private void addScanWriteMethod() {
@@ -349,20 +397,25 @@ final class JoinQueryLauncherMaker {
     }
 
     /**
+     * Returns the first query method for the given source, which is used when no arguments are
+     * null. It's expected to have the most filter terms.
+     */
+    private String queryMethodFor(JoinSpec.Source source) {
+        return mQueryMethods.get(source.name()).values().iterator().next().name();
+    }
+
+    /**
      * @param type join type; pass 0 for outermost level
      */
     private Variable makeColumnLevelPlan(MethodMaker mm, int type, JoinSpec.Column node) {
         final Variable subPlanVar;
-        final RowFilter filter = node.filter();
 
-        if (filter == FalseFilter.THE) {
+        if (node.filter() == FalseFilter.THE) {
             subPlanVar = mm.new_(QueryPlan.Empty.class);
         } else {
-            var tableVar = mm.field(node.name());
             var txnVar = mm.param(0);
-            String queryStr = queryStr(filter);
             var argsVar = mm.param(1);
-            subPlanVar = tableVar.invoke("scannerPlan", txnVar, queryStr, argsVar);
+            subPlanVar = mm.invoke(queryMethodFor(node)).invoke("scannerPlan", txnVar, argsVar);
         }
 
         final RowFilter remainder = node.remainder();
@@ -389,10 +442,12 @@ final class JoinQueryLauncherMaker {
      * @param type join type; pass 0 for outermost level
      */
     private Variable makeFullJoinLevelPlan(MethodMaker mm, int type, JoinSpec.FullJoin node) {
-        String queryStr = queryStr(node.filter());
-
-        var subPlanVar = mm.field(node.name())
-            .invoke("scannerPlan", mm.param(0), queryStr, mm.param(1));
+        final Variable subPlanVar;
+        {
+            var txnVar = mm.param(0);
+            var argsVar = mm.param(1);
+            subPlanVar = mm.invoke(queryMethodFor(node)).invoke("scannerPlan", txnVar, argsVar);
+        }
 
         Variable assignmentsVar = makeAssignmentsVar(mm, node.argAssignments());
 

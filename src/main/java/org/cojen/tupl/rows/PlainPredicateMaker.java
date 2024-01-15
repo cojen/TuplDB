@@ -23,26 +23,35 @@ import java.util.function.Predicate;
 
 import org.cojen.tupl.core.Pair;
 
+import org.cojen.tupl.rows.filter.FalseFilter;
 import org.cojen.tupl.rows.filter.Parser;
 import org.cojen.tupl.rows.filter.RowFilter;
+import org.cojen.tupl.rows.filter.TrueFilter;
 
 /**
+ * Generates plain Predicate instances which check that columns are set.
+ *
  * @see Table#predicate
+ * @see RowPredicateMaker
  * @author Brian S O'Neill
  */
 public final class PlainPredicateMaker {
-    private static final WeakCache<Pair<Class<?>, String>, MethodHandle, Object> cCache;
+    private static final WeakCache<Pair<Class<?>, String>, MethodHandle, RowFilter> cCache;
 
     static {
         cCache = new WeakCache<>() {
             @Override
-            public MethodHandle newValue(Pair<Class<?>, String> key, Object unused) {
+            public MethodHandle newValue(Pair<Class<?>, String> key, RowFilter filter) {
                 Class<?> rowType = key.a();
                 String query = key.b();
                 RowInfo info = RowInfo.find(rowType);
-                RowFilter filter = new Parser(info.allColumns, query).parseQuery(null).filter();
+                if (filter == null) {
+                    filter = new Parser(info.allColumns, query).parseQuery(null).filter();
+                }
                 String filterStr = filter.toString();
-                if (filterStr.equals(query)) {
+                if (filterStr.equals(query)
+                    || filter == TrueFilter.THE || filter == FalseFilter.THE)
+                {
                     var maker = new RowPredicateMaker(rowType, info.rowGen(), filter, filterStr);
                     return maker.finishPlain();
                 } else {
@@ -64,9 +73,27 @@ public final class PlainPredicateMaker {
     }
 
     /**
+     * Returns a new predicate instance.
+     */
+    public static <R> Predicate<R> predicate(Class<R> rowType, RowFilter filter, Object... args) {
+        try {
+            return (Predicate<R>) predicateHandle(rowType, filter).invokeExact(args);
+        } catch (Throwable e) {
+            throw RowUtils.rethrow(e);
+        }
+    }
+
+    /**
      * MethodHandle signature: Predicate xxx(Object... args)
      */
     static MethodHandle predicateHandle(Class<?> rowType, String query) {
         return cCache.obtain(new Pair<>(rowType, query), null);
+    }
+
+    /**
+     * MethodHandle signature: Predicate xxx(Object... args)
+     */
+    static MethodHandle predicateHandle(Class<?> rowType, RowFilter filter) {
+        return cCache.obtain(new Pair<>(rowType, filter.toString()), filter);
     }
 }

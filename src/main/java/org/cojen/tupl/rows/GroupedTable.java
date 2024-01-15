@@ -23,39 +23,30 @@ import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
 
-import java.util.Collection;
 import java.util.Comparator;
-import java.util.Iterator;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 
 import java.util.function.Predicate;
-import java.util.function.Supplier;
 
 import org.cojen.maker.ClassMaker;
 import org.cojen.maker.Label;
 import org.cojen.maker.MethodMaker;
 import org.cojen.maker.Variable;
 
-import org.cojen.tupl.DurabilityMode;
 import org.cojen.tupl.Grouper;
+import org.cojen.tupl.Query;
 import org.cojen.tupl.Scanner;
 import org.cojen.tupl.Table;
 import org.cojen.tupl.Transaction;
-import org.cojen.tupl.Updater;
-
-import org.cojen.tupl.core.Pair;
+import org.cojen.tupl.ViewConstraintException;
 
 import org.cojen.tupl.diag.QueryPlan;
 
-import org.cojen.tupl.rows.filter.ComplexFilterException;
-import org.cojen.tupl.rows.filter.Parser;
-import org.cojen.tupl.rows.filter.Query;
+import org.cojen.tupl.rows.filter.QuerySpec;
 import org.cojen.tupl.rows.filter.RowFilter;
 import org.cojen.tupl.rows.filter.TrueFilter;
-
-import static java.util.Spliterator.*;
 
 /**
  * Base class for generated grouped tables.
@@ -63,181 +54,99 @@ import static java.util.Spliterator.*;
  * @author Brian S. O'Neill
  * @see Table#group
  */
-public abstract class GroupedTable<S, T> implements Table<T> {
-    private static final WeakCache<Pair<Class, Class>, MethodHandle, Table> cFactoryCache;
+public abstract class GroupedTable<S, T> extends AbstractMappedTable<S, T>
+    implements QueryFactoryCache.Helper
+{
+    private record FactoryKey(Class<?> sourceType, String groupBy, String orderBy,
+                              Class<?> targetType, Class<?> factoryClass) { } 
+
+    private static final WeakCache<FactoryKey, MethodHandle, Table> cFactoryCache;
 
     static {
         cFactoryCache = new WeakCache<>() {
             @Override
-            public MethodHandle newValue(Pair<Class, Class> key, Table source) {
-                return makeTableFactory(source, key.a(), key.b());
+            public MethodHandle newValue(FactoryKey key, Table source) {
+                return makeTableFactory(key, source);
             }
         };
     }
 
-    public static <S, T> GroupedTable<S, T> group(Table<S> source, Class<T> targetType,
-                                                  Supplier<Grouper<S, T>> supplier)
+    public static <S, T> GroupedTable<S, T> group(Table<S> source, String groupBy, String orderBy,
+                                                  Class<T> targetType,
+                                                  Grouper.Factory<S, T> factory)
     {
+        Objects.requireNonNull(groupBy);
+        Objects.requireNonNull(orderBy);
         Objects.requireNonNull(targetType);
-        Objects.requireNonNull(supplier);
+
+        var key = new FactoryKey(source.rowType(), groupBy, orderBy,
+                                 targetType, factory.getClass());
+
         try {
-            var key = new Pair<Class, Class>(source.rowType(), targetType);
             return (GroupedTable<S, T>) cFactoryCache.obtain(key, source)
-                .invokeExact(source, supplier);
+                .invokeExact(source, factory);
         } catch (Throwable e) {
             throw RowUtils.rethrow(e);
         }
     }
 
     /**
-     * MethodHandle signature: GroupedTable<S, T> make(Table<S> source, Supplier<Grouper<S, T>>)
+     * MethodHandle signature:
+     *
+     *  GroupedTable<S, T> make(Table<S> source, Grouper.Factory<S, T>)
      */
-    private static MethodHandle makeTableFactory(Table<?> source, Class<?> sourceType,
-                                                 Class<?> targetType)
-    {
+    private static MethodHandle makeTableFactory(FactoryKey key, Table<?> source) {
+        Class<?> sourceType = key.sourceType();
+        Class<?> targetType = key.targetType();
+
         assert source.rowType() == sourceType;
 
-        RowInfo targetInfo = RowInfo.find(targetType);
+        RowInfo sourceInfo = RowInfo.find(source.rowType());
 
-        // Verify that the target primary key refers to source columns exactly.
-        if (!targetInfo.keyColumns.isEmpty()) {
-            RowInfo sourceInfo = RowInfo.find(source.rowType());
-            for (ColumnInfo targetColumn : targetInfo.keyColumns.values()) {
-                String name = targetColumn.name;
-                ColumnInfo sourceColumn = sourceInfo.allColumns.get(name);
-                if (sourceColumn == null) {
-                    throw new IllegalArgumentException
-                        ("Target primary key refers to a column which doesn't exist: " + name);
-                }
-                if (!sourceColumn.isCompatibleWith(targetColumn)) {
-                    throw new IllegalArgumentException
-                        ("Target primary key refers to an incompatible source column: " + name);
-                }
-            }
+        OrderBy groupBy;
+        try {
+            groupBy = OrderBy.forSpec(sourceInfo, key.groupBy());
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException(groupByMessage(e));
+        } catch (IllegalStateException e) {
+            throw new IllegalStateException(groupByMessage(e));
         }
 
-        ClassMaker cm = targetInfo.rowGen().beginClassMaker
+        OrderBy orderBy = OrderBy.forSpec(sourceInfo, key.orderBy());
+
+        // Remove unnecessary order-by columns.
+        orderBy.keySet().removeAll(groupBy.keySet());
+
+        String groupBySpec = groupBy.spec();
+        String orderBySpec = orderBy.spec();
+
+        ClassMaker cm = RowInfo.find(targetType).rowGen().beginClassMaker
             (GroupedTable.class, targetType, "grouped").final_()
             .extend(GroupedTable.class).implement(TableBasicsMaker.find(targetType));
 
         {
-            MethodMaker ctor = cm.addConstructor(Table.class, Supplier.class).private_();
-            ctor.invokeSuperConstructor(ctor.param(0), ctor.param(1));
+            MethodMaker ctor = cm.addConstructor(Table.class, Grouper.Factory.class).private_();
+            var cacheVar = ctor.var(QueryFactoryCache.class).setExact(new QueryFactoryCache());
+            ctor.invokeSuperConstructor
+                (cacheVar, ctor.param(0), groupBySpec, orderBySpec, ctor.param(1));
         }
 
         // Keep a reference to the MethodHandle instance, to prevent it from being garbage
         // collected as long as the generated table class still exists.
-        cm.addField(MethodHandle.class, "_").static_().private_();
-
-        // Add the compareSourceRows method.
-        {
-            MethodMaker mm = cm.addMethod
-                (int.class, "compareSourceRows", Object.class, Object.class).protected_();
-
-            if (targetInfo.keyColumns.isEmpty()) {
-                mm.return_(0);
-            } else {
-                var spec = new StringBuilder();
-                for (String name : targetInfo.keyColumns.keySet()) {
-                    spec.append('+').append(name);
-                }
-                var cmpVar = mm.var(Comparator.class).setExact(source.comparator(spec.toString()));
-                mm.return_(cmpVar.invoke("compare", mm.param(0), mm.param(1)));
-            }
-        }
-
-        // Add the finishTarget method.
-        {
-            MethodMaker mm = cm.addMethod
-                (null, "finishTarget", Object.class, Object.class).protected_();
-
-            if (targetInfo.keyColumns.isEmpty()) {
-                mm.invoke("cleanRow", mm.param(1));
-            } else {
-                var sourceVar = mm.param(0).cast(sourceType);
-                var targetVar = mm.param(1).cast(targetType);
-                for (String name : targetInfo.keyColumns.keySet()) {
-                    targetVar.invoke(name, sourceVar.invoke(name));
-                }
-                mm.invoke("cleanRow", targetVar);
-            }
-        }
-
-        // Override additional methods determined by whether or not the target row has a
-        // primary key.
-
-        if (targetInfo.keyColumns.isEmpty()) {
-            cm.addMethod(long.class, "estimateSize").protected_().override().return_(1L);
-
-            cm.addMethod(int.class, "characteristics", Scanner.class)
-                .protected_().override().return_(DISTINCT | NONNULL);
-        } else {
-            // Define a method to check if the primary key is set, to be used by the load and
-            // exists methods.
-            Class<?> targetClass = RowMaker.find(targetType);
-            {
-                MethodMaker mm = cm.addMethod
-                    (boolean.class, "checkPrimaryKeySet", targetClass).private_().static_();
-                targetInfo.rowGen().checkSet(mm, targetInfo.keyColumns, mm.param(0));
-            }
-
-            // Override the load method.
-            {
-                MethodMaker mm = cm.addMethod
-                    (boolean.class, "load", Transaction.class, Object.class).public_().override();
-
-                Variable txnVar = mm.param(0);
-                Variable rowVar = mm.param(1).cast(targetClass);
-
-                Label ready = mm.label();
-                mm.invoke("checkPrimaryKeySet", rowVar).ifTrue(ready);
-                mm.new_(IllegalStateException.class, "Primary key isn't fully specified").throw_();
-                ready.here();
-
-                var argsVar = mm.new_(Object[].class, targetInfo.keyColumns.size());
-
-                int argNum = 0;
-                for (String name : targetInfo.keyColumns.keySet()) {
-                    argsVar.aset(argNum++, rowVar.field(name));
-                }
-
-                String queryString = queryString(targetInfo.keyColumns.values());
-
-                var scannerVar = mm.invoke("newScannerWith", txnVar, rowVar, queryString, argsVar);
-                var foundVar = scannerVar.invoke("row").ne(null);
-                scannerVar.invoke("close");
-
-                Label cont = mm.label();
-                foundVar.ifTrue(cont);
-                targetInfo.rowGen().markNonPrimaryKeyColumnsUnset(rowVar);
-                cont.here();
-                mm.return_(foundVar);
-            }
-
-            // Override the exists method. Note that the implementation just calls the load
-            // method, and so there's no performance advantage. In theory, a different query
-            // could be used which doesn't project any columns, but it won't make a real
-            // difference because the projection implementation just unsets the columns rather
-            // than prevent them from being materialized in the first place.
-            {
-                MethodMaker mm = cm.addMethod
-                    (boolean.class, "exists", Transaction.class, Object.class).public_().override();
-                mm.return_(mm.invoke("load", mm.param(0), mm.invoke("cloneRow", mm.param(1))));
-            }
-        }
+        cm.addField(Object.class, "_").static_().private_();
 
         MethodHandles.Lookup lookup = cm.finishLookup();
         Class<?> tableClass = lookup.lookupClass();
 
         MethodMaker mm = MethodMaker.begin
-            (lookup, GroupedTable.class, null, Table.class, Supplier.class);
+            (lookup, GroupedTable.class, null, Table.class, Grouper.Factory.class);
         mm.return_(mm.new_(tableClass, mm.param(0), mm.param(1)));
 
         MethodHandle mh = mm.finish();
 
         try {
             // Assign the singleton reference.
-            lookup.findStaticVarHandle(tableClass, "_", MethodHandle.class).set(mh);
+            lookup.findStaticVarHandle(tableClass, "_", Object.class).set(mh);
         } catch (Throwable e) {
             throw RowUtils.rethrow(e);
         }
@@ -245,495 +154,370 @@ public abstract class GroupedTable<S, T> implements Table<T> {
         return mh;
     }
 
-    private static String groupByString(Collection<ColumnInfo> columns) {
-        var bob = new StringBuilder();
+    private final QueryFactoryCache mQueryFactoryCache;
 
-        for (ColumnInfo column : columns) {
-            if (bob.length() != 0) {
-                bob.append(", ");
-            }
-            bob.append(column.isDescending() ? '-' : '+');
-            if (column.isNullLow()) {
-                bob.append('!');
-            }
-            bob.append(column.name);
-        }
+    protected final String mGroupBySpec, mOrderBySpec;
+    protected final Grouper.Factory<S, T> mGrouperFactory;
+    protected final Comparator<S> mGroupComparator;
 
-        return bob.toString();
-    }
-
-    private static String queryString(Collection<ColumnInfo> columns) {
-        var bob = new StringBuilder();
-
-        for (ColumnInfo column : columns) {
-            if (bob.length() != 0) {
-                bob.append(" && ");
-            }
-            bob.append(column.name).append(" == ?");
-        }
-
-        return bob.toString();
-    }
-
-    protected final Table<S> mSource;
-    protected final Supplier<Grouper<S, T>> mGrouperSupplier;
-
-    // Cache key is either a query string or a Pair of a query string and source projection.
-    private final WeakCache<Object, ScannerFactory<S, T>, Query> mScannerFactoryCache;
-
-    protected GroupedTable(Table<S> source, Supplier<Grouper<S, T>> supplier) {
-        mSource = source;
-        mGrouperSupplier = supplier;
-
-        mScannerFactoryCache = new WeakCache<>() {
-            @Override
-            protected ScannerFactory<S, T> newValue(Object key, Query query) {
-                String queryStr, sourceProjection;
-
-                if (key instanceof Pair pair) {
-                    queryStr = (String) pair.a();
-                    sourceProjection = (String) pair.b();
-                } else {
-                    queryStr = (String) key;
-                    sourceProjection = null;
-                }
-
-                if (query == null) {
-                    RowInfo rowInfo = RowInfo.find(rowType());
-                    query = new Parser(rowInfo.allColumns, queryStr).parseQuery(null);
-                    String canonical = query.toString();
-                    if (!canonical.equals(queryStr)) {
-                        return obtain(makeScannerFactoryKey(canonical, sourceProjection), query);
-                    }
-                }
-
-                return makeScannerFactory(query, sourceProjection);
-            }
-        };
-    }
-
-    private static Object makeScannerFactoryKey(String queryStr, String sourceProjection) {
-        if (sourceProjection == null) {
-            return queryStr;
-        } else {
-            return new Pair<String, String>(queryStr, sourceProjection);
-        }
-    }
-
-    @Override
-    public final Scanner<T> newScanner(Transaction txn) throws IOException {
-        return newScannerWith(txn, null);
-    }
-
-    @Override
-    public final Scanner<T> newScannerWith(Transaction txn, T targetRow) throws IOException {
-        return newScannerWith(txn, targetRow, "{*}");
-    }
-
-    @Override
-    public final Scanner<T> newScanner(Transaction txn, String query, Object... args)
-        throws IOException
+    protected GroupedTable(QueryFactoryCache queryFactoryCache,
+                           Table<S> source, String groupBySpec, String orderBySpec,
+                           Grouper.Factory<S, T> factory)
     {
-        return newScannerWith(txn, null, query, args);
+        super(source);
+        mQueryFactoryCache = queryFactoryCache;
+        mGroupBySpec = groupBySpec;
+        mOrderBySpec = orderBySpec;
+        mGrouperFactory = factory;
+        mGroupComparator = source.comparator(groupBySpec);
     }
 
-    @Override
-    public final Scanner<T> newScannerWith(Transaction txn, T targetRow,
-                                           String query, Object... args)
-        throws IOException
-    {
-        Grouper<S, T> grouper = mGrouperSupplier.get();
-        String projection = grouper.sourceProjection();
-
-        ScannerFactory<S, T> factory;
-        try {
-            factory = mScannerFactoryCache.obtain(makeScannerFactoryKey(query, projection), null);
-        } catch (Throwable e) {
-            try {
-                grouper.close();
-            } catch (Throwable e2) {
-                RowUtils.suppress(e, e2);
-            }
+    private static String groupByMessage(RuntimeException e) {
+        String message = e.getMessage();
+        if (message == null) {
             throw e;
         }
-
-        return factory.newScannerWith(this, grouper, txn, targetRow, args);
+        return message.replace("ordering", "group-by");
     }
 
     @Override
-    public final Transaction newTransaction(DurabilityMode durabilityMode) {
-        return mSource.newTransaction(durabilityMode);
-    }
-
-    @Override
-    public final boolean isEmpty() throws IOException {
-        return mSource.isEmpty() || !anyRows(Transaction.BOGUS);
-    }
-
-    /**
-     * This method must be overridden when the target row has a primary key.
-     */
-    @Override
-    public boolean load(Transaction txn, T targetRow) throws IOException {
-        Scanner<T> s = newScannerWith(txn, targetRow);
-        boolean found = s.row() != null;
-        s.close();
-        if (!found) {
-            unsetRow(targetRow);
-        }
-        return found;
-    }
-
-    /**
-     * This method must be overridden when the target row has a primary key.
-     */
-    @Override
-    public boolean exists(Transaction txn, T targetRow) throws IOException {
-        return anyRows(txn);
-    }
-
-    @Override
-    public final QueryPlan scannerPlan(Transaction txn, String query, Object... args)
+    public final Scanner<T> newScanner(T targetRow, Transaction txn,
+                                       String query, Object... args)
         throws IOException
     {
-        try (Grouper<S, T> grouper = mGrouperSupplier.get()) {
-            String projection = grouper.sourceProjection();
-            return mScannerFactoryCache
-                .obtain(makeScannerFactoryKey(query == null ? "{*}" : query, projection), null)
-                .plan(this, grouper, txn, args);
-        }
+        return query(query).newScanner(targetRow, txn, args);
     }
 
     @Override
-    public final void close() throws IOException {
-        // Do nothing.
+    public final boolean load(Transaction txn, T row) throws IOException {
+        throw new ViewConstraintException();
     }
 
     @Override
-    public final boolean isClosed() {
-        return false;
-    }
-
-    /**
-     * Called by GroupedScanner.
-     */
-    final S newSourceRow() {
-        return mSource.newRow();
-    }
-
-    /**
-     * Called by GroupedScanner.
-     */
-    final void copySourceRow(S from, S to) {
-        mSource.copyRow(from, to);
-    }
-
-    /**
-     * Called by GroupedScanner. Returns zero if the source rows are in the same group.
-     */
-    protected abstract int compareSourceRows(S r1, S r2);
-
-    /**
-     * Called by GroupedScanner. Sets the primary key columns of the target row, and calls
-     * cleanRow(target).
-     */
-    protected abstract void finishTarget(S source, T target);
-
-    /**
-     * Called by GroupedScanner. This method must be overridden when the target row doesn't
-     * have a primary key.
-     */
-    protected long estimateSize() {
-        return Long.MAX_VALUE;
-    }
-
-    /**
-     * Called by GroupedScanner. This method must be overridden when the target row doesn't
-     * have a primary key.
-     */
-    protected int characteristics(Scanner<S> source) {
-        return (source.characteristics() & ~(SIZED | SUBSIZED)) | ORDERED | SORTED;
-    }
-
-    /**
-     * Called by the generated ScannerFactory.
-     */
-    public final Table<S> source() {
-        return mSource;
-    }
-
-    /**
-     * Called by the generated ScannerFactory.
-     */
-    public final Scanner<T> sort(Scanner<T> source, Comparator<T> comparator,
-                                 Set<String> projection, String orderBySpec)
-        throws IOException
-    {
-        return RowSorter.sort(this, source, comparator, projection, orderBySpec);
+    public boolean exists(Transaction txn, T row) throws IOException {
+        throw new ViewConstraintException();
     }
 
     /**
      * Returns columns (or null) for QueryPlan.Grouper.
      */
     public final String[] groupByColumns() {
-        RowInfo info = RowInfo.find(rowType());
-        if (info.keyColumns.isEmpty()) {
-            return null;
-        }
-        var columns = new String[info.keyColumns.size()];
-        int ix = 0;
-        for (String name : info.keyColumns.keySet()) {
-            columns[ix++] = name;
-        }
-        return columns;
+        return splitSpec(mGroupBySpec);
     }
 
-    private ScannerFactory<S, T> makeScannerFactory(Query targetQuery, String sourceProjection) {
-        Class<S> sourceType = mSource.rowType();
-        RowInfo sourceInfo = RowInfo.find(sourceType);
+    /**
+     * Returns columns (or null) for QueryPlan.Grouper.
+     */
+    public final String[] orderByColumns() {
+        return splitSpec(mOrderBySpec);
+    }
 
-        // Prepare an initial source query, which will be replaced later.
-        Query sourceQuery;
-        {
-            if (sourceProjection == null) {
-                sourceQuery = new Query(null, null, TrueFilter.THE);
-            } else {
-                sourceQuery = new Parser
-                    (sourceInfo.allColumns, '{' + sourceProjection + '}').parseQuery(null);
-            }
-        }
+    private String[] splitSpec(String spec) {
+        return spec.isEmpty() ? null : OrderBy.splitSpec(spec);
+    }
 
-        Class<T> targetType = rowType();
-        RowInfo targetInfo = RowInfo.find(targetType);
-
-        final RowFilter sourceFilter, targetFilter;
-
-        {
-            RowFilter filter = targetQuery.filter();
-
-            if (targetInfo.keyColumns.isEmpty()) {
-                sourceFilter = TrueFilter.THE;
-                targetFilter = filter;
-            } else {
-                try {
-                    filter = filter.cnf();
-                } catch (ComplexFilterException e) {
-                    // The split won't be as effective, and so the target filter will do
-                    // more work.
-                }
-
-                var split = new RowFilter[2];
-                filter.split(sourceInfo.allColumns, split);
-
-                sourceFilter = split[0];
-                targetFilter = split[1];
-            }
-        }
-
-        OrderBy sourceOrderBy = null, targetOrderBy;
-
-        if (targetInfo.keyColumns.isEmpty()) {
-            // At most one row is produced, so no need to sort.
-            targetOrderBy = null;
-        } else if ((targetOrderBy = targetQuery.orderBy()) != null) {
-            // As soon as all of the group-by columns are encountered in the requested target
-            // ordering, the rest can be discarded.
-
-            int numGroupBy = targetInfo.keyColumns.size();
-            Iterator<Map.Entry<String, OrderBy.Rule>> it = targetOrderBy.entrySet().iterator();
-
-            while (it.hasNext()) {
-                String name = it.next().getKey();
-                if (targetInfo.keyColumns.containsKey(name) && --numGroupBy == 0 && it.hasNext()) {
-                    // Copy and discard the rest.
-                    targetOrderBy = new OrderBy(targetOrderBy);
-                    do {
-                        targetOrderBy.remove(it.next().getKey());
-                    } while (it.hasNext());
-                }
-            }
-
-            // Push as many order-by columns to the source as possible.
-
-            it = targetOrderBy.entrySet().iterator();
-
-            while (true) {
-                if (!it.hasNext()) {
-                    // All order-by columns have been pushed to the source, and so no target
-                    // sort is required.
-                    targetOrderBy = null;
-                    break;
-                }
-
-                Map.Entry<String, OrderBy.Rule> e = it.next();
-                String name = e.getKey();
-
-                if (!sourceInfo.allColumns.containsKey(name)) {
-                    // Once a target-only column is encountered, no more columns can be pushed
-                    // to the source, and a target sort is required.
-                    break;
-                }
-
-                if (sourceOrderBy == null) {
-                    sourceOrderBy = new OrderBy();
-                }
-
-                sourceOrderBy.put(name, e.getValue());
-            }
-        }
-
-        if (!targetInfo.keyColumns.isEmpty()) {
-            // To ensure proper grouping, all group-by columns (the target primary key) must be
-            // appended to the source order-by.
-            if (sourceOrderBy == null) {
-                sourceOrderBy = new OrderBy();
-            }
-            for (ColumnInfo column : targetInfo.keyColumns.values()) {
-                String name = column.name;
-                if (!sourceOrderBy.containsKey(name)) {
-                    OrderBy.Rule rule = targetQuery.orderByRule(name);
-                    if (rule == null && (rule = sourceQuery.orderByRule(name)) == null) {
-                        rule = new OrderBy.Rule(column, column.typeCode);
-                    }
-                    sourceOrderBy.put(name, rule);
-                }
-            }
-        }
-
-        sourceQuery = sourceQuery.withOrderBy(sourceOrderBy).withFilter(sourceFilter);
-        targetQuery = targetQuery.withOrderBy(targetOrderBy).withFilter(targetFilter);
-
-        ClassMaker factoryMaker = targetInfo.rowGen().beginClassMaker
-            (GroupedTable.class, targetType, "factory").final_().implement(ScannerFactory.class);
-
-        // Keep a singleton instance, in order for a weakly cached reference to the factory to
-        // stick around until the class is unloaded.
-        factoryMaker.addField(Object.class, "THE").private_().static_();
-
-        MethodMaker ctor = factoryMaker.addConstructor().private_();
-        ctor.invokeSuperConstructor();
-        ctor.field("THE").set(ctor.this_());
-
-        MethodMaker mm = factoryMaker.addMethod
-            (Scanner.class, "newScannerWith", GroupedTable.class, Grouper.class,
-             Transaction.class, Object.class, Object[].class).public_().varargs();
-
-        var tableVar = mm.param(0);
-        var grouperVar = mm.param(1);
-        var txnVar = mm.param(2);
-        var targetRowVar = mm.param(3);
-        var argsVar = mm.param(4);
-
-        var sourceTableVar = tableVar.invoke("source");
-
-        final Variable sourceScannerVar;
-
-        if (sourceQuery.isFullScan()) {
-            sourceScannerVar = sourceTableVar.invoke("newScanner", txnVar);
-        } else {
-            sourceScannerVar = sourceTableVar.invoke
-                ("newScanner", txnVar, sourceQuery.toString(), argsVar);
-        }
-
-        // Define the comparator returned by GroupedScanner.
-
-        Variable groupComparatorVar = null;
-
-        if (!targetInfo.keyColumns.isEmpty()) {
-            var groupOrderBy = new OrderBy(sourceOrderBy);
-            Iterator<Map.Entry<String, OrderBy.Rule>> it = groupOrderBy.entrySet().iterator();
-
-            while (it.hasNext()) {
-                Map.Entry<String, OrderBy.Rule> e = it.next();
-                if (!targetInfo.keyColumns.containsKey(e.getKey())) {
-                    // Can only refer to target primary key columns.
-                    it.remove();
-                }
-            }
-            
-            if (!sourceOrderBy.isEmpty()) {
-                groupComparatorVar = mm.var(Comparator.class).setExact
-                    (ComparatorMaker.comparator(targetType, groupOrderBy, groupOrderBy.spec()));
-            }
-        }
-
-        var targetScannerVar = mm.new_(GroupedScanner.class, tableVar, sourceScannerVar,
-                                       groupComparatorVar, targetRowVar, grouperVar);
-
-        targetScannerVar = WrappedScanner.wrap(targetType, argsVar, targetScannerVar,
-                                               targetQuery.filter(), targetQuery.projection());
-
-        if (targetQuery.orderBy() != null) {
-            OrderBy orderBy = targetQuery.orderBy();
-            String orderBySpec = orderBy.spec();
-
-            var comparatorVar = mm.var(Comparator.class).setExact
-                (ComparatorMaker.comparator(targetType, orderBy, orderBySpec));
-
-            Variable projectionVar = null;
-
-            if (targetQuery.projection() != null) {
-                projectionVar = mm.var(Set.class).setExact
-                    (SortedQueryLauncher.canonicalize(targetQuery.projection().keySet()));
-            }
-
-            targetScannerVar = tableVar.invoke("sort", targetScannerVar, comparatorVar,
-                                               projectionVar, orderBySpec);
-        }
-
-        mm.return_(targetScannerVar);
-
-        // Add the plan method.
-
-        mm = factoryMaker.addMethod
-            (QueryPlan.class, "plan", GroupedTable.class, Grouper.class,
-             Transaction.class, Object[].class).public_().varargs();
-
-        tableVar = mm.param(0);
-        grouperVar = mm.param(1);
-        txnVar = mm.param(2);
-        argsVar = mm.param(3);
-
-        final var planVar = tableVar.invoke("source")
-            .invoke("scannerPlan", txnVar, sourceQuery.toString(), argsVar);
-
-        var targetVar = mm.var(Class.class).set(targetType).invoke("getName");
-        var usingVar = grouperVar.invoke("toString");
-        var columnVars = tableVar.invoke("groupByColumns");
-
-        var grouperPlanVar = mm.new_
-            (QueryPlan.Grouper.class, targetVar, usingVar, columnVars, planVar);
-        planVar.set(grouperVar.invoke("plan", grouperPlanVar));
-
-        if (targetQuery.filter() != TrueFilter.THE) {
-            planVar.set(mm.new_(QueryPlan.Filter.class, targetQuery.filter().toString(), planVar));
-        }
-
-        if (targetQuery.orderBy() != null) {
-            String spec = targetQuery.orderBy().spec();
-            var columnsVar = mm.var(OrderBy.class).invoke("splitSpec", spec);
-            planVar.set(mm.new_(QueryPlan.Sort.class, columnsVar, planVar));
-        }
-
-        mm.return_(planVar);
-
+    @Override
+    protected final Query<T> newQuery(String query) throws IOException {
         try {
-            MethodHandles.Lookup lookup = factoryMaker.finishHidden();
-            MethodHandle mh = lookup.findConstructor
-                (lookup.lookupClass(), MethodType.methodType(void.class));
-            return (ScannerFactory<S, T>) mh.invoke();
+            return (Query<T>) mQueryFactoryCache.obtain(query, this).invoke(this);
         } catch (Throwable e) {
             throw RowUtils.rethrow(e);
         }
     }
 
-    public interface ScannerFactory<S, T> {
-        Scanner<T> newScannerWith(GroupedTable<S, T> table, Grouper<S, T> grouper,
-                                  Transaction txn, T targetRow, Object... args)
-            throws IOException;
+    @Override
+    public MethodHandle makeQueryFactory(QuerySpec targetQuery) {
+        var splitter = new Splitter(targetQuery);
 
-        QueryPlan plan(GroupedTable<S, T> table, Grouper<S, T> grouper,
-                       Transaction txn, Object... args)
-            throws IOException;
+        Class<T> targetType = rowType();
+        RowInfo targetInfo = RowInfo.find(targetType);
+
+        ClassMaker cm = targetInfo.rowGen().beginClassMaker
+            (GroupedTable.class, targetType, "query").final_().extend(BaseQuery.class);
+
+        {
+            MethodMaker mm = cm.addConstructor(GroupedTable.class).private_();
+            var tableVar = mm.param(0);
+            QuerySpec sourceQuery = splitter.mSourceQuery;
+            if (sourceQuery == null) {
+                mm.invokeSuperConstructor(tableVar);
+            } else {
+                mm.invokeSuperConstructor(tableVar, sourceQuery.toString());
+            }
+        }
+
+        Class scannerClass = GroupedScanner.class;
+
+        RowFilter targetRemainder = splitter.mTargetRemainder;
+
+        if (targetRemainder != TrueFilter.THE || targetQuery.projection() != null) {
+            // Subclass the GroupedScanner class and override the finish method.
+
+            ClassMaker scMaker = targetInfo.rowGen().beginClassMaker
+                (GroupedTable.class, targetType, "scanner").final_().extend(GroupedScanner.class);
+
+            MethodMaker ctor;
+            if (targetRemainder == TrueFilter.THE) {
+                ctor = scMaker.addConstructor
+                    (GroupedTable.class, Scanner.class, Object.class, Grouper.class);
+            } else {
+                ctor = scMaker.addConstructor
+                    (GroupedTable.class, Scanner.class, Object.class, Grouper.class,
+                     Object[].class).varargs();
+            }
+
+            MethodMaker mm = scMaker.addMethod(boolean.class, "finish", Object.class);
+            mm.protected_().override();
+
+            var targetRowVar = mm.param(0);
+
+            if (targetRemainder != TrueFilter.THE) {
+                scMaker.addField(Predicate.class, "predicate").private_().final_();
+                MethodHandle mh = PlainPredicateMaker
+                    .predicateHandle(targetType, targetRemainder.toString());
+                ctor.field("predicate").set(ctor.invoke(mh, ctor.param(4)));
+
+                Label cont = mm.label();
+                mm.field("predicate").invoke("test", targetRowVar).ifTrue(cont);
+                mm.return_(false);
+                cont.here();
+            }
+
+            Map<String, ColumnInfo> projection = targetQuery.projection();
+
+            if (projection != null) {
+                TableMaker.unset
+                    (targetInfo, targetRowVar.cast(RowMaker.find(targetType)), projection);
+            }
+
+            mm.return_(true);
+
+            ctor.invokeSuperConstructor(ctor.param(0), ctor.param(1), ctor.param(2), ctor.param(3));
+
+            scannerClass = scMaker.finishHidden().lookupClass();
+        }
+
+        splitter.addPrepareArgsMethod(cm);
+
+        // Add the newScanner method.
+
+        {
+            String methodName = "newScanner";
+
+            MethodMaker mm = cm.addMethod
+                (Scanner.class, methodName, Object.class, Transaction.class, Object[].class)
+                .public_().varargs();
+
+            var targetRowVar = mm.param(0);
+            var txnVar = mm.param(1);
+            var argsVar = mm.param(2);
+            var tableVar = mm.field("table").get();
+
+            argsVar = splitter.prepareArgs(argsVar);
+
+            var sourceScannerVar = mm.field("squery").invoke(methodName, txnVar, argsVar);
+            var grouperVar = tableVar.invoke("newGrouper", sourceScannerVar);
+
+            Variable resultVar;
+
+            if (targetRemainder == TrueFilter.THE) {
+                resultVar = mm.new_(scannerClass, tableVar,
+                                    sourceScannerVar, targetRowVar, grouperVar);
+            } else {
+                resultVar = mm.new_(scannerClass, tableVar,
+                                    sourceScannerVar, targetRowVar, grouperVar, argsVar);
+            }
+
+            SortPlan sortPlan = splitter.mSortPlan;
+
+            if (sortPlan.sortOrder != null) {
+                var comparatorVar = mm.var(Comparator.class).setExact(sortPlan.sortComparator);
+
+                Variable projectionVar = null;
+
+                if (targetQuery.projection() != null) {
+                    projectionVar = mm.var(Set.class).setExact
+                        (SortedQueryLauncher.canonicalize(targetQuery.projection().keySet()));
+                }
+
+                resultVar = tableVar.invoke("sort", resultVar, comparatorVar,
+                                            projectionVar, sortPlan.sortOrderSpec);
+            }
+
+            mm.return_(resultVar);
+        }
+
+        // Add the plan method.
+
+        {
+            MethodMaker mm = cm.addMethod
+                (QueryPlan.class, "scannerPlan", Transaction.class, Object[].class)
+                .public_().varargs();
+
+            var txnVar = mm.param(0);
+            var argsVar = splitter.prepareArgs(mm.param(1));
+            var tableVar = mm.field("table").get();
+            var sourceQueryVar = mm.field("squery");
+
+            final var planVar = sourceQueryVar.invoke("scannerPlan", txnVar, argsVar);
+
+            var targetVar = mm.var(Class.class).set(targetType).invoke("getName");
+            var usingVar = tableVar.invoke("grouperString");
+            var groupByVar = tableVar.invoke("groupByColumns");
+            var orderByVar = tableVar.invoke("orderByColumns");
+
+            var grouperPlanVar = mm.new_
+                (QueryPlan.Grouper.class, targetVar, usingVar, groupByVar, orderByVar, planVar);
+            planVar.set(tableVar.invoke("plan", grouperPlanVar));
+
+            if (targetRemainder != TrueFilter.THE) {
+                planVar.set(mm.new_(QueryPlan.Filter.class, targetRemainder.toString(), planVar));
+            }
+
+            SortPlan sortPlan = splitter.mSortPlan;
+
+            if (sortPlan.sortOrder != null) {
+                var columnsVar = mm.var(OrderBy.class).invoke("splitSpec", sortPlan.sortOrderSpec);
+                planVar.set(mm.new_(QueryPlan.Sort.class, columnsVar, planVar));
+            }
+
+            mm.return_(planVar);
+        }
+
+        // Keep a reference to the MethodHandle instance, to prevent it from being garbage
+        // collected as long as the generated query class still exists.
+        cm.addField(Object.class, "handle").private_().static_();
+
+        return QueryFactoryCache.ctorHandle(cm.finishLookup(), GroupedTable.class);
+    }
+
+    @Override
+    protected final String sourceProjection() {
+        return mGrouperFactory.sourceProjection();
+    }
+
+    @Override
+    protected final Class<?> inverseFunctions() {
+        return mGrouperFactory.getClass();
+    }
+
+    @Override
+    protected final SortPlan analyzeSort(InverseFinder finder, QuerySpec targetQuery) {
+        OrderBy groupBy = OrderBy.forSpec(finder.mSourceColumns, mGroupBySpec);
+        OrderBy orderBy = OrderBy.forSpec(finder.mSourceColumns, mOrderBySpec);
+        OrderBy targetOrderBy = targetQuery.orderBy();
+
+        var plan = new SortPlan();
+
+        if (targetOrderBy == null) {
+            groupBy.putAll(orderBy);
+            if (!groupBy.isEmpty()) {
+                plan.sourceOrder = groupBy;
+            }
+            return plan;
+        }
+
+        OrderBy sourceOrderBy = groupBy;
+
+        // Attempt to push down the target ordering to the source. The end result is the same
+        // logical grouping as before, but the order in which they are processed can be
+        // different.
+
+        pushDown: {
+            for (var rule : targetOrderBy.values()) {
+                ColumnFunction source = finder.tryFindSource(rule.column());
+                ColumnInfo sc;
+                if (source == null || !source.isUntransformed() ||
+                    !groupBy.containsKey((sc = source.column()).name))
+                {
+                    break pushDown;
+                }
+                if (sourceOrderBy == groupBy) {
+                    sourceOrderBy = new OrderBy();
+                }
+                sourceOrderBy.put(sc.name, new OrderBy.Rule(sc, rule.type()));
+            }
+
+            // All target ordering columns have been pushed to the source.
+            targetOrderBy = null;
+        }
+
+        if (sourceOrderBy != groupBy) {
+            // Apply any unused groupBy columns.
+            for (var rule : groupBy.values()) {
+                sourceOrderBy.putIfAbsent(rule.column().name, rule);
+            }
+        }
+
+        // Apply the ordering within the source groups.
+        for (Map.Entry<String, OrderBy.Rule> e : orderBy.entrySet()) {
+            sourceOrderBy.putIfAbsent(e.getKey(), e.getValue());
+        }
+
+        plan.sourceOrder = sourceOrderBy;
+
+        plan.sortOrder = targetOrderBy;
+
+        if (targetOrderBy != null) {
+            String spec = targetOrderBy.spec();
+            plan.sortOrderSpec = spec;
+            plan.sortComparator = ComparatorMaker.comparator(rowType(), targetOrderBy, spec);
+        }
+
+        return plan;
+    }
+
+    public abstract static class BaseQuery<S, T> implements Query<T> {
+        protected final GroupedTable<S, T> table;
+        protected final Query<S> squery;
+
+        protected BaseQuery(GroupedTable<S, T> table) throws IOException {
+            this.table = table;
+            this.squery = table.mSource.queryAll();
+        }
+
+        protected BaseQuery(GroupedTable<S, T> table, String queryStr) throws IOException {
+            this.table = table;
+            this.squery = table.mSource.query(queryStr);
+        }
+    }
+
+    /**
+     * Called by generated Query instances.
+     */
+    public final Grouper<S, T> newGrouper() throws IOException {
+        return mGrouperFactory.newGrouper();
+    }
+
+    /**
+     * Called by generated Query instances.
+     */
+    public final Grouper<S, T> newGrouper(Scanner<S> sourceScanner) throws IOException {
+        try {
+            return mGrouperFactory.newGrouper();
+        } catch (Throwable e) {
+            try {
+                sourceScanner.close();
+            } catch (Throwable e2) {
+                RowUtils.suppress(e, e2);
+            }
+            throw e;
+        }
+    }
+
+    /**
+     * Called by generated Query instances.
+     */
+    public final String grouperString() throws IOException {
+        try (Grouper<S, T> grouper = mGrouperFactory.newGrouper()) {
+            return grouper.toString();
+        }
+    }
+
+    /**
+     * Called by generated Query instances.
+     */
+    public final QueryPlan plan(QueryPlan.Grouper plan) {
+        return mGrouperFactory.plan(plan);
     }
 }

@@ -191,11 +191,18 @@ final class PosixFileIO extends AbstractFileIO {
 
     private static final int MAX_POOL_SIZE = -4; // 4 * number of available processors
 
-    static final boolean OSX;
+    static final int LINUX = 1, OSX = 2;
+    static final int OS_TYPE;
 
     static {
         String osName = System.getProperty("os.name");
-        OSX = osName.startsWith("Mac") || osName.startsWith("Darwin");
+        if (osName.startsWith("Linux")) {
+            OS_TYPE = LINUX;
+        } else if (osName.startsWith("Mac") || osName.startsWith("Darwin")) {
+            OS_TYPE = OSX;
+        } else {
+            OS_TYPE = 0;
+        }
     }
 
     private final File mFile;
@@ -623,7 +630,7 @@ final class PosixFileIO extends AbstractFileIO {
     static void fsyncFd(int fd) throws IOException {
         int result;
         try {
-            if (OSX) {
+            if (OS_TYPE == OSX) {
                 result = (int) fcntl.invokeExact(fd, 51); // F_FULLFSYNC
             } else {
                 result = (int) fsync.invokeExact(fd);
@@ -639,7 +646,7 @@ final class PosixFileIO extends AbstractFileIO {
     static void fdatasyncFd(int fd) throws IOException {
         int result;
         try {
-            if (OSX) {
+            if (OS_TYPE == OSX) {
                 result = (int) fcntl.invokeExact(fd, 51); // F_FULLFSYNC
             } else {
                 result = (int) fdatasync.invokeExact(fd);
@@ -813,7 +820,7 @@ final class PosixFileIO extends AbstractFileIO {
         public static final PlatformIO INSTANCE;
         static {
             PlatformIO inst;
-            if (OSX) {
+            if (OS_TYPE == OSX) {
                 inst = NullIO.INSTANCE;
             } else {
                 try {
