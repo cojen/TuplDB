@@ -462,7 +462,7 @@ final class PosixFileIO extends AbstractFileIO {
             if (result != -1 && result != 22 && result != 34) { // !EINVAL && !ERANGE
                 MemorySegment resultPtr = result == 0 ? bufPtr
                     : MemorySegment.ofAddress(result).reinterpret(bufLen);
-                return resultPtr.getUtf8String(0);
+                return resultPtr.getString(0);
             }
 
             return "Error " + errorId;
@@ -499,7 +499,7 @@ final class PosixFileIO extends AbstractFileIO {
                 flags |= 040000;
             }
             try (Arena a = Arena.ofConfined()) {
-                MemorySegment pathPtr = a.allocateUtf8String(path);
+                MemorySegment pathPtr = a.allocateFrom(path);
                 fd = (int) open.invokeExact(pathPtr, flags);
             } catch (Throwable e) {
                 throw Utils.rethrow(e);
@@ -850,7 +850,7 @@ final class PosixFileIO extends AbstractFileIO {
         static int shm_open(String path, int oflag, int mode) throws IOException {
             int fd;
             try (Arena a = Arena.ofConfined()) {
-                MemorySegment pathPtr = a.allocateUtf8String(path);
+                MemorySegment pathPtr = a.allocateFrom(path);
                 fd = (int) shm_open.invokeExact(pathPtr, oflag, mode);
             } catch (Throwable e) {
                 throw Utils.rethrow(e);
