@@ -220,6 +220,7 @@ public final class JoinNode extends RelationNode {
 
     @Override
     public boolean equals(Object obj) {
-        return obj instanceof JoinNode jn && mJoinType == jn.mJoinType && mLeft.equals(mRight);
+        return obj instanceof JoinNode jn && mJoinType == jn.mJoinType
+            && mLeft.equals(jn.mLeft) && mRight.equals(jn.mRight);
     }
 }
