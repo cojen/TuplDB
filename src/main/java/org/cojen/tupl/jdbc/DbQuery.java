@@ -36,9 +36,13 @@ import org.cojen.tupl.diag.QueryPlan;
 public abstract class DbQuery extends BasePreparedStatement {
     private DbConnection mCon;
 
+    // Accessed by DbConnection.
+    DbQuery mPrev, mNext;
+
     protected DbQuery(DbConnection con) {
         super();
         mCon = con;
+        con.register(this);
     }
 
     public static interface Factory {
@@ -86,6 +90,14 @@ public abstract class DbQuery extends BasePreparedStatement {
 
     @Override
     public final void close() throws SQLException {
+        DbConnection con = mCon;
+        doClose();
+        if (con != null) {
+            con.unregister(this);
+        }
+    }
+
+    final void doClose() throws SQLException {
         mCon = null;
         closeResultSet();
     }

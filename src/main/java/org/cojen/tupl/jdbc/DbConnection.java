@@ -54,6 +54,9 @@ public final class DbConnection extends BaseConnection {
     private Transaction mTxn;
     private TxnSavepoint mLastSavepoint;
 
+    // Linked list of registered queries.
+    private DbQuery mLastQuery;
+
     DbConnection(DbDataSource dataSource) {
         mDataSource = dataSource;
     }
@@ -128,7 +131,32 @@ public final class DbConnection extends BaseConnection {
         rollback();
         cDataSourceHandle.setRelease(this, null);
         mTxn = null;
-        // FIXME: Close all Statements and ResultSets too.
+
+        DbQuery last = mLastQuery;
+        if (last != null) {
+            mLastQuery = null;
+            Throwable ex = null;
+            while (true) {
+                last.mNext = null;
+                try {
+                    last.doClose();
+                } catch (Throwable e) {
+                    if (ex == null) {
+                        ex = e;
+                    } else {
+                        Utils.suppress(ex, e);
+                    }
+                }
+                last = last.mPrev;
+                if (last == null) {
+                    break;
+                }
+                last.mPrev = null;
+            }
+            if (ex != null) {
+                throw Utils.rethrow(ex);
+            }
+        }
     }
 
     @Override
@@ -319,6 +347,30 @@ public final class DbConnection extends BaseConnection {
 
     Transaction txn() {
         return mTxn;
+    }
+
+    void register(DbQuery query) {
+        DbQuery last = mLastQuery;
+        if (last != null) {
+            query.mPrev = last;
+            last.mNext = query;
+        }
+        mLastQuery = query;
+    }
+
+    void unregister(DbQuery query) {
+        DbQuery prev = query.mPrev;
+        DbQuery next = query.mNext;
+        if (prev != null) {
+            prev.mNext = next;
+            query.mPrev = null;
+        }
+        if (next == null) {
+            mLastQuery = prev;
+        } else {
+            next.mPrev = prev;
+            query.mNext = null;
+        }
     }
 
     private DbDataSource dataSource() throws SQLException {
