@@ -40,13 +40,6 @@ final class SelectUnmappedNode extends SelectNode {
     /**
      * @see SelectNode#make
      */
-    static SelectUnmappedNode rename(RelationNode from, String name) {
-        return new SelectUnmappedNode(from.type(), name, from, from.maxArgument());
-    }
-
-    /**
-     * @see SelectNode#make
-     */
     static SelectUnmappedNode make(TupleType type, String name,
                                    RelationNode from, RowFilter filter, Node[] projection,
                                    int maxArgument)
@@ -94,11 +87,6 @@ final class SelectUnmappedNode extends SelectNode {
     {
         super(type, name, from, filter, projection, maxArgument);
         mArgMap = argMap;
-    }
-
-    private SelectUnmappedNode(RelationType type, String name, RelationNode from, int maxArgument) {
-        super(type, name, from, TrueFilter.THE, null, maxArgument);
-        mArgMap = null;
     }
 
     private SelectUnmappedNode(SelectUnmappedNode node, String name) {

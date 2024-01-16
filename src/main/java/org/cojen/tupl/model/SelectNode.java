@@ -199,10 +199,7 @@ public abstract sealed class SelectNode extends RelationNode
         }
 
         if (mappedFilter == TrueFilter.THE && projection == null) {
-            if (!Objects.equals(name, from.name())) {
-                from = SelectUnmappedNode.rename(from, name);
-            }
-            return from;
+            return from.withName(name);
         }
 
         // A custom row type and Mapper is required.
