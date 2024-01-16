@@ -966,7 +966,8 @@ public final class ResultSetMaker {
                     .invoke("newScanner", mm.field("state"), mm.field("factory"), rowVar);
 
                 Label ready = mm.label();
-                scannerVar.invoke("row").ifNe(null, ready);
+                rowVar.set(scannerVar.invoke("row").cast(rowClass));
+                rowVar.ifNe(null, ready);
                 mm.super_().invoke("close");
                 mm.return_(false);
 
