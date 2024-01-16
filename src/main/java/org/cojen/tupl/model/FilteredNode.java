@@ -44,6 +44,7 @@ public final class FilteredNode extends BinaryOpNode {
 
     /**
      * @param op must be less than or equal to OP_OR
+     * @see BinaryOpNode#make
      */
     FilteredNode(String name, int op,
                  Node originalLeft, Node originalRight, Node left, Node right)
