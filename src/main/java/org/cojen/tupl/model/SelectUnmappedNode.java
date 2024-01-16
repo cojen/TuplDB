@@ -22,8 +22,6 @@ import java.util.Map;
 
 import org.cojen.tupl.Table;
 
-import org.cojen.tupl.jdbc.TableProvider;
-
 import org.cojen.tupl.rows.RowUtils;
 
 import org.cojen.tupl.rows.filter.ColumnToConstantFilter;

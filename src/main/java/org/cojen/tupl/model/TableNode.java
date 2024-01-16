@@ -19,8 +19,6 @@ package org.cojen.tupl.model;
 
 import org.cojen.tupl.Table;
 
-import org.cojen.tupl.jdbc.TableProvider;
-
 import org.cojen.tupl.rows.IdentityTable;
 
 /**

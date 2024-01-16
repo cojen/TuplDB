@@ -15,7 +15,7 @@
  *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-package org.cojen.tupl.jdbc;
+package org.cojen.tupl.model;
 
 import java.util.Map;
 
@@ -25,7 +25,6 @@ import org.cojen.tupl.rows.RowUtils;
 
 /**
  * @author Brian S. O'Neill
- * @see DbQueryMaker
  */
 public interface TableProvider<R> {
     Class<R> rowType();

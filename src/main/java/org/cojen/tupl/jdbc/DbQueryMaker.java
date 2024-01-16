@@ -29,13 +29,13 @@ import java.sql.SQLNonTransientException;
 import org.cojen.maker.ClassMaker;
 import org.cojen.maker.Label;
 import org.cojen.maker.MethodMaker;
-import org.cojen.maker.Variable;
 
 import org.cojen.tupl.Scanner;
 import org.cojen.tupl.Table;
-import org.cojen.tupl.Transaction;
 
 import org.cojen.tupl.io.Utils;
+
+import org.cojen.tupl.model.TableProvider;
 
 import org.cojen.tupl.rows.WeakCache;
 

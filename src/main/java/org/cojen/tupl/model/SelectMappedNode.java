@@ -39,8 +39,6 @@ import org.cojen.tupl.diag.QueryPlan;
 
 import org.cojen.tupl.io.Utils;
 
-import org.cojen.tupl.jdbc.TableProvider;
-
 import org.cojen.tupl.rows.MappedTable;
 import org.cojen.tupl.rows.RowGen;
 import org.cojen.tupl.rows.RowUtils;
