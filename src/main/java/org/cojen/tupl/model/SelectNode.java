@@ -199,7 +199,7 @@ public abstract sealed class SelectNode extends RelationNode
         }
 
         if (mappedFilter == TrueFilter.THE && projection == null) {
-            return from.withName(name);
+            return name == null ? from : from.withName(name);
         }
 
         // A custom row type and Mapper is required.
