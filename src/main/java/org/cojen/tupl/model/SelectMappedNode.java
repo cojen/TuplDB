@@ -116,9 +116,10 @@ final class SelectMappedNode extends SelectNode {
         int argCount = maxArgument();
         MapperFactory factory = makeMapper(argCount);
 
-        Class targetClass = type().tupleType().clazz();
+        TupleType tt = type().tupleType();
+        Class targetClass = tt.clazz();
 
-        Map<String, String> projectionMap = makeProjectionMap();
+        Map<String, String> projectionMap = tt.makeProjectionMap();
 
         if (argCount == 0) {
             return TableProvider.make

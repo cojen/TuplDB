@@ -114,7 +114,7 @@ final class SelectUnmappedNode extends SelectNode {
             projectionMap = null;
             qb.append('*');
         } else {
-            projectionMap = makeProjectionMap();
+            projectionMap = type().tupleType().makeProjectionMap();
             for (int i=0; i<mProjection.length; i++) {
                 if (i > 0) {
                     qb.append(", ");

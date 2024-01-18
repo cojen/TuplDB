@@ -34,6 +34,7 @@ import org.cojen.tupl.model.JoinNode;
 import org.cojen.tupl.model.Node;
 import org.cojen.tupl.model.RelationNode;
 import org.cojen.tupl.model.SelectNode;
+import org.cojen.tupl.model.Type;
 
 import static org.cojen.tupl.rows.join.JoinSpec.*;
 
@@ -100,7 +101,6 @@ public class SelectProcessor implements SelectVisitor {
             plainSelect.getLimit() != null ||
             plainSelect.getLimitBy() != null ||
             plainSelect.getOffset() != null ||
-            plainSelect.getOrderByElements() != null ||
             plainSelect.getWithItemsList() != null ||
             plainSelect.isOracleSiblings() ||
             plainSelect.getDistinct() != null ||
@@ -198,7 +198,38 @@ public class SelectProcessor implements SelectVisitor {
             }
         }
 
-        mNode = SelectNode.make(null, from, where, projection.toArray(Node[]::new));
+        Node[] orderBy = null;
+        int[] orderByFlags = null;
+
+        List<OrderByElement> orderByElements = plainSelect.getOrderByElements();
+        if (orderByElements != null && !orderByElements.isEmpty()) {
+            orderBy = new Node[orderByElements.size()];
+            orderByFlags = new int[orderBy.length];
+            int i = 0;
+            for (var element : orderByElements) {
+                if (element.isMysqlWithRollup()) {
+                    throw fail();
+                }
+
+                orderBy[i] = ExpressionProcessor.process(element.getExpression(), from);
+
+                OrderByElement.NullOrdering ordering = element.getNullOrdering();
+
+                int flag;
+                if (ordering == OrderByElement.NullOrdering.NULLS_FIRST) {
+                    flag = element.isAsc() ? Type.TYPE_NULL_LOW : Type.TYPE_DESCENDING;
+                } else if (ordering == OrderByElement.NullOrdering.NULLS_LAST) {
+                    flag = element.isAsc() ? 0 : (Type.TYPE_NULL_LOW | Type.TYPE_DESCENDING);
+                } else {
+                    flag = element.isAsc() ? 0 : Type.TYPE_DESCENDING;
+                }
+
+                orderByFlags[i++] = flag;
+            }
+        }
+
+        mNode = SelectNode.make(null, from, where, projection.toArray(Node[]::new),
+                                orderBy, orderByFlags);
     }
 
     private static Node andWhere(Node where, Node whereMore) {

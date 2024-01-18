@@ -22,6 +22,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -45,12 +46,6 @@ import org.cojen.tupl.rows.RowInfo;
 public abstract sealed class SelectNode extends RelationNode
     permits SelectUnmappedNode, SelectMappedNode
 {
-    // FIXME: For supporting order-by, define a separate RelationNode type which wraps another
-    // RelationNode. It should just create a view. The SQL order-by clause supports original
-    // columns names, expressions, and the "as" aliases. For this reason, the order-by
-    // specification might need to be assigned to the SelectNode. When factory method is called
-    // it applies the necessary transformations.
-
     /**
      * @param name can be null to automatically assign a name
      * @param from can be null if not selecting from any table at all
@@ -214,6 +209,77 @@ public abstract sealed class SelectNode extends RelationNode
 
         return new SelectMappedNode
             (type, name, from, mappedFilter, mappedWhere, projection, maxArgument);
+    }
+
+    /**
+     * @param name can be null to automatically assign a name
+     * @param from can be null if not selecting from any table at all
+     * @param where can be null if not filtered, or else type must be boolean or be convertable
+     * to boolean
+     * @param projection can be null to project all columns
+     * @param orderBy can be null to not apply any specific ordering
+     * @param orderByFlags can be null to use default flags; supported flags are
+     * Type.TYPE_NULL_LOW and Type.TYPE_DESCENDING;
+     */
+    public static RelationNode make(String name, RelationNode from, Node where,
+                                    final Node[] projection,
+                                    final Node[] orderBy, int[] orderByFlags)
+    {
+        if (from == null || orderBy == null || orderBy.length == 0) {
+            return make(name, from, where, projection);
+        }
+
+        // Might need to expand the projection to support order-by.
+
+        // Maps projected nodes to column indexes.
+        var projectionIndexes = new HashMap<Node, Integer>();
+
+        if (projection == null) {
+            from.allColumns(n -> projectionIndexes.putIfAbsent(n, projectionIndexes.size()));
+        } else {
+            for (Node n : projection) {
+                projectionIndexes.putIfAbsent(n, projectionIndexes.size());
+            }
+        }
+
+        List<Node> fullProjection = null;
+
+        for (Node n : orderBy) {
+            int nextIndex = projection.length;
+            if (!projectionIndexes.containsKey(n)) {
+                // Need to project more nodes.
+                projectionIndexes.put(n, nextIndex++);
+                if (fullProjection == null) {
+                    fullProjection = new ArrayList<>(Arrays.asList(projection));
+                }
+                fullProjection.add(n);
+            }
+        }
+
+        Node[] appliedProjection;
+        if (fullProjection == null) {
+            appliedProjection = projection;
+        } else {
+            appliedProjection = fullProjection.toArray(Node[]::new);
+        }
+
+        RelationNode unordered = make(null, from, where, appliedProjection);
+
+        TupleType tt = unordered.type().tupleType();
+        var fields = new String[orderBy.length];
+
+        for (int i=0; i<orderBy.length; i++) {
+            fields[i] = tt.field(projectionIndexes.get(orderBy[i]));
+        }
+
+        Map<String, String> projectionMap = null;
+
+        if (appliedProjection != projection) {
+            // Don't project the nodes which needed to be added.
+            projectionMap = tt.makeProjectionMap(projection.length);
+        }
+
+        return OrderedRelationNode.make(name, unordered, fields, orderByFlags, projectionMap);
     }
 
     private static boolean hasRepeatedNonPureFunctions(RowFilter filter) {

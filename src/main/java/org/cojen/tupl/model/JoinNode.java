@@ -116,10 +116,11 @@ public final class JoinNode extends RelationNode {
         var providerList = new ArrayList<TableProvider>();
         flattenProviders(this, providerList);
 
-        Class<?> joinType = type().tupleType().clazz();
+        TupleType tt = type().tupleType();
+        Class<?> joinType = tt.clazz();
         String spec = makeSpec();
 
-        Map<String, String> projectionMap = makeProjectionMap();
+        Map<String, String> projectionMap = tt.makeProjectionMap();
 
         if (argCount == 0) {
             var tables = new Table[providerList.size()];

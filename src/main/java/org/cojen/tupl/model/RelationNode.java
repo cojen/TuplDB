@@ -23,6 +23,8 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;
 
+import java.util.function.Consumer;
+
 import org.cojen.maker.Variable;
 
 /**
@@ -31,7 +33,7 @@ import org.cojen.maker.Variable;
  * @author Brian S. O'Neill
  */
 public abstract sealed class RelationNode extends Node
-    permits JoinNode, SelectNode, TableNode
+    permits JoinNode, OrderedRelationNode, SelectNode, TableNode
 {
     private final RelationType mType;
     private final String mName;
@@ -123,10 +125,18 @@ public abstract sealed class RelationNode extends Node
      * qualified name as if it was found using findColumn.
      */
     public final void allColumns(Collection<? super ColumnNode> columns) {
-        allColumns(columns, type().tupleType(), "", "");
+        allColumns(columns::add);
     }
 
-    private void allColumns(Collection<? super ColumnNode> columns, TupleType tt,
+    /**
+     * Put all of the columns of this relation into the given list. Each column has a fully
+     * qualified name as if it was found using findColumn.
+     */
+    public final void allColumns(Consumer<? super ColumnNode> consumer) {
+        allColumns(consumer, type().tupleType(), "", "");
+    }
+
+    private void allColumns(Consumer<? super ColumnNode> consumer, TupleType tt,
                             String namePrefix, String fieldPrefix)
     {
         int num = tt.numColumns();
@@ -134,11 +144,11 @@ public abstract sealed class RelationNode extends Node
             Column column = tt.column(i);
             String field = tt.field(i);
             if (column.type() instanceof TupleType ctt) {
-                allColumns(columns, ctt, namePrefix + column.name() + '.',
+                allColumns(consumer, ctt, namePrefix + column.name() + '.',
                            fieldPrefix + field + '.');
             } else {
-                columns.add(ColumnNode.make(this, namePrefix + column.name(),
-                                            column.withName(fieldPrefix + field)));
+                consumer.accept(ColumnNode.make(this, namePrefix + column.name(),
+                                                column.withName(fieldPrefix + field)));
             }
         }
     }
@@ -196,20 +206,4 @@ public abstract sealed class RelationNode extends Node
      * DbQueryMaker to make DbQuery instances.
      */
     public abstract TableProvider<?> makeTableProvider();
-
-    /**
-     * @return a map of field names to column names
-     */
-    protected Map<String, String> makeProjectionMap() {
-        var projectionMap = new LinkedHashMap<String, String>();
-
-        TupleType tt = type().tupleType();
-        int num = tt.numColumns();
-
-        for (int i=0; i<num; i++) {
-            projectionMap.put(tt.field(i), tt.column(i).name());
-        }
-
-        return projectionMap;
-    }
 }

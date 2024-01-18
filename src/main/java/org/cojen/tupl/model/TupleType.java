@@ -309,4 +309,23 @@ public final class TupleType extends Type {
 
         return map;
     }
+
+    /**
+     * @return a map of field names to column names
+     */
+    public Map<String, String> makeProjectionMap() {
+        return makeProjectionMap(numColumns());
+    }
+
+    /**
+     * @param max must not be more than numColumns
+     * @return a map of field names to column names
+     */
+    public Map<String, String> makeProjectionMap(int max) {
+        var projectionMap = new LinkedHashMap<String, String>();
+        for (int i=0; i<max; i++) {
+            projectionMap.put(field(i), column(i).name());
+        }
+        return projectionMap;
+    }
 }
