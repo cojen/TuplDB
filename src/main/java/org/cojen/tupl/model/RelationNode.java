@@ -17,8 +17,9 @@
 
 package org.cojen.tupl.model;
 
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -108,14 +109,24 @@ public abstract sealed class RelationNode extends Node
     }
 
     /**
+     * Returns all of this relation's columns in a new array. Each column has a fully qualified
+     * name as if it was found using findColumn.
+     */
+    public final ColumnNode[] allColumns() {
+        var columns = new ArrayList<ColumnNode>(type().tupleType().numColumns());
+        allColumns(columns);
+        return columns.toArray(new ColumnNode[columns.size()]);
+    }
+
+    /**
      * Put all of the columns of this relation into the given list. Each column has a fully
      * qualified name as if it was found using findColumn.
      */
-    public final void allColumns(List<? super ColumnNode> columns) {
+    public final void allColumns(Collection<? super ColumnNode> columns) {
         allColumns(columns, type().tupleType(), "", "");
     }
 
-    private void allColumns(List<? super ColumnNode> columns, TupleType tt,
+    private void allColumns(Collection<? super ColumnNode> columns, TupleType tt,
                             String namePrefix, String fieldPrefix)
     {
         int num = tt.numColumns();
@@ -140,7 +151,7 @@ public abstract sealed class RelationNode extends Node
      * @param table name of table to obtain all columns for (it's treated as if it had a
      * wildcard at the end)
      */
-    public final void allTableColumns(List<? super ColumnNode> columns, String table) {
+    public final void allTableColumns(Collection<? super ColumnNode> columns, String table) {
         final int originalSize = columns.size();
 
         TupleType tt = type().tupleType();
@@ -165,7 +176,7 @@ public abstract sealed class RelationNode extends Node
         }
     }
 
-    private void allTableColumns(List<? super ColumnNode> columns, TupleType tt,
+    private void allTableColumns(Collection<? super ColumnNode> columns, TupleType tt,
                                  String namePrefix, String fieldPrefix)
     {
         int num = tt.numColumns();

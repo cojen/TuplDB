@@ -60,6 +60,27 @@ public final class TupleType extends Type {
     }
 
     /**
+     * Makes a type which has a generated row type class.
+     */
+    public static TupleType make(Node[] projection) {
+        var columns = new Column[projection.length];
+
+        for (int i=0; i<projection.length; i++) {
+            Node node = projection[i];
+            Type type = node.type();
+            if (node.isNullable()) {
+                type = type.nullable();
+            }
+            // FIXME: Try to infer if the column is a key or not. If full primary key is
+            // composite, then all of its columns must be projected in order for any columns to
+            // have key=true.
+            columns[i] = Column.make(type, node.name(), false);
+        }
+
+        return make(columns);
+    }
+
+    /**
      * Makes a type which uses the given row type class.
      *
      * @param projection maps column names to target names; can pass null to project all columns
@@ -102,24 +123,6 @@ public final class TupleType extends Type {
         }
 
         return new TupleType(rowType, columns, fields);
-    }
-
-    public static TupleType make(Node[] projection) {
-        var columns = new Column[projection.length];
-
-        for (int i=0; i<projection.length; i++) {
-            Node node = projection[i];
-            Type type = node.type();
-            if (node.isNullable()) {
-                type = type.nullable();
-            }
-            // FIXME: Try to infer if the column is a key or not. If full primary key is
-            // composite, then all of its columns must be projected in order for any columns to
-            // have key=true.
-            columns[i] = Column.make(type, node.name(), false);
-        }
-
-        return make(columns);
     }
 
     /**

@@ -199,16 +199,16 @@ public abstract sealed class SelectNode extends RelationNode
             return name == null ? from : from.withName(name);
         }
 
-        // A custom row type and Mapper is required.
+        // A Mapper is required.
 
         TupleType type;
 
         if (projection == null) {
+            // Use the existing row type.
             type = from.type().tupleType();
-            var allColumns = new ArrayList<ColumnNode>(type.numColumns());
-            from.allColumns(allColumns);
-            projection = allColumns.toArray(new Node[allColumns.size()]);
+            projection = from.allColumns();
         } else {
+            // Use a custom row type.
             type = TupleType.make(projection);
         }
 
