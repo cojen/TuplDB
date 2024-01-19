@@ -247,8 +247,8 @@ public abstract sealed class SelectNode extends RelationNode
         List<Node> fullProjection = null;
 
         for (Node n : orderBy) {
-            if (n.maxArgument() > 0) {
-                throw new IllegalArgumentException("Cannot order by a parameter");
+            if (n.type() == AnyType.THE) {
+                throw new IllegalArgumentException("Cannot order by an unspecified type");
             }
 
             int nextIndex = projection.length;
