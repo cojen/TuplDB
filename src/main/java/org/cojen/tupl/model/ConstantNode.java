@@ -159,14 +159,20 @@ public sealed class ConstantNode extends Node {
             return this;
         }
 
-        if (mValue instanceof Number num) isNum: {
+        if (mValue instanceof Number num && !mType.isUnsigned()) isNum: {
             Object newValue;
 
             if (num instanceof Integer n) {
+                if (n == Integer.MIN_VALUE) {
+                    break isNum;
+                }
                 newValue = Integer.valueOf(-n);
             } else if (num instanceof Double n) {
                 newValue = Double.valueOf(-n);
             } else if (num instanceof Long n) {
+                if (n == Long.MIN_VALUE) {
+                    break isNum;
+                }
                 newValue = Long.valueOf(-n);
             } else if (num instanceof BigDecimal n) {
                 newValue = n.negate();
@@ -175,8 +181,14 @@ public sealed class ConstantNode extends Node {
             } else if (num instanceof Float n) {
                 newValue = Float.valueOf(-n);
             } else if (num instanceof Short n) {
+                if (n == Short.MIN_VALUE) {
+                    break isNum;
+                }
                 newValue = Short.valueOf((short) -n);
             } else if (num instanceof Byte n) {
+                if (n == Byte.MIN_VALUE) {
+                    break isNum;
+                }
                 newValue = Byte.valueOf((byte) -n);
             } else {
                 break isNum;

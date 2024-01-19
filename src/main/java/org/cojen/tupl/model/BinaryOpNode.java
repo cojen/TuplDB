@@ -28,6 +28,8 @@ import org.cojen.maker.Variable;
 
 import org.cojen.tupl.rows.filter.ColumnFilter;
 
+import static org.cojen.tupl.model.Type.*;
+
 /**
  * Defines a node for a binary operator.
  *
@@ -262,7 +264,7 @@ public sealed class BinaryOpNode extends Node permits FilteredNode {
             cont.here();
         }
 
-        resultVar.set(doMakeEval(context, leftVar, rightVar));
+        resultVar.set(doMakeEval(leftVar, rightVar));
 
         if (ready != null) {
             ready.here();
@@ -275,35 +277,32 @@ public sealed class BinaryOpNode extends Node permits FilteredNode {
         return resultVar;
     }
 
-    private Variable doMakeEval(EvalContext context, Variable leftVar, Variable rightVar) {
-        switch (mOp) {
-            // FIXME: These ops need to work for primitive numbers, BigInteger, and BigDecimal.
-            // FIXME: Needs to perform exact arithmetic.
-            // FIXME: Needs to support unsigned numbers.
+    /**
+     * @param leftVar not null, same type as mType
+     * @param rightVar not null, same type as mType
+     */
+    private Variable doMakeEval(Variable leftVar, Variable rightVar) {
+        int op = mOp;
 
-        case OP_ADD:
-            // FIXME: Temporary hack.
-            return leftVar.add(rightVar);
-
-        case OP_SUB:
-            // FIXME: OP_SUB
-            throw null;
-
-        case OP_MUL:
-            // FIXME: OP_MUL
-            throw null;
-
-        case OP_DIV:
-            // FIXME: OP_DIV
-            throw null;
-
-        case OP_REM:
-            // FIXME: OP_REM
-            throw null;
-
+        Variable resulVar = switch (mType.plainTypeCode()) {
+            case TYPE_UBYTE -> Arithmetic.UByte.eval(op, leftVar, rightVar);
+            case TYPE_USHORT -> Arithmetic.UShort.eval(op, leftVar, rightVar);
+            case TYPE_UINT -> Arithmetic.UInteger.eval(op, leftVar, rightVar);
+            case TYPE_ULONG -> Arithmetic.ULong.eval(op, leftVar, rightVar);
+            case TYPE_BYTE -> Arithmetic.Byte.eval(op, leftVar, rightVar);
+            case TYPE_SHORT -> Arithmetic.Short.eval(op, leftVar, rightVar);
+            case TYPE_INT, TYPE_LONG -> Arithmetic.Integer.eval(op, leftVar, rightVar);
+            case TYPE_FLOAT, TYPE_DOUBLE -> Arithmetic.Float.eval(op, leftVar, rightVar);
+            case TYPE_BIG_INTEGER, TYPE_BIG_DECIMAL -> Arithmetic.Big.eval(op, leftVar, rightVar);
+            default -> null;
         };
 
-        throw new AssertionError();
+        if (resulVar != null) {
+            return resulVar;
+        }
+
+        // FIXME: More detail.
+        throw new IllegalStateException("Unsupported operation for type");
     }
 
     @Override
