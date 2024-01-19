@@ -225,7 +225,9 @@ public abstract sealed class SelectNode extends RelationNode
                                     final Node[] projection,
                                     final Node[] orderBy, int[] orderByFlags)
     {
-        if (from == null || orderBy == null || orderBy.length == 0) {
+        if (from == null || from.type().cardinality() != Cardinality.MANY
+            || orderBy == null || orderBy.length == 0)
+        {
             return make(name, from, where, projection);
         }
 
