@@ -85,8 +85,9 @@ public final class OrderedRelationNode extends RelationNode {
         return mTableProvider;
     }
 
-    private TableProvider<?> doMakeTableProvider() {
-        TableProvider<?> fromProvider = mFrom.makeTableProvider();
+    @SuppressWarnings("unchecked")
+    private TableProvider doMakeTableProvider() {
+        TableProvider source = mFrom.makeTableProvider();
 
         var b = new StringBuilder().append('{').append('*');
 
@@ -102,12 +103,23 @@ public final class OrderedRelationNode extends RelationNode {
 
         String spec = b.append('}').toString();
 
-        Map<String, String> projection = mProjectonMap;
-        if (projection == null) {
-            projection = fromProvider.projection();
+        Map<String, String> projectionMap = mProjectonMap;
+        if (projectionMap == null) {
+            projectionMap = source.projection();
         }
 
-        return TableProvider.make(fromProvider.table().view(spec), projection);
+        int argCount = source.argumentCount();
+
+        if (argCount == 0) {
+            return TableProvider.make(source.table().view(spec), projectionMap);
+        }
+
+        return new TableProvider.Wrapped(source, projectionMap, argCount) {
+            @Override
+            public Table table(Object... args) {
+                return source.table(args).view(spec);
+            }
+        };
     }
 
     @Override
