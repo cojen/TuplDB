@@ -40,6 +40,7 @@ import org.cojen.tupl.model.RelationNode;
 
 import org.cojen.tupl.rows.SoftCache;
 
+import org.cojen.tupl.sql.Scope;
 import org.cojen.tupl.sql.StatementProcessor;
 import org.cojen.tupl.sql.TableFinder;
 
@@ -175,7 +176,7 @@ public final class DbDataSource implements DataSource {
     private DbQuery.Factory newQueryFactory(String sql) throws SQLException {
         Object stmt;
         try {
-            stmt = StatementProcessor.process(sql, mFinder);
+            stmt = StatementProcessor.process(sql, new Scope(mFinder));
         } catch (ParseException e) {
             throw new SQLException(e.getMessage());
         } catch (IOException e) {

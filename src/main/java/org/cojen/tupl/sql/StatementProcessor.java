@@ -55,31 +55,25 @@ import org.cojen.tupl.io.Utils;
  * @author Brian S. O'Neill
  */
 public class StatementProcessor implements StatementVisitor {
-    /**
-     * @param finder used for finding fully functional Table instances
-     */
-    public static Object process(String sql, TableFinder finder)
+    public static Object process(String sql, Scope scope)
         throws ParseException, IOException
     {
         CCJSqlParser parser = CCJSqlParserUtil.newParser(sql);
-        return process(parser.Statement(), finder);
+        return process(parser.Statement(), scope);
     }
 
-    /**
-     * @param finder used for finding fully functional Table instances
-     */
-    public static Object process(Statement statement, TableFinder finder) throws IOException {
-        var processor = new StatementProcessor(finder);
+    public static Object process(Statement statement, Scope scope) throws IOException {
+        var processor = new StatementProcessor(scope);
         statement.accept(processor);
         return processor.mStatement;
     }
 
-    private final TableFinder mFinder;
+    private final Scope mScope;
 
     private Object mStatement;
 
-    private StatementProcessor(TableFinder finder) {
-        mFinder = finder;
+    private StatementProcessor(Scope scope) {
+        mScope = scope;
     }
 
     @Override
@@ -95,7 +89,7 @@ public class StatementProcessor implements StatementVisitor {
     @Override
     public void visit(Select select) {
         try {
-            mStatement = SelectProcessor.process(select, mFinder);
+            mStatement = SelectProcessor.process(select, mScope);
         } catch (IOException e) {
             throw Utils.rethrow(e);
         }

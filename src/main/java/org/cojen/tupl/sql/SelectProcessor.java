@@ -44,26 +44,20 @@ import static org.cojen.tupl.rows.join.JoinSpec.*;
  * @author Brian S. O'Neill
  */
 public class SelectProcessor implements SelectVisitor {
-    /**
-     * @param finder used for finding fully functional Table instances
-     */
-    public static RelationNode process(Select select, TableFinder finder) throws IOException {
-        var processor = new SelectProcessor(finder);
+    public static RelationNode process(Select select, Scope scope) throws IOException {
+        var processor = new SelectProcessor(scope);
         select.accept(processor);
         return processor.mNode;
     }
 
-    /**
-     * @param finder used for finding fully functional Table instances
-     */
-    static RelationNode process(ParenthesedSelect select, TableFinder finder) throws IOException {
+    static RelationNode process(ParenthesedSelect select, Scope scope) throws IOException {
         if (select.getPivot() != null ||
             select.getUnPivot() != null)
         {
             throw fail();
         }
 
-        RelationNode node = process(select.getSelect(), finder);
+        RelationNode node = process(select.getSelect(), scope);
 
         Alias alias = select.getAlias();
         if (alias != null) {
@@ -76,18 +70,18 @@ public class SelectProcessor implements SelectVisitor {
         return node;
     }
 
-    private final TableFinder mFinder;
+    private final Scope mScope;
 
     private RelationNode mNode;
 
-    private SelectProcessor(TableFinder finder) {
-        mFinder = finder;
+    private SelectProcessor(Scope scope) {
+        mScope = scope;
     }
 
     @Override
     public void visit(ParenthesedSelect parenthesedSelect) {
         try {
-            mNode = process(parenthesedSelect, mFinder);
+            mNode = process(parenthesedSelect, mScope);
         } catch (Throwable e) {
             throw Utils.rethrow(e);
         }
@@ -129,7 +123,7 @@ public class SelectProcessor implements SelectVisitor {
         FromItem fromItem = plainSelect.getFromItem();
         if (fromItem != null) {
             try {
-                from = FromProcessor.process(plainSelect.getFromItem(), mFinder);
+                from = FromProcessor.process(plainSelect.getFromItem(), mScope);
             } catch (Throwable e) {
                 throw Utils.rethrow(e);
             }
@@ -151,7 +145,7 @@ public class SelectProcessor implements SelectVisitor {
 
             RelationNode fromRight;
             try {
-                fromRight = FromProcessor.process(join.getFromItem(), mFinder);
+                fromRight = FromProcessor.process(join.getFromItem(), mScope);
             } catch (Throwable e) {
                 throw Utils.rethrow(e);
             }
@@ -173,17 +167,19 @@ public class SelectProcessor implements SelectVisitor {
             from = JoinNode.make(null, joinType, from, fromRight);
         }
 
+        Scope scope = mScope.withFrom(from);
+
         Node where = null;
 
         if (joins != null) for (Join join : joins) {
             for (Expression on : join.getOnExpressions()) {
-                where = andWhere(where, ExpressionProcessor.process(on, from));
+                where = andWhere(where, ExpressionProcessor.process(on, scope));
             }
         }
 
         Expression whereExpr = plainSelect.getWhere();
         if (whereExpr != null) {
-            where = andWhere(where, ExpressionProcessor.process(whereExpr, from));
+            where = andWhere(where, ExpressionProcessor.process(whereExpr, scope));
         }
 
         List<SelectItem<?>> items = plainSelect.getSelectItems();
@@ -194,7 +190,7 @@ public class SelectProcessor implements SelectVisitor {
         } else {
             projection = new ArrayList<>();
             for (SelectItem item : items) {
-                addToProjection(projection, item, from);
+                addToProjection(projection, item, scope);
             }
         }
 
@@ -211,7 +207,7 @@ public class SelectProcessor implements SelectVisitor {
                     throw fail();
                 }
 
-                orderBy[i] = ExpressionProcessor.process(element.getExpression(), from);
+                orderBy[i] = ExpressionProcessor.process(element.getExpression(), scope);
 
                 OrderByElement.NullOrdering ordering = element.getNullOrdering();
 
@@ -239,7 +235,7 @@ public class SelectProcessor implements SelectVisitor {
         return BinaryOpNode.make(null, BinaryOpNode.OP_AND, where, whereMore);
     }
 
-    private static void addToProjection(List<Node> projection, SelectItem item, RelationNode from) {
+    private static void addToProjection(List<Node> projection, SelectItem item, Scope scope) {
         Expression expr = item.getExpression();
         Alias alias = item.getAlias();
 
@@ -247,6 +243,7 @@ public class SelectProcessor implements SelectVisitor {
             if (alias != null) {
                 throw fail();
             }
+            RelationNode from = scope.from();
             if (from != null) {
                 if (ac instanceof AllTableColumns atc) {
                     from.allTableColumns(projection, atc.getTable().getFullyQualifiedName());
@@ -257,7 +254,7 @@ public class SelectProcessor implements SelectVisitor {
             return;
         }
 
-        Node node = ExpressionProcessor.process(expr, from);
+        Node node = ExpressionProcessor.process(expr, scope);
 
         if (alias != null) {
             if (alias.getAliasColumns() != null) {

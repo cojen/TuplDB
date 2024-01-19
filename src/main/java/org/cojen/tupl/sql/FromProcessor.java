@@ -36,21 +36,18 @@ import org.cojen.tupl.model.TableNode;
  * @author Brian S. O'Neill
  */
 public class FromProcessor implements FromItemVisitor {
-    /**
-     * @param finder used for finding fully functional Table instances
-     */
-    public static RelationNode process(FromItem item, TableFinder finder) throws IOException {
-        var processor = new FromProcessor(finder);
+    public static RelationNode process(FromItem item, Scope scope) throws IOException {
+        var processor = new FromProcessor(scope);
         item.accept(processor);
         return processor.mNode;
     }
 
-    private final TableFinder mFinder;
+    private final Scope mScope;
 
     private RelationNode mNode;
 
-    private FromProcessor(TableFinder finder) {
-        mFinder = finder;
+    private FromProcessor(Scope scope) {
+        mScope = scope;
     }
 
     @Override
@@ -67,7 +64,7 @@ public class FromProcessor implements FromItemVisitor {
         org.cojen.tupl.Table dbTable;
 
         try {
-            dbTable = mFinder.findTable(name);
+            dbTable = mScope.findTable(name);
         } catch (Throwable e) {
             throw Utils.rethrow(e);
         }
@@ -90,7 +87,7 @@ public class FromProcessor implements FromItemVisitor {
     @Override
     public void visit(ParenthesedSelect selectBody) {
         try {
-            mNode = SelectProcessor.process(selectBody, mFinder);
+            mNode = SelectProcessor.process(selectBody, mScope);
         } catch (Throwable e) {
             throw Utils.rethrow(e);
         }

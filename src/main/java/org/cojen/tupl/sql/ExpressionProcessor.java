@@ -28,6 +28,8 @@ import net.sf.jsqlparser.schema.Table;
 
 import net.sf.jsqlparser.statement.select.*;
 
+import org.cojen.tupl.io.Utils;
+
 import org.cojen.tupl.model.BinaryOpNode;
 import org.cojen.tupl.model.ConstantNode;
 import org.cojen.tupl.model.Node;
@@ -45,18 +47,18 @@ public class ExpressionProcessor implements ExpressionVisitor {
     /**
      * @param from used for finding columns
      */
-    public static Node process(Expression expr, RelationNode from) {
-        var processor = new ExpressionProcessor(from);
+    public static Node process(Expression expr, Scope scope) {
+        var processor = new ExpressionProcessor(scope);
         expr.accept(processor);
         return processor.mNode;
     }
 
-    private final RelationNode mFrom;
+    private final Scope mScope;
 
     private Node mNode;
 
-    private ExpressionProcessor(RelationNode from) {
-        mFrom = from;
+    private ExpressionProcessor(Scope scope) {
+        mScope = scope;
     }
 
     @Override
@@ -311,11 +313,7 @@ public class ExpressionProcessor implements ExpressionVisitor {
             name = table.getFullyQualifiedName() + '.' + name;
         }
 
-        if (mFrom == null) {
-            throw new IllegalStateException("Column isn't found: " + name);
-        }
-
-        mNode = mFrom.findColumn(name);
+        mNode = mScope.findColumn(name);
     }
 
     @Override
@@ -556,7 +554,11 @@ public class ExpressionProcessor implements ExpressionVisitor {
 
     @Override
     public void visit(Select selectBody) {
-        fail();
+        try {
+            mNode = SelectProcessor.process(selectBody, mScope);
+        } catch (Throwable e) {
+            throw Utils.rethrow(e);
+        }
     }
 
     @Override
