@@ -247,7 +247,12 @@ public abstract sealed class SelectNode extends RelationNode
         List<Node> fullProjection = null;
 
         for (Node n : orderBy) {
+            if (n.maxArgument() > 0) {
+                throw new IllegalArgumentException("Cannot order by a parameter");
+            }
+
             int nextIndex = projection.length;
+
             if (!projectionIndexes.containsKey(n)) {
                 // Need to project more nodes.
                 projectionIndexes.put(n, nextIndex++);
