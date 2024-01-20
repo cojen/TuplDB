@@ -31,7 +31,7 @@ import org.cojen.tupl.diag.EventListener;
 
 import org.cojen.tupl.ext.Crypto;
 
-import org.cojen.tupl.rows.RowStore;
+import org.cojen.tupl.table.RowStore;
 
 /**
  * Provides access to features of LocalDatabase implementation class, to reduce the number of

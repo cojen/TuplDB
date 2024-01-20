@@ -26,7 +26,7 @@ import org.cojen.tupl.Index;
 
 import org.cojen.tupl.diag.IndexStats;
 
-import org.cojen.tupl.rows.BaseTable;
+import org.cojen.tupl.table.BaseTable;
 
 /**
  * 

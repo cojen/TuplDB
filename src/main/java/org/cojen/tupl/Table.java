@@ -28,18 +28,18 @@ import java.util.stream.Stream;
 
 import org.cojen.tupl.io.Utils;
 
-import org.cojen.tupl.rows.AggregatedTable;
-import org.cojen.tupl.rows.ComparatorMaker;
-import org.cojen.tupl.rows.GroupedTable;
-import org.cojen.tupl.rows.MappedTable;
-import org.cojen.tupl.rows.PlainPredicateMaker;
-import org.cojen.tupl.rows.ViewedTable;
+import org.cojen.tupl.table.AggregatedTable;
+import org.cojen.tupl.table.ComparatorMaker;
+import org.cojen.tupl.table.GroupedTable;
+import org.cojen.tupl.table.MappedTable;
+import org.cojen.tupl.table.PlainPredicateMaker;
+import org.cojen.tupl.table.ViewedTable;
 
-import org.cojen.tupl.rows.join.JoinTableMaker;
+import org.cojen.tupl.table.join.JoinTableMaker;
 
-import org.cojen.tupl.rows.RowUtils;
+import org.cojen.tupl.table.RowUtils;
 
-import static org.cojen.tupl.rows.RowUtils.NO_ARGS;
+import static org.cojen.tupl.table.RowUtils.NO_ARGS;
 
 /**
  * Defines a relational collection of persistent rows. A row is defined by an interface

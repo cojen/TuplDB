@@ -226,7 +226,7 @@
           <splitindex>true</splitindex>
           <reportOutputDirectory>${basedir}/docs</reportOutputDirectory>
           <destDir>javadoc</destDir>
-          <excludePackageNames>org.cojen.tupl.unsafe:org.cojen.tupl.core:org.cojen.tupl.ev:org.cojen.tupl.jmx:org.cojen.tupl.views:org.cojen.tupl.rows:org.cojen.tupl.rows.filter:org.cojen.tupl.remote</excludePackageNames>
+          <excludePackageNames>org.cojen.tupl.unsafe:org.cojen.tupl.core:org.cojen.tupl.ev:org.cojen.tupl.jmx:org.cojen.tupl.views:org.cojen.tupl.rows:org.cojen.tupl.table.filter:org.cojen.tupl.remote</excludePackageNames>
           <!-- <additionalOptions>-Xdoclint:none</additionalOptions> -->
         </configuration>
         <executions>

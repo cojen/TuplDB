@@ -62,7 +62,7 @@ import org.cojen.tupl.ext.PrepareHandler;
 
 import org.cojen.tupl.io.Utils;
 
-import org.cojen.tupl.rows.ArrayKey;
+import org.cojen.tupl.table.ArrayKey;
 
 /**
  * 

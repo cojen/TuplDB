@@ -43,7 +43,7 @@ import org.cojen.tupl.io.CauseCloseable;
 
 import org.cojen.tupl.remote.ClientDatabase;
 
-import org.cojen.tupl.rows.join.JoinTableMaker;
+import org.cojen.tupl.table.join.JoinTableMaker;
 
 import static org.cojen.tupl.core.Utils.*;
 

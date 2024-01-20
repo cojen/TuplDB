@@ -21,7 +21,7 @@ import java.lang.invoke.MethodHandle;
 
 import org.cojen.tupl.Entry;
 
-import org.cojen.tupl.rows.RowMaker;
+import org.cojen.tupl.table.RowMaker;
 
 /**
  * Singleton Entry populator shared by the SortScanner class and the generated _SortScanner class.

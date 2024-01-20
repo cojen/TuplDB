@@ -29,7 +29,7 @@ import org.cojen.dirmi.ClassResolver;
 
 import org.cojen.tupl.*;
 
-import org.cojen.tupl.rows.FuzzTest;
+import org.cojen.tupl.table.FuzzTest;
 
 /**
  * 

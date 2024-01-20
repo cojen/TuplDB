@@ -107,7 +107,7 @@ import org.cojen.tupl.io.PageArray;
 
 import org.cojen.tupl.repl.StreamReplicator;
 
-import org.cojen.tupl.rows.RowStore;
+import org.cojen.tupl.table.RowStore;
 
 import org.cojen.tupl.util.Latch;
 import org.cojen.tupl.util.Runner;
