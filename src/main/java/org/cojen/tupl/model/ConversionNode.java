@@ -22,8 +22,8 @@ import java.util.Set;
 import org.cojen.maker.MethodMaker;
 import org.cojen.maker.Variable;
 
-import org.cojen.tupl.rows.ColumnInfo;
-import org.cojen.tupl.rows.Converter;
+import org.cojen.tupl.table.ColumnInfo;
+import org.cojen.tupl.table.Converter;
 
 /**
  * 

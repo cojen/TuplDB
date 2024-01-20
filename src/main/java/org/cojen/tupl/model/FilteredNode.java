@@ -23,16 +23,16 @@ import org.cojen.maker.Label;
 import org.cojen.maker.MethodMaker;
 import org.cojen.maker.Variable;
 
-import org.cojen.tupl.rows.ColumnInfo;
-import org.cojen.tupl.rows.ColumnSet;
-import org.cojen.tupl.rows.CompareUtils;
-import org.cojen.tupl.rows.RowInfo;
+import org.cojen.tupl.table.ColumnInfo;
+import org.cojen.tupl.table.ColumnSet;
+import org.cojen.tupl.table.CompareUtils;
+import org.cojen.tupl.table.RowInfo;
 
-import org.cojen.tupl.rows.filter.ColumnFilter;
-import org.cojen.tupl.rows.filter.ColumnToArgFilter;
-import org.cojen.tupl.rows.filter.ColumnToColumnFilter;
-import org.cojen.tupl.rows.filter.ColumnToConstantFilter;
-import org.cojen.tupl.rows.filter.RowFilter;
+import org.cojen.tupl.table.filter.ColumnFilter;
+import org.cojen.tupl.table.filter.ColumnToArgFilter;
+import org.cojen.tupl.table.filter.ColumnToColumnFilter;
+import org.cojen.tupl.table.filter.ColumnToConstantFilter;
+import org.cojen.tupl.table.filter.RowFilter;
 
 /**
  * Only used by pure filter operators.

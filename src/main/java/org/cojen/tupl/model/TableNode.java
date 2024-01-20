@@ -19,7 +19,7 @@ package org.cojen.tupl.model;
 
 import org.cojen.tupl.Table;
 
-import org.cojen.tupl.rows.IdentityTable;
+import org.cojen.tupl.table.IdentityTable;
 
 /**
  * Defines a node which accesses an ordinary table.

@@ -26,7 +26,7 @@ import org.cojen.maker.Label;
 import org.cojen.maker.MethodMaker;
 import org.cojen.maker.Variable;
 
-import org.cojen.tupl.rows.filter.ColumnFilter;
+import org.cojen.tupl.table.filter.ColumnFilter;
 
 import static org.cojen.tupl.model.Type.*;
 

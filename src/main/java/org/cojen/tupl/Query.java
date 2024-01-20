@@ -25,9 +25,9 @@ import org.cojen.tupl.diag.QueryPlan;
 
 import org.cojen.tupl.io.Utils;
 
-import org.cojen.tupl.rows.RowUtils;
+import org.cojen.tupl.table.RowUtils;
 
-import static org.cojen.tupl.rows.RowUtils.NO_ARGS;
+import static org.cojen.tupl.table.RowUtils.NO_ARGS;
 
 /**
  * Represents a sharable object which performs a query against a table. Queries might require

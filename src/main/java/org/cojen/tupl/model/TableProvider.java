@@ -21,7 +21,7 @@ import java.util.Map;
 
 import org.cojen.tupl.Table;
 
-import org.cojen.tupl.rows.RowUtils;
+import org.cojen.tupl.table.RowUtils;
 
 /**
  * @author Brian S. O'Neill

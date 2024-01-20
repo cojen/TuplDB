@@ -56,19 +56,19 @@ import org.cojen.tupl.Transaction;
 
 import org.cojen.tupl.io.Utils;
 
-import org.cojen.tupl.rows.ColumnInfo;
-import org.cojen.tupl.rows.ColumnSet;
-import org.cojen.tupl.rows.ConvertCallSite;
-import org.cojen.tupl.rows.Converter;
-import org.cojen.tupl.rows.ConvertUtils;
-import org.cojen.tupl.rows.RowInfo;
-import org.cojen.tupl.rows.RowMaker;
-import org.cojen.tupl.rows.RowUtils;
-import org.cojen.tupl.rows.WeakCache;
+import org.cojen.tupl.table.ColumnInfo;
+import org.cojen.tupl.table.ColumnSet;
+import org.cojen.tupl.table.ConvertCallSite;
+import org.cojen.tupl.table.Converter;
+import org.cojen.tupl.table.ConvertUtils;
+import org.cojen.tupl.table.RowInfo;
+import org.cojen.tupl.table.RowMaker;
+import org.cojen.tupl.table.RowUtils;
+import org.cojen.tupl.table.WeakCache;
 
-import org.cojen.tupl.rows.join.JoinRowMaker;
+import org.cojen.tupl.table.join.JoinRowMaker;
 
-import static org.cojen.tupl.rows.ColumnInfo.*;
+import static org.cojen.tupl.table.ColumnInfo.*;
 
 /**
  * Makes classes which extend BaseResultSet and wrap a row object. For supporting queries, the

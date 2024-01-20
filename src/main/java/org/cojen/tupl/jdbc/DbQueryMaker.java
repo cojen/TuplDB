@@ -37,7 +37,7 @@ import org.cojen.tupl.io.Utils;
 
 import org.cojen.tupl.model.TableProvider;
 
-import org.cojen.tupl.rows.WeakCache;
+import org.cojen.tupl.table.WeakCache;
 
 /**
  * 

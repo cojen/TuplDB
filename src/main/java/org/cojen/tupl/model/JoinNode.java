@@ -23,7 +23,7 @@ import java.util.Map;
 
 import org.cojen.tupl.Table;
 
-import org.cojen.tupl.rows.join.JoinSpec;
+import org.cojen.tupl.table.join.JoinSpec;
 
 /**
  * Defines a node which cross joins relations together into a new relation.

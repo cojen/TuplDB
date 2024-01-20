@@ -23,10 +23,10 @@ import java.util.Set;
 import org.cojen.maker.Label;
 import org.cojen.maker.Variable;
 
-import org.cojen.tupl.rows.RowInfo;
+import org.cojen.tupl.table.RowInfo;
 
-import org.cojen.tupl.rows.filter.OpaqueFilter;
-import org.cojen.tupl.rows.filter.RowFilter;
+import org.cojen.tupl.table.filter.OpaqueFilter;
+import org.cojen.tupl.table.filter.RowFilter;
 
 /**
  * A node represents an AST element of a query.

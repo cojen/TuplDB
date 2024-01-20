@@ -20,18 +20,18 @@ package org.cojen.tupl.model;
 import java.util.Map;
 import java.util.Objects;
 
-import org.cojen.tupl.rows.ColumnInfo;
+import org.cojen.tupl.table.ColumnInfo;
 
-import org.cojen.tupl.rows.filter.AndFilter;
-import org.cojen.tupl.rows.filter.ColumnFilter;
-import org.cojen.tupl.rows.filter.ColumnToArgFilter;
-import org.cojen.tupl.rows.filter.ColumnToColumnFilter;
-import org.cojen.tupl.rows.filter.ColumnToConstantFilter;
-import org.cojen.tupl.rows.filter.GroupFilter;
-import org.cojen.tupl.rows.filter.OpaqueFilter;
-import org.cojen.tupl.rows.filter.OrFilter;
-import org.cojen.tupl.rows.filter.RowFilter;
-import org.cojen.tupl.rows.filter.Visitor;
+import org.cojen.tupl.table.filter.AndFilter;
+import org.cojen.tupl.table.filter.ColumnFilter;
+import org.cojen.tupl.table.filter.ColumnToArgFilter;
+import org.cojen.tupl.table.filter.ColumnToColumnFilter;
+import org.cojen.tupl.table.filter.ColumnToConstantFilter;
+import org.cojen.tupl.table.filter.GroupFilter;
+import org.cojen.tupl.table.filter.OpaqueFilter;
+import org.cojen.tupl.table.filter.OrFilter;
+import org.cojen.tupl.table.filter.RowFilter;
+import org.cojen.tupl.table.filter.Visitor;
 
 /**
  * Converts a RowFilter back into a Node.

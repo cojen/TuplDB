@@ -37,8 +37,8 @@ import org.cojen.tupl.Updater;
 
 import org.cojen.tupl.io.Utils;
 
-import org.cojen.tupl.rows.ClientTableHelper;
-import org.cojen.tupl.rows.RowReader;
+import org.cojen.tupl.table.ClientTableHelper;
+import org.cojen.tupl.table.RowReader;
 
 /**
  * 

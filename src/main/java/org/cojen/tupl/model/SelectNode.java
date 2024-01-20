@@ -26,17 +26,17 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import org.cojen.tupl.rows.filter.ColumnToArgFilter;
-import org.cojen.tupl.rows.filter.ColumnToColumnFilter;
-import org.cojen.tupl.rows.filter.ColumnToConstantFilter;
-import org.cojen.tupl.rows.filter.ComplexFilterException;
-import org.cojen.tupl.rows.filter.OpaqueFilter;
-import org.cojen.tupl.rows.filter.RowFilter;
-import org.cojen.tupl.rows.filter.TrueFilter;
-import org.cojen.tupl.rows.filter.Visitor;
+import org.cojen.tupl.table.filter.ColumnToArgFilter;
+import org.cojen.tupl.table.filter.ColumnToColumnFilter;
+import org.cojen.tupl.table.filter.ColumnToConstantFilter;
+import org.cojen.tupl.table.filter.ComplexFilterException;
+import org.cojen.tupl.table.filter.OpaqueFilter;
+import org.cojen.tupl.table.filter.RowFilter;
+import org.cojen.tupl.table.filter.TrueFilter;
+import org.cojen.tupl.table.filter.Visitor;
 
-import org.cojen.tupl.rows.IdentityTable;
-import org.cojen.tupl.rows.RowInfo;
+import org.cojen.tupl.table.IdentityTable;
+import org.cojen.tupl.table.RowInfo;
 
 /**
  * Defines a node which represents a basic SQL select statement.

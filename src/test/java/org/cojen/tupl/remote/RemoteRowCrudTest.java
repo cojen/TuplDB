@@ -24,8 +24,8 @@ import static org.junit.Assert.*;
 
 import org.cojen.tupl.*;
 
-import org.cojen.tupl.rows.RowCrudTest;
-import org.cojen.tupl.rows.RowTestUtils;
+import org.cojen.tupl.table.RowCrudTest;
+import org.cojen.tupl.table.RowTestUtils;
 
 /**
  * 

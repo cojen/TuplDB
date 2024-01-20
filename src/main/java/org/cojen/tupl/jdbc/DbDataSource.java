@@ -38,7 +38,7 @@ import org.cojen.tupl.io.Utils;
 
 import org.cojen.tupl.model.RelationNode;
 
-import org.cojen.tupl.rows.SoftCache;
+import org.cojen.tupl.table.SoftCache;
 
 import org.cojen.tupl.sql.Scope;
 import org.cojen.tupl.sql.StatementProcessor;

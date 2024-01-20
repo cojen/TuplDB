@@ -17,8 +17,8 @@
 
 package org.cojen.tupl.model;
 
-import org.cojen.tupl.rows.ColumnInfo;
-import org.cojen.tupl.rows.ConvertUtils;
+import org.cojen.tupl.table.ColumnInfo;
+import org.cojen.tupl.table.ConvertUtils;
 
 /**
  * Design note: this class extends ColumnInfo to simplify interoperability with APIs that work

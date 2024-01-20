@@ -22,7 +22,7 @@ import java.math.BigInteger;
 import org.cojen.maker.MethodMaker;
 import org.cojen.maker.Variable;
 
-import org.cojen.tupl.rows.ConvertUtils;
+import org.cojen.tupl.table.ConvertUtils;
 
 import static org.cojen.tupl.model.BinaryOpNode.*;
 

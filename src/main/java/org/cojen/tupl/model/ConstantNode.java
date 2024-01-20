@@ -32,18 +32,18 @@ import java.util.Set;
 import org.cojen.maker.Label;
 import org.cojen.maker.Variable;
 
-import org.cojen.tupl.rows.ConvertCallSite;
-import org.cojen.tupl.rows.RowInfo;
-import org.cojen.tupl.rows.RowUtils;
-import org.cojen.tupl.rows.SoftCache;
+import org.cojen.tupl.table.ConvertCallSite;
+import org.cojen.tupl.table.RowInfo;
+import org.cojen.tupl.table.RowUtils;
+import org.cojen.tupl.table.SoftCache;
 
-import org.cojen.tupl.rows.filter.FalseFilter;
-import org.cojen.tupl.rows.filter.RowFilter;
-import org.cojen.tupl.rows.filter.TrueFilter;
+import org.cojen.tupl.table.filter.FalseFilter;
+import org.cojen.tupl.table.filter.RowFilter;
+import org.cojen.tupl.table.filter.TrueFilter;
 
 import org.cojen.tupl.util.Canonicalizer;
 
-import static org.cojen.tupl.rows.ColumnInfo.*;
+import static org.cojen.tupl.table.ColumnInfo.*;
 
 /**
  * Defines a simple node which just represents a constant value.

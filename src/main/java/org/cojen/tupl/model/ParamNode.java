@@ -22,7 +22,7 @@ import java.util.Set;
 import org.cojen.maker.Label;
 import org.cojen.maker.Variable;
 
-import org.cojen.tupl.rows.ConvertCallSite;
+import org.cojen.tupl.table.ConvertCallSite;
 
 /**
  * Defines a parameter which is passed into a query at runtime.

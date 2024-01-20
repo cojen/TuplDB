@@ -36,7 +36,7 @@ import org.cojen.tupl.model.RelationNode;
 import org.cojen.tupl.model.SelectNode;
 import org.cojen.tupl.model.Type;
 
-import static org.cojen.tupl.rows.join.JoinSpec.*;
+import static org.cojen.tupl.table.join.JoinSpec.*;
 
 /**
  * 

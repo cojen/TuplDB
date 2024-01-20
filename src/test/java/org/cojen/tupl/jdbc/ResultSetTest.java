@@ -29,9 +29,9 @@ import static org.junit.Assert.*;
 
 import org.cojen.tupl.*;
 
-import org.cojen.tupl.rows.RowMaker;
+import org.cojen.tupl.table.RowMaker;
 
-import org.cojen.tupl.rows.join.JoinRowMaker;
+import org.cojen.tupl.table.join.JoinRowMaker;
 
 /**
  * 

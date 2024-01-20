@@ -17,7 +17,7 @@
 
 package org.cojen.tupl.model;
 
-import org.cojen.tupl.rows.ColumnInfo;
+import org.cojen.tupl.table.ColumnInfo;
 
 /**
  * 

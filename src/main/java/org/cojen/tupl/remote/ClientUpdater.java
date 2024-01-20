@@ -23,7 +23,7 @@ import org.cojen.dirmi.RemoteException;
 
 import org.cojen.tupl.Updater;
 
-import org.cojen.tupl.rows.ClientTableHelper;
+import org.cojen.tupl.table.ClientTableHelper;
 
 /**
  * 

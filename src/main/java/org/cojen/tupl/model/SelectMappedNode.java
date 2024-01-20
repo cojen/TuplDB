@@ -39,12 +39,12 @@ import org.cojen.tupl.diag.QueryPlan;
 
 import org.cojen.tupl.io.Utils;
 
-import org.cojen.tupl.rows.MappedTable;
-import org.cojen.tupl.rows.RowGen;
-import org.cojen.tupl.rows.RowUtils;
+import org.cojen.tupl.table.MappedTable;
+import org.cojen.tupl.table.RowGen;
+import org.cojen.tupl.table.RowUtils;
 
-import org.cojen.tupl.rows.filter.RowFilter;
-import org.cojen.tupl.rows.filter.TrueFilter;
+import org.cojen.tupl.table.filter.RowFilter;
+import org.cojen.tupl.table.filter.TrueFilter;
 
 /**
  * Defines a SelectNode which relies on a Mapper to perform custom transformations and

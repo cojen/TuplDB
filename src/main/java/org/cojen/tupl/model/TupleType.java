@@ -24,11 +24,11 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.TreeMap;
 
-import org.cojen.tupl.rows.ColumnInfo;
-import org.cojen.tupl.rows.ColumnSet;
-import org.cojen.tupl.rows.RowInfo;
-import org.cojen.tupl.rows.RowTypeMaker;
-import org.cojen.tupl.rows.RowUtils;
+import org.cojen.tupl.table.ColumnInfo;
+import org.cojen.tupl.table.ColumnSet;
+import org.cojen.tupl.table.RowInfo;
+import org.cojen.tupl.table.RowTypeMaker;
+import org.cojen.tupl.table.RowUtils;
 
 /**
  * 

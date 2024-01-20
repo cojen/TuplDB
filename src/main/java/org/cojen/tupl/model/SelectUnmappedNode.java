@@ -22,11 +22,11 @@ import java.util.Map;
 
 import org.cojen.tupl.Table;
 
-import org.cojen.tupl.rows.RowUtils;
+import org.cojen.tupl.table.RowUtils;
 
-import org.cojen.tupl.rows.filter.ColumnToConstantFilter;
-import org.cojen.tupl.rows.filter.RowFilter;
-import org.cojen.tupl.rows.filter.TrueFilter;
+import org.cojen.tupl.table.filter.ColumnToConstantFilter;
+import org.cojen.tupl.table.filter.RowFilter;
+import org.cojen.tupl.table.filter.TrueFilter;
 
 /**
  * Defines a SelectNode which doesn't need a Mapper.
