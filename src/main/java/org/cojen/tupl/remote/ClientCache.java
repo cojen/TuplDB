@@ -21,8 +21,8 @@ import java.util.function.Function;
 
 import org.cojen.dirmi.RemoteException;
 
-import org.cojen.tupl.rows.CommonCleaner;
-import org.cojen.tupl.rows.WeakCache;
+import org.cojen.tupl.table.CommonCleaner;
+import org.cojen.tupl.table.WeakCache;
 
 /**
  * Cache of sharable client-side remote object wrappers.

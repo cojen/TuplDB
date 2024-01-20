@@ -23,8 +23,7 @@ import org.junit.*;
 
 import org.cojen.tupl.*;
 
-import org.cojen.tupl.rows.AutoTest;
-import org.cojen.tupl.rows.RowTestUtils;
+import org.cojen.tupl.table.AutoTest;
 
 /**
  * 

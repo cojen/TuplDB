@@ -29,8 +29,8 @@ import org.cojen.tupl.diag.QueryPlan;
 
 import org.cojen.tupl.io.Utils;
 
-import org.cojen.tupl.rows.BaseTable;
-import org.cojen.tupl.rows.WeakCache;
+import org.cojen.tupl.table.BaseTable;
+import org.cojen.tupl.table.WeakCache;
 
 /**
  * 

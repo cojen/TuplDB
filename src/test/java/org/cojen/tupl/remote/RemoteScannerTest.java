@@ -23,7 +23,7 @@ import org.junit.*;
 
 import org.cojen.tupl.*;
 
-import org.cojen.tupl.rows.ScannerTest;
+import org.cojen.tupl.table.ScannerTest;
 
 /**
  * 
