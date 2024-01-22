@@ -79,7 +79,7 @@ class JavaFileIO extends AbstractFileIO {
 
         mMode = mode;
 
-        if (openFileCount < 1) {
+        if (openFileCount == 0) {
             openFileCount = 1;
         }
 
