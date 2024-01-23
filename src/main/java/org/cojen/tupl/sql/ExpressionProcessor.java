@@ -17,6 +17,8 @@
 
 package org.cojen.tupl.sql;
 
+import java.util.List;
+
 import net.sf.jsqlparser.expression.*;
 
 import net.sf.jsqlparser.expression.operators.arithmetic.*;
@@ -31,6 +33,7 @@ import net.sf.jsqlparser.statement.select.*;
 import org.cojen.tupl.io.Utils;
 
 import org.cojen.tupl.model.BinaryOpNode;
+import org.cojen.tupl.model.CaseNode;
 import org.cojen.tupl.model.ConstantNode;
 import org.cojen.tupl.model.Node;
 import org.cojen.tupl.model.ParamNode;
@@ -318,7 +321,43 @@ public class ExpressionProcessor implements ExpressionVisitor {
 
     @Override
     public void visit(CaseExpression caseExpression) {
-        fail();
+        Node switchNode;
+        if (caseExpression.getSwitchExpression() == null) {
+            switchNode = null;
+        } else {
+            caseExpression.getSwitchExpression().accept(this);
+            switchNode = mNode;
+        }
+
+        List<WhenClause> whenClauses = caseExpression.getWhenClauses();
+        var conditions = new Node[whenClauses.size()];
+        var results = new Node[conditions.length];
+
+        int i = 0;
+        for (WhenClause when : whenClauses) {
+            when.getWhenExpression().accept(this);
+            Node whenNode = mNode;
+            if (switchNode != null) {
+                whenNode = BinaryOpNode.make(null, OP_EQ, switchNode, whenNode);
+            }
+            conditions[i] = whenNode;
+
+            when.getThenExpression().accept(this);
+            results[i] = mNode;
+
+            i++;
+        }
+
+        Node elseResult;
+
+        if (caseExpression.getElseExpression() == null) {
+            elseResult = null;
+        } else {
+            caseExpression.getElseExpression().accept(this);
+            elseResult = mNode;
+        }
+
+        mNode = CaseNode.make(null, conditions, results, elseResult);
     }
 
     @Override

@@ -77,15 +77,7 @@ public final class ColumnNode extends Node {
 
     @Override
     public Node asType(Type type) {
-        if (type == BasicType.BOOLEAN) {
-            Type thisType = type();
-            if (thisType == BasicType.BOOLEAN) {
-                return this;
-            }
-            throw new IllegalStateException("Cannot convert " + thisType + " to " + type);
-        } else {
-            return ConversionNode.make(this, type);
-        }
+        return ConversionNode.make(this, type);
     }
 
     public RelationNode from() {

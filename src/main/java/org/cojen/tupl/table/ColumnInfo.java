@@ -330,6 +330,26 @@ public class ColumnInfo implements Cloneable {
         return plainTypeCode() != TYPE_REFERENCE;
     }
 
+    public boolean isNumber() {
+        return isNumber(typeCode);
+    }
+
+    public static boolean isNumber(int typeCode) {
+        typeCode &= 0b11111;
+        return (0b00001 <= typeCode && typeCode <= 0b10011)
+            || (TYPE_BIG_INTEGER <= typeCode && typeCode <= TYPE_BIG_DECIMAL);
+    }
+
+    public boolean isSignedNumber() {
+        return isSignedNumber(typeCode);
+    }
+
+    public static boolean isSignedNumber(int typeCode) {
+        typeCode &= 0b11111;
+        return (0b01001 <= typeCode && typeCode <= 0b10011)
+            || (TYPE_BIG_INTEGER <= typeCode && typeCode <= TYPE_BIG_DECIMAL);
+    }
+
     /**
      * @return null if not found
      */

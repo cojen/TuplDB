@@ -68,26 +68,42 @@ public abstract sealed class Type extends ColumnInfo
     public static Type commonType(Node left, Node right, int op) {
         Type leftType = left.type();
         Type rightType = right.type();
-
         if (left.isNullable() || right.isNullable()) {
             leftType = leftType.nullable();
             rightType = rightType.nullable();
         }
+        return leftType.commonType(rightType, op);
+    }
 
-        if (leftType == AnyType.THE) {
-            return rightType;
-        } else if (rightType == AnyType.THE) {
-            return leftType;
+    /**
+     * Finds a common type which can be converted to without loss or abiguity.
+     *
+     * @param op defined in ColumnFilter; pass -1 if not performing a comparison operation
+     * @return null if a common type cannot be inferred or is ambiguous
+     */
+    public Type commonType(Node node, int op) {
+        return (node.isNullable() ? nullable() : this).commonType(node.type(), op);
+    }
+
+    /**
+     * Finds a common type which can be converted to without loss or abiguity.
+     *
+     * @param op defined in ColumnFilter; pass -1 if not performing a comparison operation
+     * @return null if a common type cannot be inferred or is ambiguous
+     */
+    public Type commonType(Type type, int op) {
+        if (type == AnyType.THE) {
+            return type;
         }
 
         // Try finding a common type using a widening conversion.
 
-        ColumnInfo common = ConvertUtils.commonType(leftType, rightType, op);
+        ColumnInfo common = ConvertUtils.commonType(this, type, op);
 
-        if (common == leftType) {
-            return leftType;
-        } else if (common == rightType) {
-            return rightType;
+        if (common == this) {
+            return this;
+        } else if (common == type) {
+            return type;
         }
 
         return common == null ? null : BasicType.make(common);

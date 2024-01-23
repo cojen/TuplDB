@@ -38,6 +38,11 @@ public final class ConversionNode extends Node {
         if (node.type().equals(type)) {
             return node;
         }
+
+        if (type == BasicType.BOOLEAN) {
+            throw new IllegalStateException("Cannot convert " + node.type() + " to " + type);
+        }
+
         return new ConversionNode(node, type);
     }
 

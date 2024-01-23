@@ -68,6 +68,8 @@ final class EvalContext {
 
     /**
      * Returns a savepoint which can be used to rollback ref assignments.
+     *
+     * @return a non-negative int
      */
     int refSavepoint() {
         if (mUndoLog == null) {

@@ -35,6 +35,16 @@ public final class AnyType extends Type {
     }
 
     @Override
+    public AnyType commonType(Node node, int op) {
+        return this;
+    }
+
+    @Override
+    public AnyType commonType(Type node, int op) {
+        return this;
+    }
+
+    @Override
     public int hashCode() {
         return 1872601810;
     }
