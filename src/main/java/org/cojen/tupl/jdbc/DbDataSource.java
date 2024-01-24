@@ -58,9 +58,9 @@ public final class DbDataSource implements DataSource {
     // DbDataSource and all DbDataSource instances derived from this one.
     private final SoftCache<String, DbDataSource, Object> mWithSchemaCache;
 
-    // Maps sql strings to DbQuery.Factory instances. Each DbDataSource has a distinct cache
-    // instance, and so these factories are tied to a specific schema.
-    private final SoftCache<String, DbQuery.Factory, Object> mStatementCache;
+    // Maps sql strings to DbStatement.Factory instances. Each DbDataSource has a distinct
+    // cache instance, and so these factories are tied to a specific schema.
+    private final SoftCache<String, DbStatement.Factory, Object> mStatementCache;
 
     public DbDataSource(Database db) {
         this(db, "", null);
@@ -108,9 +108,9 @@ public final class DbDataSource implements DataSource {
 
         mStatementCache = new SoftCache<>() {
             @Override
-            protected DbQuery.Factory newValue(String sql, Object unused) {
+            protected DbStatement.Factory newValue(String sql, Object unused) {
                 try {
-                    return newQueryFactory(sql);
+                    return newStatementFactory(sql);
                 } catch (SQLException e) {
                     throw Utils.rethrow(e);
                 }
@@ -169,11 +169,11 @@ public final class DbDataSource implements DataSource {
         return mFinder.schema().equals(schema) ? this : mWithSchemaCache.obtain(schema, null);
     }
 
-    DbQuery.Factory queryFactory(String sql) throws SQLException {
+    DbStatement.Factory statementFactory(String sql) throws SQLException {
         return mStatementCache.obtain(sql, null);
     }
 
-    private DbQuery.Factory newQueryFactory(String sql) throws SQLException {
+    private DbStatement.Factory newStatementFactory(String sql) throws SQLException {
         Object stmt;
         try {
             stmt = StatementProcessor.process(sql, new Scope(mFinder));

@@ -55,7 +55,7 @@ public final class DbConnection extends BaseConnection {
     private TxnSavepoint mLastSavepoint;
 
     // Linked list of registered queries.
-    private DbQuery mLastQuery;
+    private DbStatement mLastStatement;
 
     DbConnection(DbDataSource dataSource) {
         mDataSource = dataSource;
@@ -68,8 +68,8 @@ public final class DbConnection extends BaseConnection {
     }
 
     @Override
-    public DbQuery prepareStatement(String sql) throws SQLException {
-        return dataSource().queryFactory(sql).newDbQuery(this);
+    public DbStatement prepareStatement(String sql) throws SQLException {
+        return dataSource().statementFactory(sql).newDbStatement(this);
     }
 
     @Override
@@ -132,9 +132,9 @@ public final class DbConnection extends BaseConnection {
         cDataSourceHandle.setRelease(this, null);
         mTxn = null;
 
-        DbQuery last = mLastQuery;
+        DbStatement last = mLastStatement;
         if (last != null) {
-            mLastQuery = null;
+            mLastStatement = null;
             Throwable ex = null;
             while (true) {
                 last.mNext = null;
@@ -349,27 +349,27 @@ public final class DbConnection extends BaseConnection {
         return mTxn;
     }
 
-    void register(DbQuery query) {
-        DbQuery last = mLastQuery;
+    void register(DbStatement statement) {
+        DbStatement last = mLastStatement;
         if (last != null) {
-            query.mPrev = last;
-            last.mNext = query;
+            statement.mPrev = last;
+            last.mNext = statement;
         }
-        mLastQuery = query;
+        mLastStatement = statement;
     }
 
-    void unregister(DbQuery query) {
-        DbQuery prev = query.mPrev;
-        DbQuery next = query.mNext;
+    void unregister(DbStatement statement) {
+        DbStatement prev = statement.mPrev;
+        DbStatement next = statement.mNext;
         if (prev != null) {
             prev.mNext = next;
-            query.mPrev = null;
+            statement.mPrev = null;
         }
         if (next == null) {
-            mLastQuery = prev;
+            mLastStatement = prev;
         } else {
             next.mPrev = prev;
-            query.mNext = null;
+            statement.mNext = null;
         }
     }
 

@@ -24,7 +24,6 @@ import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 
 import org.cojen.tupl.Table;
-import org.cojen.tupl.Transaction;
 
 import org.cojen.tupl.diag.QueryPlan;
 
@@ -33,23 +32,9 @@ import org.cojen.tupl.diag.QueryPlan;
  *
  * @author Brian S. O'Neill
  */
-public abstract class DbQuery extends BasePreparedStatement {
-    private DbConnection mCon;
-
-    // Accessed by DbConnection.
-    DbQuery mPrev, mNext;
-
+public abstract class DbQuery extends DbStatement {
     protected DbQuery(DbConnection con) {
-        super();
-        mCon = con;
-        con.register(this);
-    }
-
-    public static interface Factory {
-        /**
-         * Returns a new DbQuery instance against the given connection.
-         */
-        DbQuery newDbQuery(DbConnection con);
+        super(con);
     }
 
     @Override
@@ -79,74 +64,6 @@ public abstract class DbQuery extends BasePreparedStatement {
         return getResultSet().getMetaData();
     }
 
-    @Override
-    public final DbConnection getConnection() throws SQLException {
-        DbConnection con = mCon;
-        if (con == null) {
-            throw new SQLException("Closed");
-        }
-        return con;
-    }
-
-    @Override
-    public final void close() throws SQLException {
-        DbConnection con = mCon;
-        doClose();
-        if (con != null) {
-            con.unregister(this);
-        }
-    }
-
-    final void doClose() throws SQLException {
-        mCon = null;
-        closeResultSet();
-    }
-
-    @Override
-    public final boolean isClosed() throws SQLException {
-        return mCon == null;
-    }
-
-    protected final void checkClosed() throws SQLException {
-        if (mCon == null) {
-            throw new SQLException("Closed");
-        }
-    }
-
-    protected final Transaction txn() throws SQLException {
-        return getConnection().txn();
-    }
-
-    /**
-     * Should be overridden by subclasses which have parameters.
-     */
-    @Override
-    public void clearParameters() throws SQLException {
-    }
-
-    /**
-     * Should be overridden by subclasses which have parameters.
-     */
-    @Override
-    public void setObject(int parameterIndex, Object x) throws SQLException {
-        throw new SQLException("Unknown parameter: " + parameterIndex);
-    }
-
-    protected static void setObject(Object[] args, int parameterIndex, Object x)
-        throws SQLException
-    {
-        if (parameterIndex <= 0 || parameterIndex > args.length) {
-            throw new SQLException("Unknown parameter: " + parameterIndex);
-        }
-        args[parameterIndex - 1] = x;
-    }
-
-    protected static void checkParams(int expect, int actual) throws SQLException {
-        if (expect != actual) {
-            throw new SQLException("Not all parameters have been set");
-        }
-    }
-
     /**
      * Returns a new or existing ResultSet instance. Implementation must call checkClosed
      * before creating a new ResultSet.
@@ -162,11 +79,7 @@ public abstract class DbQuery extends BasePreparedStatement {
     @Override
     public abstract ResultSet executeQuery() throws SQLException;
 
-    /**
-     * Returns an optional QueryPlan for this query.
-     *
-     * @throws SQLException if not all parameters have been set
-     */
+    @Override
     public QueryPlan plan() throws SQLException {
         checkParams();
 
@@ -179,12 +92,6 @@ public abstract class DbQuery extends BasePreparedStatement {
     }
 
     /**
-     * @throws SQLException if not all parameters have been set
-     */
-    public void checkParams() throws SQLException {
-    }
-
-    /**
      * Returns an optional Table for this query. This method doesn't check if all the
      * parameters have been set, and so attempting to scan it might throw a
      * NullPointerException when converting an unset/null parameter to a primitive type.
@@ -192,9 +99,4 @@ public abstract class DbQuery extends BasePreparedStatement {
     public Table<?> table() {
         return null;
     }
-
-    /**
-     * Close and discard the ResultSet, if any.
-     */
-    protected abstract void closeResultSet() throws SQLException;
 }

@@ -284,14 +284,14 @@ final class DbQueryMaker {
             cm.addField(Table.class, "table").private_().final_();
             ctor.field("table").set(ctor.param(0).invoke("table"));
 
-            MethodMaker mm = cm.addMethod(DbQuery.class, "newDbQuery", DbConnection.class);
+            MethodMaker mm = cm.addMethod(DbStatement.class, "newDbStatement", DbConnection.class);
             mm.public_();
             mm.return_(mm.new_(dbQueryClass, mm.param(0), mm.field("table")));
         } else {
             cm.addField(TableProvider.class, "provider").private_().final_();
             ctor.field("provider").set(ctor.param(0));
 
-            MethodMaker mm = cm.addMethod(DbQuery.class, "newDbQuery", DbConnection.class);
+            MethodMaker mm = cm.addMethod(DbStatement.class, "newDbStatement", DbConnection.class);
             mm.public_();
             mm.return_(mm.new_(dbQueryClass, mm.param(0), mm.field("provider")));
         }
