@@ -34,7 +34,7 @@ import org.cojen.tupl.table.filter.RowFilter;
  * @author Brian S. O'Neill
  */
 public abstract sealed class Node
-    permits BinaryOpNode, CaseNode, ColumnNode, ConstantNode, ConversionNode,
+    permits BinaryOpNode, CaseNode, ColumnNode, ConcatNode, ConstantNode, ConversionNode,
     ParamNode, RelationNode
 {
     public abstract Type type();

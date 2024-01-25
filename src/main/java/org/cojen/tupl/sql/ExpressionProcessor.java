@@ -34,6 +34,7 @@ import org.cojen.tupl.io.Utils;
 
 import org.cojen.tupl.model.BinaryOpNode;
 import org.cojen.tupl.model.CaseNode;
+import org.cojen.tupl.model.ConcatNode;
 import org.cojen.tupl.model.ConstantNode;
 import org.cojen.tupl.model.Node;
 import org.cojen.tupl.model.ParamNode;
@@ -382,7 +383,11 @@ public class ExpressionProcessor implements ExpressionVisitor {
 
     @Override
     public void visit(Concat concat) {
-        fail();
+        concat.getLeftExpression().accept(this);
+        Node left = mNode;
+        concat.getRightExpression().accept(this);
+        Node right = mNode;
+        mNode = ConcatNode.make(left, right);
     }
 
     @Override
