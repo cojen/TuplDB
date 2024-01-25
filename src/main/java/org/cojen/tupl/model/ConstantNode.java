@@ -51,7 +51,7 @@ import static org.cojen.tupl.table.ColumnInfo.*;
  * @author Brian S. O'Neill
  */
 public sealed class ConstantNode extends Node {
-    public static final ConstantNode NULL = new ConstantNode(AnyType.THE, null);
+    public static final ConstantNode NULL = new ConstantNode(NullType.THE, null);
 
     public static ConstantNode make(Object value) {
         return new ConstantNode(Object.class, TYPE_REFERENCE, value);

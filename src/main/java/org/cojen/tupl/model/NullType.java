@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2023 Cojen.org
+ *  Copyright (C) 2024 Cojen.org
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU Affero General Public License as
@@ -18,35 +18,35 @@
 package org.cojen.tupl.model;
 
 /**
- * 
+ * A type which signals that a value is definitely null, reserved for ConstantNode.NULL.
  *
  * @author Brian S. O'Neill
  */
-public final class AnyType extends Type {
-    public static final AnyType THE = new AnyType();
+final class NullType extends Type {
+    static final NullType THE = new NullType();
 
-    private AnyType() {
+    private NullType() {
         super(Object.class, TYPE_REFERENCE | TYPE_NULLABLE);
     }
 
     @Override
-    public AnyType nullable() {
+    public NullType nullable() {
         return this;
     }
 
     @Override
-    public AnyType commonType(Node node, int op) {
-        return this;
+    public Type commonType(Node node, int op) {
+        return node.type().nullable();
     }
 
     @Override
-    public AnyType commonType(Type type, int op) {
-        return this;
+    public Type commonType(Type type, int op) {
+        return type.nullable();
     }
 
     @Override
     public int hashCode() {
-        return 1872601810;
+        return 334611107;
     }
 
     @Override
@@ -56,6 +56,6 @@ public final class AnyType extends Type {
 
     @Override
     public String toString() {
-        return "any";
+        return "null";
     }
 }

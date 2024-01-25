@@ -211,11 +211,6 @@ public final class Arithmetic {
     }
 
     public static final class ULong {
-        public static void main(String[] args) throws Exception {
-            System.out.println(multiplyExact(Long.parseUnsignedLong(args[0]),
-                                             Long.parseUnsignedLong(args[1])));
-        }
-
         private static final BigInteger OVERFLOW;
 
         static {

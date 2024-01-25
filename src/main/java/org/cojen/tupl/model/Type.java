@@ -27,7 +27,7 @@ import org.cojen.tupl.table.ConvertUtils;
  * @author Brian S. O'Neill
  */
 public abstract sealed class Type extends ColumnInfo
-    permits BasicType, TupleType, RelationType, AnyType
+    permits BasicType, TupleType, RelationType, AnyType, NullType
 {
     /**
      * @param typeCode see ColumnInfo
@@ -94,6 +94,9 @@ public abstract sealed class Type extends ColumnInfo
     public Type commonType(Type type, int op) {
         if (type == AnyType.THE) {
             return type;
+        }
+        if (type == NullType.THE) {
+            return this.nullable();
         }
 
         // Try finding a common type using a widening conversion.
