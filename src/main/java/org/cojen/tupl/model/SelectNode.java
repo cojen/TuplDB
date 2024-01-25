@@ -47,15 +47,14 @@ public abstract sealed class SelectNode extends RelationNode
     permits SelectUnmappedNode, SelectMappedNode
 {
     /**
-     * @param name can be null to automatically assign a name
      * @param from can be null if not selecting from any table at all
      * @param where can be null if not filtered, or else type must be boolean or be convertable
      * to boolean
      * @param projection can be null to project all columns
      */
-    public static RelationNode make(String name, RelationNode from, Node where, Node[] projection) {
+    public static RelationNode make(RelationNode from, Node where, Node[] projection) {
         if (from == null) {
-            from = TableNode.make(null, IdentityTable.THE);
+            from = TableNode.make(IdentityTable.THE);
         }
 
         if (where != null) {
@@ -187,11 +186,11 @@ public abstract sealed class SelectNode extends RelationNode
             }
 
             from = SelectUnmappedNode.make
-                (fromType, name, from, unmappedFilter, fromProjection, maxArgument);
+                (fromType, from, unmappedFilter, fromProjection, maxArgument);
         }
 
         if (mappedFilter == TrueFilter.THE && projection == null) {
-            return name == null ? from : from.withName(name);
+            return from;
         }
 
         // A Mapper is required.
@@ -208,11 +207,10 @@ public abstract sealed class SelectNode extends RelationNode
         }
 
         return new SelectMappedNode
-            (type, name, from, mappedFilter, mappedWhere, projection, maxArgument);
+            (type, null, from, mappedFilter, mappedWhere, projection, maxArgument);
     }
 
     /**
-     * @param name can be null to automatically assign a name
      * @param from can be null if not selecting from any table at all
      * @param where can be null if not filtered, or else type must be boolean or be convertable
      * to boolean
@@ -221,14 +219,14 @@ public abstract sealed class SelectNode extends RelationNode
      * @param orderByFlags can be null to use default flags; supported flags are
      * Type.TYPE_NULL_LOW and Type.TYPE_DESCENDING;
      */
-    public static RelationNode make(String name, RelationNode from, Node where,
+    public static RelationNode make(RelationNode from, Node where,
                                     final Node[] projection,
                                     final Node[] orderBy, int[] orderByFlags)
     {
         if (from == null || from.type().cardinality() != Cardinality.MANY
             || orderBy == null || orderBy.length == 0)
         {
-            return make(name, from, where, projection);
+            return make(from, where, projection);
         }
 
         // Might need to expand the projection to support order-by.
@@ -270,7 +268,7 @@ public abstract sealed class SelectNode extends RelationNode
             appliedProjection = fullProjection.toArray(Node[]::new);
         }
 
-        RelationNode unordered = make(null, from, where, appliedProjection);
+        RelationNode unordered = make(from, where, appliedProjection);
 
         TupleType tt = unordered.type().tupleType();
         var fields = new String[orderBy.length];
@@ -286,7 +284,7 @@ public abstract sealed class SelectNode extends RelationNode
             projectionMap = tt.makeProjectionMap(projection.length);
         }
 
-        return OrderedRelationNode.make(name, unordered, fields, orderByFlags, projectionMap);
+        return OrderedRelationNode.make(unordered, fields, orderByFlags, projectionMap);
     }
 
     private static boolean hasRepeatedNonPureFunctions(RowFilter filter) {

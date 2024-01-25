@@ -30,18 +30,12 @@ import org.cojen.tupl.table.ConvertCallSite;
  * @author Brian S. O'Neill
  */
 public final class ParamNode extends Node {
-    /**
-     * @param name can be null to automatically assign a name
-     */
-    public static ParamNode make(String name, int ordinal) {
-        return new ParamNode(name, AnyType.THE, ordinal);
+    public static ParamNode make(int ordinal) {
+        return new ParamNode(null, AnyType.THE, ordinal);
     }
 
-    /**
-     * @param name can be null to automatically assign a name
-     */
-    public static ParamNode make(String name, Type type, int ordinal) {
-        return new ParamNode(name, type, ordinal);
+    public static ParamNode make(Type type, int ordinal) {
+        return new ParamNode(null, type, ordinal);
     }
 
     private String mName;

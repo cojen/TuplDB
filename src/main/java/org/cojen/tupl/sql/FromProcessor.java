@@ -81,7 +81,7 @@ public class FromProcessor implements FromItemVisitor {
             name = SqlUtils.unquote(alias.getName());
         }
 
-        mNode = TableNode.make(name, dbTable);
+        mNode = TableNode.make(dbTable, name);
     }
 
     @Override

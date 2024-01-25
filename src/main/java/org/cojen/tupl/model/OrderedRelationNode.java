@@ -29,18 +29,17 @@ import org.cojen.tupl.Table;
  */
 public final class OrderedRelationNode extends RelationNode {
     /**
-     * @param name can be null to automatically assign a name
      * @param from required
      * @param orderBy required; must refer to field names of the from table
      * @param orderByFlags supported flags are Type.TYPE_NULL_LOW and Type.TYPE_DESCENDING.
      * @param projectionMap table provider projection; pass null to project all from columns
      * @see SelectNode#make
      */
-    static OrderedRelationNode make(String name, RelationNode from,
+    static OrderedRelationNode make(RelationNode from,
                                     String[] orderBy, int[] orderByFlags,
                                     Map<String, String> projectionMap)
     {
-        return new OrderedRelationNode(name, from, orderBy, orderByFlags, projectionMap);
+        return new OrderedRelationNode(null, from, orderBy, orderByFlags, projectionMap);
     }
 
     private final RelationNode mFrom;

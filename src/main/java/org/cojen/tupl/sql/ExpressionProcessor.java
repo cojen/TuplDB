@@ -97,7 +97,7 @@ public class ExpressionProcessor implements ExpressionVisitor {
 
     @Override
     public void visit(JdbcParameter jdbcParameter) {
-        mNode = ParamNode.make(null, jdbcParameter.getIndex());
+        mNode = ParamNode.make(jdbcParameter.getIndex());
     }
 
     @Override
@@ -249,7 +249,7 @@ public class ExpressionProcessor implements ExpressionVisitor {
             op = isNullExpression.isNot() ? OP_NE : OP_EQ;
         }
 
-        mNode = BinaryOpNode.make(null, op, left, ConstantNode.NULL);
+        mNode = BinaryOpNode.make(op, left, ConstantNode.NULL);
     }
 
     @Override
@@ -260,7 +260,7 @@ public class ExpressionProcessor implements ExpressionVisitor {
         boolean value = isBooleanExpression.isTrue();
         int op = isBooleanExpression.isNot() ? OP_NE : OP_EQ;
 
-        mNode = BinaryOpNode.make(null, op, left, ConstantNode.make(value));
+        mNode = BinaryOpNode.make(op, left, ConstantNode.make(value));
     }
 
     @Override
@@ -338,7 +338,7 @@ public class ExpressionProcessor implements ExpressionVisitor {
             when.getWhenExpression().accept(this);
             Node whenNode = mNode;
             if (switchNode != null) {
-                whenNode = BinaryOpNode.make(null, OP_EQ, switchNode, whenNode);
+                whenNode = BinaryOpNode.make(OP_EQ, switchNode, whenNode);
             }
             conditions[i] = whenNode;
 
@@ -357,7 +357,7 @@ public class ExpressionProcessor implements ExpressionVisitor {
             elseResult = mNode;
         }
 
-        mNode = CaseNode.make(null, conditions, results, elseResult);
+        mNode = CaseNode.make(conditions, results, elseResult);
     }
 
     @Override
@@ -630,7 +630,7 @@ public class ExpressionProcessor implements ExpressionVisitor {
         Node left = mNode;
         expr.getRightExpression().accept(this);
         Node right = mNode;
-        mNode = BinaryOpNode.make(null, op, left, right);
+        mNode = BinaryOpNode.make(op, left, right);
     }
 
     private static UnsupportedOperationException fail() {

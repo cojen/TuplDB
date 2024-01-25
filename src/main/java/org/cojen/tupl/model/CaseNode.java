@@ -31,13 +31,12 @@ import org.cojen.maker.Variable;
  */
 public final class CaseNode extends Node {
     /**
-     * @param name can be null to automatically assign a name
      * @param conditions required; each is expected to evaluate to a boolean
      * @param results required
      * @param elseResult optional; is ConstantNode.NULL when not provided
      * @throw IllegalArgumentException if number of conditions doesn't match number of results
      */
-    public static CaseNode make(String name, Node[] conditions, Node[] results, Node elseResult) {
+    public static CaseNode make(Node[] conditions, Node[] results, Node elseResult) {
         if (conditions.length != results.length) {
             throw new IllegalArgumentException();
         }
@@ -71,7 +70,7 @@ public final class CaseNode extends Node {
             results[i] = results[i].asType(type);
         }
 
-        return new CaseNode(type, name, conditions, results, elseResult);
+        return new CaseNode(type, null, conditions, results, elseResult);
     }
 
     private final Type mType;

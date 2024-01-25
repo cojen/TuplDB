@@ -32,15 +32,14 @@ import org.cojen.tupl.table.join.JoinSpec;
  */
 public final class JoinNode extends RelationNode {
     /**
-     * @param name can be null to automatically assign a name
      * @param joinType see JoinSpec
      * @throws IllegalArgumentException if any duplicate join relation names
      */
-    public static JoinNode make(String name, int joinType, RelationNode left, RelationNode right) {
+    public static JoinNode make(int joinType, RelationNode left, RelationNode right) {
         boolean leftNullable = JoinSpec.isLeftNullable(joinType);
         boolean rightNullable = JoinSpec.isRightNullable(joinType);
         RelationType type = makeType(left, leftNullable, right, rightNullable);
-        return new JoinNode(type, name, joinType, left, right);
+        return new JoinNode(type, null, joinType, left, right);
     }
 
     private static RelationType makeType(RelationNode left, boolean leftNullable,

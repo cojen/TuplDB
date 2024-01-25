@@ -78,7 +78,7 @@ final class ToNodeVisitor implements Visitor {
 
         for (int i=1; i<subFilters.length; i++) {
             subFilters[i].accept(this);
-            node = BinaryOpNode.make(null, op, node, mCurrent);
+            node = BinaryOpNode.make(op, node, mCurrent);
         }
 
         mCurrent = node;
@@ -100,7 +100,7 @@ final class ToNodeVisitor implements Visitor {
     }
 
     private void finish(ColumnFilter filter, Node right) {
-        mCurrent = BinaryOpNode.make(null, filter.operator(), toColumNode(filter.column()), right);
+        mCurrent = BinaryOpNode.make(filter.operator(), toColumNode(filter.column()), right);
     }
 
     private ColumnNode toColumNode(ColumnInfo info) {

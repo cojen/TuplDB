@@ -53,10 +53,7 @@ public sealed class BinaryOpNode extends Node permits FilteredNode {
         OP_SHL = 17, OP_SHR = 18, OP_USHR = 19;
     */
 
-    /**
-     * @param name can be null to automatically assign a name
-     */
-    public static Node make(String name, int op, Node left, Node right) {
+    public static Node make(int op, Node left, Node right) {
         final Node originalLeft = left;
         final Node originalRight = right;
 
@@ -84,20 +81,20 @@ public sealed class BinaryOpNode extends Node permits FilteredNode {
             // Transform some forms into xor.
             if (op == OP_NE) {
                 // a != b -->   a ^ b  --> (!a && b) || (a && !b)
-                return make(null, OP_OR,
-                            make(null, OP_AND, left.not(), right),
-                            make(null, OP_AND, left, right.not()));
+                return make(OP_OR,
+                            make(OP_AND, left.not(), right),
+                            make(OP_AND, left, right.not()));
             } else if (op == OP_EQ) {
                 // a == b --> !(a ^ b) --> (a || !b) && (!a || b)
-                return make(null, OP_AND,
-                            make(null, OP_OR, left, right.not()),
-                            make(null, OP_OR, left.not(), right));
+                return make(OP_AND,
+                            make(OP_OR, left, right.not()),
+                            make(OP_OR, left.not(), right));
             }
         }
 
         if (op >= OP_ADD) {
             // Arithmetic operator.
-            return new BinaryOpNode(type, name, op, left, right);
+            return new BinaryOpNode(type, null, op, left, right);
         }
 
         if (left.isPureFunction() && right.isPureFunction()) constant: {
@@ -134,7 +131,7 @@ public sealed class BinaryOpNode extends Node permits FilteredNode {
             }
         }
 
-        return new FilteredNode(name, op, originalLeft, originalRight, left, right);
+        return new FilteredNode(null, op, originalLeft, originalRight, left, right);
     }
 
     private static IllegalStateException fail(String message, int op, Node left, Node right) {

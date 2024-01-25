@@ -72,10 +72,10 @@ public final class FilteredNode extends BinaryOpNode {
     public Node not() {
         int op = mOp;
         if (op < OP_AND) {
-            return make(null, ColumnFilter.flipOperator(op), mOriginalLeft, mOriginalRight);
+            return make(ColumnFilter.flipOperator(op), mOriginalLeft, mOriginalRight);
         } else if (op <= OP_OR) {
             // Apply De Morgan's law.
-            return make(null, op ^ 1, mOriginalLeft.not(), mOriginalRight.not());
+            return make(op ^ 1, mOriginalLeft.not(), mOriginalRight.not());
         } else {
             throw new AssertionError();
         }

@@ -27,10 +27,11 @@ import org.cojen.tupl.table.IdentityTable;
  * @author Brian S. O'Neill
  */
 public final class TableNode extends RelationNode {
-    /**
-     * @param name can be null to automatically assign a name
-     */
-    public static TableNode make(String name, Table table) {
+    public static TableNode make(Table table) {
+        return make(table, null);
+    }
+
+    public static TableNode make(Table table, String name) {
         var cardinality = table instanceof IdentityTable ? Cardinality.ONE : Cardinality.MANY;
         var type = RelationType.make(TupleType.make(table.rowType(), null), cardinality);
         return new TableNode(type, name, table);

@@ -38,7 +38,7 @@ final class SelectUnmappedNode extends SelectNode {
     /**
      * @see SelectNode#make
      */
-    static SelectUnmappedNode make(TupleType type, String name,
+    static SelectUnmappedNode make(TupleType type,
                                    RelationNode from, RowFilter filter, Node[] projection,
                                    int maxArgument)
     {
@@ -74,7 +74,7 @@ final class SelectUnmappedNode extends SelectNode {
             }
         }
 
-        return new SelectUnmappedNode(type, name, from, filter, projection, maxArgument, argMap);
+        return new SelectUnmappedNode(type, null, from, filter, projection, maxArgument, argMap);
     }
 
     private final Map<Object, Integer> mArgMap;

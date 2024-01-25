@@ -164,7 +164,7 @@ public class SelectProcessor implements SelectVisitor {
                 joinType = T_INNER;
             }
 
-            from = JoinNode.make(null, joinType, from, fromRight);
+            from = JoinNode.make(joinType, from, fromRight);
         }
 
         Scope scope = mScope.withFrom(from);
@@ -224,7 +224,7 @@ public class SelectProcessor implements SelectVisitor {
             }
         }
 
-        mNode = SelectNode.make(null, from, where, projection.toArray(Node[]::new),
+        mNode = SelectNode.make(from, where, projection.toArray(Node[]::new),
                                 orderBy, orderByFlags);
     }
 
@@ -232,7 +232,7 @@ public class SelectProcessor implements SelectVisitor {
         if (where == null) {
             return whereMore;
         }
-        return BinaryOpNode.make(null, BinaryOpNode.OP_AND, where, whereMore);
+        return BinaryOpNode.make(BinaryOpNode.OP_AND, where, whereMore);
     }
 
     private static void addToProjection(List<Node> projection, SelectItem item, Scope scope) {

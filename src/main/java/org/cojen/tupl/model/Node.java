@@ -49,7 +49,7 @@ public abstract sealed class Node
      * Apply an arithmetic negation operation.
      */
     public Node negate() {
-        return BinaryOpNode.make(null, BinaryOpNode.OP_SUB, ConstantNode.make(0), this);
+        return BinaryOpNode.make(BinaryOpNode.OP_SUB, ConstantNode.make(0), this);
     }
 
     /**
@@ -57,7 +57,7 @@ public abstract sealed class Node
      */
     public Node not() {
         return BinaryOpNode.make
-            (null, BinaryOpNode.OP_EQ, asType(BasicType.BOOLEAN), ConstantNode.make(false));
+            (BinaryOpNode.OP_EQ, asType(BasicType.BOOLEAN), ConstantNode.make(false));
     }
 
     /**
