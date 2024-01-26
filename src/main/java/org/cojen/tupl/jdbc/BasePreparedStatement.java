@@ -67,6 +67,11 @@ public abstract class BasePreparedStatement extends BaseStatement implements Pre
         throw new SQLException();
     }
 
+    @Override
+    public long executeLargeUpdate(String sql) throws SQLException {
+        throw new SQLException();
+    }
+
     /*
     @Override
     public ResultSet executeQuery() throws SQLException {

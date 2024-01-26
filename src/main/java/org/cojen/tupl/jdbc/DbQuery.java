@@ -49,7 +49,17 @@ public abstract class DbQuery extends DbStatement {
     }
 
     @Override
+    public final long getLargeUpdateCount() throws SQLException {
+        return -1;
+    }
+
+    @Override
     public final int executeUpdate() throws SQLException {
+        throw new SQLException("Statement is a query");
+    }
+
+    @Override
+    public final long executeLargeUpdate() throws SQLException {
         throw new SQLException("Statement is a query");
     }
 
