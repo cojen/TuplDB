@@ -67,7 +67,8 @@ final class SelectMappedNode extends SelectNode {
     {
         super(type, name, from, filter, projection, maxArgument);
         mWhere = where;
-        mRequireRemap = where == null ? false : where.hasOrderDependentException();
+        mRequireRemap = where == null ? false :
+            (where.hasOrderDependentException() && where.isPureFunction());
     }
 
     private SelectMappedNode(SelectMappedNode node, String name) {
