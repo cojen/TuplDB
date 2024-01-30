@@ -107,8 +107,8 @@ public abstract sealed class SelectNode extends RelationNode
                 }
             }
 
-            if (pureProjection != null && pureProjection.size() == fromType.numColumns()) {
-                // All columns are projected.
+            if (pureProjection != null && fromType.matches(pureProjection.keySet())) {
+                // All columns are projected, in the natural order, with no renames.
                 projection = null;
                 pureProjection = null;
             }

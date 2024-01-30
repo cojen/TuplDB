@@ -42,8 +42,8 @@ final class SelectUnmappedNode extends SelectNode {
                                    RelationNode from, RowFilter filter, Node[] projection,
                                    int maxArgument)
     {
-        if (projection != null && projection.length == from.type().tupleType().numColumns()) {
-            // Full projection.
+        if (from.type().tupleType().matches(projection)) {
+            // Full projection, in the natural order, with no renames.
             projection = null;
         }
 
@@ -114,12 +114,15 @@ final class SelectUnmappedNode extends SelectNode {
             projectionMap = null;
             qb.append('*');
         } else {
-            projectionMap = type().tupleType().makeProjectionMap();
+            projectionMap = new LinkedHashMap<>();
             for (int i=0; i<mProjection.length; i++) {
                 if (i > 0) {
                     qb.append(", ");
                 }
-                qb.append(((ColumnNode) mProjection[i]).column().name());
+                var cn = (ColumnNode) mProjection[i];
+                String fieldName = cn.column().name();
+                qb.append(fieldName);
+                projectionMap.put(fieldName, cn.name());
             }
         }
         qb.append('}');

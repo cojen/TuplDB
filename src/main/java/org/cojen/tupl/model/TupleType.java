@@ -19,6 +19,7 @@ package org.cojen.tupl.model;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -89,37 +90,43 @@ public final class TupleType extends Type {
     public static TupleType make(Class rowType, Map<String, String> projection) {
         RowInfo info = RowInfo.find(rowType);
 
-        Map<String, ColumnInfo> keys, values;
+        Column[] columns;
+        String[] fields;
 
         if (projection == null) {
-            keys = info.keyColumns;
-            values = info.valueColumns;
-        } else {
-            keys = new LinkedHashMap<>();
-            values = new LinkedHashMap<>();
+            Map<String, ColumnInfo> keys = info.keyColumns;
+            Map<String, ColumnInfo> values = info.valueColumns;
 
-            for (String colName : projection.keySet()) {
-                ColumnInfo column = ColumnSet.findColumn(info.keyColumns, colName);
-                if (column != null) {
-                    keys.put(colName, column);
-                } else if ((column = ColumnSet.findColumn(info.valueColumns, colName)) != null) {
-                    values.put(colName, column);
-                } else {
-                    throw new IllegalArgumentException("Unknown column: " + colName);
-                }
+            int numColumns = keys.size() + values.size();
+
+            columns = new Column[numColumns];
+            fields = new String[numColumns];
+
+            int ix = fill(columns, fields, 0, true, keys, projection);
+            ix = fill(columns, fields, ix, false, values, projection);
+
+            if (ix != numColumns) {
+                throw new AssertionError();
             }
-        }
+        } else {
+            columns = new Column[projection.size()];
+            fields = new String[columns.length];
 
-        int numColumns = keys.size() + values.size();
-
-        var columns = new Column[numColumns];
-        var fields = new String[numColumns];
-
-        int ix = fill(columns, fields, 0, true, keys, projection);
-        ix = fill(columns, fields, ix, false, values, projection);
-
-        if (ix != numColumns) {
-            throw new AssertionError();
+            int ix = 0;
+            for (String colName : projection.keySet()) {
+                ColumnInfo column = ColumnSet.findColumn(info.valueColumns, colName);
+                boolean key = false;
+                if (column == null) {
+                    column = ColumnSet.findColumn(info.keyColumns, colName);
+                    if (column == null) {
+                        throw new IllegalArgumentException("Unknown column: " + colName);
+                    }
+                    key = true;
+                }
+                columns[ix] = Column.make(BasicType.make(column), colName, key);
+                fields[ix] = column.name;
+                ix++;
+            }
         }
 
         return new TupleType(rowType, columns, fields);
@@ -218,6 +225,44 @@ public final class TupleType extends Type {
      */
     public String field(int index) {
         return mFields[index];
+    }
+
+    /**
+     * Returns true if the given projection exactly matches the fields of tuple's type class.
+     * If given null, this implies a full projection, and so true is returned.
+     */
+    public boolean matches(Node[] projection) {
+        if (projection != null) {
+            if (projection.length != numColumns()) {
+                return false;
+            }
+            for (int i=0; i<projection.length; i++) {
+                Node n = projection[i];
+                if (!(n instanceof ColumnNode cn) || !cn.column().name().equals(mFields[i])) {
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+
+    /**
+     * Returns true if the given projection exactly matches the fields of tuple's type class.
+     * If given null, this implies a full projection, and so true is returned.
+     */
+    public boolean matches(Collection<String> projection) {
+        if (projection != null) {
+            if (projection.size() != numColumns()) {
+                return false;
+            }
+            int i = 0;
+            for (String name : projection) {
+                if (!mFields[i++].equals(name)) {
+                    return false;
+                }
+            }
+        }
+        return true;
     }
 
     /**
