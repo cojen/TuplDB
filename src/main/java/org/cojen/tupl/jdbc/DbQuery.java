@@ -65,7 +65,7 @@ public abstract class DbQuery extends DbStatement {
 
     @Override
     public final boolean getMoreResults() throws SQLException {
-        closeResultSet();
+        reset();
         return false;
     }
 

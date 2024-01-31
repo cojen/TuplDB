@@ -286,17 +286,19 @@ public sealed class ConstantNode extends Node {
         return makeEval(context, mType.clazz(), mValue);
     }
 
-    public static Variable makeEval(EvalContext context, Class type, Object value) {
+    private static Variable makeEval(EvalContext context, Class type, Object value) {
         var valueVar = context.methodMaker().var(type);
-
-        if (value == null || type.isPrimitive() ||
-            String.class.isAssignableFrom(type) ||
-            Class.class.isAssignableFrom(type))
-        {
+        if (!mustSetExact(type, value)) {
             return valueVar.set(value);
         } else {
             return valueVar.setExact(cCanonicalizer.apply(value));
         }
+    }
+
+    public static boolean mustSetExact(Class type, Object value) {
+        return value != null && !type.isPrimitive()
+            && !String.class.isAssignableFrom(type)
+            && !Class.class.isAssignableFrom(type);
     }
 
     @Override
@@ -322,8 +324,29 @@ public sealed class ConstantNode extends Node {
         return false;
     }
 
+    @Override
+    public FieldNode replaceConstants(Map<ConstantNode, FieldNode> map, String prefix) {
+        return map.computeIfAbsent(this, k -> FieldNode.make(k.mType, prefix + map.size()));
+    }
+
     public Object value() {
         return mValue;
+    }
+
+    /**
+     * Returns a canonical instance for non-primitive constants.
+     */
+    public Object canonicalValue() {
+        Class type = mType.clazz();
+        Object value = mValue;
+        if (!mustSetExact(type, value)) {
+            if (value instanceof String s) {
+                return s.intern();
+            }
+        } else {
+            return cCanonicalizer.apply(value);
+        }
+        return value;
     }
 
     @Override

@@ -294,5 +294,19 @@ public final class FilteredNode extends BinaryOpNode {
         return super.hasOrderDependentException()
             || ((mOp == OP_AND || mOp == OP_OR) && mLeft.canThrowRuntimeException());
     }
+
+    @Override
+    public FilteredNode replaceConstants(Map<ConstantNode, FieldNode> map, String prefix) {
+        Node originalLeft = mOriginalLeft.replaceConstants(map, prefix);
+        Node originalRight = mOriginalRight.replaceConstants(map, prefix);
+        Node left = mLeft.replaceConstants(map, prefix);
+        Node right = mRight.replaceConstants(map, prefix);
+        if (originalLeft == mOriginalLeft && originalRight == mOriginalRight
+            && left == mLeft && right == mRight)
+        {
+            return this;
+        }
+        return new FilteredNode(mName, mOp, originalLeft, originalRight, left, right);
+    }
 }
 

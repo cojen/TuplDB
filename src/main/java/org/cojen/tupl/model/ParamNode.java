@@ -17,6 +17,7 @@
 
 package org.cojen.tupl.model;
 
+import java.util.Map;
 import java.util.Set;
 
 import org.cojen.maker.Label;
@@ -124,6 +125,11 @@ public final class ParamNode extends Node {
     @Override
     public Variable makeFilterEval(EvalContext context) {
         return ConvertCallSite.make(context.methodMaker(), boolean.class, makeEval(context));
+    }
+
+    @Override
+    public ParamNode replaceConstants(Map<ConstantNode, FieldNode> map, String prefix) {
+        return this;
     }
 
     public int ordinal() {

@@ -17,6 +17,7 @@
 
 package org.cojen.tupl.model;
 
+import java.util.Map;
 import java.util.Set;
 
 import org.cojen.maker.MethodMaker;
@@ -113,6 +114,15 @@ public final class ConversionNode extends Node {
     @Override
     public boolean hasOrderDependentException() {
         return mNode.hasOrderDependentException();
+    }
+
+    @Override
+    public ConversionNode replaceConstants(Map<ConstantNode, FieldNode> map, String prefix) {
+        Node node = mNode.replaceConstants(map, prefix);
+        if (node == mNode) {
+            return this;
+        }
+        return new ConversionNode(node, mType);
     }
 
     @Override

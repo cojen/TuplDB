@@ -19,9 +19,13 @@ package org.cojen.tupl.sql;
 
 import java.io.IOException;
 
+import net.sf.jsqlparser.expression.operators.relational.ExpressionList;
+
 import net.sf.jsqlparser.parser.CCJSqlParser;
 import net.sf.jsqlparser.parser.CCJSqlParserUtil;
 import net.sf.jsqlparser.parser.ParseException;
+
+import net.sf.jsqlparser.schema.Column;
 
 import net.sf.jsqlparser.statement.*;
 import net.sf.jsqlparser.statement.alter.*;
@@ -46,6 +50,14 @@ import net.sf.jsqlparser.statement.show.*;
 import net.sf.jsqlparser.statement.truncate.*;
 import net.sf.jsqlparser.statement.update.*;
 import net.sf.jsqlparser.statement.upsert.*;
+
+import org.cojen.tupl.Table;
+
+import org.cojen.tupl.model.ColumnNode;
+import org.cojen.tupl.model.InsertNode;
+import org.cojen.tupl.model.Node;
+import org.cojen.tupl.model.RelationNode;
+import org.cojen.tupl.model.TableNode;
 
 import org.cojen.tupl.io.Utils;
 
@@ -107,7 +119,68 @@ public class StatementProcessor implements StatementVisitor {
 
     @Override
     public void visit(Insert insert) {
-        fail();
+        if (insert.getDuplicateUpdateSets() != null ||
+            insert.getSetUpdateSets() != null ||
+            insert.getOutputClause() != null ||
+            insert.getReturningClause() != null ||
+            insert.isModifierIgnore() ||
+            insert.getWithItemsList() != null ||
+            insert.getConflictTarget() != null ||
+            insert.getConflictAction() != null)
+        {
+            throw fail();
+        }
+
+        String name = insert.getTable().getFullyQualifiedName();
+
+        Table table;
+        try {
+            table = mScope.findTable(name);
+        } catch (IOException e) {
+            throw Utils.rethrow(e);
+        }
+
+        if (table == null) {
+            throw new IllegalStateException("Table isn't found: " + name);
+        }
+
+        TableNode tableNode = TableNode.make(table);
+
+        ExpressionList<Column> columns = insert.getColumns();
+        var columnNodes = new ColumnNode[columns.size()];
+
+        for (int i=0; i<columnNodes.length; i++) {
+            columnNodes[i] = findColumnNode(tableNode, columns.get(i));
+        }
+
+        Select select = insert.getSelect();
+
+        Node[] valueNodes;
+        RelationNode selectNode;
+
+        if (select instanceof Values values) {
+            selectNode = null;
+            valueNodes = ExpressionProcessor.process(values.getExpressions(), mScope);
+            if (valueNodes.length != columnNodes.length) {
+                throw new IllegalStateException("Number of values doesn't match number of columns");
+            }
+        } else {
+            valueNodes = null;
+            try {
+                selectNode = SelectProcessor.process(select, mScope);
+            } catch (IOException e) {
+                throw Utils.rethrow(e);
+            }
+        }
+
+        mStatement = InsertNode.make(tableNode, columnNodes, valueNodes, selectNode);
+    }
+
+    private static ColumnNode findColumnNode(TableNode tableNode, Column column) {
+        if (column.getArrayConstructor() != null || column.getTable() != null) {
+            throw fail();
+        }
+        return tableNode.findColumn(column.getColumnName());
     }
 
     @Override

@@ -74,6 +74,9 @@ public abstract sealed class RelationNode extends Node
         throw null;
     }
 
+    @Override
+    public abstract RelationNode replaceConstants(Map<ConstantNode, FieldNode> map, String prefix);
+
     public final String name() {
         return mName;
     }

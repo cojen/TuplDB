@@ -34,8 +34,8 @@ import org.cojen.tupl.table.filter.RowFilter;
  * @author Brian S. O'Neill
  */
 public abstract sealed class Node
-    permits BinaryOpNode, CaseNode, ColumnNode, ConcatNode, ConstantNode, ConversionNode,
-    ParamNode, RelationNode
+    permits BinaryOpNode, CaseNode, CommandNode, ColumnNode, ConcatNode, ConstantNode,
+    ConversionNode, FieldNode, ParamNode, RelationNode
 {
     public abstract Type type();
 
@@ -158,6 +158,41 @@ public abstract sealed class Node
      */
     public boolean hasOrderDependentException() {
         return false;
+    }
+
+    /**
+     * Replace all the constants referenced by this node with fields, returning a new node. If
+     * this node doesn't reference any constants, then the same node is returned.
+     *
+     * @param map generated field replacements are put into this map
+     * @param prefix name prefix for all the generated field names
+     */
+    public abstract Node replaceConstants(Map<ConstantNode, FieldNode> map, String prefix);
+
+    /**
+     * Replaces the constants referenced by an array of nodes, returning a new array only if
+     * any node was replaced.
+     */
+    public static Node[] replaceConstants(Node[] nodes, 
+                                          Map<ConstantNode, FieldNode> map, String prefix)
+    {
+        if (nodes != null) {
+            boolean cloned = false;
+
+            for (int i=0; i<nodes.length; i++) {
+                Node node = nodes[i];
+                Node replaced = node.replaceConstants(map, prefix);
+                if (replaced != node) {
+                    if (!cloned) {
+                        nodes = nodes.clone();
+                        cloned = true;
+                    }
+                    nodes[i] = replaced;
+                }
+            }
+        }
+
+        return nodes;
     }
 
     /**

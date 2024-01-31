@@ -20,6 +20,7 @@ package org.cojen.tupl.model;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 
+import java.util.Map;
 import java.util.Set;
 
 import org.cojen.maker.Label;
@@ -316,6 +317,16 @@ public sealed class BinaryOpNode extends Node permits FilteredNode {
     @Override
     public boolean hasOrderDependentException() {
         return mLeft.hasOrderDependentException() || mRight.hasOrderDependentException();
+    }
+
+    @Override
+    public BinaryOpNode replaceConstants(Map<ConstantNode, FieldNode> map, String prefix) {
+        Node left = mLeft.replaceConstants(map, prefix);
+        Node right = mRight.replaceConstants(map, prefix);
+        if (left == mLeft && right == mRight) {
+            return this;
+        }
+        return new BinaryOpNode(mType, mName, mOp, left, right);
     }
 
     @Override

@@ -67,8 +67,25 @@ final class SelectMappedNode extends SelectNode {
     {
         super(type, name, from, filter, projection, maxArgument);
         mWhere = where;
-        mRequireRemap = where == null ? false :
-            (where.hasOrderDependentException() && where.isPureFunction());
+        mRequireRemap = requireRemap(where);
+    }
+
+    /**
+     * @param where can be null if filter is TrueFilter
+     * @see SelectNode#make
+     */
+    private SelectMappedNode(RelationType type, String name,
+                             RelationNode from, RowFilter filter, Node where,
+                             Node[] projection, int maxArgument)
+    {
+        super(type, name, from, filter, projection, maxArgument);
+        mWhere = where;
+        mRequireRemap = requireRemap(where);
+    }
+
+    private static boolean requireRemap(Node where) {
+        return where == null ? false
+            : (where.hasOrderDependentException() && where.isPureFunction());
     }
 
     private SelectMappedNode(SelectMappedNode node, String name) {
@@ -107,6 +124,18 @@ final class SelectMappedNode extends SelectNode {
     @Override
     public boolean isPureFunction() {
         return super.isPureFunction() && (mWhere == null || mWhere.isPureFunction());
+    }
+
+    @Override
+    public SelectMappedNode replaceConstants(Map<ConstantNode, FieldNode> map, String prefix) {
+        RelationNode from = mFrom.replaceConstants(map, prefix);
+        Node[] projection = Node.replaceConstants(mProjection, map, prefix);
+        Node where = mWhere == null ? null : mWhere.replaceConstants(map, prefix);
+        if (from == mFrom && projection == mProjection && where == mWhere) {
+            return this;
+        }
+        return new SelectMappedNode(type(), name(), from, mFilter, where, projection,
+                                    mMaxArgument);
     }
 
     @Override

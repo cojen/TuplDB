@@ -70,7 +70,7 @@ public class FromProcessor implements FromItemVisitor {
         }
 
         if (dbTable == null) {
-            throw new IllegalStateException("Table not found: " + name);
+            throw new IllegalStateException("Table isn't found: " + name);
         }
 
         Alias alias = table.getAlias();

@@ -230,7 +230,7 @@ final class DbQueryMaker {
             var rsVar = mm.invoke("resultSet");
             Label ready = mm.label();
             rsVar.invoke("isUninitialized").ifTrue(ready);
-            mm.invoke("closeResultSet");
+            mm.invoke("reset");
             start.goto_();
             ready.here();
             rsVar.invoke("init", mm.this_());
@@ -238,7 +238,7 @@ final class DbQueryMaker {
         }
 
         {
-            MethodMaker mm = cm.addMethod(null, "closeResultSet").public_();
+            MethodMaker mm = cm.addMethod(null, "reset").public_();
             var rsField = mm.field("rs");
             var rsVar = rsField.get();
             Label ready = mm.label();

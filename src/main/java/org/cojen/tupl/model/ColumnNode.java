@@ -17,6 +17,7 @@
 
 package org.cojen.tupl.model;
 
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 
@@ -125,6 +126,11 @@ public final class ColumnNode extends Node {
     @Override
     public boolean canThrowRuntimeException() {
         return false;
+    }
+
+    @Override
+    public ColumnNode replaceConstants(Map<ConstantNode, FieldNode> map, String prefix) {
+        return this;
     }
 
     /**

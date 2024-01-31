@@ -17,6 +17,8 @@
 
 package org.cojen.tupl.model;
 
+import java.util.Map;
+
 import org.cojen.tupl.Table;
 
 import org.cojen.tupl.table.IdentityTable;
@@ -62,6 +64,11 @@ public final class TableNode extends RelationNode {
     @Override
     public TableProvider<?> makeTableProvider() {
         return TableProvider.make(mTable, null);
+    }
+
+    @Override
+    public TableNode replaceConstants(Map<ConstantNode, FieldNode> map, String prefix) {
+        return this;
     }
 
     public Table table() {

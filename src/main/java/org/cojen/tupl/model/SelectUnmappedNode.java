@@ -87,6 +87,14 @@ final class SelectUnmappedNode extends SelectNode {
         mArgMap = argMap;
     }
 
+    private SelectUnmappedNode(RelationType type, String name,
+                               RelationNode from, RowFilter filter, Node[] projection,
+                               int maxArgument, Map<Object, Integer> argMap)
+    {
+        super(type, name, from, filter, projection, maxArgument);
+        mArgMap = argMap;
+    }
+
     private SelectUnmappedNode(SelectUnmappedNode node, String name) {
         super(node.type(), name, node.mFrom, node.mFilter, node.mProjection, node.mMaxArgument);
         mArgMap = node.mArgMap;
@@ -95,6 +103,17 @@ final class SelectUnmappedNode extends SelectNode {
     @Override
     public SelectUnmappedNode withName(String name) {
         return name.equals(name()) ? this : new SelectUnmappedNode(this, name);
+    }
+
+    @Override
+    public SelectUnmappedNode replaceConstants(Map<ConstantNode, FieldNode> map, String prefix) {
+        RelationNode from = mFrom.replaceConstants(map, prefix);
+        Node[] projection = Node.replaceConstants(mProjection, map, prefix);
+        if (from == mFrom && projection == mProjection) {
+            return this;
+        }
+        return new SelectUnmappedNode(type(), name(), from, mFilter, projection,
+                                      mMaxArgument, mArgMap);
     }
 
     @Override

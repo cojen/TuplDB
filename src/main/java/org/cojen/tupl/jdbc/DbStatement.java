@@ -67,7 +67,7 @@ public abstract class DbStatement extends BasePreparedStatement {
 
     final void doClose() throws SQLException {
         mCon = null;
-        closeResultSet();
+        reset();
     }
 
     @Override
@@ -132,7 +132,7 @@ public abstract class DbStatement extends BasePreparedStatement {
     }
 
     /**
-     * Close and discard the ResultSet, if any.
+     * Close and discard the ResultSet and reset the update count.
      */
-    protected abstract void closeResultSet() throws SQLException;
+    protected abstract void reset() throws SQLException;
 }

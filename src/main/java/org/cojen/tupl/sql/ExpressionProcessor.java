@@ -57,6 +57,16 @@ public class ExpressionProcessor implements ExpressionVisitor {
         return processor.mNode;
     }
 
+    public static Node[] process(ExpressionList<?> expressions, Scope scope) {
+        var nodes = new Node[expressions.size()];
+        var processor = new ExpressionProcessor(scope);
+        for (int i=0; i<nodes.length; i++) {
+            expressions.get(i).accept(processor);
+            nodes[i] = processor.mNode;
+        }
+        return nodes;
+    }
+
     private final Scope mScope;
 
     private Node mNode;

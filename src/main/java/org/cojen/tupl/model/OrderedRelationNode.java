@@ -77,6 +77,15 @@ public final class OrderedRelationNode extends RelationNode {
     }
 
     @Override
+    public OrderedRelationNode replaceConstants(Map<ConstantNode, FieldNode> map, String prefix) {
+        RelationNode from = mFrom.replaceConstants(map, prefix);
+        if (from == mFrom) {
+            return this;
+        }
+        return new OrderedRelationNode(name(), from, mOrderBy, mOrderByFlags, mProjectonMap);
+    }
+
+    @Override
     public TableProvider<?> makeTableProvider() {
         if (mTableProvider == null) {
             mTableProvider = doMakeTableProvider();

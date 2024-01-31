@@ -102,6 +102,16 @@ public final class JoinNode extends RelationNode {
     }
 
     @Override
+    public JoinNode replaceConstants(Map<ConstantNode, FieldNode> map, String prefix) {
+        RelationNode left = mLeft.replaceConstants(map, prefix);
+        RelationNode right = mRight.replaceConstants(map, prefix);
+        if (left == mLeft && right == mRight) {
+            return this;
+        }
+        return new JoinNode(type(), name(), mJoinType, left, right);
+    }
+
+    @Override
     public TableProvider<?> makeTableProvider() {
         if (mTableProvider == null) {
             mTableProvider = doMakeTableProvider();

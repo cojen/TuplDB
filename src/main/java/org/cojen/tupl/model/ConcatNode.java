@@ -18,6 +18,7 @@
 package org.cojen.tupl.model;
 
 import java.util.Arrays;
+import java.util.Map;
 import java.util.Set;
 
 import org.cojen.maker.Label;
@@ -166,6 +167,16 @@ public final class ConcatNode extends Node {
     @Override
     public boolean canThrowRuntimeException() {
         return mLeft.canThrowRuntimeException() || mRight.canThrowRuntimeException();
+    }
+
+    @Override
+    public ConcatNode replaceConstants(Map<ConstantNode, FieldNode> map, String prefix) {
+        Node left = mLeft.replaceConstants(map, prefix);
+        Node right = mRight.replaceConstants(map, prefix);
+        if (left == mLeft && right == mRight) {
+            return this;
+        }
+        return new ConcatNode(mType, mName, left, right);
     }
 
     @Override

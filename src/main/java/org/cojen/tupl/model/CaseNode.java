@@ -18,6 +18,7 @@
 package org.cojen.tupl.model;
 
 import java.util.Arrays;
+import java.util.Map;
 import java.util.Set;
 
 import org.cojen.maker.Label;
@@ -249,6 +250,17 @@ public final class CaseNode extends Node {
             }
         }
         return false;
+    }
+
+    @Override
+    public CaseNode replaceConstants(Map<ConstantNode, FieldNode> map, String prefix) {
+        Node[] conditions = Node.replaceConstants(mConditions, map, prefix);
+        Node[] results = Node.replaceConstants(mResults, map, prefix);
+        Node elseResult = mElseResult.replaceConstants(map, prefix);
+        if (conditions == mConditions && results == mResults && elseResult == mElseResult) {
+            return this;
+        }
+        return new CaseNode(mType, mName, conditions, results, elseResult);
     }
 
     @Override

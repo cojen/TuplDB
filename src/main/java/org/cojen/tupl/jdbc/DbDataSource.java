@@ -36,6 +36,8 @@ import org.cojen.tupl.Database;
 
 import org.cojen.tupl.io.Utils;
 
+import org.cojen.tupl.model.Command;
+import org.cojen.tupl.model.CommandNode;
 import org.cojen.tupl.model.RelationNode;
 
 import org.cojen.tupl.table.SoftCache;
@@ -177,14 +179,27 @@ public final class DbDataSource implements DataSource {
         Object stmt;
         try {
             stmt = StatementProcessor.process(sql, new Scope(mFinder));
-        } catch (ParseException e) {
-            throw new SQLException(e.getMessage());
         } catch (IOException e) {
             throw new SQLException(e);
+        } catch (Exception e) {
+            if (e instanceof SQLException se) {
+                throw se;
+            }
+            String message = e.getMessage();
+            if (message != null && !message.isEmpty()) {
+                throw new SQLException(message);
+            } else {
+                throw new SQLException(e);
+            }
         }
 
         if (stmt instanceof RelationNode rn) {
             return DbQueryMaker.make(rn.makeTableProvider(), schema());
+        }
+
+        if (stmt instanceof CommandNode cn) {
+            Command command = cn.makeCommand();
+            return (DbConnection con) -> DbCommand.newDbCommand(con, command);
         }
 
         throw new SQLException("Unsupported statement: " + sql + ", " + stmt);
