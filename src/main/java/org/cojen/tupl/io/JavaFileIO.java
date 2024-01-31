@@ -27,10 +27,13 @@ import java.nio.ByteBuffer;
 
 import java.nio.channels.FileChannel;
 import java.nio.channels.ClosedByInterruptException;
+import java.nio.channels.NonWritableChannelException;
 
 import java.util.EnumSet;
 
 import java.util.function.Consumer;
+
+import org.cojen.tupl.WriteFailureException;
 
 import org.cojen.tupl.unsafe.DirectAccess;
 
@@ -209,6 +212,8 @@ class JavaFileIO extends AbstractFileIO {
                     pos += channel.write(bb, pos);
                 }
                 break;
+            } catch (NonWritableChannelException e) {
+                throw new WriteFailureException("File is read only");
             } catch (ClosedByInterruptException e) {
                 interrupted = true;
                 file = replaceClosedRaf(entry);
