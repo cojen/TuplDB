@@ -270,8 +270,6 @@ public final class RowTypeMaker {
         }
     };
 
-    private static long cClassNum;
-
     private static Class make(Object cacheKey) {
         Object[] allTypes, keyTypes;
 
@@ -284,15 +282,15 @@ public final class RowTypeMaker {
             keyTypes = full.keyTypes;
         }
 
-        long num;
-        synchronized (RowTypeMaker.class) {
-            num = cClassNum++;
-        }
+        // Use sub packages to facilitate class unloading.
+        String name = RowTypeMaker.class.getPackageName() + '.' + RowGen.newSubPackage() + ".Row";
 
-        // Use small sub packages to facilitate class unloading.
-        String name = RowTypeMaker.class.getPackageName() + ".p" + (num / 10) + ".R" + (num % 10);
+        ClassMaker cm = ClassMaker.begin(name, null, RowGen.MAKER_KEY);
+        cm.public_().interface_();
 
-        ClassMaker cm = ClassMaker.beginExplicit(name, null, null).public_().interface_();
+        // Make synthetic in order for new classes generated via RowGen.beginClassMaker to use
+        // the same ClassLoader as the row type interface.
+        cm.synthetic();
 
         cm.addAnnotation(Unpersisted.class, true);
 
