@@ -38,6 +38,10 @@ import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
 
+import org.cojen.maker.AnnotationMaker;
+import org.cojen.maker.ClassMaker;
+import org.cojen.maker.MethodMaker;
+
 import org.cojen.tupl.AlternateKey;
 import org.cojen.tupl.Automatic;
 import org.cojen.tupl.Hidden;
@@ -111,18 +115,7 @@ public class RowInfo extends ColumnSet {
         info.examinePrimaryKey(rowType, messages);
         errorCheck(rowType, messages);
 
-        if (autoColumn != null) {
-            Iterator<ColumnInfo> it = info.keyColumns.values().iterator();
-            while (true) {
-                ColumnInfo column = it.next();
-                if (!it.hasNext()) {
-                    if (column != autoColumn) {
-                        messages.add("automatic column must be the last in the primary key");
-                    }
-                    break;
-                }
-            }
-        }
+        info.examineAutoColumn(messages, autoColumn);
 
         AlternateKey altKey = rowType.getAnnotation(AlternateKey.class);
         AlternateKey.Set altKeySet = rowType.getAnnotation(AlternateKey.Set.class);
@@ -308,9 +301,20 @@ public class RowInfo extends ColumnSet {
     }
 
     private static void errorCheck(Class<?> rowType, Set<String> messages) {
+        errorCheck(rowType, null, messages);
+    }
+
+    /**
+     * @throws IllegalArgumentException if any messages
+     */
+    void errorCheck(Set<String> messages) {
+        errorCheck(null, name, messages);
+    }
+
+    private static void errorCheck(Class<?> rowType, String name, Set<String> messages) {
         if (!messages.isEmpty()) {
             var bob = new StringBuilder().append("Row type").append(' ').append('"');
-            bob.append(rowType.getSimpleName()).append("\" is malformed: ");
+            bob.append(name == null ? rowType.getSimpleName() : name).append("\" is malformed: ");
             final int length = bob.length();
             for (String message : messages) {
                 if (bob.length() > length) {
@@ -577,12 +581,16 @@ public class RowInfo extends ColumnSet {
 
     private void examinePrimaryKey(Class<?> rowType, Set<String> messages) {
         PrimaryKey pk = rowType.getAnnotation(PrimaryKey.class);
+        examinePrimaryKey(pk == null ? (String[]) null : pk.value(), messages);
+    }
 
-        if (pk == null) {
+    /**
+     * @param columnNames null if unspecified; each name can be prefixed with [ + | - ] [ ! ]
+     */
+    void examinePrimaryKey(String[] columnNames, Set<String> messages) {
+        if (columnNames == null) {
             keyColumns = Collections.emptyMap();
         } else {
-            String[] columnNames = pk.value();
-
             if (columnNames.length == 0) {
                 messages.add(noColumns("primary key"));
                 return;
@@ -646,12 +654,32 @@ public class RowInfo extends ColumnSet {
     }
 
     /**
+     * Can only be called after examinePrimaryKey has been called.
+     *
+     * @param autoColumn optional
+     */
+    void examineAutoColumn(Set<String> messages, ColumnInfo autoColumn) {
+        if (autoColumn != null) {
+            Iterator<ColumnInfo> it = keyColumns.values().iterator();
+            while (true) {
+                ColumnInfo column = it.next();
+                if (!it.hasNext()) {
+                    if (column != autoColumn) {
+                        messages.add("automatic column must be the last in the primary key");
+                    }
+                    break;
+                }
+            }
+        }
+    }
+
+    /**
      * Examines an alternate key or secondary index and fills in the key and data columns.
      *
      * @param fullSet result is added here
      */
-    private void examineIndex(Set<String> messages, NavigableSet<ColumnSet> fullSet,
-                              String[] columnNames, boolean forAltKey)
+    void examineIndex(Set<String> messages, NavigableSet<ColumnSet> fullSet,
+                      String[] columnNames, boolean forAltKey)
     {
         ColumnSet set = examineIndex(messages, columnNames, forAltKey);
         if (set != null) {
@@ -836,7 +864,7 @@ public class RowInfo extends ColumnSet {
      * directions. Initially, primary key columns should have been added with an unspecified
      * type and direction. The given set must be ordered with ColumnSetComparator.THE.
      */
-    private NavigableSet<ColumnSet> finishIndexSet(NavigableSet<ColumnSet> initialSet) {
+    NavigableSet<ColumnSet> finishIndexSet(NavigableSet<ColumnSet> initialSet) {
         // All unspecified types are currently ordered lower. By iterating in reverse order
         // into a new set which treats unspecified types as equal, unspecified ones are less
         // favored and will be effectively discarded if they're redundant.
@@ -875,5 +903,121 @@ public class RowInfo extends ColumnSet {
                 entry.setValue(allColumns.get(info.name));
             }
         }
+    }
+
+    /**
+     * Makes a row type interface and optionally caches this RowInfo object against it.
+     *
+     * @param cacheIt pass true to store the RowInfo in the cache
+     * @throws IllegalArgumentException if the ClassMaker name doesn't match the RowInfo name
+     */
+    public Class<?> makeRowType(ClassMaker cm, boolean cacheIt) {
+        if (!cm.name().equals(name)) {
+            throw new IllegalArgumentException();
+        }
+
+        cm.public_().interface_();
+
+        for (ColumnInfo ci : allColumns.values()) {
+            // Accessor method.
+            MethodMaker mm = cm.addMethod(ci.type, ci.name).public_().abstract_();
+
+            if (ci.isAutomatic()) {
+                AnnotationMaker am = mm.addAnnotation(Automatic.class, true);
+                am.put("min", ci.autoMin);
+                am.put("max", ci.autoMax);
+            }
+
+            if (ci.isHidden()) {
+                mm.addAnnotation(Hidden.class, true);
+            }
+
+            if (ci.isNullable()) {
+                mm.addAnnotation(Nullable.class, true);
+            }
+
+            if (ci.isUnsignedInteger()) {
+                mm.addAnnotation(Unsigned.class, true);
+            }
+
+            // Mutator method.
+            cm.addMethod(null, ci.name, ci.type).public_().abstract_();
+        }
+
+        cm.addAnnotation(PrimaryKey.class, true).put("value", makeKeyAnnotationValues(this, false));
+
+        if (!alternateKeys.isEmpty()) {
+            if (alternateKeys.size() == 1) {
+                ColumnSet alt = alternateKeys.iterator().next();
+                cm.addAnnotation(AlternateKey.class, true).
+                    put("value", makeKeyAnnotationValues(alt, false));
+            } else {
+                AnnotationMaker am = cm.addAnnotation(AlternateKey.Set.class, true);
+                var values = new AnnotationMaker[alternateKeys.size()];
+                int i = 0;
+                for (ColumnSet alt : alternateKeys) {
+                    AnnotationMaker sub = am.newAnnotation(AlternateKey.class);
+                    sub.put("value", makeKeyAnnotationValues(alt, false));
+                    values[i++] = sub;
+                }
+                am.put("value", values);
+            }
+        }
+
+        if (!secondaryIndexes.isEmpty()) {
+            if (secondaryIndexes.size() == 1) {
+                ColumnSet secondary = secondaryIndexes.iterator().next();
+                cm.addAnnotation(SecondaryIndex.class, true)
+                    .put("value", makeKeyAnnotationValues(secondary, true));
+            } else {
+                AnnotationMaker am = cm.addAnnotation(SecondaryIndex.Set.class, true);
+                var values = new AnnotationMaker[secondaryIndexes.size()];
+                int i = 0;
+                for (ColumnSet secondary : secondaryIndexes) {
+                    AnnotationMaker sub = am.newAnnotation(SecondaryIndex.class);
+                    sub.put("value", makeKeyAnnotationValues(secondary, true));
+                    values[i++] = sub;
+                }
+                am.put("value", values);
+            }
+        }
+
+        Class<?> clazz = cm.finish();
+
+        if (cacheIt) {
+            cache.put(clazz, this);
+        }
+
+        return clazz;
+    }
+
+    /**
+     * @param withValues true if the value columns should be included (only applicable to plain
+     * secondary indexes)
+     */
+    private static String[] makeKeyAnnotationValues(ColumnSet set, boolean withValues) {
+        var names = new String[set.keyColumns.size() + (withValues ? set.valueColumns.size() : 0)];
+
+        int i = 0;
+        for (ColumnInfo ci : set.keyColumns.values()) {
+            String name = ci.name;
+            if (ci.isNullLow()) {
+                name = '!' + name;
+            }
+            name = (ci.isDescending() ? '-' : '+') + name;
+            names[i++] = name;
+        }
+
+        if (withValues) {
+            for (ColumnInfo ci : set.valueColumns.values()) {
+                names[i++] = ci.name;
+            }
+        }
+
+        if (i != names.length) {
+            throw new AssertionError();
+        }
+
+        return names;
     }
 }
