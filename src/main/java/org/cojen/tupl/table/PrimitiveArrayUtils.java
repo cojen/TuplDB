@@ -31,8 +31,6 @@ public class PrimitiveArrayUtils extends RowUtils {
     private static final VarHandle cShortArrayBEHandle;
     private static final VarHandle cIntArrayBEHandle;
     private static final VarHandle cLongArrayBEHandle;
-    private static final VarHandle cFloatArrayBEHandle;
-    private static final VarHandle cDoubleArrayBEHandle;
 
     static {
         try {
@@ -42,10 +40,6 @@ public class PrimitiveArrayUtils extends RowUtils {
                 (int[].class, ByteOrder.BIG_ENDIAN);
             cLongArrayBEHandle = MethodHandles.byteArrayViewVarHandle
                 (long[].class, ByteOrder.BIG_ENDIAN);
-            cFloatArrayBEHandle = MethodHandles.byteArrayViewVarHandle
-                (float[].class, ByteOrder.BIG_ENDIAN);
-            cDoubleArrayBEHandle = MethodHandles.byteArrayViewVarHandle
-                (double[].class, ByteOrder.BIG_ENDIAN);
         } catch (Throwable e) {
             throw new ExceptionInInitializerError();
         }
