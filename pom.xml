@@ -237,7 +237,11 @@
           <reportOutputDirectory>${basedir}/docs</reportOutputDirectory>
           <destDir>javadoc</destDir>
           <excludePackageNames>org.cojen.tupl.unsafe:org.cojen.tupl.core:org.cojen.tupl.ev:org.cojen.tupl.jmx:org.cojen.tupl.views:org.cojen.tupl.table:org.cojen.tupl.table.codec:org.cojen.tupl.table.filter:org.cojen.tupl.table.join:org.cojen.tupl.remote:org.cojen.tupl.jdbc:org.cojen.tupl.model:org.cojen.tupl.sql</excludePackageNames>
-          <!-- <additionalOptions>-Xdoclint:none</additionalOptions> -->
+          <quiet>true</quiet>
+          <additionalOptions>-Xdoclint:accessibility</additionalOptions>
+          <additionalOptions>-Xdoclint:html</additionalOptions>
+          <additionalOptions>-Xdoclint:reference</additionalOptions>
+          <additionalOptions>-Xdoclint:syntax</additionalOptions>
         </configuration>
         <executions>
           <execution>
