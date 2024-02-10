@@ -282,15 +282,8 @@ public final class RowTypeMaker {
             keyTypes = full.keyTypes;
         }
 
-        // Use sub packages to facilitate class unloading.
-        String name = RowTypeMaker.class.getPackageName() + '.' + RowGen.newSubPackage() + ".Type";
-
-        ClassMaker cm = ClassMaker.begin(name, null, RowGen.MAKER_KEY);
-        cm.public_().interface_();
-
-        // Make synthetic in order for new classes generated via RowGen.beginClassMaker to use
-        // the same ClassLoader as the row type interface.
-        cm.synthetic();
+        ClassMaker cm = RowGen.beginClassMakerForRowType
+            (RowTypeMaker.class.getPackageName(), "Type");
 
         cm.addAnnotation(Unpersisted.class, true);
 

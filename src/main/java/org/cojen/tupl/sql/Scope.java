@@ -29,7 +29,7 @@ import org.cojen.tupl.model.RelationNode;
  *
  * @author Brian S. O'Neill
  */
-public class Scope implements TableFinder {
+public final class Scope {
     private final Scope mParent;
     private final TableFinder mFinder;
     private final RelationNode mFrom;
@@ -44,12 +44,14 @@ public class Scope implements TableFinder {
         mFrom = from;
     }
 
-    @Override
+    TableFinder finder() {
+        return mFinder;
+    }
+
     public Table findTable(String name) throws IOException {
         return mFinder.findTable(name);
     }
 
-    @Override
     public String schema() {
         return mFinder.schema();
     }
@@ -57,7 +59,6 @@ public class Scope implements TableFinder {
     /**
      * Returns a new Scope object.
      */
-    @Override
     public Scope withSchema(String schema) {
         return new Scope(this, mFinder.withSchema(schema), mFrom);
     }

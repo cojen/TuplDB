@@ -33,6 +33,7 @@ class CodeUtils extends org.cojen.tupl.table.CodeUtils {
      * @param subPackage optional (can be null)
      * @param suffix appended to the new class name (can be null)
      */
+    // TODO: Review definition of "peer" considering that it doesn't use the parent loader.
     static ClassMaker beginClassMaker(Class<?> who, Class<?> peer,
                                       String subPackage, String suffix)
     {

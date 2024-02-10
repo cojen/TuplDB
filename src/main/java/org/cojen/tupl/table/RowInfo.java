@@ -906,16 +906,9 @@ public class RowInfo extends ColumnSet {
     }
 
     /**
-     * Makes a row type interface and optionally caches this RowInfo object against it.
-     *
-     * @param cacheIt pass true to store the RowInfo in the cache
-     * @throws IllegalArgumentException if the ClassMaker name doesn't match the RowInfo name
+     * Makes a row type interface.
      */
-    public Class<?> makeRowType(ClassMaker cm, boolean cacheIt) {
-        if (!cm.name().equals(name)) {
-            throw new IllegalArgumentException();
-        }
-
+    public Class<?> makeRowType(ClassMaker cm) {
         cm.public_().interface_();
 
         for (ColumnInfo ci : allColumns.values()) {
@@ -982,13 +975,13 @@ public class RowInfo extends ColumnSet {
             }
         }
 
-        Class<?> clazz = cm.finish();
+        // Note that it's possible to cache this RowInfo against the newly made class, but
+        // there's a few problems with this. First, the class name might not match this RowInfo
+        // name. Second, the column accessors and mutators aren't assigned yet. The simplest
+        // thing to do is require the interface to be examined later, which has the added
+        // benefit of verifying that it's defined correctly.
 
-        if (cacheIt) {
-            cache.put(clazz, this);
-        }
-
-        return clazz;
+        return cm.finish();
     }
 
     /**

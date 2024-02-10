@@ -17,12 +17,25 @@
 
 package org.cojen.tupl.model;
 
+import java.util.Map;
+import java.util.Set;
+
+import org.cojen.maker.Variable;
+
 /**
  * 
  *
  * @author Brian S. O'Neill
  */
-public abstract sealed class CommandNode extends Node permits InsertNode {
+public abstract sealed class CommandNode extends Node permits CommandNode.Basic, InsertNode {
+    /**
+     * Make a basic CommandNode which just wraps a command instance. The makeEval method isn't
+     * supported.
+     */
+    public static CommandNode make(String name, Command command) {
+        return new Basic(name, command);
+    }
+
     private final String mName;
 
     protected CommandNode(String name) {
@@ -61,4 +74,52 @@ public abstract sealed class CommandNode extends Node permits InsertNode {
      * Makes a fully functional Command instance from this node.
      */
     public abstract Command makeCommand();
+
+    static final class Basic extends CommandNode {
+        private final Command mCommand;
+
+        Basic(String name, Command command) {
+            super(name);
+            mCommand = command;
+        }
+
+        @Override
+        public Command makeCommand() {
+            return mCommand;
+        }
+
+        @Override
+        public Basic withName(String name) {
+            return name.equals(name()) ? this : new Basic(name, mCommand);
+        }
+
+        @Override
+        public int maxArgument() {
+            return mCommand.argumentCount();
+        }
+
+        @Override
+        public void evalColumns(Set<String> columns) {
+        }
+
+        @Override
+        public Variable makeEval(EvalContext context) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public Basic replaceConstants(Map<ConstantNode, FieldNode> map, String prefix) {
+            return this;
+        }
+
+        @Override
+        public int hashCode() {
+            return name().hashCode() * 31 + mCommand.hashCode();
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            return obj instanceof Basic b && name().equals(b.name()) && mCommand.equals(b.mCommand);
+        }
+    }
 }

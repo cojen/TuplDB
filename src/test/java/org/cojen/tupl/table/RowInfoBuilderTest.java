@@ -91,7 +91,7 @@ public class RowInfoBuilderTest {
         assertEquals(1, info.secondaryIndexes.size());
 
         ClassMaker cm = ClassMaker.beginExplicit("a.b.C", null, new Object());
-        Class<?> rowType = info.makeRowType(cm, false);
+        Class<?> rowType = info.makeRowType(cm);
 
         RowInfo info2 = RowInfo.find(rowType);
         rowInfoCheck(info, info2);
@@ -120,7 +120,7 @@ public class RowInfoBuilderTest {
         assertEquals(2, info.secondaryIndexes.size());
 
         ClassMaker cm = ClassMaker.beginExplicit("a.b.C", null, new Object());
-        Class<?> rowType = info.makeRowType(cm, false);
+        Class<?> rowType = info.makeRowType(cm);
 
         RowInfo info2 = RowInfo.find(rowType);
         rowInfoCheck(info, info2);
@@ -146,7 +146,7 @@ public class RowInfoBuilderTest {
         assertEquals(0, info.secondaryIndexes.size());
 
         ClassMaker cm = ClassMaker.beginExplicit("a.b.C", null, new Object());
-        Class<?> rowType = info.makeRowType(cm, false);
+        Class<?> rowType = info.makeRowType(cm);
 
         RowInfo info2 = RowInfo.find(rowType);
         rowInfoCheck(info, info2);

@@ -19,6 +19,9 @@ package org.cojen.tupl.sql;
 
 import java.io.IOException;
 
+import java.util.Iterator;
+import java.util.List;
+
 import net.sf.jsqlparser.expression.operators.relational.ExpressionList;
 
 import net.sf.jsqlparser.parser.CCJSqlParser;
@@ -54,12 +57,19 @@ import net.sf.jsqlparser.statement.upsert.*;
 import org.cojen.tupl.Table;
 
 import org.cojen.tupl.model.ColumnNode;
+import org.cojen.tupl.model.CommandNode;
 import org.cojen.tupl.model.InsertNode;
 import org.cojen.tupl.model.Node;
 import org.cojen.tupl.model.RelationNode;
+import org.cojen.tupl.model.SimpleCommand;
 import org.cojen.tupl.model.TableNode;
 
 import org.cojen.tupl.io.Utils;
+
+import org.cojen.tupl.table.RowInfo;
+import org.cojen.tupl.table.RowInfoBuilder;
+
+import static org.cojen.tupl.table.ColumnInfo.*;
 
 /**
  * 
@@ -67,14 +77,14 @@ import org.cojen.tupl.io.Utils;
  * @author Brian S. O'Neill
  */
 public class StatementProcessor implements StatementVisitor {
-    public static Object process(String sql, Scope scope)
+    public static Node process(String sql, Scope scope)
         throws ParseException, IOException
     {
         CCJSqlParser parser = CCJSqlParserUtil.newParser(sql);
         return process(parser.Statement(), scope);
     }
 
-    public static Object process(Statement statement, Scope scope) throws IOException {
+    public static Node process(Statement statement, Scope scope) throws IOException {
         var processor = new StatementProcessor(scope);
         statement.accept(processor);
         return processor.mStatement;
@@ -82,7 +92,7 @@ public class StatementProcessor implements StatementVisitor {
 
     private final Scope mScope;
 
-    private Object mStatement;
+    private Node mStatement;
 
     private StatementProcessor(Scope scope) {
         mScope = scope;
@@ -205,7 +215,136 @@ public class StatementProcessor implements StatementVisitor {
 
     @Override
     public void visit(CreateTable createTable) {
-        fail();
+        if (createTable.isUnlogged() ||
+            createTable.getTableOptionsStrings() != null ||
+            createTable.getCreateOptionsStrings() != null ||
+            createTable.getIndexes() != null ||
+            createTable.getSelect() != null ||
+            createTable.getLikeTable() != null ||
+            createTable.isOrReplace() ||
+            createTable.getRowMovement() != null ||
+            createTable.getSpannerInterleaveIn() != null)
+        {
+            throw fail();
+        }
+
+        var b = new RowInfoBuilder(createTable.getTable().getFullyQualifiedName());
+
+        boolean pk = false;
+        for (ColumnDefinition def : createTable.getColumnDefinitions()) {
+            pk |= addColumn(b, def);
+        }
+
+        if (!pk) {
+            throw new IllegalStateException("No primary key is defined");
+        }
+
+        RowInfo info = b.build();
+
+        boolean ifNotExists = createTable.isIfNotExists();
+
+        SimpleCommand command = (txn, args) -> {
+            if (txn != null) {
+                throw new IllegalArgumentException("Cannot create a table in a transaction");
+            }
+            mScope.finder().createTable(info, ifNotExists);
+            return 0;
+        };
+
+        mStatement = CommandNode.make("create", command);
+    }
+
+    /**
+     * @return true if column was added to the primary key
+     */
+    private boolean addColumn(RowInfoBuilder b, ColumnDefinition def) {
+        ColDataType type = def.getColDataType();
+
+        if (type.getCharacterSet() != null || !type.getArrayData().isEmpty()) {
+            throw fail();
+        }
+
+        int typeCode = switch (type.getDataType().toUpperCase()) {
+            default -> throw new IllegalArgumentException("Unsupported type: " + def);
+
+            case "CHAR", "CHARACTER", "NCHAR", "VARCHAR", "TEXT" ->
+                lengthArg(type) == 1 ? TYPE_CHAR : TYPE_UTF8;
+            case "BINARY", "VARBINARY" ->  TYPE_UBYTE | TYPE_ARRAY;
+            case "BOOL", "BOOLEAN" -> TYPE_BOOLEAN;
+            case "TINYINT" -> TYPE_BYTE;
+            case "SMALLINT" -> TYPE_SHORT;
+            case "INT", "INTEGER" -> TYPE_INT;
+            case "BIGINT" -> TYPE_LONG;
+            case "NUMERIC", "DECIMAL", "DEC" -> TYPE_BIG_DECIMAL;
+            case "REAL", "DOUBLE PRECISION" -> TYPE_DOUBLE;
+            case "FLOAT" -> lengthArg(type) <= 24 ? TYPE_FLOAT : TYPE_DOUBLE;
+            case "UNSIGNED TINYINT" -> TYPE_UBYTE;
+            case "UNSIGNED SMALLINT" -> TYPE_USHORT;
+            case "UNSIGNED INT", "UNSIGNED INTEGER" -> TYPE_UINT;
+            case "UNSIGNED BIGINT" -> TYPE_ULONG;
+        };
+
+        typeCode |= TYPE_NULLABLE;
+        boolean pk = false, unique = false;
+
+        List<String> specs = def.getColumnSpecs();
+
+        if (specs != null) for (Iterator<String> it = specs.iterator(); it.hasNext(); ) {
+            String spec = it.next();
+
+            if (spec.equalsIgnoreCase("UNSIGNED")) {
+                if (typeCode > 0b1111) {
+                    throw new IllegalArgumentException("Unsupported type: " + def);
+                }
+                typeCode &= ~0b1000;
+            } else if (spec.equalsIgnoreCase("NOT")) {
+                require(def, it, "NULL");
+                typeCode &= ~TYPE_NULLABLE;
+            } else if (spec.equalsIgnoreCase("PRIMARY")) {
+                require(def, it, "KEY");
+                pk = true;
+            } else if (spec.equalsIgnoreCase("UNIQUE")) {
+                unique = true;
+            } else {
+                throw new IllegalArgumentException("Unsupported type: " + def);
+            }
+        }
+
+        String name = def.getColumnName();
+
+        b.addColumn(name, typeCode);
+
+        if (pk) {
+            b.addToPrimaryKey(name);
+        }
+
+        if (unique) {
+            b.addToAlternateKey(name);
+            b.finishAlternateKey();
+        }
+
+        return pk;
+    }
+
+    private void require(ColumnDefinition def, Iterator<String> it, String expect) {
+        if (!it.hasNext() || !it.next().equalsIgnoreCase(expect)) {
+            throw new IllegalArgumentException("Unsupported type: " + def);
+        }
+    }
+
+    /**
+     * @return -1 if unspecified
+     */
+    private int lengthArg(ColDataType type) {
+        List<String> args = type.getArgumentsStringList();
+        int size;
+        if (args == null || (size = args.size()) == 0) {
+            return -1;
+        }
+        if (size != 1) {
+            throw fail();
+        }
+        return Integer.parseInt(args.get(0));
     }
 
     @Override

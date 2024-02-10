@@ -42,7 +42,7 @@ import org.cojen.tupl.table.codec.SchemaVersionColumnCodec;
  * @author Brian S O'Neill
  */
 public class RowGen {
-    static final Object MAKER_KEY = new Object();
+    private static final Object MAKER_KEY = new Object();
 
     private static volatile long cPackageNum;
     private static final VarHandle cPackageNumHandle;
@@ -184,6 +184,28 @@ public class RowGen {
         thisModule.addExports("org.cojen.tupl.table", thatModule);
         thisModule.addExports("org.cojen.tupl.table.filter", thatModule);
         thisModule.addExports("org.cojen.tupl.views", thatModule);
+
+        return cm;
+    }
+
+    /**
+     * Returns a ClassMaker suitable for defining a new row type interface. The fully qualified
+     * class name includes a generated sub package to facilitate class unloading. For example:
+     *
+     *     basePackage = "org.cojen.tupl"
+     *     typeName    = "app.MyTable"
+     *
+     *  ...can yield a class name like: "org.cojen.tupl.p0.app.MyTable-1"
+     */
+    public static ClassMaker beginClassMakerForRowType(String basePackage, String typeName) {
+        String name = basePackage + '.' + newSubPackage() + '.' + typeName;
+
+        ClassMaker cm = ClassMaker.begin(name, null, RowGen.MAKER_KEY);
+        cm.public_().interface_();
+
+        // Make synthetic in order for new classes generated via beginClassMaker to use the
+        // same ClassLoader as the row type interface.
+        cm.synthetic();
 
         return cm;
     }

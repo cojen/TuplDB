@@ -38,6 +38,7 @@ import org.cojen.tupl.io.Utils;
 
 import org.cojen.tupl.model.Command;
 import org.cojen.tupl.model.CommandNode;
+import org.cojen.tupl.model.Node;
 import org.cojen.tupl.model.RelationNode;
 
 import org.cojen.tupl.table.SoftCache;
@@ -64,7 +65,7 @@ public final class DbDataSource implements DataSource {
     // cache instance, and so these factories are tied to a specific schema.
     private final SoftCache<String, DbStatement.Factory, Object> mStatementCache;
 
-    public DbDataSource(Database db) {
+    public DbDataSource(Database db) throws SQLException {
         this(db, "", null);
     }
 
@@ -72,7 +73,7 @@ public final class DbDataSource implements DataSource {
      * @param schema base package to use for finding classes; pass an empty string to require
      * fully qualified names by default
      */
-    public DbDataSource(Database db, String schema) {
+    public DbDataSource(Database db, String schema) throws SQLException {
         this(db, schema, null);
     }
 
@@ -81,8 +82,18 @@ public final class DbDataSource implements DataSource {
      * fully qualified names by default
      * @param loader used to load table classes
      */
-    public DbDataSource(Database db, String schema, ClassLoader loader) {
-        this(db, TableFinder.using(db, schema, loader));
+    public DbDataSource(Database db, String schema, ClassLoader loader) throws SQLException {
+        this(db, newTableFinder(db, schema, loader));
+    }
+
+    private static TableFinder newTableFinder(Database db, String schema, ClassLoader loader)
+        throws SQLException
+    {
+        try {
+            return TableFinder.using(db, schema, loader);
+        } catch (IOException e) {
+            throw new SQLException(e);
+        }
     }
 
     public DbDataSource(Database db, TableFinder finder) {
@@ -176,7 +187,7 @@ public final class DbDataSource implements DataSource {
     }
 
     private DbStatement.Factory newStatementFactory(String sql) throws SQLException {
-        Object stmt;
+        Node stmt;
         try {
             stmt = StatementProcessor.process(sql, new Scope(mFinder));
         } catch (IOException e) {
