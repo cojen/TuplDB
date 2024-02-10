@@ -6166,7 +6166,7 @@ final class LocalDatabase extends CoreDatabase {
     private void checkpoint(int force, long sizeThreshold, long delayThresholdNanos)
         throws IOException
     {
-        while (!isClosed() && !isCacheOnly()) {
+        while (!isClosed() && !isCacheOnly() && mCheckpointer != null) {
             // Checkpoint lock ensures consistent state between page store and logs.
             mCheckpointLock.lock();
             try {
