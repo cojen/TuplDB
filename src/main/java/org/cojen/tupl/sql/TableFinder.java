@@ -105,17 +105,19 @@ public class TableFinder {
             fullName = mSchema + '.' + name;
         }
 
+        String canonicalName = fullName.toLowerCase();
+
         // First try to find a table or view which was created via an SQL statement.
 
-        Class<?> rowType = mRowTypeCache.get(fullName);
+        Class<?> rowType = mRowTypeCache.get(canonicalName);
 
         find: {
             Index ix;
 
             if (rowType != null) {
-                ix = mDb.openIndex(fullName);
+                ix = mDb.openIndex(canonicalName);
             } else {
-                String searchSchema = null, searchName = fullName;
+                String searchSchema = null, searchName = canonicalName;
 
                 int dotPos = searchName.lastIndexOf('.');
                 if (dotPos >= 0) {
@@ -135,21 +137,21 @@ public class TableFinder {
                         break find;
                     }
 
-                    ix = mDb.openIndex(fullName);
+                    ix = mDb.openIndex(canonicalName);
 
                     RowStore rs = ((CoreDatabase) mDb).rowStore();
-                    RowInfo rowInfo = rs.decodeExisting(txn, fullName, ix.id());
+                    RowInfo rowInfo = rs.decodeExisting(txn, canonicalName, ix.id());
 
                     if (rowInfo == null) {
                         throw new CorruptDatabaseException("Unable to find table definition");
                     }
 
-                    rowType = rowInfo.makeRowType(beginClassMakerForRowType(fullName));
+                    rowType = rowInfo.makeRowType(beginClassMakerForRowType(canonicalName));
                 } finally {
                     txn.reset();
                 }
 
-                mRowTypeCache.put(fullName, rowType);
+                mRowTypeCache.put(canonicalName, rowType);
             }
 
             return ix.asTable(rowType);
@@ -195,8 +197,9 @@ public class TableFinder {
      */
     boolean createTable(RowInfo rowInfo, boolean ifNotExists) throws IOException {
         String fullName = rowInfo.name;
+        String canonicalName = fullName.toLowerCase();
 
-        String schema = null, name = fullName;
+        String schema = null, name = canonicalName;
 
         {
             int dotPos = name.lastIndexOf('.');
@@ -206,7 +209,7 @@ public class TableFinder {
             }
         }
 
-        ClassMaker cm = beginClassMakerForRowType(fullName);
+        ClassMaker cm = beginClassMakerForRowType(canonicalName);
 
         // Don't bother making a class until after basic error checking has completed.
         Class<?> rowType;
@@ -236,13 +239,13 @@ public class TableFinder {
 
             // This check doesn't prevent race conditions, nor does it prevent the underlying
             // core index from being clobbered later. It can prevent simple mistakes, however.
-            if (mDb.findIndex(fullName) != null) {
+            if (mDb.findIndex(canonicalName) != null) {
                 throw new IllegalStateException("Name conflict with a core index" + fullName);
             }
 
             rowType = rowInfo.makeRowType(cm);
 
-            Index ix = mDb.openIndex(fullName);
+            Index ix = mDb.openIndex(canonicalName);
 
             try {
                 ix.asTable(rowType);
@@ -264,7 +267,7 @@ public class TableFinder {
             txn.reset();
         }
 
-        mRowTypeCache.put(fullName, rowType);
+        mRowTypeCache.put(canonicalName, rowType);
 
         return true;
     }

@@ -55,10 +55,10 @@ public interface TableInfo {
     /**
      * Tracks the views which immediately depend on this entity. The format of each element is
      * "schema.name", but it can be just ".name" if the schema is the same as for this entity.
-     * If the dependent view has no schema, then the format is just "name".
+     * If the dependent view has no schema, then the format is just "name". A semicolon is used
+     * to separate each of the dependents.
      */
     @Nullable
-    // FIXME: should be String[]
     String dependents();
     void dependents(String dependents);
 }
