@@ -29,15 +29,26 @@ import org.cojen.tupl.PrimaryKey;
 public interface TableInfo {
     static final byte TYPE_TABLE = 1, TYPE_VIEW = 2;
 
+    /**
+     * The optional table schema, in lowercase.
+     */
     @Nullable
     String schema();
     void schema(String schema);
 
     /**
-     * The simple name of this entity, with no dots in it.
+     * The simple name of this entity, in lowercase, with no dots in it.
      */
     String name();
     void name(String name);
+
+    /**
+     * The original full name given to the table, with the original case. Is null if the
+     * original name was lowercase.
+     */
+    @Nullable
+    String originalName();
+    void originalName(String name);
 
     /**
      * The type of this entity: TYPE_TABLE, TYPE_VIEW, etc.

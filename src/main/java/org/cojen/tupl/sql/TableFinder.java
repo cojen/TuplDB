@@ -217,6 +217,7 @@ public class TableFinder {
         TableInfo infoRow = mInfoTable.newRow();
         infoRow.schema(schema);
         infoRow.name(name);
+        infoRow.originalName(fullName.equals(canonicalName) ? null : fullName);
         infoRow.type(TableInfo.TYPE_TABLE);
         infoRow.definition(null);
         infoRow.dependents(null);
