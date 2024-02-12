@@ -112,7 +112,7 @@ public class ColumnInfo implements Cloneable {
 
     public boolean hidden;
 
-    long autoMin, autoMax;
+    public long autoMin, autoMax;
 
     private String mPrefix;
     private ColumnInfo mTail;

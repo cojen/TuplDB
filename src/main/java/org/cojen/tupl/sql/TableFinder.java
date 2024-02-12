@@ -27,6 +27,7 @@ import org.cojen.tupl.CorruptDatabaseException;
 import org.cojen.tupl.Database;
 import org.cojen.tupl.Index;
 import org.cojen.tupl.LockMode;
+import org.cojen.tupl.Scanner;
 import org.cojen.tupl.Table;
 import org.cojen.tupl.Transaction;
 import org.cojen.tupl.UniqueConstraintException;
@@ -35,6 +36,7 @@ import org.cojen.tupl.core.CoreDatabase;
 
 import org.cojen.tupl.io.Utils;
 
+import org.cojen.tupl.table.ColumnInfo;
 import org.cojen.tupl.table.RowGen;
 import org.cojen.tupl.table.RowInfo;
 import org.cojen.tupl.table.RowStore;
@@ -70,7 +72,8 @@ public class TableFinder {
     }
 
     private final Database mDb;
-    private final Table<TableInfo> mInfoTable;
+    private final Table<EntityInfo> mEntityTable;
+    private final Table<EntityItemInfo> mEntityItemTable;
     private final String mSchema;
     private final ClassLoader mLoader;
 
@@ -79,7 +82,8 @@ public class TableFinder {
 
     private TableFinder(Database db, String schema, ClassLoader loader) throws IOException {
         mDb = Objects.requireNonNull(db);
-        mInfoTable = mDb.openTable(TableInfo.class);
+        mEntityTable = mDb.openTable(EntityInfo.class);
+        mEntityItemTable = mDb.openTable(EntityItemInfo.class);
         mSchema = Objects.requireNonNull(schema);
         if (loader == null) {
             loader = ClassLoader.getSystemClassLoader();
@@ -90,7 +94,8 @@ public class TableFinder {
 
     private TableFinder(TableFinder finder, String schema) {
         mDb = finder.mDb;
-        mInfoTable = finder.mInfoTable;
+        mEntityTable = finder.mEntityTable;
+        mEntityItemTable = finder.mEntityItemTable;
         mSchema = Objects.requireNonNull(schema);
         mLoader = finder.mLoader;
         mRowTypeCache = finder.mRowTypeCache;
@@ -125,15 +130,15 @@ public class TableFinder {
                     searchName = searchName.substring(dotPos + 1);
                 }
 
-                TableInfo infoRow = mInfoTable.newRow();
-                infoRow.schema(searchSchema);
-                infoRow.name(searchName);
+                EntityInfo entity = mEntityTable.newRow();
+                entity.schema(searchSchema);
+                entity.name(searchName);
 
                 Transaction txn = mDb.newTransaction();
                 try {
                     txn.lockMode(LockMode.REPEATABLE_READ);
 
-                    if (!mInfoTable.load(txn, infoRow)) {
+                    if (!mEntityTable.load(txn, entity)) {
                         break find;
                     }
 
@@ -144,6 +149,28 @@ public class TableFinder {
 
                     if (rowInfo == null) {
                         throw new CorruptDatabaseException("Unable to find table definition");
+                    }
+
+                    // Retrieve extra column info.
+                    try (Scanner<EntityItemInfo> s = mEntityItemTable.newScanner
+                         (txn, "entitySchema == ? && entityName == ? && type == ?",
+                          searchSchema, searchName, EntityItemInfo.TYPE_COLUMN))
+                    {
+                        for (EntityItemInfo item = s.row(); item != null; item = s.step(item)) {
+                            ColumnInfo ci = rowInfo.allColumns.get(item.name());
+                            if (ci == null) {
+                                // Unknown column; not expected.
+                                continue;
+                            }
+                            byte[] definition = item.definition();
+                            if (definition[0] != 0) {
+                                // Unknown encoding; not expected.
+                                continue;
+                            }
+                            ci.hidden = definition[1] == 1;
+                            ci.autoMin = Utils.decodeLongBE(definition, 2);
+                            ci.autoMax = Utils.decodeLongBE(definition, 2 + 8);
+                        }
                     }
 
                     rowType = rowInfo.makeRowType(beginClassMakerForRowType(canonicalName));
@@ -214,22 +241,22 @@ public class TableFinder {
         // Don't bother making a class until after basic error checking has completed.
         Class<?> rowType;
 
-        TableInfo infoRow = mInfoTable.newRow();
-        infoRow.schema(schema);
-        infoRow.name(name);
-        infoRow.originalName(fullName.equals(canonicalName) ? null : fullName);
-        infoRow.type(TableInfo.TYPE_TABLE);
-        infoRow.definition(null);
-        infoRow.dependents(null);
+        EntityInfo entity = mEntityTable.newRow();
+        entity.schema(schema);
+        entity.name(name);
+        entity.originalName(fullName.equals(canonicalName) ? null : fullName);
+        entity.type(EntityInfo.TYPE_TABLE);
+        entity.definition(null);
+        entity.dependents(null);
 
         Transaction txn = mDb.newTransaction();
         try {
             try {
-                mInfoTable.insert(txn, infoRow);
+                mEntityTable.insert(txn, entity);
             } catch (UniqueConstraintException e) {
                 if (ifNotExists) {
-                    mInfoTable.load(txn, infoRow);
-                    if (infoRow.type() == TableInfo.TYPE_VIEW) {
+                    mEntityTable.load(txn, entity);
+                    if (entity.type() == EntityInfo.TYPE_VIEW) {
                         throw new IllegalStateException
                             ("Name conflict with an existing view: " + fullName);
                     }
@@ -242,6 +269,30 @@ public class TableFinder {
             // core index from being clobbered later. It can prevent simple mistakes, however.
             if (mDb.findIndex(canonicalName) != null) {
                 throw new IllegalStateException("Name conflict with a core index" + fullName);
+            }
+
+            // Additional column information might need to be stored.
+            for (ColumnInfo ci : rowInfo.allColumns.values()) {
+                if (!ci.isHidden() && !ci.isAutomatic()) {
+                    continue;
+                }
+
+                EntityItemInfo item = mEntityItemTable.newRow();
+                item.entitySchema(schema);
+                item.entityName(name);
+                item.type(EntityItemInfo.TYPE_COLUMN);
+                String lowerName = ci.name.toLowerCase();
+                item.name(lowerName);
+                item.originalName(ci.name.equals(lowerName) ? null : ci.name);
+
+                var definition = new byte[1 + 1 + 8 + 8];
+                definition[0] = 0; // encoding version
+                definition[1] = ci.isHidden() ? (byte) 1 : (byte) 0;
+                Utils.encodeLongLE(definition, 2, ci.autoMin);
+                Utils.encodeLongLE(definition, 2 + 8, ci.autoMax);
+                item.definition(definition);
+
+                mEntityItemTable.insert(txn, item);
             }
 
             rowType = rowInfo.makeRowType(cm);

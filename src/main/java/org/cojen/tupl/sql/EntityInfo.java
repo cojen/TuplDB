@@ -24,13 +24,14 @@ import org.cojen.tupl.PrimaryKey;
  * Stores information regarding tables and views which were created using SQL statements.
  *
  * @author Brian S. O'Neill
+ * @see EntityItemInfo
  */
 @PrimaryKey({"schema", "name"})
-public interface TableInfo {
+public interface EntityInfo {
     static final byte TYPE_TABLE = 1, TYPE_VIEW = 2;
 
     /**
-     * The optional table schema, in lowercase.
+     * The optional entity schema, in lowercase.
      */
     @Nullable
     String schema();
@@ -43,7 +44,7 @@ public interface TableInfo {
     void name(String name);
 
     /**
-     * The original full name given to the table, with the original case. Is null if the
+     * The original full name given to the entity, with the original case. Is null if the
      * original name was lowercase.
      */
     @Nullable
@@ -60,8 +61,8 @@ public interface TableInfo {
      * The SQL for defining this entity, which is only needed for views.
      */
     @Nullable
-    String definition();
-    void definition(String definition);
+    byte[] definition();
+    void definition(byte[] definition);
 
     /**
      * Tracks the views which immediately depend on this entity. The format of each element is
