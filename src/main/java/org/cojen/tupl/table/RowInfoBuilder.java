@@ -56,6 +56,43 @@ public class RowInfoBuilder {
     }
 
     /**
+     * Add all the columns, keys, and indexes from an existing RowInfo instance.
+     */
+    public void addAll(RowInfo info) {
+        for (ColumnInfo ci : info.allColumns.values()) {
+            if (ci.type == null) {
+                ci = ci.copy();
+                ci.assignType();
+            }
+            mColumns.add(ci);
+        }
+
+        for (String name : info.keyColumns.keySet()) {
+            addToPrimaryKey(name);
+        }
+
+        for (ColumnSet set : info.alternateKeys) {
+            for (String name : set.keyColumns.keySet()) {
+                addToAlternateKey(name);
+            }
+            for (String name : set.valueColumns.keySet()) {
+                addToAlternateKey(name);
+            }
+            finishAlternateKey();
+        }
+
+        for (ColumnSet set : info.secondaryIndexes) {
+            for (String name : set.keyColumns.keySet()) {
+                addToSecondaryIndex(name);
+            }
+            for (String name : set.valueColumns.keySet()) {
+                addToSecondaryIndex(name);
+            }
+            finishSecondaryIndex();
+        }
+    }
+
+    /**
      * @param typeCode see ColumnInfo.TYPE_*
      */
     public void addColumn(String name, int typeCode) {

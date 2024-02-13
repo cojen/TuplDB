@@ -205,7 +205,64 @@ public class StatementProcessor implements StatementVisitor {
 
     @Override
     public void visit(CreateIndex createIndex) {
-        fail();
+        if (createIndex.getTailParameters() != null && !createIndex.getTailParameters().isEmpty()) {
+            throw fail();
+        }
+
+        Index index = createIndex.getIndex();
+
+        if (index.getUsing() != null || index.getIndexSpec() != null) {
+            throw fail();
+        }
+
+        boolean unique;
+
+        {
+            String type = index.getType();
+            if (type == null) {
+                unique = false;
+            } else if ("unique".equalsIgnoreCase(type)) {
+                unique = true;
+            } else {
+                throw fail();
+            }
+        }
+
+        var specBuf = new StringBuilder();
+
+        for (Index.ColumnParams col : index.getColumns()) {
+            List<String> params = col.getParams();
+            if (params == null || params.isEmpty()) {
+                specBuf.append('+');
+            } else if (params.size() != 1) {
+                throw fail();
+            } else {
+                String param = params.get(0);
+                if ("asc".equalsIgnoreCase(param)) {
+                    specBuf.append('+');
+                } else if ("desc".equalsIgnoreCase(param)) {
+                    specBuf.append('-');
+                }
+            }
+
+            specBuf.append(col.getColumnName());
+        }
+
+        String spec = specBuf.toString();
+
+        String tableName = createIndex.getTable().getFullyQualifiedName();
+        String indexName = index.getName();
+        boolean ifNotExists = createIndex.isUsingIfNotExists();
+
+        SimpleCommand command = (txn, args) -> {
+            if (txn != null) {
+                throw new IllegalArgumentException("Cannot create an index in a transaction");
+            }
+            mScope.finder().createIndex(tableName, indexName, spec, unique, ifNotExists);
+            return 0;
+        };
+
+        mStatement = CommandNode.make("create", command);
     }
 
     @Override
