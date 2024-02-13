@@ -293,7 +293,7 @@ public final class InsertNode extends CommandNode {
 
         var rowCountVar = mm.var(long.class);
 
-        if (mFieldMap.isEmpty()) {
+        if (mValues == null) {
             rowCountVar.set(0);
         } else {
             var rowVar = tableVar.invoke("newRow").cast(rowType);
