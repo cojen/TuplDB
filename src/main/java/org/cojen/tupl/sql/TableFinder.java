@@ -275,6 +275,12 @@ public class TableFinder {
             txn.reset();
         }
 
+        synchronized (mRowTypeCache) {
+            if (mRowTypeCache.get(canonicalName) == null) {
+                mRowTypeCache.put(canonicalName, rowType);
+            }
+        }
+
         return true;
     }
 
