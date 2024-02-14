@@ -20,7 +20,6 @@ package org.cojen.tupl.table;
 import java.lang.invoke.VarHandle;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.Objects;
 import java.util.TreeMap;
@@ -234,7 +233,7 @@ public class RowInfoBuilder {
         info.examineAutoColumn(messages, autoColumn);
 
         if (mAlternateKeys.isEmpty()) {
-            info.alternateKeys = Collections.emptyNavigableSet();
+            info.alternateKeys = EmptyNavigableSet.the();
         } else {
             info.alternateKeys = new TreeSet<>(ColumnSetComparator.THE);
             for (ArrayList<String> names : mAlternateKeys) {
@@ -244,7 +243,7 @@ public class RowInfoBuilder {
         }
 
         if (mSecondaryIndexes.isEmpty()) {
-            info.secondaryIndexes = Collections.emptyNavigableSet();
+            info.secondaryIndexes = EmptyNavigableSet.the();
         } else {
             info.secondaryIndexes = new TreeSet<>(ColumnSetComparator.THE);
             for (ArrayList<String> names : mSecondaryIndexes) {

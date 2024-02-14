@@ -120,7 +120,7 @@ public class RowInfo extends ColumnSet {
         AlternateKey altKey = rowType.getAnnotation(AlternateKey.class);
         AlternateKey.Set altKeySet = rowType.getAnnotation(AlternateKey.Set.class);
         if (altKey == null && altKeySet == null) {
-            info.alternateKeys = Collections.emptyNavigableSet();
+            info.alternateKeys = EmptyNavigableSet.the();
         } else {
             info.alternateKeys = new TreeSet<>(ColumnSetComparator.THE);
             if (altKey != null) {
@@ -136,7 +136,7 @@ public class RowInfo extends ColumnSet {
         SecondaryIndex index = rowType.getAnnotation(SecondaryIndex.class);
         SecondaryIndex.Set indexSet = rowType.getAnnotation(SecondaryIndex.Set.class);
         if (index == null && indexSet == null) {
-            info.secondaryIndexes = Collections.emptyNavigableSet();
+            info.secondaryIndexes = EmptyNavigableSet.the();
         } else {
             info.secondaryIndexes = new TreeSet<>(ColumnSetComparator.THE);
             // Add the primary key initially, which will be removed by reduction.

@@ -577,8 +577,8 @@ public final class RowStore {
         }
 
         // Indexes don't have indexes.
-        indexRowInfo.alternateKeys = Collections.emptyNavigableSet();
-        indexRowInfo.secondaryIndexes = Collections.emptyNavigableSet();
+        indexRowInfo.alternateKeys = EmptyNavigableSet.the();
+        indexRowInfo.secondaryIndexes = EmptyNavigableSet.the();
 
         RowPredicateLock<R> indexLock = indexLock(ix);
 
@@ -1807,13 +1807,13 @@ public final class RowStore {
             info.alternateKeys = new TreeSet<>(ColumnSetComparator.THE);
             pos = decodeColumnSets(currentData, 4 + 8, names, info.alternateKeys);
             if (info.alternateKeys.isEmpty()) {
-                info.alternateKeys = Collections.emptyNavigableSet();
+                info.alternateKeys = EmptyNavigableSet.the();
             }
 
             info.secondaryIndexes = new TreeSet<>(ColumnSetComparator.THE);
             pos = decodeColumnSets(currentData, pos, names, info.secondaryIndexes);
             if (info.secondaryIndexes.isEmpty()) {
-                info.secondaryIndexes = Collections.emptyNavigableSet();
+                info.secondaryIndexes = EmptyNavigableSet.the();
             }
 
             if (pos < currentData.length) {
