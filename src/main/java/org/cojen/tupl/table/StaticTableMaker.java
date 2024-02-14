@@ -20,7 +20,6 @@ package org.cojen.tupl.table;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 
-import java.util.Collections;
 import java.util.Map;
 import java.util.TreeMap;
 
@@ -65,8 +64,8 @@ class StaticTableMaker extends TableMaker {
                     RowInfo indexRowInfo = RowStore.secondaryRowInfo(rowGen.info, secondaryDesc);
 
                     // Indexes don't have indexes.
-                    indexRowInfo.alternateKeys = Collections.emptyNavigableSet();
-                    indexRowInfo.secondaryIndexes = Collections.emptyNavigableSet();
+                    indexRowInfo.alternateKeys = EmptyNavigableSet.the();
+                    indexRowInfo.secondaryIndexes = EmptyNavigableSet.the();
         
                     RowGen codecGen = indexRowInfo.rowGen();
 
