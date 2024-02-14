@@ -373,6 +373,13 @@ public final class DbConnection extends BaseConnection {
         }
     }
 
+    void flushStatementCache(String tableName) {
+        var dataSource = (DbDataSource) cDataSourceHandle.getAcquire(this);
+        if (dataSource != null) {
+            dataSource.flushStatementCache(tableName);
+        }
+    }
+
     private DbDataSource dataSource() throws SQLException {
         var dataSource = (DbDataSource) cDataSourceHandle.getAcquire(this);
         if (dataSource == null) {

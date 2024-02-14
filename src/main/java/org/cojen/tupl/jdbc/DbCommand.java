@@ -34,7 +34,7 @@ import org.cojen.tupl.model.Command;
  *
  * @author Brian S. O'Neill
  */
-public class DbCommand extends DbStatement {
+public class DbCommand extends DbStatement implements Command.Control {
     public static DbCommand newDbCommand(DbConnection con, Command command) {
         if (command.argumentCount() == 0) {
             return new DbCommand(con, command);
@@ -97,7 +97,7 @@ public class DbCommand extends DbStatement {
     @Override
     public boolean execute() throws SQLException {
         try {
-            mUpdateCount = mCommand.exec(getConnection().txn());
+            mUpdateCount = mCommand.exec(this, getConnection().txn());
         } catch (IOException e) {
             throw new SQLException(e);
         }
@@ -126,6 +126,16 @@ public class DbCommand extends DbStatement {
         mUpdateCount = -1;
     }
 
+    // Defined by Command.Control.
+    @Override
+    public void flushStatementCache(String tableName) {
+        try {
+            getConnection().flushStatementCache(tableName);
+        } catch (SQLException e) {
+            // Assume statement is closed.
+        }
+    }
+
     private static class WithParams extends DbCommand {
         private final Object[] mParams;
 
@@ -138,7 +148,7 @@ public class DbCommand extends DbStatement {
         public boolean execute() throws SQLException {
             checkParams();
             try {
-                mUpdateCount = mCommand.exec(getConnection().txn(), mParams);
+                mUpdateCount = mCommand.exec(this, getConnection().txn(), mParams);
             } catch (IOException e) {
                 throw new SQLException(e);
             }

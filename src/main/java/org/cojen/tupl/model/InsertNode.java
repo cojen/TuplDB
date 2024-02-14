@@ -278,10 +278,12 @@ public final class InsertNode extends CommandNode {
         MethodMaker mm = cm.addMethod(int.class, "argumentCount").public_();
         mm.return_(maxArgument());
 
-        mm = cm.addMethod(long.class, "exec", Transaction.class, Object[].class).public_();
+        mm = cm.addMethod(long.class, "exec",
+                          Command.Control.class, Transaction.class, Object[].class);
+        mm.public_();
 
-        var txnVar = mm.param(0);
-        var argsVar = mm.param(1);
+        var txnVar = mm.param(1);
+        var argsVar = mm.param(2);
 
         var tableVar = mm.field("table").get();
 

@@ -186,6 +186,21 @@ public final class DbDataSource implements DataSource {
         return mStatementCache.obtain(sql, null);
     }
 
+    void flushStatementCache(String tableName) {
+        /*
+          Flushing the cache allows newly requested statements to observe any changes to the
+          table, but statement instances which are directly referenced by the application
+          aren't affected. Is this a feature or a flaw? I'm not sure. Statement instances
+          aren't usually referenced indefinitely because they're bound to a connection.
+
+          Here's a problem: If the statement is an "insert", and the cache is flushed because a
+          column was added, the old insert statement will insert an empty value for the new
+          column instead of failing.
+        */
+
+        mWithSchemaCache.traverse((DbDataSource ds) -> ds.mStatementCache.clear());
+    }
+
     private DbStatement.Factory newStatementFactory(String sql) throws SQLException {
         Node stmt;
         try {

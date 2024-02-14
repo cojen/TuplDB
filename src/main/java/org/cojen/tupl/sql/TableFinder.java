@@ -41,6 +41,8 @@ import org.cojen.tupl.core.CoreDatabase;
 
 import org.cojen.tupl.io.Utils;
 
+import org.cojen.tupl.model.Command;
+
 import org.cojen.tupl.table.ColumnInfo;
 import org.cojen.tupl.table.OrderBy;
 import org.cojen.tupl.table.RowGen;
@@ -289,7 +291,7 @@ public class TableFinder {
      * @return false if index already exists and ifNotExists is true
      * @throws IllegalStateException if index already exists
      */
-    boolean createIndex(String tableName, String indexName, String spec,
+    boolean createIndex(Command.Control control, String tableName, String indexName, String spec,
                         boolean altKey, boolean ifNotExists)
         throws IOException
     {
@@ -325,6 +327,9 @@ public class TableFinder {
                 var b = new RowInfoBuilder(rowInfo.name);
                 b.addAll(rowInfo);
 
+                // FIXME: Move all the OrderBy and finish stuff to the builder. It can later
+                // also support reading the spec for dropping indexes too.
+
                 for (OrderBy.Rule rule : OrderBy.forSpec(rowInfo, spec).values()) {
                     if (altKey) {
                         b.addToAlternateKey(rule.asIndexElement());
@@ -354,6 +359,10 @@ public class TableFinder {
         // As a side-effect, this defines the index and starts building it in the background.
         mDb.openIndex(canonicalName).asTable(rowType);
 
+        // FIXME: wait for index build to finish
+
+        control.flushStatementCache(tableName);
+
         return true;
     }
 
@@ -371,6 +380,9 @@ public class TableFinder {
     private Class<?> applyAlteration(String canonicalName, Alteration alteration)
         throws IOException
     {
+        // FIXME: Perform a quick check on the alteration to see if it likely will do anything
+        // at all. If not, then this prevents throwing away the row type unnecessarily.
+
         synchronized (mRowTypeCache) {
             List<Alteration> list;
             if (mRowTypeAlterations == null) {

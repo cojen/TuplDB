@@ -43,15 +43,15 @@ public interface Command {
      * @throws IllegalArgumentException if not enough arguments are given, or if a transaction
      * is provided but the command isn't transactional
      */
-    long exec(Transaction txn, Object... args) throws IOException;
+    long exec(Control control, Transaction txn, Object... args) throws IOException;
 
     /**
      * @return the number of rows this command acted upon, or 0 if not applicable
      * @throws IllegalArgumentException if not enough arguments are given, or if a transaction
      * is provided but the command isn't transactional
      */
-    default long exec(Transaction txn) throws IOException {
-        return exec(txn, RowUtils.NO_ARGS);
+    default long exec(Control control, Transaction txn) throws IOException {
+        return exec(control, txn, RowUtils.NO_ARGS);
     }
 
     /**
@@ -59,5 +59,16 @@ public interface Command {
      */
     default QueryPlan plan(Transaction txn, Object... args) throws IOException {
         return null;
+    }
+
+    /**
+     * Defines additional controls that DDL commands might require.
+     */
+    public static interface Control {
+        /**
+         * @param tableName flush statements which depend on this table; pass null to flush
+         * all; implementation is permitted to flush all regardless
+         */
+        void flushStatementCache(String tableName);
     }
 }
