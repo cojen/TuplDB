@@ -487,7 +487,7 @@ public final class RowStore {
         (BaseTable<R> primaryTable, boolean alt, String... columns)
         throws IOException
     {
-        Object key = ArrayKey.make(alt, columns);
+        Object key = ArrayKey.make(primaryTable.rowType(), alt, columns);
         WeakCache<Object, BaseTableIndex<R>, Object> indexTables =
             primaryTable.mTableManager.indexTables();
 
@@ -562,7 +562,7 @@ public final class RowStore {
             return null;
         }
 
-        Object key = ArrayKey.make(descriptor);
+        Object key = ArrayKey.make(rowType, descriptor);
 
         BaseTableIndex<R> table = indexTables.get(key);
 
