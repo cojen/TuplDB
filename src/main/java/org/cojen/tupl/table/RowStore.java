@@ -339,7 +339,7 @@ public final class RowStore {
                     var mh = new DynamicTableMaker(type, info.rowGen(), this, ix.id()).finish();
                     table = (BaseTable) mh.invoke(manager, ix, indexLock);
                 } else {
-                    Class tableClass = StaticTableMaker.obtain(type, RowInfo.find(type).rowGen());
+                    Class tableClass = StaticTableMaker.obtain(type, info.rowGen());
                     table = (BaseTable) tableClass.getConstructor
                         (TableManager.class, Index.class, RowPredicateLock.class)
                         .newInstance(manager, ix, indexLock);
@@ -487,7 +487,7 @@ public final class RowStore {
         (BaseTable<R> primaryTable, boolean alt, String... columns)
         throws IOException
     {
-        Object key = ArrayKey.make(alt, columns);
+        Object key = ArrayKey.make(primaryTable.rowType(), alt, columns);
         WeakCache<Object, BaseTableIndex<R>, Object> indexTables =
             primaryTable.mTableManager.indexTables();
 
@@ -554,7 +554,7 @@ public final class RowStore {
                         continue;
                     }
                     indexId = decodeLongLE(c.value(), 0);
-                    indexRowInfo = secondaryRowInfo(RowInfo.find(rowType), c.key());
+                    indexRowInfo = secondaryRowInfo(rowInfo, c.key());
                     descriptor = c.key();
                     break find;
                 }
@@ -562,7 +562,7 @@ public final class RowStore {
             return null;
         }
 
-        Object key = ArrayKey.make(descriptor);
+        Object key = ArrayKey.make(rowType, descriptor);
 
         BaseTableIndex<R> table = indexTables.get(key);
 

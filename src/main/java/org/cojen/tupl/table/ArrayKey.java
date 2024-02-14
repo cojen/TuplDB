@@ -45,6 +45,10 @@ public abstract class ArrayKey {
         return new Obj(array);
     }
 
+    public static ObjPair make(Object first, Object second, Object[] array) {
+        return new ObjPair(first, second, array);
+    }
+
     public static final class Bytes {
         final byte[] array;
 
@@ -142,6 +146,38 @@ public abstract class ArrayKey {
         @Override
         public String toString() {
             return Arrays.deepToString(array);
+        }
+    }
+
+    public static final class ObjPair {
+        final Object first, second;
+        final Object[] array;
+
+        ObjPair(Object first, Object second, Object[] array) {
+            this.first = first;
+            this.second = second;
+            this.array = array;
+        }
+
+        @Override
+        public int hashCode() {
+            int hash = Objects.hashCode(first);
+            hash = hash * 31 + Objects.hashCode(second);
+            hash = hash * 31 + Arrays.hashCode(array);
+            return hash;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            return this == obj || obj instanceof ObjPair other
+                && Objects.equals(first, other.first)
+                && Objects.equals(second, other.second)
+                && Arrays.equals(array, other.array);
+        }
+
+        @Override
+        public String toString() {
+            return first + ", " + second + ", " + Arrays.toString(array);
         }
     }
 }
