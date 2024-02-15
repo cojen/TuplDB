@@ -41,8 +41,6 @@ import org.cojen.tupl.core.CoreDatabase;
 
 import org.cojen.tupl.io.Utils;
 
-import org.cojen.tupl.model.Command;
-
 import org.cojen.tupl.table.ColumnInfo;
 import org.cojen.tupl.table.OrderBy;
 import org.cojen.tupl.table.RowGen;
@@ -291,7 +289,7 @@ public class TableFinder {
      * @return false if index already exists and ifNotExists is true
      * @throws IllegalStateException if index already exists
      */
-    boolean createIndex(Command.Control control, String tableName, String indexName, String spec,
+    boolean createIndex(String tableName, String indexName, String spec,
                         boolean altKey, boolean ifNotExists)
         throws IOException
     {
@@ -360,8 +358,6 @@ public class TableFinder {
         mDb.openIndex(canonicalName).asTable(rowType);
 
         // FIXME: wait for index build to finish
-
-        control.flushStatementCache(tableName);
 
         return true;
     }

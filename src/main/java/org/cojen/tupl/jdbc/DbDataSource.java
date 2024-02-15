@@ -34,6 +34,8 @@ import net.sf.jsqlparser.parser.ParseException;
 
 import org.cojen.tupl.Database;
 
+import org.cojen.tupl.core.CoreDatabase;
+
 import org.cojen.tupl.io.Utils;
 
 import org.cojen.tupl.model.Command;
@@ -41,6 +43,7 @@ import org.cojen.tupl.model.CommandNode;
 import org.cojen.tupl.model.Node;
 import org.cojen.tupl.model.RelationNode;
 
+import org.cojen.tupl.table.SchemaChangeListener;
 import org.cojen.tupl.table.SoftCache;
 
 import org.cojen.tupl.sql.Scope;
@@ -96,7 +99,7 @@ public final class DbDataSource implements DataSource {
         }
     }
 
-    public DbDataSource(Database db, TableFinder finder) {
+    public DbDataSource(Database db, TableFinder finder) throws SQLException {
         this(null, Objects.requireNonNull(db), Objects.requireNonNull(finder));
         // This is the "root" DbDataSource, which must be cached explicitly.
         mWithSchemaCache.put(finder.schema(), this);
@@ -104,6 +107,7 @@ public final class DbDataSource implements DataSource {
 
     private DbDataSource(SoftCache<String, DbDataSource, Object> withSchemaCache,
                          Database db, TableFinder finder)
+        throws SQLException
     {
         mDb = db;
         mFinder = finder;
@@ -112,9 +116,19 @@ public final class DbDataSource implements DataSource {
             withSchemaCache = new SoftCache<>() {
                 @Override
                 protected DbDataSource newValue(String schema, Object unused) {
-                    return new DbDataSource(this, mDb, mFinder.withSchema(schema));
+                    try {
+                        return new DbDataSource(this, mDb, mFinder.withSchema(schema));
+                    } catch (SQLException e) {
+                        throw Utils.rethrow(e);
+                    }
                 }
             };
+
+            try {
+                ((CoreDatabase) db).rowStore().addSchemaChangeListener(this::schemaChanged);
+            } catch (IOException e) {
+                throw new SQLException(e);
+            }
         }
 
         mWithSchemaCache = withSchemaCache;
@@ -186,9 +200,14 @@ public final class DbDataSource implements DataSource {
         return mStatementCache.obtain(sql, null);
     }
 
-    void flushStatementCache(String tableName) {
+    private void schemaChanged(long tableId, int changes) {
+        if ((changes & ~SchemaChangeListener.CHANGE_CREATE) == 0) {
+            // Don't need to clear the statement cache when only a table is added.
+            return;
+        }
+
         /*
-          Flushing the cache allows newly requested statements to observe any changes to the
+          Clearing the cache allows newly requested statements to observe any changes to the
           table, but statement instances which are directly referenced by the application
           aren't affected. Is this a feature or a flaw? I'm not sure. Statement instances
           aren't usually referenced indefinitely because they're bound to a connection.

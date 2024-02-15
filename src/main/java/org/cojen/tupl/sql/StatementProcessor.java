@@ -254,11 +254,11 @@ public class StatementProcessor implements StatementVisitor {
         String indexName = index.getName();
         boolean ifNotExists = createIndex.isUsingIfNotExists();
 
-        SimpleCommand command = (control, txn, args) -> {
+        SimpleCommand command = (txn, args) -> {
             if (txn != null) {
                 throw new IllegalArgumentException("Cannot create an index in a transaction");
             }
-            mScope.finder().createIndex(control, tableName, indexName, spec, unique, ifNotExists);
+            mScope.finder().createIndex(tableName, indexName, spec, unique, ifNotExists);
             return 0;
         };
 
@@ -300,7 +300,7 @@ public class StatementProcessor implements StatementVisitor {
 
         boolean ifNotExists = createTable.isIfNotExists();
 
-        SimpleCommand command = (control, txn, args) -> {
+        SimpleCommand command = (txn, args) -> {
             if (txn != null) {
                 throw new IllegalArgumentException("Cannot create a table in a transaction");
             }

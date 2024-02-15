@@ -38,6 +38,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
+import java.util.WeakHashMap;
 
 import java.util.function.Consumer;
 import java.util.function.Supplier;
@@ -67,6 +68,7 @@ import org.cojen.tupl.diag.EventType;
 import org.cojen.tupl.util.Runner;
 
 import static org.cojen.tupl.table.RowUtils.*;
+import static org.cojen.tupl.table.SchemaChangeListener.*;
 
 /**
  * Main class for managing row persistence via tables.
@@ -109,6 +111,8 @@ public final class RowStore {
     private final WeakCache<Index, TableManager<?>, Object> mTableManagers;
 
     private final LHashTable.Obj<RowPredicateLock<?>> mIndexLocks;
+
+    private Object mSchemaChangeListeners;
 
     private WeakCache<TranscoderKey, Transcoder, SecondaryInfo> mSortTranscoderCache;
     private static final VarHandle cSortTranscoderCacheHandle;
@@ -156,6 +160,69 @@ public final class RowStore {
                 uncaught(e);
             }
         });
+    }
+
+    @SuppressWarnings("unchecked")
+    public synchronized void addSchemaChangeListener(SchemaChangeListener listener) {
+        Object obj = mSchemaChangeListeners;
+        if (obj == null) {
+            mSchemaChangeListeners = new WeakReference(listener);
+        } else if (obj instanceof WeakHashMap listeners) {
+            listeners.put(listener, true);
+        } else {
+            var existing = (SchemaChangeListener) ((WeakReference) obj).get();
+            if (existing == null) {
+                mSchemaChangeListeners = new WeakReference(listener);
+            } else {
+                var listeners = new WeakHashMap();
+                listeners.put(existing, true);
+                listeners.put(listener, true);
+                mSchemaChangeListeners = listeners;
+            }
+        }
+    }
+
+    public synchronized void removeSchemaChangeListener(SchemaChangeListener listener) {
+        Object obj = mSchemaChangeListeners;
+        if (obj instanceof WeakReference ref) {
+            obj = ref.get();
+            if (obj == null || obj == listener) {
+                mSchemaChangeListeners = null;
+            }
+        } else if (obj instanceof WeakHashMap listeners) {
+            listeners.remove(listener);
+            if (listeners.isEmpty()) {
+                mSchemaChangeListeners = null;
+            }
+        }
+    }
+
+    private synchronized void notifySchemaChangeListeners(long tableId, int changes) {
+        Object obj = mSchemaChangeListeners;
+        if (obj instanceof WeakReference ref) {
+            obj = ref.get();
+            if (obj == null) {
+                mSchemaChangeListeners = null;
+            } else {
+                try {
+                    ((SchemaChangeListener) obj).schemaChanged(tableId, changes);
+                } catch (Throwable e) {
+                    uncaught(e);
+                }
+            }
+        } else if (obj instanceof WeakHashMap listeners) {
+            if (listeners.isEmpty()) {
+                mSchemaChangeListeners = null;
+            } else {
+                for (Object listener : listeners.keySet()) {
+                    try {
+                        ((SchemaChangeListener) listener).schemaChanged(tableId, changes);
+                    } catch (Throwable e) {
+                        uncaught(e);
+                    }
+                }
+            }
+        }
     }
 
     /**
@@ -863,6 +930,8 @@ public final class RowStore {
         }
 
         if (activated) {
+            notifySchemaChangeListeners(backfill.mManager.primaryIndex().id(), CHANGE_ADD_INDEX);
+
             // With NO_REDO, need a checkpoint to ensure durability. If the database is closed
             // before it finishes, the whole backfill process starts over when the database is
             // later reopened.
@@ -964,6 +1033,8 @@ public final class RowStore {
         if (deleteTasks == null) {
             return true;
         }
+
+        notifySchemaChangeListeners(primaryIndexId, CHANGE_DROP);
 
         final var tasks = deleteTasks;
 
@@ -1183,6 +1254,8 @@ public final class RowStore {
                                 task = taskFactory.get();
                             }
 
+                            notifySchemaChangeListeners(primaryIndexId, CHANGE_DROP_INDEX);
+
                             task.run();
 
                             if (listener != null) {
@@ -1221,6 +1294,7 @@ public final class RowStore {
 
         int schemaVersion;
         long tableVersion;
+        int changes = 0;
 
         Map<Index, byte[]> secondariesToDelete = null;
 
@@ -1231,6 +1305,7 @@ public final class RowStore {
             current.find(key(indexId));
 
             if (current.value() == null) {
+                schemaVersion = 0;
                 tableVersion = 0;
             } else {
                 // Check if the schema has changed.
@@ -1277,11 +1352,15 @@ public final class RowStore {
 
                 byte[] schemaVersions = byHash.value();
                 if (schemaVersions != null) {
+                    int currentSchemaVersion = schemaVersion;
                     for (int pos=0; pos<schemaVersions.length; pos+=4) {
                         schemaVersion = decodeIntLE(schemaVersions, pos);
                         RowInfo existing = decodeExisting
                             (txn, info.name, indexId, null, schemaVersion);
                         if (info.matches(existing)) {
+                            if (schemaVersion != currentSchemaVersion) {
+                                changes |= CHANGE_SCHEMA;
+                            }
                             break assignVersion;
                         }
                     }
@@ -1297,9 +1376,11 @@ public final class RowStore {
                     if (highest.value() == null) {
                         // First version.
                         schemaVersion = 1;
+                        changes |= CHANGE_CREATE;
                     } else {
                         byte[] key = highest.key();
                         schemaVersion = decodeIntBE(key, key.length - 4) + 1;
+                        changes |= CHANGE_SCHEMA;
                     }
 
                     highest.findNearby(key(indexId, schemaVersion));
@@ -1462,6 +1543,10 @@ public final class RowStore {
         if (notify) {
             // We're currently the leader, and so this method must be invoked directly.
             notifySchema(indexId);
+        }
+
+        if (changes != 0) {
+            notifySchemaChangeListeners(indexId, changes);
         }
 
         return schemaVersion;
