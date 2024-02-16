@@ -235,7 +235,7 @@ public class TriggerTest {
         row.value("v1");
         mTable.store(null, row);
 
-        assertTrue(mTable.delete(null, row));
+        mTable.delete(null, row);
         mTable.insert(null, row);
 
         mTable.setTrigger(trigger);
@@ -243,7 +243,7 @@ public class TriggerTest {
         row = mTable.newRow();
         row.extra("extra!");
         row.id(1);
-        assertTrue(mTable.delete(null, row));
+        mTable.delete(null, row);
         assertSame(row, trigger.row);
         assertNotNull(trigger.oldValue);
         assertNull(trigger.newValue);
@@ -254,7 +254,7 @@ public class TriggerTest {
         trigger.row = null;
         row.value("xxx");
         mTable.insert(null, row);
-        assertTrue(mTable.delete(null, row));
+        mTable.delete(null, row);
         assertNull(trigger.row);
     }
 
@@ -435,7 +435,7 @@ public class TriggerTest {
 
         TestRow row = mTable.newRow();
         row.id(3);
-        assertFalse(mTable.load(null, row));
+        assertFalse(mTable.tryLoad(null, row));
 
         Transaction txn = mDb.newTransaction();
         updater = mTable.newUpdater(txn, "value == ?", "v2");
@@ -453,7 +453,7 @@ public class TriggerTest {
 
         row = mTable.newRow();
         row.id(2);
-        assertFalse(mTable.load(null, row));
+        assertFalse(mTable.tryLoad(null, row));
     }
 
     @Test
@@ -488,7 +488,7 @@ public class TriggerTest {
 
         TestRow row = mTable.newRow();
         row.id(3);
-        assertTrue(mTable.load(null, row));
+        mTable.load(null, row);
         assertEquals("v3", row.value());
         assertEquals("extra!", row.extra());
 
@@ -510,7 +510,7 @@ public class TriggerTest {
 
         row = mTable.newRow();
         row.id(2);
-        assertTrue(mTable.load(null, row));
+        mTable.load(null, row);
         assertEquals("v2", row.value());
         assertEquals("extra!!!", row.extra());
     }
@@ -545,9 +545,9 @@ public class TriggerTest {
 
         TestRow row = mTable.newRow();
         row.id(3);
-        assertFalse(mTable.load(null, row));
+        assertFalse(mTable.tryLoad(null, row));
         row.id(103);
-        assertTrue(mTable.load(null, row));
+        mTable.load(null, row);
         assertEquals("v3", row.value());
 
         Transaction txn = mDb.newTransaction();
@@ -566,9 +566,9 @@ public class TriggerTest {
 
         row = mTable.newRow();
         row.id(2);
-        assertFalse(mTable.load(null, row));
+        assertFalse(mTable.tryLoad(null, row));
         row.id(102);
-        assertTrue(mTable.load(null, row));
+        mTable.load(null, row);
         assertEquals("v2", row.value());
     }
 

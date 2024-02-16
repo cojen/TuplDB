@@ -118,7 +118,7 @@ public class RowCrudTest {
         assertEquals("hello", row.str1());
 
         row.id(1);
-        assertFalse(mTable.load(null, row));
+        assertFalse(mTable.tryLoad(null, row));
 
         assertTrue(row.toString().endsWith("{*id=1}"));
 
@@ -137,7 +137,7 @@ public class RowCrudTest {
             assertEquals("Some required columns are unset: num1, str1, str2", e.getMessage());
         }
 
-        assertFalse(mTable.delete(null, row));
+        assertFalse(mTable.tryDelete(null, row));
         assertTrue(row.toString().endsWith("{*id=1}"));
 
         row.str1("hello");
@@ -149,12 +149,12 @@ public class RowCrudTest {
         assertTrue(row.toString().endsWith("{id=1, num1=100, str1=hello, str2=null}"));
         assertFalse(mTable.isEmpty());
         assertTrue(mTable.exists(null, row));
-        assertTrue(mTable.load(null, row));
+        assertTrue(mTable.tryLoad(null, row));
         assertTrue(row.toString().endsWith("{id=1, num1=100, str1=hello, str2=null}"));
 
         TestRow row2 = mTable.newRow();
         row2.id(1);
-        assertTrue(mTable.load(null, row2));
+        assertTrue(mTable.tryLoad(null, row2));
         assertEquals(row, row2);
         assertEquals(row.hashCode(), row2.hashCode());
         assertEquals(row.toString(), row2.toString());
@@ -193,8 +193,8 @@ public class RowCrudTest {
         mTable.load(null, row2);
         assertTrue(row2.toString().endsWith("{id=1, num1=100, str1=hi, str2=world}"));
 
-        assertTrue(mTable.delete(null, row2));
-        assertFalse(mTable.delete(null, row));
+        assertTrue(mTable.tryDelete(null, row2));
+        assertFalse(mTable.tryDelete(null, row));
         assertTrue(mTable.isEmpty());
 
         assertTrue(row.toString().endsWith("{id=1, num1=100, str1=hi, str2=world}"));
@@ -232,7 +232,7 @@ public class RowCrudTest {
         TestRow copy2 = mTable.newRow();
         mTable.copyRow(row, copy2);
         assertEquals(copy, copy2);
-        assertFalse(mTable.load(null, row));
+        assertFalse(mTable.tryLoad(null, row));
         assertTrue(row.toString().contains("{*id=10}"));
 
         assertNotEquals(row.toString(), copy.toString());
@@ -322,13 +322,13 @@ public class RowCrudTest {
             // No lock is held for a row which was filtered out.
             Transaction txn2 = mDb.newTransaction();
             row.id(1);
-            assertTrue(mTable.delete(txn2, row));
+            assertTrue(mTable.tryDelete(txn2, row));
             txn2.reset(); // rollback
 
             // A lock might be held for a row which was manually filtered out by calling step.
             row.id(4);
             if (!txn.lockMode().isRepeatable()) {
-                assertTrue(mTable.delete(txn2, row));
+                assertTrue(mTable.tryDelete(txn2, row));
             } else {
                 try {
                     mTable.delete(txn2, row);
@@ -451,13 +451,13 @@ public class RowCrudTest {
             // No lock is held for a row which was filtered out.
             Transaction txn2 = mDb.newTransaction();
             row.id(1);
-            assertTrue(mTable.delete(txn2, row));
+            assertTrue(mTable.tryDelete(txn2, row));
             txn2.reset(); // rollback
 
             // A lock might be held for a row which was manually filtered out by calling step.
             row.id(4);
             if (!txn.lockMode().isRepeatable()) {
-                assertTrue(mTable.delete(txn2, row));
+                assertTrue(mTable.tryDelete(txn2, row));
             } else {
                 try {
                     mTable.delete(txn2, row);

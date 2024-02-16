@@ -195,7 +195,7 @@ public class AggregatedTest {
 
         var row = aggregated.newRow();
         row.count(10);
-        assertFalse(aggregated.load(null, row));
+        assertFalse(aggregated.tryLoad(null, row));
         assertEquals("{}", row.toString());
         row.count(10);
         assertFalse(aggregated.exists(null, row));
@@ -209,7 +209,7 @@ public class AggregatedTest {
 
         row = aggregated.newRow();
         row.count(10);
-        assertTrue(aggregated.load(null, row));
+        assertTrue(aggregated.tryLoad(null, row));
         assertEquals("{avgNum=6.0, count=6, maxNum=21, minNum=1, totalNum=36}", row.toString());
         row = aggregated.newRow();
         row.count(10);
@@ -312,7 +312,7 @@ public class AggregatedTest {
         }
 
         row.name("hello");
-        assertFalse(aggregated.load(null, row));
+        assertFalse(aggregated.tryLoad(null, row));
         assertEquals("{*name=hello}", row.toString());
 
         fill();

@@ -235,8 +235,8 @@ final class ClientTable<R> implements Table<R> {
     }
 
     @Override
-    public boolean load(Transaction txn, R row) throws IOException {
-        return mHelper.load(row, proxy().load(mDb.remoteTransaction(txn), null));
+    public boolean tryLoad(Transaction txn, R row) throws IOException {
+        return mHelper.tryLoad(row, proxy().tryLoad(mDb.remoteTransaction(txn), null));
     }
 
     @Override
@@ -275,8 +275,8 @@ final class ClientTable<R> implements Table<R> {
     }
 
     @Override
-    public boolean delete(Transaction txn, R row) throws IOException {
-        return mHelper.delete(row, proxy().delete(mDb.remoteTransaction(txn), null));
+    public boolean tryDelete(Transaction txn, R row) throws IOException {
+        return mHelper.tryDelete(row, proxy().tryDelete(mDb.remoteTransaction(txn), null));
     }
 
     private RemoteTableProxy proxy() throws IOException {

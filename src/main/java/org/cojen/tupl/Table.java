@@ -375,8 +375,21 @@ public interface Table<R> extends Closeable {
      *
      * @return false if a corresponding row doesn't exist
      * @throws IllegalStateException if primary key isn't fully specified
+     * @throws NoSuchRowException if a corresponding row doesn't exist
      */
-    public boolean load(Transaction txn, R row) throws IOException;
+    public default void load(Transaction txn, R row) throws IOException {
+        if (!tryLoad(txn, row)) {
+            throw new NoSuchRowException();
+        }
+    }
+
+    /**
+     * Fully loads the row by primary key.
+     *
+     * @return false if a corresponding row doesn't exist
+     * @throws IllegalStateException if primary key isn't fully specified
+     */
+    public boolean tryLoad(Transaction txn, R row) throws IOException;
 
     /**
      * Checks if a row exists by searching against the primary key. This method should be
@@ -462,8 +475,21 @@ public interface Table<R> extends Closeable {
      *
      * @return false if a corresponding row doesn't exist
      * @throws IllegalStateException if primary key isn't fully specified
+     * @throws NoSuchRowException if a corresponding row doesn't exist
      */
-    public default boolean delete(Transaction txn, R row) throws IOException {
+    public default void delete(Transaction txn, R row) throws IOException {
+        if (!tryDelete(txn, row)) {
+            throw new NoSuchRowException();
+        }
+    }
+
+    /**
+     * Unconditionally removes an existing row by primary key.
+     *
+     * @return false if a corresponding row doesn't exist
+     * @throws IllegalStateException if primary key isn't fully specified
+     */
+    public default boolean tryDelete(Transaction txn, R row) throws IOException {
         throw new UnmodifiableViewException();
     }
 

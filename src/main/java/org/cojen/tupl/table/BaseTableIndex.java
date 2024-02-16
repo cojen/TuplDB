@@ -80,7 +80,7 @@ public abstract class BaseTableIndex<R> extends BaseTable<R> {
     }
 
     @Override
-    public final boolean delete(Transaction txn, R row) throws IOException {
+    public final boolean tryDelete(Transaction txn, R row) throws IOException {
         throw new UnmodifiableViewException();
     }
 

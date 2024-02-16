@@ -65,7 +65,7 @@ public abstract class ClientTableHelper<R> implements Table<R> {
     /**
      * @param pipe is recycled or closed as a side effect
      */
-    public abstract boolean load(R row, Pipe pipe) throws IOException;
+    public abstract boolean tryLoad(R row, Pipe pipe) throws IOException;
 
     /**
      * @param pipe is recycled or closed as a side effect
@@ -105,7 +105,7 @@ public abstract class ClientTableHelper<R> implements Table<R> {
     /**
      * @param pipe is recycled or closed as a side effect
      */
-    public abstract boolean delete(R row, Pipe pipe) throws IOException;
+    public abstract boolean tryDelete(R row, Pipe pipe) throws IOException;
 
     /**
      * @param pipe is recycled or closed as a side effect
@@ -225,9 +225,9 @@ public abstract class ClientTableHelper<R> implements Table<R> {
 
         addEncodeMethods(cm, rowGen, rowClass);
 
-        addByKeyMethod("load", cm, rowGen, rowClass);
+        addByKeyMethod("tryLoad", cm, rowGen, rowClass);
         addByKeyMethod("exists", cm, rowGen, rowClass);
-        addByKeyMethod("delete", cm, rowGen, rowClass);
+        addByKeyMethod("tryDelete", cm, rowGen, rowClass);
 
         addStoreMethod("store", null, cm, rowGen, rowClass);
         addStoreMethod("exchange", rowType, cm, rowGen, rowClass);
@@ -282,7 +282,7 @@ public abstract class ClientTableHelper<R> implements Table<R> {
     }
 
     /**
-     * @param variant "load", "exists", or "delete"
+     * @param variant "tryLoad", "exists", or "tryDelete"
      */
     private static void addByKeyMethod(String variant,
                                        ClassMaker cm, RowGen rowGen, Class<?> rowClass)
@@ -298,7 +298,7 @@ public abstract class ClientTableHelper<R> implements Table<R> {
 
         var resultVar = pipeVar.invoke("readByte");
 
-        if (variant == "load") {
+        if (variant == "tryLoad") {
             Label notLoaded = mm.label();
             resultVar.ifEq(0, notLoaded);
             decodeValueColumns(rowGen, rowVar, pipeVar);

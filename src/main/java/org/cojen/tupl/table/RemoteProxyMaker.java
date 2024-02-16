@@ -176,9 +176,9 @@ public final class RemoteProxyMaker {
     private MethodHandles.Lookup makeDirect() {
         addRequireSet("requireAllSet", mRowGen.info.allColumns);
 
-        addByKeyDirectMethod("load");
+        addByKeyDirectMethod("tryLoad");
         addByKeyDirectMethod("exists");
-        addByKeyDirectMethod("delete");
+        addByKeyDirectMethod("tryDelete");
 
         addStoreDirectMethod("store");
         addStoreDirectMethod("exchange");
@@ -262,7 +262,7 @@ public final class RemoteProxyMaker {
     }
 
     /**
-     * @param variant "load", "exists", or "delete"
+     * @param variant "tryLoad", "exists", or "tryDelete"
      */
     private void addByKeyDirectMethod(String variant) {
         MethodMaker mm = mClassMaker.addMethod
@@ -282,7 +282,7 @@ public final class RemoteProxyMaker {
 
         var valueVar = makerVar.invoke(variant, mm.field("table"), txnVar, keyVar, pipeVar);
 
-        if (variant == "load") {
+        if (variant == "tryLoad") {
             Label done = mm.label();
             valueVar.ifEq(null, done);
             convertAndWriteValue(pipeVar, valueVar);
@@ -940,7 +940,7 @@ public final class RemoteProxyMaker {
      *
      * @return the loaded value; if non-null, the caller must write the response, etc.
      */
-    public static byte[] load(BaseTable table, Transaction txn, byte[] key, Pipe pipe)
+    public static byte[] tryLoad(BaseTable table, Transaction txn, byte[] key, Pipe pipe)
         throws IOException
     {
         attempt: {
@@ -1175,7 +1175,7 @@ public final class RemoteProxyMaker {
      * Called by generated code.
      */
     @SuppressWarnings("unchecked")
-    public static void delete(BaseTable table, Transaction txn, byte[] key, Pipe pipe)
+    public static void tryDelete(BaseTable table, Transaction txn, byte[] key, Pipe pipe)
         throws IOException
     {
         attempt: {
@@ -1262,9 +1262,9 @@ public final class RemoteProxyMaker {
         addDecodeRow();
         addEncodeColumns(false);
 
-        addByKeyConvertMethod("load");
+        addByKeyConvertMethod("tryLoad");
         addByKeyConvertMethod("exists");
-        addByKeyConvertMethod("delete");
+        addByKeyConvertMethod("tryDelete");
 
         addStoreConvertMethod("store");
         addStoreConvertMethod("exchange");
@@ -1286,7 +1286,7 @@ public final class RemoteProxyMaker {
     }
 
     /**
-     * @param variant "load", "exists", or "delete"
+     * @param variant "tryLoad", "exists", or "tryDelete"
      */
     private void addByKeyConvertMethod(String variant) {
         MethodMaker mm = mClassMaker.addMethod
@@ -1307,7 +1307,7 @@ public final class RemoteProxyMaker {
 
         var makerVar = mm.var(RemoteProxyMaker.class);
 
-        if (variant != "load") {
+        if (variant != "tryLoad") {
             mm.catch_(opTryStart, Throwable.class, exVar -> {
                 pipeVar.invoke("writeObject", exVar);
                 finish.goto_();

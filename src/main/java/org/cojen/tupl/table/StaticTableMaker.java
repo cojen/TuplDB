@@ -298,11 +298,11 @@ class StaticTableMaker extends TableMaker {
 
         // Add the public load/store methods, etc.
 
-        addByKeyMethod("load");
+        addByKeyMethod("tryLoad");
         addByKeyMethod("exists");
 
         if (isPrimaryTable()) {
-            addByKeyMethod("delete");
+            addByKeyMethod("tryDelete");
 
             addStoreMethod("store", null);
             addStoreMethod("exchange", mRowType);
@@ -473,7 +473,7 @@ class StaticTableMaker extends TableMaker {
     }
 
     /**
-     * @param variant "load", "exists", or "delete"
+     * @param variant "tryLoad", "exists", or "tryDelete"
      */
     private void addByKeyMethod(String variant) {
         MethodMaker mm = mClassMaker.addMethod
@@ -494,8 +494,16 @@ class StaticTableMaker extends TableMaker {
 
         final Variable valueVar;
 
-        if (variant != "delete" || !supportsTriggers()) {
-            valueVar = source.invoke(variant, txnVar, keyVar);
+        if (variant != "tryDelete" || !supportsTriggers()) {
+            String sourceMethod;
+            if (variant == "tryLoad") {
+                sourceMethod = "load";
+            } else if (variant == "tryDelete") {
+                sourceMethod = "delete";
+            } else {
+                sourceMethod = variant;
+            }
+            valueVar = source.invoke(sourceMethod, txnVar, keyVar);
         } else {
             var triggerVar = mm.var(Trigger.class);
             Label skipLabel = mm.label();
@@ -523,13 +531,13 @@ class StaticTableMaker extends TableMaker {
 
             skipLabel.here();
 
-            assert variant == "delete";
-            valueVar = source.invoke(variant, txnVar, keyVar);
+            assert variant == "tryDelete";
+            valueVar = source.invoke("delete", txnVar, keyVar);
 
             mm.finally_(triggerStart, () -> triggerVar.invoke("releaseShared"));
         }
 
-        if (variant != "load") {
+        if (variant != "tryLoad") {
             mm.return_(valueVar);
         } else {
             Label notNull = mm.label();
