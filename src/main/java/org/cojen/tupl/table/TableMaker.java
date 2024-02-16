@@ -34,7 +34,6 @@ import org.cojen.maker.Variable;
 import org.cojen.tupl.Cursor;
 import org.cojen.tupl.Entry;
 import org.cojen.tupl.LockResult;
-import org.cojen.tupl.NoSuchRowException;
 import org.cojen.tupl.Transaction;
 
 import org.cojen.tupl.diag.QueryPlan;
@@ -579,12 +578,12 @@ public class TableMaker {
      * Adds a method which does most of the work for the update and merge methods. The
      * transaction parameter must not be null, which is committed when changes are made.
      *
-     *     void doUpdate(Transaction txn, ActualRow row, boolean merge);
+     *     boolean doUpdate(Transaction txn, ActualRow row, boolean merge);
      */
     protected void addDoUpdateMethod() {
         // Override the inherited abstract method.
         MethodMaker mm = mClassMaker.addMethod
-            (null, "doUpdate", Transaction.class, mRowClass, boolean.class).protected_();
+            (boolean.class, "doUpdate", Transaction.class, mRowClass, boolean.class).protected_();
         addDoUpdateMethod(mm);
     }
 
@@ -638,14 +637,14 @@ public class TableMaker {
                 var oldValueVar = cursorVar.invoke("value");
                 Label replace = mm.label();
                 oldValueVar.ifNe(null, replace);
-                mm.new_(NoSuchRowException.class).throw_();
+                mm.return_(false);
                 replace.here();
                 var valueVar = mm.invoke("encodeValue", rowVar);
                 cursorVar.invoke("store", valueVar);
                 triggerVar.invoke("store", txnVar, rowVar, keyVar, oldValueVar, valueVar);
                 txnVar.invoke("commit");
                 markAllClean(rowVar);
-                mm.return_();
+                mm.return_(true);
 
                 skipLabel.here();
             }
@@ -657,7 +656,7 @@ public class TableMaker {
             mm.finally_(opStart, () -> closerVar.invoke("close"));
             Label replace = mm.label();
             cursorVar.invoke("value").ifNe(null, replace);
-            mm.new_(NoSuchRowException.class).throw_();
+            mm.return_(false);
             replace.here();
             cursorVar.invoke("commit", mm.invoke("encodeValue", rowVar));
 
@@ -666,7 +665,7 @@ public class TableMaker {
             }
 
             markAllClean(rowVar);
-            mm.return_();
+            mm.return_(true);
 
             if (cont == null) {
                 return;
@@ -683,7 +682,8 @@ public class TableMaker {
     }
 
     /**
-     * Subclass must override this method in order for the addDoUpdateMethod to work.
+     * Subclass must override this method in order for the addDoUpdateMethod to work. The
+     * implementation is expected to generate a return of true or false.
      */
     protected void finishDoUpdate(MethodMaker mm, Variable rowVar, Variable mergeVar,
                                   Variable keyVar, Variable cursorVar)
@@ -692,7 +692,9 @@ public class TableMaker {
     }
 
     /**
-     * @param triggers 0 for false, 1 for true
+     * Finishes the update and generates a return of true or false.
+     *
+     * @param triggers 0 to not update triggers, else 1 to update triggers
      */
     protected static void finishDoUpdate(MethodMaker mm, RowInfo rowInfo, int schemaVersion,
                                          int triggers, Variable tableVar, Variable rowVar,
@@ -700,14 +702,14 @@ public class TableMaker {
     {
         Label findLabel = mm.label().here();
         var resultVar = cursorVar.invoke("find", keyVar);
+        var valueVar = cursorVar.invoke("value");
 
         Label hasValue = mm.label();
-        cursorVar.invoke("value").ifNe(null, hasValue);
-        mm.new_(NoSuchRowException.class).throw_();
+        valueVar.ifNe(null, hasValue);
+        mm.return_(false);
         hasValue.here();
 
         var txnVar = cursorVar.invoke("link");
-        Variable valueVar = cursorVar.invoke("value");
 
         var ue = encodeUpdateValue(mm, rowInfo, schemaVersion, tableVar, rowVar, valueVar);
         Variable newValueVar = ue.newEntryVar;
@@ -748,7 +750,7 @@ public class TableMaker {
 
         tableVar.invoke("cleanRow", rowVar);
 
-        mm.return_();
+        mm.return_(true);
 
         doMerge.here();
 
@@ -801,6 +803,8 @@ public class TableMaker {
         }
 
         markAllClean(rowVar, rowGen, rowGen);
+
+        mm.return_(true);
     }
 
     /**

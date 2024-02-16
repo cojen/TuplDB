@@ -373,7 +373,6 @@ public interface Table<R> extends Closeable {
     /**
      * Fully loads the row by primary key.
      *
-     * @return false if a corresponding row doesn't exist
      * @throws IllegalStateException if primary key isn't fully specified
      * @throws NoSuchRowException if a corresponding row doesn't exist
      */
@@ -432,6 +431,19 @@ public interface Table<R> extends Closeable {
      * @throws UniqueConstraintException if a conflicting primary or alternate key exists
      */
     public default void insert(Transaction txn, R row) throws IOException {
+        if (!tryInsert(txn, row)) {
+            throw new UniqueConstraintException("Primary key");
+        }
+    }
+
+    /**
+     * Stores the given row when a corresponding row doesn't exist.
+     *
+     * @return false if a corresponding row already exists and nothing was inserted
+     * @throws IllegalStateException if any required columns aren't set
+     * @throws UniqueConstraintException if a conflicting alternate key exists
+     */
+    public default boolean tryInsert(Transaction txn, R row) throws IOException {
         throw new UnmodifiableViewException();
     }
 
@@ -443,6 +455,19 @@ public interface Table<R> extends Closeable {
      * @throws UniqueConstraintException if a conflicting alternate key exists
      */
     public default void replace(Transaction txn, R row) throws IOException {
+        if (!tryReplace(txn, row)) {
+            throw new NoSuchRowException();
+        }
+    }
+
+    /**
+     * Stores the given row when a corresponding row already exists.
+     *
+     * @return false if a corresponding row doesn't exist
+     * @throws IllegalStateException if any required columns aren't set
+     * @throws UniqueConstraintException if a conflicting alternate key exists
+     */
+    public default boolean tryReplace(Transaction txn, R row) throws IOException {
         throw new UnmodifiableViewException();
     }
 
@@ -455,6 +480,20 @@ public interface Table<R> extends Closeable {
      * @throws UniqueConstraintException if a conflicting alternate key exists
      */
     public default void update(Transaction txn, R row) throws IOException {
+        if (!tryUpdate(txn, row)) {
+            throw new NoSuchRowException();
+        }
+    }
+
+    /**
+     * Updates an existing row with the modified columns of the given row, but the resulting
+     * row isn't loaded back.
+     *
+     * @return false if a corresponding row doesn't exist
+     * @throws IllegalStateException if primary key isn't fully specified
+     * @throws UniqueConstraintException if a conflicting alternate key exists
+     */
+    public default boolean tryUpdate(Transaction txn, R row) throws IOException {
         throw new UnmodifiableViewException();
     }
 
@@ -467,13 +506,26 @@ public interface Table<R> extends Closeable {
      * @throws UniqueConstraintException if a conflicting alternate key exists
      */
     public default void merge(Transaction txn, R row) throws IOException {
+        if (!tryMerge(txn, row)) {
+            throw new NoSuchRowException();
+        }
+    }
+
+    /**
+     * Updates an existing row with the modified columns of the given row, and then loads the
+     * result back into the given row.
+     *
+     * @return false if a corresponding row doesn't exist
+     * @throws IllegalStateException if primary key isn't fully specified
+     * @throws UniqueConstraintException if a conflicting alternate key exists
+     */
+    public default boolean tryMerge(Transaction txn, R row) throws IOException {
         throw new UnmodifiableViewException();
     }
 
     /**
      * Unconditionally removes an existing row by primary key.
      *
-     * @return false if a corresponding row doesn't exist
      * @throws IllegalStateException if primary key isn't fully specified
      * @throws NoSuchRowException if a corresponding row doesn't exist
      */

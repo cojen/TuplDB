@@ -60,22 +60,22 @@ public abstract class BaseTableIndex<R> extends BaseTable<R> {
     }
 
     @Override
-    public final void insert(Transaction txn, R row) throws IOException {
+    public final boolean tryInsert(Transaction txn, R row) throws IOException {
         throw new UnmodifiableViewException();
     }
 
     @Override
-    public final void replace(Transaction txn, R row) throws IOException {
+    public final boolean tryReplace(Transaction txn, R row) throws IOException {
         throw new UnmodifiableViewException();
     }
 
     @Override
-    public final void update(Transaction txn, R row) throws IOException {
+    public final boolean tryUpdate(Transaction txn, R row) throws IOException {
         throw new UnmodifiableViewException();
     }
 
     @Override
-    public final void merge(Transaction txn, R row) throws IOException {
+    public final boolean tryMerge(Transaction txn, R row) throws IOException {
         throw new UnmodifiableViewException();
     }
 

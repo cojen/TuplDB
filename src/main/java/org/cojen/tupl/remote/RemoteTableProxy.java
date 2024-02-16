@@ -36,13 +36,13 @@ public interface RemoteTableProxy extends Remote {
 
     public Pipe exchange(RemoteTransaction txn, Pipe pipe) throws IOException;
 
-    public Pipe insert(RemoteTransaction txn, Pipe pipe) throws IOException;
+    public Pipe tryInsert(RemoteTransaction txn, Pipe pipe) throws IOException;
 
-    public Pipe replace(RemoteTransaction txn, Pipe pipe) throws IOException;
+    public Pipe tryReplace(RemoteTransaction txn, Pipe pipe) throws IOException;
 
-    public Pipe update(RemoteTransaction txn, Pipe pipe) throws IOException;
+    public Pipe tryUpdate(RemoteTransaction txn, Pipe pipe) throws IOException;
 
-    public Pipe merge(RemoteTransaction txn, Pipe pipe) throws IOException;
+    public Pipe tryMerge(RemoteTransaction txn, Pipe pipe) throws IOException;
 
     public Pipe tryDelete(RemoteTransaction txn, Pipe pipe) throws IOException;
 
