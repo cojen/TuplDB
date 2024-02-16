@@ -63,16 +63,16 @@ public class MappedJoinTest {
         var plan = """
 - nested loops join
   - first
-    - map: org.cojen.tupl.rows.join.MappedJoinTest$Emp
+    - map: org.cojen.tupl.table.join.MappedJoinTest$Emp
       using: ToEmp
-      - full scan over primary key: org.cojen.tupl.rows.join.Employee
+      - full scan over primary key: org.cojen.tupl.table.join.Employee
         key columns: +id
     assignments: ?1 = emp.deptId
   - join
     - filter: id == ?1
-      - map: org.cojen.tupl.rows.join.MappedJoinTest$Dept
+      - map: org.cojen.tupl.table.join.MappedJoinTest$Dept
         using: ToDept
-        - full scan over primary key: org.cojen.tupl.rows.join.Department
+        - full scan over primary key: org.cojen.tupl.table.join.Department
           key columns: +id
             """;
 
@@ -89,17 +89,17 @@ public class MappedJoinTest {
         plan = """
 - nested loops join
   - first
-    - map: org.cojen.tupl.rows.join.MappedJoinTest$Emp
+    - map: org.cojen.tupl.table.join.MappedJoinTest$Emp
       using: ToEmp
       - filter: lastName == ?2
-        - full scan over primary key: org.cojen.tupl.rows.join.Employee
+        - full scan over primary key: org.cojen.tupl.table.join.Employee
           key columns: +id
     assignments: ?2 = emp.deptId
   - join
     - filter: id == ?2
-      - map: org.cojen.tupl.rows.join.MappedJoinTest$Dept
+      - map: org.cojen.tupl.table.join.MappedJoinTest$Dept
         using: ToDept
-        - full scan over primary key: org.cojen.tupl.rows.join.Department
+        - full scan over primary key: org.cojen.tupl.table.join.Department
           key columns: +id
             """;
 
@@ -113,18 +113,18 @@ public class MappedJoinTest {
 
         plan = """
 - filter: deptName == ?1
-  - map: org.cojen.tupl.rows.join.MappedJoinTest$EmpAndDept
+  - map: org.cojen.tupl.table.join.MappedJoinTest$EmpAndDept
     using: ToEmpAndDept
     - nested loops join
       - first
-        - map: org.cojen.tupl.rows.join.MappedJoinTest$Emp
+        - map: org.cojen.tupl.table.join.MappedJoinTest$Emp
           using: ToEmp
-          - full scan over primary key: org.cojen.tupl.rows.join.Employee
+          - full scan over primary key: org.cojen.tupl.table.join.Employee
             key columns: +id
       - join
-        - map: org.cojen.tupl.rows.join.MappedJoinTest$Dept
+        - map: org.cojen.tupl.table.join.MappedJoinTest$Dept
           using: ToDept
-          - full scan over primary key: org.cojen.tupl.rows.join.Department
+          - full scan over primary key: org.cojen.tupl.table.join.Department
             key columns: +id
             """;
 

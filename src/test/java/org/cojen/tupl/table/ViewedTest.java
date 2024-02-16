@@ -125,14 +125,14 @@ public class ViewedTest {
 
         QueryPlan plan = view.queryAll().scannerPlan(null);
         assertEquals("""
-- reverse full scan over primary key: org.cojen.tupl.rows.ViewedTest$TestRow
+- reverse full scan over primary key: org.cojen.tupl.table.ViewedTest$TestRow
   key columns: +id
                      """,
                      plan.toString());
 
         plan = view.queryAll().updaterPlan(null);
         assertEquals("""
-- reverse full scan over primary key: org.cojen.tupl.rows.ViewedTest$TestRow
+- reverse full scan over primary key: org.cojen.tupl.table.ViewedTest$TestRow
   key columns: +id
                      """,
                      plan.toString());
@@ -140,9 +140,9 @@ public class ViewedTest {
         plan = view.query("name == ?").scannerPlan(null);
         assertEquals("""
 - sort: -id
-  - primary join: org.cojen.tupl.rows.ViewedTest$TestRow
+  - primary join: org.cojen.tupl.table.ViewedTest$TestRow
     key columns: +id
-    - range scan over secondary index: org.cojen.tupl.rows.ViewedTest$TestRow
+    - range scan over secondary index: org.cojen.tupl.table.ViewedTest$TestRow
       key columns: +name, +id
       range: name >= ?1 .. name <= ?1
                      """,
@@ -151,7 +151,7 @@ public class ViewedTest {
         plan = view.query("{id, name} name == ?").scannerPlan(null);
         assertEquals("""
 - sort: -id
-  - range scan over secondary index: org.cojen.tupl.rows.ViewedTest$TestRow
+  - range scan over secondary index: org.cojen.tupl.table.ViewedTest$TestRow
     key columns: +name, +id
     range: name >= ?1 .. name <= ?1
                      """,
@@ -159,7 +159,7 @@ public class ViewedTest {
 
         plan = view.query("{id, +name} name == ?").scannerPlan(null);
         assertEquals("""
-- range scan over secondary index: org.cojen.tupl.rows.ViewedTest$TestRow
+- range scan over secondary index: org.cojen.tupl.table.ViewedTest$TestRow
   key columns: +name, +id
   range: name >= ?1 .. name <= ?1
                      """,
@@ -545,7 +545,7 @@ public class ViewedTest {
 
         QueryPlan plan = view.query("id <= ?").scannerPlan(null, 2);
         assertEquals("""
-- reverse range scan over primary key: org.cojen.tupl.rows.ViewedTest$TestRow
+- reverse range scan over primary key: org.cojen.tupl.table.ViewedTest$TestRow
   key columns: +id
   range: .. id <= ?1
                      """,

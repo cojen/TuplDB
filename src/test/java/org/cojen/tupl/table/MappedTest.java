@@ -158,7 +158,7 @@ public class MappedTest {
 
         QueryPlan.Mapper plan = (QueryPlan.Mapper) mapped.queryAll().scannerPlan(null);
         assertEquals(TestRow.class.getName(), plan.target);
-        assertTrue(plan.using.contains("org.cojen.tupl.rows.MappedTest"));
+        assertTrue(plan.using.contains("org.cojen.tupl.table.MappedTest"));
         assertEquals(mTable.queryAll().scannerPlan(null), plan.source);
 
         QueryPlan plan2 = mapped.query("{*}").scannerPlan(null);
@@ -686,10 +686,10 @@ public class MappedTest {
 
         var plan3 = mapped.query(query).scannerPlan(null);
         assertEquals("""
-- map: org.cojen.tupl.rows.MappedTest$Renamed
+- map: org.cojen.tupl.table.MappedTest$Renamed
   using: Renamer
   - filter: str >= ?2
-    - reverse full scan over primary key: org.cojen.tupl.rows.MappedTest$TestRow
+    - reverse full scan over primary key: org.cojen.tupl.table.MappedTest$TestRow
       key columns: +id
                      """, plan3.toString());
 

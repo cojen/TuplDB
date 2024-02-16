@@ -218,9 +218,9 @@ public class AggregatedTest {
 
         QueryPlan plan = aggregated.queryAll().scannerPlan(null);
         assertEquals("""
-- aggregate: org.cojen.tupl.rows.AggregatedTest$TestRowAgg
+- aggregate: org.cojen.tupl.table.AggregatedTest$TestRowAgg
   using: Aggregator1
-  - full scan over primary key: org.cojen.tupl.rows.AggregatedTest$TestRow
+  - full scan over primary key: org.cojen.tupl.table.AggregatedTest$TestRow
     key columns: +id
                      """,
                      plan.toString());
@@ -235,9 +235,9 @@ public class AggregatedTest {
 
         plan = aggregated.query(query).scannerPlan(null);
         assertEquals("""
-- aggregate: org.cojen.tupl.rows.AggregatedTest$TestRowAgg
+- aggregate: org.cojen.tupl.table.AggregatedTest$TestRowAgg
   using: Aggregator1
-  - full scan over primary key: org.cojen.tupl.rows.AggregatedTest$TestRow
+  - full scan over primary key: org.cojen.tupl.table.AggregatedTest$TestRow
     key columns: +id
                      """,
                      plan.toString());
@@ -253,9 +253,9 @@ public class AggregatedTest {
         plan = aggregated.query(query).scannerPlan(null);
         assertEquals("""
 - filter: minNum == ?1
-  - aggregate: org.cojen.tupl.rows.AggregatedTest$TestRowAgg
+  - aggregate: org.cojen.tupl.table.AggregatedTest$TestRowAgg
     using: Aggregator1
-    - full scan over primary key: org.cojen.tupl.rows.AggregatedTest$TestRow
+    - full scan over primary key: org.cojen.tupl.table.AggregatedTest$TestRow
       key columns: +id
                      """,
                      plan.toString());
@@ -275,9 +275,9 @@ public class AggregatedTest {
         plan = aggregated.query(query).scannerPlan(null);
         assertEquals("""
 - filter: minNum == ?1
-  - aggregate: org.cojen.tupl.rows.AggregatedTest$TestRowAgg
+  - aggregate: org.cojen.tupl.table.AggregatedTest$TestRowAgg
     using: Aggregator1
-    - full scan over primary key: org.cojen.tupl.rows.AggregatedTest$TestRow
+    - full scan over primary key: org.cojen.tupl.table.AggregatedTest$TestRow
       key columns: +id
                      """,
                      plan.toString());
@@ -324,11 +324,11 @@ public class AggregatedTest {
 
         QueryPlan plan = aggregated.queryAll().scannerPlan(null);
         assertEquals("""
-- aggregate: org.cojen.tupl.rows.AggregatedTest$TestRowAggByName
+- aggregate: org.cojen.tupl.table.AggregatedTest$TestRowAggByName
   using: Aggregator1
   group by: name
   - sort: +name
-    - full scan over primary key: org.cojen.tupl.rows.AggregatedTest$TestRow
+    - full scan over primary key: org.cojen.tupl.table.AggregatedTest$TestRow
       key columns: +id
                      """,
                      plan.toString());
@@ -364,12 +364,12 @@ public class AggregatedTest {
 
         plan = aggregated.query(query).scannerPlan(null);
         assertEquals("""
-- aggregate: org.cojen.tupl.rows.AggregatedTest$TestRowAggByName
+- aggregate: org.cojen.tupl.table.AggregatedTest$TestRowAggByName
   using: Aggregator1
   group by: name
-  - primary join: org.cojen.tupl.rows.AggregatedTest$TestRow
+  - primary join: org.cojen.tupl.table.AggregatedTest$TestRow
     key columns: +id
-    - range scan over secondary index: org.cojen.tupl.rows.AggregatedTest$TestRow
+    - range scan over secondary index: org.cojen.tupl.table.AggregatedTest$TestRow
       key columns: +name, +id
       range: name >= ?1 .. name < ?2
                      """,
@@ -387,11 +387,11 @@ public class AggregatedTest {
         plan = aggregated.query(query).scannerPlan(null);
         assertEquals("""
 - filter: maxNum >= ?1 && maxNum <= ?2
-  - aggregate: org.cojen.tupl.rows.AggregatedTest$TestRowAggByName
+  - aggregate: org.cojen.tupl.table.AggregatedTest$TestRowAggByName
     using: Aggregator1
     group by: name
     - sort: +name
-      - full scan over primary key: org.cojen.tupl.rows.AggregatedTest$TestRow
+      - full scan over primary key: org.cojen.tupl.table.AggregatedTest$TestRow
         key columns: +id
                      """,
                      plan.toString());
@@ -415,12 +415,12 @@ public class AggregatedTest {
         assertEquals("""
 - sort: +avgNum
   - filter: maxNum >= ?3 && maxNum <= ?4
-    - aggregate: org.cojen.tupl.rows.AggregatedTest$TestRowAggByName
+    - aggregate: org.cojen.tupl.table.AggregatedTest$TestRowAggByName
       using: Aggregator1
       group by: name
-      - primary join: org.cojen.tupl.rows.AggregatedTest$TestRow
+      - primary join: org.cojen.tupl.table.AggregatedTest$TestRow
         key columns: +id
-        - range scan over secondary index: org.cojen.tupl.rows.AggregatedTest$TestRow
+        - range scan over secondary index: org.cojen.tupl.table.AggregatedTest$TestRow
           key columns: +name, +id
           range: name >= ?1 .. name < ?2
                      """,
@@ -449,11 +449,11 @@ public class AggregatedTest {
         assertEquals("""
 - sort: -avgNum
   - filter: count >= ?1 && avgNum >= ?2
-    - aggregate: org.cojen.tupl.rows.AggregatedTest$TestRowAggByName
+    - aggregate: org.cojen.tupl.table.AggregatedTest$TestRowAggByName
       using: Aggregator1
       group by: name
       - sort: +name
-        - full scan over primary key: org.cojen.tupl.rows.AggregatedTest$TestRow
+        - full scan over primary key: org.cojen.tupl.table.AggregatedTest$TestRow
           key columns: +id
                      """,
                      plan.toString());
