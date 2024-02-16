@@ -102,16 +102,22 @@ loadScripts(document, 'script');</script>
 <div class="col-last odd-row-color">
 <div class="block">Same as <a href="../Sorter.html#finishScan(org.cojen.tupl.Scanner)"><code>finishScan</code></a>, but in reverse order.</div>
 </div>
-<div class="col-first even-row-color"><code><a href="../Scanner.html" title="interface in org.cojen.tupl">Scanner</a><wbr>&lt;<a href="../Table.html" title="type parameter in Table">R</a>&gt;</code></div>
-<div class="col-second even-row-color"><span class="type-name-label">Table.</span><code><a href="../Table.html#newScanner(org.cojen.tupl.Transaction)" class="member-name-link">newScanner</a><wbr>(<a href="../Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn)</code></div>
+<div class="col-first even-row-color"><code>default <a href="../Scanner.html" title="interface in org.cojen.tupl">Scanner</a><wbr>&lt;<a href="../Query.html" title="type parameter in Query">R</a>&gt;</code></div>
+<div class="col-second even-row-color"><span class="type-name-label">Query.</span><code><a href="../Query.html#newScanner(org.cojen.tupl.Transaction,java.lang.Object...)" class="member-name-link">newScanner</a><wbr>(<a href="../Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
+ <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/Object.html" title="class or interface in java.lang" class="external-link">Object</a>...&nbsp;args)</code></div>
 <div class="col-last even-row-color">
+<div class="block">Returns a new scanner for all the rows of this query.</div>
+</div>
+<div class="col-first odd-row-color"><code>default <a href="../Scanner.html" title="interface in org.cojen.tupl">Scanner</a><wbr>&lt;<a href="../Table.html" title="type parameter in Table">R</a>&gt;</code></div>
+<div class="col-second odd-row-color"><span class="type-name-label">Table.</span><code><a href="../Table.html#newScanner(org.cojen.tupl.Transaction)" class="member-name-link">newScanner</a><wbr>(<a href="../Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn)</code></div>
+<div class="col-last odd-row-color">
 <div class="block">Returns a new scanner for all rows of this table.</div>
 </div>
-<div class="col-first odd-row-color"><code><a href="../Scanner.html" title="interface in org.cojen.tupl">Scanner</a><wbr>&lt;<a href="../Table.html" title="type parameter in Table">R</a>&gt;</code></div>
-<div class="col-second odd-row-color"><span class="type-name-label">Table.</span><code><a href="../Table.html#newScanner(org.cojen.tupl.Transaction,java.lang.String,java.lang.Object...)" class="member-name-link">newScanner</a><wbr>(<a href="../Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
- <a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;query,
- <a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/lang/Object.html" title="class or interface in java.lang" class="external-link">Object</a>...&nbsp;args)</code></div>
-<div class="col-last odd-row-color">
+<div class="col-first even-row-color"><code>default <a href="../Scanner.html" title="interface in org.cojen.tupl">Scanner</a><wbr>&lt;<a href="../Table.html" title="type parameter in Table">R</a>&gt;</code></div>
+<div class="col-second even-row-color"><span class="type-name-label">Table.</span><code><a href="../Table.html#newScanner(org.cojen.tupl.Transaction,java.lang.String,java.lang.Object...)" class="member-name-link">newScanner</a><wbr>(<a href="../Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
+ <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;query,
+ <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/Object.html" title="class or interface in java.lang" class="external-link">Object</a>...&nbsp;args)</code></div>
+<div class="col-last even-row-color">
 <div class="block">Returns a new scanner for a subset of rows from this table, as specified by the query
  expression.</div>
 </div>
@@ -145,7 +151,7 @@ loadScripts(document, 'script');</script>
 </main>
 <footer role="contentinfo">
 <hr>
-<p class="legal-copy"><small>Copyright &#169; 2011&#x2013;2023 <a href="https://github.com/cojen">Cojen</a>. All rights reserved.</small></p>
+<p class="legal-copy"><small>Copyright &#169; 2011&#x2013;2024 <a href="https://github.com/cojen">Cojen</a>. All rights reserved.</small></p>
 </footer>
 </div>
 </div>

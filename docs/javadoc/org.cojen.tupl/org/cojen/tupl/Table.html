@@ -89,11 +89,11 @@ loadScripts(document, 'script');</script>
 <section class="class-description" id="class-description">
 <dl class="notes">
 <dt>All Superinterfaces:</dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/lang/AutoCloseable.html" title="class or interface in java.lang" class="external-link">AutoCloseable</a></code>, <code><a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/io/Closeable.html" title="class or interface in java.io" class="external-link">Closeable</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/AutoCloseable.html" title="class or interface in java.lang" class="external-link">AutoCloseable</a></code>, <code><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/io/Closeable.html" title="class or interface in java.io" class="external-link">Closeable</a></code></dd>
 </dl>
 <hr>
 <div class="type-signature"><span class="modifiers">public interface </span><span class="element-name type-name-label">Table&lt;R&gt;</span><span class="extends-implements">
-extends <a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/io/Closeable.html" title="class or interface in java.io" class="external-link">Closeable</a></span></div>
+extends <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/io/Closeable.html" title="class or interface in java.io" class="external-link">Closeable</a></span></div>
 <div class="block">Defines a relational collection of persistent rows. A row is defined by an interface
  consisting of accessor/mutator methods corresponding to each column:
 
@@ -129,9 +129,9 @@ public interface MyRow {
  equals</code>, <code>hashCode</code>, <code>toString</code>, and <code>clone</code> methods are automatically
  generated as well. If the row interface declares a <code>clone</code> method which returns the
  exact row type, then the row can be cloned without requiring an explicit cast. If the row
- interface extends <a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/lang/Comparable.html" title="class or interface in java.lang" class="external-link"><code>Comparable</code></a>, then rows are comparable by primary key. Any default
+ interface extends <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/Comparable.html" title="class or interface in java.lang" class="external-link"><code>Comparable</code></a>, then rows are comparable by primary key. Any default
  methods defined in the row interface are never overridden by the generated class, unless the
- method is defined in the <a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/lang/Object.html" title="class or interface in java.lang" class="external-link"><code>Object</code></a> class.
+ method is defined in the <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/Object.html" title="class or interface in java.lang" class="external-link"><code>Object</code></a> class.
 
  <p>Scans over the rows of the table can be reduced by a query, described by this syntax:
 
@@ -141,7 +141,7 @@ public interface MyRow {
  RowFilter    = AndFilter { "||" AndFilter }
  AndFilter    = EntityFilter { "&amp;&amp;" EntityFilter }
  EntityFilter = ColumnFilter | ParenFilter
- ParenFilter  = [ "!" ] "(" RowFilter ")"
+ ParenFilter  = [ "!" ] "(" [ RowFilter ] ")"
  ColumnFilter = ColumnName RelOp ( ArgRef | ColumnName )
               | ColumnName "in" ArgRef
               | ArgRef RelOp ColumnName
@@ -151,7 +151,10 @@ public interface MyRow {
  ProjColumn   = ( ( ( ( "+" | "-" ) [ "!" ] ) | "~" ) ColumnName ) | "*"
  ColumnName   = string
  ArgRef       = "?" [ uint ]
- </code></pre></blockquote></div>
+ </code></pre></blockquote>
+
+ Note that a query projection specifies the minimum set of requested columns, but additional
+ ones might be provided if they were needed by the query implementation.</div>
 <dl class="notes">
 <dt>See Also:</dt>
 <dd>
@@ -176,7 +179,7 @@ public interface MyRow {
 <div class="table-header col-second">Method</div>
 <div class="table-header col-last">Description</div>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default &lt;T&gt;&nbsp;<a href="Table.html" title="interface in org.cojen.tupl">Table</a><wbr>&lt;T&gt;</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#aggregate(java.lang.Class,org.cojen.tupl.Aggregator.Factory)" class="member-name-link">aggregate</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/lang/Class.html" title="class or interface in java.lang" class="external-link">Class</a>&lt;T&gt;&nbsp;targetType,
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#aggregate(java.lang.Class,org.cojen.tupl.Aggregator.Factory)" class="member-name-link">aggregate</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/Class.html" title="class or interface in java.lang" class="external-link">Class</a>&lt;T&gt;&nbsp;targetType,
  <a href="Aggregator.Factory.html" title="interface in org.cojen.tupl">Aggregator.Factory</a>&lt;<a href="Table.html" title="type parameter in Table">R</a>,<wbr>T&gt;&nbsp;factory)</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
 <div class="block">Returns a view backed by this table, consisting of aggregate rows, which are grouped by
@@ -189,8 +192,8 @@ public interface MyRow {
 </div>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default boolean</code></div>
 <div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#anyRows(org.cojen.tupl.Transaction,java.lang.String,java.lang.Object...)" class="member-name-link">anyRows</a><wbr>(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
- <a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;query,
- <a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/lang/Object.html" title="class or interface in java.lang" class="external-link">Object</a>...&nbsp;args)</code></div>
+ <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;query,
+ <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/Object.html" title="class or interface in java.lang" class="external-link">Object</a>...&nbsp;args)</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
 <div class="block">Returns true if a subset of rows from this table exists, as specified by the query
  expression.</div>
@@ -208,8 +211,8 @@ public interface MyRow {
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code>void</code></div>
 <div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#close()" class="member-name-link">close</a>()</code></div>
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">&nbsp;</div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default <a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/util/Comparator.html" title="class or interface in java.util" class="external-link">Comparator</a><wbr>&lt;<a href="Table.html" title="type parameter in Table">R</a>&gt;</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#comparator(java.lang.String)" class="member-name-link">comparator</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;spec)</code></div>
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/Comparator.html" title="class or interface in java.util" class="external-link">Comparator</a><wbr>&lt;<a href="Table.html" title="type parameter in Table">R</a>&gt;</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#comparator(java.lang.String)" class="member-name-link">comparator</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;spec)</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
 <div class="block">Returns a row comparator based on the given specification, which defines the ordering
  columns.</div>
@@ -220,159 +223,156 @@ public interface MyRow {
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
 <div class="block">Copies all columns and states from one row to another.</div>
 </div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default boolean</code></div>
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default void</code></div>
 <div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#delete(org.cojen.tupl.Transaction,R)" class="member-name-link">delete</a><wbr>(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
  <a href="Table.html" title="type parameter in Table">R</a>&nbsp;row)</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
 <div class="block">Unconditionally removes an existing row by primary key.</div>
 </div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default long</code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#deleteAll(org.cojen.tupl.Transaction,java.lang.String,java.lang.Object...)" class="member-name-link">deleteAll</a><wbr>(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
- <a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;query,
- <a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/lang/Object.html" title="class or interface in java.lang" class="external-link">Object</a>...&nbsp;args)</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
-<div class="block">Deletes all rows from this table which match the given query filter.</div>
-</div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default <a href="Table.html" title="type parameter in Table">R</a></code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#exchange(org.cojen.tupl.Transaction,R)" class="member-name-link">exchange</a><wbr>(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default <a href="Table.html" title="type parameter in Table">R</a></code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#exchange(org.cojen.tupl.Transaction,R)" class="member-name-link">exchange</a><wbr>(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
  <a href="Table.html" title="type parameter in Table">R</a>&nbsp;row)</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
 <div class="block">Unconditionally stores the given row, potentially replacing a corresponding row which
  already exists.</div>
 </div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code>boolean</code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#exists(org.cojen.tupl.Transaction,R)" class="member-name-link">exists</a><wbr>(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code>boolean</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#exists(org.cojen.tupl.Transaction,R)" class="member-name-link">exists</a><wbr>(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
  <a href="Table.html" title="type parameter in Table">R</a>&nbsp;row)</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
 <div class="block">Checks if a row exists by searching against the primary key.</div>
 </div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default &lt;T&gt;&nbsp;<a href="Table.html" title="interface in org.cojen.tupl">Table</a><wbr>&lt;T&gt;</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#group(java.lang.String,java.lang.String,java.lang.Class,org.cojen.tupl.Grouper.Factory)" class="member-name-link">group</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;groupBy,
- <a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;orderBy,
- <a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/lang/Class.html" title="class or interface in java.lang" class="external-link">Class</a>&lt;T&gt;&nbsp;targetType,
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default &lt;T&gt;&nbsp;<a href="Table.html" title="interface in org.cojen.tupl">Table</a><wbr>&lt;T&gt;</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#group(java.lang.String,java.lang.String,java.lang.Class,org.cojen.tupl.Grouper.Factory)" class="member-name-link">group</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;groupBy,
+ <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;orderBy,
+ <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/Class.html" title="class or interface in java.lang" class="external-link">Class</a>&lt;T&gt;&nbsp;targetType,
  <a href="Grouper.Factory.html" title="interface in org.cojen.tupl">Grouper.Factory</a>&lt;<a href="Table.html" title="type parameter in Table">R</a>,<wbr>T&gt;&nbsp;factory)</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
 <div class="block">Returns a view backed by this table, which processes groups of source rows into groups
  of target rows.</div>
 </div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default void</code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#insert(org.cojen.tupl.Transaction,R)" class="member-name-link">insert</a><wbr>(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
- <a href="Table.html" title="type parameter in Table">R</a>&nbsp;row)</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
-<div class="block">Stores the given row when a corresponding row doesn't exist.</div>
-</div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code>boolean</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#isClosed()" class="member-name-link">isClosed</a>()</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">&nbsp;</div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code>boolean</code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#isEmpty()" class="member-name-link">isEmpty</a>()</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
-<div class="block">Non-transactionally determines if the table has nothing in it.</div>
-</div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code>boolean</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#isSet(R,java.lang.String)" class="member-name-link">isSet</a><wbr>(<a href="Table.html" title="type parameter in Table">R</a>&nbsp;row,
- <a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;name)</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
-<div class="block">Returns true if the given row column is set.</div>
-</div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab1"><code>static &lt;J&gt;&nbsp;<a href="Table.html" title="interface in org.cojen.tupl">Table</a><wbr>&lt;J&gt;</code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab1"><code><a href="#join(java.lang.Class,java.lang.String,org.cojen.tupl.Table...)" class="member-name-link">join</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/lang/Class.html" title="class or interface in java.lang" class="external-link">Class</a>&lt;J&gt;&nbsp;joinType,
- <a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;spec,
- <a href="Table.html" title="interface in org.cojen.tupl">Table</a>&lt;?&gt;...&nbsp;tables)</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab1">
-<div class="block">Joins tables together into an unmodifiable view.</div>
-</div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code>boolean</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#load(org.cojen.tupl.Transaction,R)" class="member-name-link">load</a><wbr>(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
- <a href="Table.html" title="type parameter in Table">R</a>&nbsp;row)</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
-<div class="block">Fully loads the row by primary key.</div>
-</div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default &lt;T&gt;&nbsp;<a href="Table.html" title="interface in org.cojen.tupl">Table</a><wbr>&lt;T&gt;</code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#map(java.lang.Class,org.cojen.tupl.Mapper)" class="member-name-link">map</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/lang/Class.html" title="class or interface in java.lang" class="external-link">Class</a>&lt;T&gt;&nbsp;targetType,
- <a href="Mapper.html" title="interface in org.cojen.tupl">Mapper</a>&lt;<a href="Table.html" title="type parameter in Table">R</a>,<wbr>T&gt;&nbsp;mapper)</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
-<div class="block">Returns a view backed by this table, whose rows have been mapped to target rows.</div>
-</div>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default void</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#merge(org.cojen.tupl.Transaction,R)" class="member-name-link">merge</a><wbr>(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#insert(org.cojen.tupl.Transaction,R)" class="member-name-link">insert</a><wbr>(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
  <a href="Table.html" title="type parameter in Table">R</a>&nbsp;row)</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
+<div class="block">Stores the given row when a corresponding row doesn't exist.</div>
+</div>
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code>boolean</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#isClosed()" class="member-name-link">isClosed</a>()</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">&nbsp;</div>
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code>boolean</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#isEmpty()" class="member-name-link">isEmpty</a>()</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
+<div class="block">Non-transactionally determines if the table has nothing in it.</div>
+</div>
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code>boolean</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#isSet(R,java.lang.String)" class="member-name-link">isSet</a><wbr>(<a href="Table.html" title="type parameter in Table">R</a>&nbsp;row,
+ <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;name)</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
+<div class="block">Returns true if the given row column is set.</div>
+</div>
+<div class="col-first even-row-color method-summary-table method-summary-table-tab1"><code>static &lt;J&gt;&nbsp;<a href="Table.html" title="interface in org.cojen.tupl">Table</a><wbr>&lt;J&gt;</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab1"><code><a href="#join(java.lang.Class,java.lang.String,org.cojen.tupl.Table...)" class="member-name-link">join</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/Class.html" title="class or interface in java.lang" class="external-link">Class</a>&lt;J&gt;&nbsp;joinType,
+ <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;spec,
+ <a href="Table.html" title="interface in org.cojen.tupl">Table</a>&lt;?&gt;...&nbsp;tables)</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab1">
+<div class="block">Joins tables together into an unmodifiable view.</div>
+</div>
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default void</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#load(org.cojen.tupl.Transaction,R)" class="member-name-link">load</a><wbr>(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
+ <a href="Table.html" title="type parameter in Table">R</a>&nbsp;row)</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
+<div class="block">Fully loads the row by primary key.</div>
+</div>
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default &lt;T&gt;&nbsp;<a href="Table.html" title="interface in org.cojen.tupl">Table</a><wbr>&lt;T&gt;</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#map(java.lang.Class,org.cojen.tupl.Mapper)" class="member-name-link">map</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/Class.html" title="class or interface in java.lang" class="external-link">Class</a>&lt;T&gt;&nbsp;targetType,
+ <a href="Mapper.html" title="interface in org.cojen.tupl">Mapper</a>&lt;<a href="Table.html" title="type parameter in Table">R</a>,<wbr>T&gt;&nbsp;mapper)</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
+<div class="block">Returns a view backed by this table, whose rows have been mapped to target rows.</div>
+</div>
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default void</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#merge(org.cojen.tupl.Transaction,R)" class="member-name-link">merge</a><wbr>(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
+ <a href="Table.html" title="type parameter in Table">R</a>&nbsp;row)</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
 <div class="block">Updates an existing row with the modified columns of the given row, and then loads the
  result back into the given row.</div>
 </div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="Table.html" title="type parameter in Table">R</a></code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#newRow()" class="member-name-link">newRow</a>()</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="Table.html" title="type parameter in Table">R</a></code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#newRow()" class="member-name-link">newRow</a>()</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
 <div class="block">Returns a new row instance with unset columns.</div>
 </div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="Scanner.html" title="interface in org.cojen.tupl">Scanner</a><wbr>&lt;<a href="Table.html" title="type parameter in Table">R</a>&gt;</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#newScanner(org.cojen.tupl.Transaction)" class="member-name-link">newScanner</a><wbr>(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn)</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default <a href="Scanner.html" title="interface in org.cojen.tupl">Scanner</a><wbr>&lt;<a href="Table.html" title="type parameter in Table">R</a>&gt;</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#newScanner(org.cojen.tupl.Transaction)" class="member-name-link">newScanner</a><wbr>(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn)</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
 <div class="block">Returns a new scanner for all rows of this table.</div>
 </div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="Scanner.html" title="interface in org.cojen.tupl">Scanner</a><wbr>&lt;<a href="Table.html" title="type parameter in Table">R</a>&gt;</code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#newScanner(org.cojen.tupl.Transaction,java.lang.String,java.lang.Object...)" class="member-name-link">newScanner</a><wbr>(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
- <a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;query,
- <a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/lang/Object.html" title="class or interface in java.lang" class="external-link">Object</a>...&nbsp;args)</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default <a href="Scanner.html" title="interface in org.cojen.tupl">Scanner</a><wbr>&lt;<a href="Table.html" title="type parameter in Table">R</a>&gt;</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#newScanner(org.cojen.tupl.Transaction,java.lang.String,java.lang.Object...)" class="member-name-link">newScanner</a><wbr>(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
+ <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;query,
+ <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/Object.html" title="class or interface in java.lang" class="external-link">Object</a>...&nbsp;args)</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
 <div class="block">Returns a new scanner for a subset of rows from this table, as specified by the query
  expression.</div>
 </div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default <a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/util/stream/Stream.html" title="class or interface in java.util.stream" class="external-link">Stream</a><wbr>&lt;<a href="Table.html" title="type parameter in Table">R</a>&gt;</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#newStream(org.cojen.tupl.Transaction)" class="member-name-link">newStream</a><wbr>(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn)</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/stream/Stream.html" title="class or interface in java.util.stream" class="external-link">Stream</a><wbr>&lt;<a href="Table.html" title="type parameter in Table">R</a>&gt;</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#newStream(org.cojen.tupl.Transaction)" class="member-name-link">newStream</a><wbr>(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn)</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
 <div class="block">Returns a new stream for all rows of this table.</div>
 </div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default <a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/util/stream/Stream.html" title="class or interface in java.util.stream" class="external-link">Stream</a><wbr>&lt;<a href="Table.html" title="type parameter in Table">R</a>&gt;</code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#newStream(org.cojen.tupl.Transaction,java.lang.String,java.lang.Object...)" class="member-name-link">newStream</a><wbr>(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
- <a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;query,
- <a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/lang/Object.html" title="class or interface in java.lang" class="external-link">Object</a>...&nbsp;args)</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/stream/Stream.html" title="class or interface in java.util.stream" class="external-link">Stream</a><wbr>&lt;<a href="Table.html" title="type parameter in Table">R</a>&gt;</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#newStream(org.cojen.tupl.Transaction,java.lang.String,java.lang.Object...)" class="member-name-link">newStream</a><wbr>(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
+ <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;query,
+ <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/Object.html" title="class or interface in java.lang" class="external-link">Object</a>...&nbsp;args)</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
 <div class="block">Returns a new stream for a subset of rows from this table, as specified by the query
  expression.</div>
 </div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a></code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#newTransaction(org.cojen.tupl.DurabilityMode)" class="member-name-link">newTransaction</a><wbr>(<a href="DurabilityMode.html" title="enum class in org.cojen.tupl">DurabilityMode</a>&nbsp;durabilityMode)</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a></code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#newTransaction(org.cojen.tupl.DurabilityMode)" class="member-name-link">newTransaction</a><wbr>(<a href="DurabilityMode.html" title="enum class in org.cojen.tupl">DurabilityMode</a>&nbsp;durabilityMode)</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
 <div class="block">Returns a new transaction which is compatible with this table.</div>
 </div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default <a href="Updater.html" title="interface in org.cojen.tupl">Updater</a><wbr>&lt;<a href="Table.html" title="type parameter in Table">R</a>&gt;</code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#newUpdater(org.cojen.tupl.Transaction)" class="member-name-link">newUpdater</a><wbr>(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn)</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default <a href="Updater.html" title="interface in org.cojen.tupl">Updater</a><wbr>&lt;<a href="Table.html" title="type parameter in Table">R</a>&gt;</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#newUpdater(org.cojen.tupl.Transaction)" class="member-name-link">newUpdater</a><wbr>(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn)</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
 <div class="block">Returns a new updater for all rows of this table.</div>
 </div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default <a href="Updater.html" title="interface in org.cojen.tupl">Updater</a><wbr>&lt;<a href="Table.html" title="type parameter in Table">R</a>&gt;</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#newUpdater(org.cojen.tupl.Transaction,java.lang.String,java.lang.Object...)" class="member-name-link">newUpdater</a><wbr>(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
- <a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;query,
- <a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/lang/Object.html" title="class or interface in java.lang" class="external-link">Object</a>...&nbsp;args)</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default <a href="Updater.html" title="interface in org.cojen.tupl">Updater</a><wbr>&lt;<a href="Table.html" title="type parameter in Table">R</a>&gt;</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#newUpdater(org.cojen.tupl.Transaction,java.lang.String,java.lang.Object...)" class="member-name-link">newUpdater</a><wbr>(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
+ <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;query,
+ <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/Object.html" title="class or interface in java.lang" class="external-link">Object</a>...&nbsp;args)</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
 <div class="block">Returns a new updater for a subset of rows from this table, as specified by the query
  expression.</div>
 </div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default <a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/util/function/Predicate.html" title="class or interface in java.util.function" class="external-link">Predicate</a><wbr>&lt;<a href="Table.html" title="type parameter in Table">R</a>&gt;</code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#predicate(java.lang.String,java.lang.Object...)" class="member-name-link">predicate</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;query,
- <a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/lang/Object.html" title="class or interface in java.lang" class="external-link">Object</a>...&nbsp;args)</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/function/Predicate.html" title="class or interface in java.util.function" class="external-link">Predicate</a><wbr>&lt;<a href="Table.html" title="type parameter in Table">R</a>&gt;</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#predicate(java.lang.String,java.lang.Object...)" class="member-name-link">predicate</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;query,
+ <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/Object.html" title="class or interface in java.lang" class="external-link">Object</a>...&nbsp;args)</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
 <div class="block">Returns a row predicate for the given query expression and arguments.</div>
 </div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default void</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#replace(org.cojen.tupl.Transaction,R)" class="member-name-link">replace</a><wbr>(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
- <a href="Table.html" title="type parameter in Table">R</a>&nbsp;row)</code></div>
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="Query.html" title="interface in org.cojen.tupl">Query</a><wbr>&lt;<a href="Table.html" title="type parameter in Table">R</a>&gt;</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#query(java.lang.String)" class="member-name-link">query</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;query)</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
+<div class="block">Returns a query for a subset of rows from this table, as specified by the query
+ expression.</div>
+</div>
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default <a href="Query.html" title="interface in org.cojen.tupl">Query</a><wbr>&lt;<a href="Table.html" title="type parameter in Table">R</a>&gt;</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#queryAll()" class="member-name-link">queryAll</a>()</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
+<div class="block">Returns a query for all rows of this table.</div>
+</div>
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default void</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#replace(org.cojen.tupl.Transaction,R)" class="member-name-link">replace</a><wbr>(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
+ <a href="Table.html" title="type parameter in Table">R</a>&nbsp;row)</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
 <div class="block">Stores the given row when a corresponding row already exists.</div>
 </div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/lang/Class.html" title="class or interface in java.lang" class="external-link">Class</a><wbr>&lt;<a href="Table.html" title="type parameter in Table">R</a>&gt;</code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#rowType()" class="member-name-link">rowType</a>()</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
-<div class="block">Returns the interface which defines the rows of this table.</div>
-</div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="diag/QueryPlan.html" title="class in org.cojen.tupl.diag">QueryPlan</a></code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#scannerPlan(org.cojen.tupl.Transaction,java.lang.String,java.lang.Object...)" class="member-name-link">scannerPlan</a><wbr>(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
- <a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;query,
- <a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/lang/Object.html" title="class or interface in java.lang" class="external-link">Object</a>...&nbsp;args)</code></div>
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/Class.html" title="class or interface in java.lang" class="external-link">Class</a><wbr>&lt;<a href="Table.html" title="type parameter in Table">R</a>&gt;</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#rowType()" class="member-name-link">rowType</a>()</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
-<div class="block">Returns a query plan used by <a href="#newScanner(org.cojen.tupl.Transaction,java.lang.String,java.lang.Object...)"><code>newScanner</code></a>.</div>
+<div class="block">Returns the interface which defines the rows of this table.</div>
 </div>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default void</code></div>
 <div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#store(org.cojen.tupl.Transaction,R)" class="member-name-link">store</a><wbr>(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
@@ -381,35 +381,59 @@ public interface MyRow {
 <div class="block">Unconditionally stores the given row, potentially replacing a corresponding row which
  already exists.</div>
 </div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default <a href="diag/QueryPlan.html" title="class in org.cojen.tupl.diag">QueryPlan</a></code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#streamPlan(org.cojen.tupl.Transaction,java.lang.String,java.lang.Object...)" class="member-name-link">streamPlan</a><wbr>(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
- <a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;query,
- <a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/lang/Object.html" title="class or interface in java.lang" class="external-link">Object</a>...&nbsp;args)</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
-<div class="block">Returns a query plan used by <a href="#newStream(org.cojen.tupl.Transaction,java.lang.String,java.lang.Object...)"><code>newStream</code></a>.</div>
-</div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code>void</code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#unsetRow(R)" class="member-name-link">unsetRow</a><wbr>(<a href="Table.html" title="type parameter in Table">R</a>&nbsp;row)</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
-<div class="block">Resets the state of the given row such that all columns are unset.</div>
-</div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default void</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#update(org.cojen.tupl.Transaction,R)" class="member-name-link">update</a><wbr>(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default boolean</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#tryDelete(org.cojen.tupl.Transaction,R)" class="member-name-link">tryDelete</a><wbr>(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
  <a href="Table.html" title="type parameter in Table">R</a>&nbsp;row)</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
+<div class="block">Unconditionally removes an existing row by primary key.</div>
+</div>
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default boolean</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#tryInsert(org.cojen.tupl.Transaction,R)" class="member-name-link">tryInsert</a><wbr>(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
+ <a href="Table.html" title="type parameter in Table">R</a>&nbsp;row)</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
+<div class="block">Stores the given row when a corresponding row doesn't exist.</div>
+</div>
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code>boolean</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#tryLoad(org.cojen.tupl.Transaction,R)" class="member-name-link">tryLoad</a><wbr>(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
+ <a href="Table.html" title="type parameter in Table">R</a>&nbsp;row)</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
+<div class="block">Fully loads the row by primary key.</div>
+</div>
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default boolean</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#tryMerge(org.cojen.tupl.Transaction,R)" class="member-name-link">tryMerge</a><wbr>(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
+ <a href="Table.html" title="type parameter in Table">R</a>&nbsp;row)</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
+<div class="block">Updates an existing row with the modified columns of the given row, and then loads the
+ result back into the given row.</div>
+</div>
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default boolean</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#tryReplace(org.cojen.tupl.Transaction,R)" class="member-name-link">tryReplace</a><wbr>(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
+ <a href="Table.html" title="type parameter in Table">R</a>&nbsp;row)</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
+<div class="block">Stores the given row when a corresponding row already exists.</div>
+</div>
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default boolean</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#tryUpdate(org.cojen.tupl.Transaction,R)" class="member-name-link">tryUpdate</a><wbr>(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
+ <a href="Table.html" title="type parameter in Table">R</a>&nbsp;row)</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
 <div class="block">Updates an existing row with the modified columns of the given row, but the resulting
  row isn't loaded back.</div>
 </div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default <a href="diag/QueryPlan.html" title="class in org.cojen.tupl.diag">QueryPlan</a></code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#updaterPlan(org.cojen.tupl.Transaction,java.lang.String,java.lang.Object...)" class="member-name-link">updaterPlan</a><wbr>(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
- <a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;query,
- <a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/lang/Object.html" title="class or interface in java.lang" class="external-link">Object</a>...&nbsp;args)</code></div>
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code>void</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#unsetRow(R)" class="member-name-link">unsetRow</a><wbr>(<a href="Table.html" title="type parameter in Table">R</a>&nbsp;row)</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
+<div class="block">Resets the state of the given row such that all columns are unset.</div>
+</div>
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default void</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#update(org.cojen.tupl.Transaction,R)" class="member-name-link">update</a><wbr>(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
+ <a href="Table.html" title="type parameter in Table">R</a>&nbsp;row)</code></div>
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
-<div class="block">Returns a query plan used by <a href="#newUpdater(org.cojen.tupl.Transaction,java.lang.String,java.lang.Object...)"><code>newUpdater</code></a>.</div>
+<div class="block">Updates an existing row with the modified columns of the given row, but the resulting
+ row isn't loaded back.</div>
 </div>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default <a href="Table.html" title="interface in org.cojen.tupl">Table</a><wbr>&lt;<a href="Table.html" title="type parameter in Table">R</a>&gt;</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#view(java.lang.String,java.lang.Object...)" class="member-name-link">view</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;query,
- <a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/lang/Object.html" title="class or interface in java.lang" class="external-link">Object</a>...&nbsp;args)</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#view(java.lang.String,java.lang.Object...)" class="member-name-link">view</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;query,
+ <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/Object.html" title="class or interface in java.lang" class="external-link">Object</a>...&nbsp;args)</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
 <div class="block">Returns a view backed by this table, whose rows and natural ordering are defined by the
  given query.</div>
@@ -431,7 +455,7 @@ public interface MyRow {
 <li>
 <section class="detail" id="rowType()">
 <h3>rowType</h3>
-<div class="member-signature"><span class="return-type"><a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/lang/Class.html" title="class or interface in java.lang" class="external-link">Class</a>&lt;<a href="Table.html" title="type parameter in Table">R</a>&gt;</span>&nbsp;<span class="element-name">rowType</span>()</div>
+<div class="member-signature"><span class="return-type"><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/Class.html" title="class or interface in java.lang" class="external-link">Class</a>&lt;<a href="Table.html" title="type parameter in Table">R</a>&gt;</span>&nbsp;<span class="element-name">rowType</span>()</div>
 <div class="block">Returns the interface which defines the rows of this table.</div>
 </section>
 </li>
@@ -475,19 +499,19 @@ public interface MyRow {
 <section class="detail" id="isSet(R,java.lang.String)">
 <h3 id="isSet(java.lang.Object,java.lang.String)">isSet</h3>
 <div class="member-signature"><span class="return-type">boolean</span>&nbsp;<span class="element-name">isSet</span><wbr><span class="parameters">(<a href="Table.html" title="type parameter in Table">R</a>&nbsp;row,
- <a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;name)</span></div>
+ <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;name)</span></div>
 <div class="block">Returns true if the given row column is set.</div>
 <dl class="notes">
 <dt>Throws:</dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/lang/IllegalArgumentException.html" title="class or interface in java.lang" class="external-link">IllegalArgumentException</a></code> - if column is unknown</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/IllegalArgumentException.html" title="class or interface in java.lang" class="external-link">IllegalArgumentException</a></code> - if column is unknown</dd>
 </dl>
 </section>
 </li>
 <li>
 <section class="detail" id="newScanner(org.cojen.tupl.Transaction)">
 <h3>newScanner</h3>
-<div class="member-signature"><span class="return-type"><a href="Scanner.html" title="interface in org.cojen.tupl">Scanner</a>&lt;<a href="Table.html" title="type parameter in Table">R</a>&gt;</span>&nbsp;<span class="element-name">newScanner</span><wbr><span class="parameters">(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn)</span>
-               throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
+<div class="member-signature"><span class="modifiers">default</span>&nbsp;<span class="return-type"><a href="Scanner.html" title="interface in org.cojen.tupl">Scanner</a>&lt;<a href="Table.html" title="type parameter in Table">R</a>&gt;</span>&nbsp;<span class="element-name">newScanner</span><wbr><span class="parameters">(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn)</span>
+                       throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
 <div class="block">Returns a new scanner for all rows of this table.</div>
 <dl class="notes">
 <dt>Parameters:</dt>
@@ -495,24 +519,18 @@ public interface MyRow {
 <dt>Returns:</dt>
 <dd>a new scanner positioned at the first row in the table</dd>
 <dt>Throws:</dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/lang/IllegalStateException.html" title="class or interface in java.lang" class="external-link">IllegalStateException</a></code> - if transaction belongs to another database instance</dd>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
-<dt>See Also:</dt>
-<dd>
-<ul class="tag-list">
-<li><a href="#scannerPlan(org.cojen.tupl.Transaction,java.lang.String,java.lang.Object...)"><code>scannerPlan</code></a></li>
-</ul>
-</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/IllegalStateException.html" title="class or interface in java.lang" class="external-link">IllegalStateException</a></code> - if transaction belongs to another database instance</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
 </dl>
 </section>
 </li>
 <li>
 <section class="detail" id="newScanner(org.cojen.tupl.Transaction,java.lang.String,java.lang.Object...)">
 <h3>newScanner</h3>
-<div class="member-signature"><span class="return-type"><a href="Scanner.html" title="interface in org.cojen.tupl">Scanner</a>&lt;<a href="Table.html" title="type parameter in Table">R</a>&gt;</span>&nbsp;<span class="element-name">newScanner</span><wbr><span class="parameters">(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
- <a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;query,
- <a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/lang/Object.html" title="class or interface in java.lang" class="external-link">Object</a>...&nbsp;args)</span>
-               throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
+<div class="member-signature"><span class="modifiers">default</span>&nbsp;<span class="return-type"><a href="Scanner.html" title="interface in org.cojen.tupl">Scanner</a>&lt;<a href="Table.html" title="type parameter in Table">R</a>&gt;</span>&nbsp;<span class="element-name">newScanner</span><wbr><span class="parameters">(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
+ <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;query,
+ <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/Object.html" title="class or interface in java.lang" class="external-link">Object</a>...&nbsp;args)</span>
+                       throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
 <div class="block">Returns a new scanner for a subset of rows from this table, as specified by the query
  expression.</div>
 <dl class="notes">
@@ -521,14 +539,8 @@ public interface MyRow {
 <dt>Returns:</dt>
 <dd>a new scanner positioned at the first row in the table accepted by the query</dd>
 <dt>Throws:</dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/lang/IllegalStateException.html" title="class or interface in java.lang" class="external-link">IllegalStateException</a></code> - if transaction belongs to another database instance</dd>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
-<dt>See Also:</dt>
-<dd>
-<ul class="tag-list">
-<li><a href="#scannerPlan(org.cojen.tupl.Transaction,java.lang.String,java.lang.Object...)"><code>scannerPlan</code></a></li>
-</ul>
-</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/IllegalStateException.html" title="class or interface in java.lang" class="external-link">IllegalStateException</a></code> - if transaction belongs to another database instance</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
 </dl>
 </section>
 </li>
@@ -536,7 +548,7 @@ public interface MyRow {
 <section class="detail" id="newUpdater(org.cojen.tupl.Transaction)">
 <h3>newUpdater</h3>
 <div class="member-signature"><span class="modifiers">default</span>&nbsp;<span class="return-type"><a href="Updater.html" title="interface in org.cojen.tupl">Updater</a>&lt;<a href="Table.html" title="type parameter in Table">R</a>&gt;</span>&nbsp;<span class="element-name">newUpdater</span><wbr><span class="parameters">(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn)</span>
-                       throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
+                       throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
 <div class="block">Returns a new updater for all rows of this table.
 
  <p>When providing a transaction which acquires locks (or the transaction is null),
@@ -550,14 +562,8 @@ public interface MyRow {
 <dt>Returns:</dt>
 <dd>a new updater positioned at the first row in the table</dd>
 <dt>Throws:</dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/lang/IllegalStateException.html" title="class or interface in java.lang" class="external-link">IllegalStateException</a></code> - if transaction belongs to another database instance</dd>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
-<dt>See Also:</dt>
-<dd>
-<ul class="tag-list">
-<li><a href="#updaterPlan(org.cojen.tupl.Transaction,java.lang.String,java.lang.Object...)"><code>updaterPlan</code></a></li>
-</ul>
-</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/IllegalStateException.html" title="class or interface in java.lang" class="external-link">IllegalStateException</a></code> - if transaction belongs to another database instance</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
 </dl>
 </section>
 </li>
@@ -565,9 +571,9 @@ public interface MyRow {
 <section class="detail" id="newUpdater(org.cojen.tupl.Transaction,java.lang.String,java.lang.Object...)">
 <h3>newUpdater</h3>
 <div class="member-signature"><span class="modifiers">default</span>&nbsp;<span class="return-type"><a href="Updater.html" title="interface in org.cojen.tupl">Updater</a>&lt;<a href="Table.html" title="type parameter in Table">R</a>&gt;</span>&nbsp;<span class="element-name">newUpdater</span><wbr><span class="parameters">(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
- <a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;query,
- <a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/lang/Object.html" title="class or interface in java.lang" class="external-link">Object</a>...&nbsp;args)</span>
-                       throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
+ <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;query,
+ <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/Object.html" title="class or interface in java.lang" class="external-link">Object</a>...&nbsp;args)</span>
+                       throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
 <div class="block">Returns a new updater for a subset of rows from this table, as specified by the query
  expression.
 
@@ -582,21 +588,15 @@ public interface MyRow {
 <dt>Returns:</dt>
 <dd>a new updater positioned at the first row in the table accepted by the query</dd>
 <dt>Throws:</dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/lang/IllegalStateException.html" title="class or interface in java.lang" class="external-link">IllegalStateException</a></code> - if transaction belongs to another database instance</dd>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
-<dt>See Also:</dt>
-<dd>
-<ul class="tag-list">
-<li><a href="#updaterPlan(org.cojen.tupl.Transaction,java.lang.String,java.lang.Object...)"><code>updaterPlan</code></a></li>
-</ul>
-</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/IllegalStateException.html" title="class or interface in java.lang" class="external-link">IllegalStateException</a></code> - if transaction belongs to another database instance</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
 </dl>
 </section>
 </li>
 <li>
 <section class="detail" id="newStream(org.cojen.tupl.Transaction)">
 <h3>newStream</h3>
-<div class="member-signature"><span class="modifiers">default</span>&nbsp;<span class="return-type"><a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/util/stream/Stream.html" title="class or interface in java.util.stream" class="external-link">Stream</a>&lt;<a href="Table.html" title="type parameter in Table">R</a>&gt;</span>&nbsp;<span class="element-name">newStream</span><wbr><span class="parameters">(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn)</span></div>
+<div class="member-signature"><span class="modifiers">default</span>&nbsp;<span class="return-type"><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/stream/Stream.html" title="class or interface in java.util.stream" class="external-link">Stream</a>&lt;<a href="Table.html" title="type parameter in Table">R</a>&gt;</span>&nbsp;<span class="element-name">newStream</span><wbr><span class="parameters">(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn)</span></div>
 <div class="block">Returns a new stream for all rows of this table. The stream must be explicitly closed
  when no longer used, or else it must be used with a try-with-resources statement. If an
  underlying <code>IOException</code> is generated, it's thrown as if it was unchecked.</div>
@@ -606,22 +606,16 @@ public interface MyRow {
 <dt>Returns:</dt>
 <dd>a new stream positioned at the first row in the table</dd>
 <dt>Throws:</dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/lang/IllegalStateException.html" title="class or interface in java.lang" class="external-link">IllegalStateException</a></code> - if transaction belongs to another database instance</dd>
-<dt>See Also:</dt>
-<dd>
-<ul class="tag-list">
-<li><a href="#streamPlan(org.cojen.tupl.Transaction,java.lang.String,java.lang.Object...)"><code>streamPlan</code></a></li>
-</ul>
-</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/IllegalStateException.html" title="class or interface in java.lang" class="external-link">IllegalStateException</a></code> - if transaction belongs to another database instance</dd>
 </dl>
 </section>
 </li>
 <li>
 <section class="detail" id="newStream(org.cojen.tupl.Transaction,java.lang.String,java.lang.Object...)">
 <h3>newStream</h3>
-<div class="member-signature"><span class="modifiers">default</span>&nbsp;<span class="return-type"><a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/util/stream/Stream.html" title="class or interface in java.util.stream" class="external-link">Stream</a>&lt;<a href="Table.html" title="type parameter in Table">R</a>&gt;</span>&nbsp;<span class="element-name">newStream</span><wbr><span class="parameters">(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
- <a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;query,
- <a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/lang/Object.html" title="class or interface in java.lang" class="external-link">Object</a>...&nbsp;args)</span></div>
+<div class="member-signature"><span class="modifiers">default</span>&nbsp;<span class="return-type"><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/stream/Stream.html" title="class or interface in java.util.stream" class="external-link">Stream</a>&lt;<a href="Table.html" title="type parameter in Table">R</a>&gt;</span>&nbsp;<span class="element-name">newStream</span><wbr><span class="parameters">(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
+ <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;query,
+ <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/Object.html" title="class or interface in java.lang" class="external-link">Object</a>...&nbsp;args)</span></div>
 <div class="block">Returns a new stream for a subset of rows from this table, as specified by the query
  expression. The stream must be explicitly closed when no longer used, or else it must be
  used with a try-with-resources statement. If an underlying <code>IOException</code> is
@@ -632,33 +626,32 @@ public interface MyRow {
 <dt>Returns:</dt>
 <dd>a new stream positioned at the first row in the table accepted by the query</dd>
 <dt>Throws:</dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/lang/IllegalStateException.html" title="class or interface in java.lang" class="external-link">IllegalStateException</a></code> - if transaction belongs to another database instance</dd>
-<dt>See Also:</dt>
-<dd>
-<ul class="tag-list">
-<li><a href="#streamPlan(org.cojen.tupl.Transaction,java.lang.String,java.lang.Object...)"><code>streamPlan</code></a></li>
-</ul>
-</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/IllegalStateException.html" title="class or interface in java.lang" class="external-link">IllegalStateException</a></code> - if transaction belongs to another database instance</dd>
 </dl>
 </section>
 </li>
 <li>
-<section class="detail" id="deleteAll(org.cojen.tupl.Transaction,java.lang.String,java.lang.Object...)">
-<h3>deleteAll</h3>
-<div class="member-signature"><span class="modifiers">default</span>&nbsp;<span class="return-type">long</span>&nbsp;<span class="element-name">deleteAll</span><wbr><span class="parameters">(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
- <a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;query,
- <a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/lang/Object.html" title="class or interface in java.lang" class="external-link">Object</a>...&nbsp;args)</span>
-                throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
-<div class="block">Deletes all rows from this table which match the given query filter. Any query
- projection is ignored.</div>
+<section class="detail" id="query(java.lang.String)">
+<h3>query</h3>
+<div class="member-signature"><span class="return-type"><a href="Query.html" title="interface in org.cojen.tupl">Query</a>&lt;<a href="Table.html" title="type parameter in Table">R</a>&gt;</span>&nbsp;<span class="element-name">query</span><wbr><span class="parameters">(<a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;query)</span>
+        throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
+<div class="block">Returns a query for a subset of rows from this table, as specified by the query
+ expression.</div>
 <dl class="notes">
-<dt>Parameters:</dt>
-<dd><code>txn</code> - optional transaction to use; pass null for auto-commit mode against each row</dd>
-<dt>Returns:</dt>
-<dd>the amount of rows deleted</dd>
 <dt>Throws:</dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/lang/IllegalStateException.html" title="class or interface in java.lang" class="external-link">IllegalStateException</a></code> - if transaction belongs to another database instance</dd>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
+</dl>
+</section>
+</li>
+<li>
+<section class="detail" id="queryAll()">
+<h3>queryAll</h3>
+<div class="member-signature"><span class="modifiers">default</span>&nbsp;<span class="return-type"><a href="Query.html" title="interface in org.cojen.tupl">Query</a>&lt;<a href="Table.html" title="type parameter in Table">R</a>&gt;</span>&nbsp;<span class="element-name">queryAll</span>()
+                   throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
+<div class="block">Returns a query for all rows of this table.</div>
+<dl class="notes">
+<dt>Throws:</dt>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
 </dl>
 </section>
 </li>
@@ -666,14 +659,14 @@ public interface MyRow {
 <section class="detail" id="anyRows(org.cojen.tupl.Transaction)">
 <h3>anyRows</h3>
 <div class="member-signature"><span class="modifiers">default</span>&nbsp;<span class="return-type">boolean</span>&nbsp;<span class="element-name">anyRows</span><wbr><span class="parameters">(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn)</span>
-                 throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
+                 throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
 <div class="block">Returns true if any rows exist in this table.</div>
 <dl class="notes">
 <dt>Parameters:</dt>
 <dd><code>txn</code> - optional transaction to use; pass null for auto-commit mode</dd>
 <dt>Throws:</dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/lang/IllegalStateException.html" title="class or interface in java.lang" class="external-link">IllegalStateException</a></code> - if transaction belongs to another database instance</dd>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/IllegalStateException.html" title="class or interface in java.lang" class="external-link">IllegalStateException</a></code> - if transaction belongs to another database instance</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
 <dt>See Also:</dt>
 <dd>
 <ul class="tag-list">
@@ -687,17 +680,17 @@ public interface MyRow {
 <section class="detail" id="anyRows(org.cojen.tupl.Transaction,java.lang.String,java.lang.Object...)">
 <h3>anyRows</h3>
 <div class="member-signature"><span class="modifiers">default</span>&nbsp;<span class="return-type">boolean</span>&nbsp;<span class="element-name">anyRows</span><wbr><span class="parameters">(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
- <a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;query,
- <a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/lang/Object.html" title="class or interface in java.lang" class="external-link">Object</a>...&nbsp;args)</span>
-                 throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
+ <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;query,
+ <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/Object.html" title="class or interface in java.lang" class="external-link">Object</a>...&nbsp;args)</span>
+                 throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
 <div class="block">Returns true if a subset of rows from this table exists, as specified by the query
  expression.</div>
 <dl class="notes">
 <dt>Parameters:</dt>
 <dd><code>txn</code> - optional transaction to use; pass null for auto-commit mode</dd>
 <dt>Throws:</dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/lang/IllegalStateException.html" title="class or interface in java.lang" class="external-link">IllegalStateException</a></code> - if transaction belongs to another database instance</dd>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/IllegalStateException.html" title="class or interface in java.lang" class="external-link">IllegalStateException</a></code> - if transaction belongs to another database instance</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
 </dl>
 </section>
 </li>
@@ -713,12 +706,12 @@ public interface MyRow {
 <section class="detail" id="isEmpty()">
 <h3>isEmpty</h3>
 <div class="member-signature"><span class="return-type">boolean</span>&nbsp;<span class="element-name">isEmpty</span>()
-         throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
+         throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
 <div class="block">Non-transactionally determines if the table has nothing in it. A return value of true
  guarantees that the table is empty, but false negatives are possible.</div>
 <dl class="notes">
 <dt>Throws:</dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
 <dt>See Also:</dt>
 <dd>
 <ul class="tag-list">
@@ -731,16 +724,31 @@ public interface MyRow {
 <li>
 <section class="detail" id="load(org.cojen.tupl.Transaction,R)">
 <h3 id="load(org.cojen.tupl.Transaction,java.lang.Object)">load</h3>
-<div class="member-signature"><span class="return-type">boolean</span>&nbsp;<span class="element-name">load</span><wbr><span class="parameters">(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
+<div class="member-signature"><span class="modifiers">default</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="element-name">load</span><wbr><span class="parameters">(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
  <a href="Table.html" title="type parameter in Table">R</a>&nbsp;row)</span>
-      throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
+           throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
+<div class="block">Fully loads the row by primary key.</div>
+<dl class="notes">
+<dt>Throws:</dt>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/IllegalStateException.html" title="class or interface in java.lang" class="external-link">IllegalStateException</a></code> - if primary key isn't fully specified</dd>
+<dd><code><a href="NoSuchRowException.html" title="class in org.cojen.tupl">NoSuchRowException</a></code> - if a corresponding row doesn't exist</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
+</dl>
+</section>
+</li>
+<li>
+<section class="detail" id="tryLoad(org.cojen.tupl.Transaction,R)">
+<h3 id="tryLoad(org.cojen.tupl.Transaction,java.lang.Object)">tryLoad</h3>
+<div class="member-signature"><span class="return-type">boolean</span>&nbsp;<span class="element-name">tryLoad</span><wbr><span class="parameters">(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
+ <a href="Table.html" title="type parameter in Table">R</a>&nbsp;row)</span>
+         throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
 <div class="block">Fully loads the row by primary key.</div>
 <dl class="notes">
 <dt>Returns:</dt>
 <dd>false if a corresponding row doesn't exist</dd>
 <dt>Throws:</dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/lang/IllegalStateException.html" title="class or interface in java.lang" class="external-link">IllegalStateException</a></code> - if primary key isn't fully specified</dd>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/IllegalStateException.html" title="class or interface in java.lang" class="external-link">IllegalStateException</a></code> - if primary key isn't fully specified</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
 </dl>
 </section>
 </li>
@@ -749,7 +757,7 @@ public interface MyRow {
 <h3 id="exists(org.cojen.tupl.Transaction,java.lang.Object)">exists</h3>
 <div class="member-signature"><span class="return-type">boolean</span>&nbsp;<span class="element-name">exists</span><wbr><span class="parameters">(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
  <a href="Table.html" title="type parameter in Table">R</a>&nbsp;row)</span>
-        throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
+        throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
 <div class="block">Checks if a row exists by searching against the primary key. This method should be
  called only if the row doesn't need to be loaded or stored &mdash; calling exists and
  then calling a load or store method is typically less efficient than skipping the exists
@@ -758,8 +766,8 @@ public interface MyRow {
 <dt>Returns:</dt>
 <dd>false if a corresponding row doesn't exist</dd>
 <dt>Throws:</dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/lang/IllegalStateException.html" title="class or interface in java.lang" class="external-link">IllegalStateException</a></code> - if primary key isn't fully specified</dd>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/IllegalStateException.html" title="class or interface in java.lang" class="external-link">IllegalStateException</a></code> - if primary key isn't fully specified</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
 </dl>
 </section>
 </li>
@@ -768,14 +776,14 @@ public interface MyRow {
 <h3 id="store(org.cojen.tupl.Transaction,java.lang.Object)">store</h3>
 <div class="member-signature"><span class="modifiers">default</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="element-name">store</span><wbr><span class="parameters">(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
  <a href="Table.html" title="type parameter in Table">R</a>&nbsp;row)</span>
-            throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
+            throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
 <div class="block">Unconditionally stores the given row, potentially replacing a corresponding row which
  already exists.</div>
 <dl class="notes">
 <dt>Throws:</dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/lang/IllegalStateException.html" title="class or interface in java.lang" class="external-link">IllegalStateException</a></code> - if any required columns aren't set</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/IllegalStateException.html" title="class or interface in java.lang" class="external-link">IllegalStateException</a></code> - if any required columns aren't set</dd>
 <dd><code><a href="UniqueConstraintException.html" title="class in org.cojen.tupl">UniqueConstraintException</a></code> - if a conflicting alternate key exists</dd>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
 </dl>
 </section>
 </li>
@@ -784,16 +792,16 @@ public interface MyRow {
 <h3 id="exchange(org.cojen.tupl.Transaction,java.lang.Object)">exchange</h3>
 <div class="member-signature"><span class="modifiers">default</span>&nbsp;<span class="return-type"><a href="Table.html" title="type parameter in Table">R</a></span>&nbsp;<span class="element-name">exchange</span><wbr><span class="parameters">(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
  <a href="Table.html" title="type parameter in Table">R</a>&nbsp;row)</span>
-            throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
+            throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
 <div class="block">Unconditionally stores the given row, potentially replacing a corresponding row which
  already exists.</div>
 <dl class="notes">
 <dt>Returns:</dt>
 <dd>a copy of the replaced row, or null if none existed</dd>
 <dt>Throws:</dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/lang/IllegalStateException.html" title="class or interface in java.lang" class="external-link">IllegalStateException</a></code> - if any required columns aren't set</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/IllegalStateException.html" title="class or interface in java.lang" class="external-link">IllegalStateException</a></code> - if any required columns aren't set</dd>
 <dd><code><a href="UniqueConstraintException.html" title="class in org.cojen.tupl">UniqueConstraintException</a></code> - if a conflicting alternate key exists</dd>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
 </dl>
 </section>
 </li>
@@ -802,13 +810,30 @@ public interface MyRow {
 <h3 id="insert(org.cojen.tupl.Transaction,java.lang.Object)">insert</h3>
 <div class="member-signature"><span class="modifiers">default</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="element-name">insert</span><wbr><span class="parameters">(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
  <a href="Table.html" title="type parameter in Table">R</a>&nbsp;row)</span>
-             throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
+             throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
 <div class="block">Stores the given row when a corresponding row doesn't exist.</div>
 <dl class="notes">
 <dt>Throws:</dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/lang/IllegalStateException.html" title="class or interface in java.lang" class="external-link">IllegalStateException</a></code> - if any required columns aren't set</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/IllegalStateException.html" title="class or interface in java.lang" class="external-link">IllegalStateException</a></code> - if any required columns aren't set</dd>
 <dd><code><a href="UniqueConstraintException.html" title="class in org.cojen.tupl">UniqueConstraintException</a></code> - if a conflicting primary or alternate key exists</dd>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
+</dl>
+</section>
+</li>
+<li>
+<section class="detail" id="tryInsert(org.cojen.tupl.Transaction,R)">
+<h3 id="tryInsert(org.cojen.tupl.Transaction,java.lang.Object)">tryInsert</h3>
+<div class="member-signature"><span class="modifiers">default</span>&nbsp;<span class="return-type">boolean</span>&nbsp;<span class="element-name">tryInsert</span><wbr><span class="parameters">(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
+ <a href="Table.html" title="type parameter in Table">R</a>&nbsp;row)</span>
+                   throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
+<div class="block">Stores the given row when a corresponding row doesn't exist.</div>
+<dl class="notes">
+<dt>Returns:</dt>
+<dd>false if a corresponding row already exists and nothing was inserted</dd>
+<dt>Throws:</dt>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/IllegalStateException.html" title="class or interface in java.lang" class="external-link">IllegalStateException</a></code> - if any required columns aren't set</dd>
+<dd><code><a href="UniqueConstraintException.html" title="class in org.cojen.tupl">UniqueConstraintException</a></code> - if a conflicting alternate key exists</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
 </dl>
 </section>
 </li>
@@ -817,14 +842,31 @@ public interface MyRow {
 <h3 id="replace(org.cojen.tupl.Transaction,java.lang.Object)">replace</h3>
 <div class="member-signature"><span class="modifiers">default</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="element-name">replace</span><wbr><span class="parameters">(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
  <a href="Table.html" title="type parameter in Table">R</a>&nbsp;row)</span>
-              throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
+              throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
 <div class="block">Stores the given row when a corresponding row already exists.</div>
 <dl class="notes">
 <dt>Throws:</dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/lang/IllegalStateException.html" title="class or interface in java.lang" class="external-link">IllegalStateException</a></code> - if any required columns aren't set</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/IllegalStateException.html" title="class or interface in java.lang" class="external-link">IllegalStateException</a></code> - if any required columns aren't set</dd>
 <dd><code><a href="NoSuchRowException.html" title="class in org.cojen.tupl">NoSuchRowException</a></code> - if a corresponding row doesn't exist</dd>
 <dd><code><a href="UniqueConstraintException.html" title="class in org.cojen.tupl">UniqueConstraintException</a></code> - if a conflicting alternate key exists</dd>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
+</dl>
+</section>
+</li>
+<li>
+<section class="detail" id="tryReplace(org.cojen.tupl.Transaction,R)">
+<h3 id="tryReplace(org.cojen.tupl.Transaction,java.lang.Object)">tryReplace</h3>
+<div class="member-signature"><span class="modifiers">default</span>&nbsp;<span class="return-type">boolean</span>&nbsp;<span class="element-name">tryReplace</span><wbr><span class="parameters">(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
+ <a href="Table.html" title="type parameter in Table">R</a>&nbsp;row)</span>
+                    throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
+<div class="block">Stores the given row when a corresponding row already exists.</div>
+<dl class="notes">
+<dt>Returns:</dt>
+<dd>false if a corresponding row doesn't exist</dd>
+<dt>Throws:</dt>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/IllegalStateException.html" title="class or interface in java.lang" class="external-link">IllegalStateException</a></code> - if any required columns aren't set</dd>
+<dd><code><a href="UniqueConstraintException.html" title="class in org.cojen.tupl">UniqueConstraintException</a></code> - if a conflicting alternate key exists</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
 </dl>
 </section>
 </li>
@@ -833,15 +875,33 @@ public interface MyRow {
 <h3 id="update(org.cojen.tupl.Transaction,java.lang.Object)">update</h3>
 <div class="member-signature"><span class="modifiers">default</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="element-name">update</span><wbr><span class="parameters">(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
  <a href="Table.html" title="type parameter in Table">R</a>&nbsp;row)</span>
-             throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
+             throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
 <div class="block">Updates an existing row with the modified columns of the given row, but the resulting
  row isn't loaded back.</div>
 <dl class="notes">
 <dt>Throws:</dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/lang/IllegalStateException.html" title="class or interface in java.lang" class="external-link">IllegalStateException</a></code> - if primary key isn't fully specified</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/IllegalStateException.html" title="class or interface in java.lang" class="external-link">IllegalStateException</a></code> - if primary key isn't fully specified</dd>
 <dd><code><a href="NoSuchRowException.html" title="class in org.cojen.tupl">NoSuchRowException</a></code> - if a corresponding row doesn't exist</dd>
 <dd><code><a href="UniqueConstraintException.html" title="class in org.cojen.tupl">UniqueConstraintException</a></code> - if a conflicting alternate key exists</dd>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
+</dl>
+</section>
+</li>
+<li>
+<section class="detail" id="tryUpdate(org.cojen.tupl.Transaction,R)">
+<h3 id="tryUpdate(org.cojen.tupl.Transaction,java.lang.Object)">tryUpdate</h3>
+<div class="member-signature"><span class="modifiers">default</span>&nbsp;<span class="return-type">boolean</span>&nbsp;<span class="element-name">tryUpdate</span><wbr><span class="parameters">(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
+ <a href="Table.html" title="type parameter in Table">R</a>&nbsp;row)</span>
+                   throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
+<div class="block">Updates an existing row with the modified columns of the given row, but the resulting
+ row isn't loaded back.</div>
+<dl class="notes">
+<dt>Returns:</dt>
+<dd>false if a corresponding row doesn't exist</dd>
+<dt>Throws:</dt>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/IllegalStateException.html" title="class or interface in java.lang" class="external-link">IllegalStateException</a></code> - if primary key isn't fully specified</dd>
+<dd><code><a href="UniqueConstraintException.html" title="class in org.cojen.tupl">UniqueConstraintException</a></code> - if a conflicting alternate key exists</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
 </dl>
 </section>
 </li>
@@ -850,39 +910,72 @@ public interface MyRow {
 <h3 id="merge(org.cojen.tupl.Transaction,java.lang.Object)">merge</h3>
 <div class="member-signature"><span class="modifiers">default</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="element-name">merge</span><wbr><span class="parameters">(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
  <a href="Table.html" title="type parameter in Table">R</a>&nbsp;row)</span>
-            throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
+            throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
 <div class="block">Updates an existing row with the modified columns of the given row, and then loads the
  result back into the given row.</div>
 <dl class="notes">
 <dt>Throws:</dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/lang/IllegalStateException.html" title="class or interface in java.lang" class="external-link">IllegalStateException</a></code> - if primary key isn't fully specified</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/IllegalStateException.html" title="class or interface in java.lang" class="external-link">IllegalStateException</a></code> - if primary key isn't fully specified</dd>
 <dd><code><a href="NoSuchRowException.html" title="class in org.cojen.tupl">NoSuchRowException</a></code> - if a corresponding row doesn't exist</dd>
 <dd><code><a href="UniqueConstraintException.html" title="class in org.cojen.tupl">UniqueConstraintException</a></code> - if a conflicting alternate key exists</dd>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
+</dl>
+</section>
+</li>
+<li>
+<section class="detail" id="tryMerge(org.cojen.tupl.Transaction,R)">
+<h3 id="tryMerge(org.cojen.tupl.Transaction,java.lang.Object)">tryMerge</h3>
+<div class="member-signature"><span class="modifiers">default</span>&nbsp;<span class="return-type">boolean</span>&nbsp;<span class="element-name">tryMerge</span><wbr><span class="parameters">(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
+ <a href="Table.html" title="type parameter in Table">R</a>&nbsp;row)</span>
+                  throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
+<div class="block">Updates an existing row with the modified columns of the given row, and then loads the
+ result back into the given row.</div>
+<dl class="notes">
+<dt>Returns:</dt>
+<dd>false if a corresponding row doesn't exist</dd>
+<dt>Throws:</dt>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/IllegalStateException.html" title="class or interface in java.lang" class="external-link">IllegalStateException</a></code> - if primary key isn't fully specified</dd>
+<dd><code><a href="UniqueConstraintException.html" title="class in org.cojen.tupl">UniqueConstraintException</a></code> - if a conflicting alternate key exists</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
 </dl>
 </section>
 </li>
 <li>
 <section class="detail" id="delete(org.cojen.tupl.Transaction,R)">
 <h3 id="delete(org.cojen.tupl.Transaction,java.lang.Object)">delete</h3>
-<div class="member-signature"><span class="modifiers">default</span>&nbsp;<span class="return-type">boolean</span>&nbsp;<span class="element-name">delete</span><wbr><span class="parameters">(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
+<div class="member-signature"><span class="modifiers">default</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="element-name">delete</span><wbr><span class="parameters">(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
  <a href="Table.html" title="type parameter in Table">R</a>&nbsp;row)</span>
-                throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
+             throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
+<div class="block">Unconditionally removes an existing row by primary key.</div>
+<dl class="notes">
+<dt>Throws:</dt>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/IllegalStateException.html" title="class or interface in java.lang" class="external-link">IllegalStateException</a></code> - if primary key isn't fully specified</dd>
+<dd><code><a href="NoSuchRowException.html" title="class in org.cojen.tupl">NoSuchRowException</a></code> - if a corresponding row doesn't exist</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
+</dl>
+</section>
+</li>
+<li>
+<section class="detail" id="tryDelete(org.cojen.tupl.Transaction,R)">
+<h3 id="tryDelete(org.cojen.tupl.Transaction,java.lang.Object)">tryDelete</h3>
+<div class="member-signature"><span class="modifiers">default</span>&nbsp;<span class="return-type">boolean</span>&nbsp;<span class="element-name">tryDelete</span><wbr><span class="parameters">(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
+ <a href="Table.html" title="type parameter in Table">R</a>&nbsp;row)</span>
+                   throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
 <div class="block">Unconditionally removes an existing row by primary key.</div>
 <dl class="notes">
 <dt>Returns:</dt>
 <dd>false if a corresponding row doesn't exist</dd>
 <dt>Throws:</dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/lang/IllegalStateException.html" title="class or interface in java.lang" class="external-link">IllegalStateException</a></code> - if primary key isn't fully specified</dd>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/IllegalStateException.html" title="class or interface in java.lang" class="external-link">IllegalStateException</a></code> - if primary key isn't fully specified</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
 </dl>
 </section>
 </li>
 <li>
 <section class="detail" id="view(java.lang.String,java.lang.Object...)">
 <h3>view</h3>
-<div class="member-signature"><span class="modifiers">default</span>&nbsp;<span class="return-type"><a href="Table.html" title="interface in org.cojen.tupl">Table</a>&lt;<a href="Table.html" title="type parameter in Table">R</a>&gt;</span>&nbsp;<span class="element-name">view</span><wbr><span class="parameters">(<a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;query,
- <a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/lang/Object.html" title="class or interface in java.lang" class="external-link">Object</a>...&nbsp;args)</span></div>
+<div class="member-signature"><span class="modifiers">default</span>&nbsp;<span class="return-type"><a href="Table.html" title="interface in org.cojen.tupl">Table</a>&lt;<a href="Table.html" title="type parameter in Table">R</a>&gt;</span>&nbsp;<span class="element-name">view</span><wbr><span class="parameters">(<a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;query,
+ <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/Object.html" title="class or interface in java.lang" class="external-link">Object</a>...&nbsp;args)</span></div>
 <div class="block">Returns a view backed by this table, whose rows and natural ordering are defined by the
  given query. The returned table instance will throw a <a href="ViewConstraintException.html" title="class in org.cojen.tupl"><code>ViewConstraintException</code></a>
  for operations against rows which are restricted by the query, and closing the table has
@@ -892,21 +985,21 @@ public interface MyRow {
 <li>
 <section class="detail" id="map(java.lang.Class,org.cojen.tupl.Mapper)">
 <h3>map</h3>
-<div class="member-signature"><span class="modifiers">default</span>&nbsp;<span class="type-parameters">&lt;T&gt;</span>&nbsp;<span class="return-type"><a href="Table.html" title="interface in org.cojen.tupl">Table</a>&lt;T&gt;</span>&nbsp;<span class="element-name">map</span><wbr><span class="parameters">(<a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/lang/Class.html" title="class or interface in java.lang" class="external-link">Class</a>&lt;T&gt;&nbsp;targetType,
+<div class="member-signature"><span class="modifiers">default</span>&nbsp;<span class="type-parameters">&lt;T&gt;</span>&nbsp;<span class="return-type"><a href="Table.html" title="interface in org.cojen.tupl">Table</a>&lt;T&gt;</span>&nbsp;<span class="element-name">map</span><wbr><span class="parameters">(<a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/Class.html" title="class or interface in java.lang" class="external-link">Class</a>&lt;T&gt;&nbsp;targetType,
  <a href="Mapper.html" title="interface in org.cojen.tupl">Mapper</a>&lt;<a href="Table.html" title="type parameter in Table">R</a>,<wbr>T&gt;&nbsp;mapper)</span></div>
 <div class="block">Returns a view backed by this table, whose rows have been mapped to target rows. The
  returned table instance will throw a <a href="ViewConstraintException.html" title="class in org.cojen.tupl"><code>ViewConstraintException</code></a> for operations
  against rows not supported by the mapper, and closing the table has no effect.</div>
 <dl class="notes">
 <dt>Throws:</dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/lang/NullPointerException.html" title="class or interface in java.lang" class="external-link">NullPointerException</a></code> - if any parameter is null</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/NullPointerException.html" title="class or interface in java.lang" class="external-link">NullPointerException</a></code> - if any parameter is null</dd>
 </dl>
 </section>
 </li>
 <li>
 <section class="detail" id="aggregate(java.lang.Class,org.cojen.tupl.Aggregator.Factory)">
 <h3>aggregate</h3>
-<div class="member-signature"><span class="modifiers">default</span>&nbsp;<span class="type-parameters">&lt;T&gt;</span>&nbsp;<span class="return-type"><a href="Table.html" title="interface in org.cojen.tupl">Table</a>&lt;T&gt;</span>&nbsp;<span class="element-name">aggregate</span><wbr><span class="parameters">(<a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/lang/Class.html" title="class or interface in java.lang" class="external-link">Class</a>&lt;T&gt;&nbsp;targetType,
+<div class="member-signature"><span class="modifiers">default</span>&nbsp;<span class="type-parameters">&lt;T&gt;</span>&nbsp;<span class="return-type"><a href="Table.html" title="interface in org.cojen.tupl">Table</a>&lt;T&gt;</span>&nbsp;<span class="element-name">aggregate</span><wbr><span class="parameters">(<a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/Class.html" title="class or interface in java.lang" class="external-link">Class</a>&lt;T&gt;&nbsp;targetType,
  <a href="Aggregator.Factory.html" title="interface in org.cojen.tupl">Aggregator.Factory</a>&lt;<a href="Table.html" title="type parameter in Table">R</a>,<wbr>T&gt;&nbsp;factory)</span></div>
 <div class="block">Returns a view backed by this table, consisting of aggregate rows, which are grouped by
  the <a href="PrimaryKey.html" title="annotation interface in org.cojen.tupl"><code>primary key</code></a> of the target type. The primary key columns must
@@ -915,17 +1008,17 @@ public interface MyRow {
  table. The view returned by this method is unmodifiable, and closing it has no effect.</div>
 <dl class="notes">
 <dt>Throws:</dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/lang/NullPointerException.html" title="class or interface in java.lang" class="external-link">NullPointerException</a></code> - if any parameter is null</dd>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/lang/IllegalArgumentException.html" title="class or interface in java.lang" class="external-link">IllegalArgumentException</a></code> - if target primary key is malformed</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/NullPointerException.html" title="class or interface in java.lang" class="external-link">NullPointerException</a></code> - if any parameter is null</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/IllegalArgumentException.html" title="class or interface in java.lang" class="external-link">IllegalArgumentException</a></code> - if target primary key is malformed</dd>
 </dl>
 </section>
 </li>
 <li>
 <section class="detail" id="group(java.lang.String,java.lang.String,java.lang.Class,org.cojen.tupl.Grouper.Factory)">
 <h3>group</h3>
-<div class="member-signature"><span class="modifiers">default</span>&nbsp;<span class="type-parameters">&lt;T&gt;</span>&nbsp;<span class="return-type"><a href="Table.html" title="interface in org.cojen.tupl">Table</a>&lt;T&gt;</span>&nbsp;<span class="element-name">group</span><wbr><span class="parameters">(<a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;groupBy,
- <a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;orderBy,
- <a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/lang/Class.html" title="class or interface in java.lang" class="external-link">Class</a>&lt;T&gt;&nbsp;targetType,
+<div class="member-signature"><span class="modifiers">default</span>&nbsp;<span class="type-parameters">&lt;T&gt;</span>&nbsp;<span class="return-type"><a href="Table.html" title="interface in org.cojen.tupl">Table</a>&lt;T&gt;</span>&nbsp;<span class="element-name">group</span><wbr><span class="parameters">(<a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;groupBy,
+ <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;orderBy,
+ <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/Class.html" title="class or interface in java.lang" class="external-link">Class</a>&lt;T&gt;&nbsp;targetType,
  <a href="Grouper.Factory.html" title="interface in org.cojen.tupl">Grouper.Factory</a>&lt;<a href="Table.html" title="type parameter in Table">R</a>,<wbr>T&gt;&nbsp;factory)</span></div>
 <div class="block">Returns a view backed by this table, which processes groups of source rows into groups
  of target rows. The view returned by this method is unmodifiable, closing it has no
@@ -938,17 +1031,17 @@ public interface MyRow {
 <dd><code>orderBy</code> - ordering specification within each group; pass an empty string if
  undefined</dd>
 <dt>Throws:</dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/lang/NullPointerException.html" title="class or interface in java.lang" class="external-link">NullPointerException</a></code> - if any parameter is null</dd>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/lang/IllegalArgumentException.html" title="class or interface in java.lang" class="external-link">IllegalArgumentException</a></code> - if groupBy or orderBy specification is malformed</dd>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/lang/IllegalStateException.html" title="class or interface in java.lang" class="external-link">IllegalStateException</a></code> - if any groupBy or orderBy columns don't exist</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/NullPointerException.html" title="class or interface in java.lang" class="external-link">NullPointerException</a></code> - if any parameter is null</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/IllegalArgumentException.html" title="class or interface in java.lang" class="external-link">IllegalArgumentException</a></code> - if groupBy or orderBy specification is malformed</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/IllegalStateException.html" title="class or interface in java.lang" class="external-link">IllegalStateException</a></code> - if any groupBy or orderBy columns don't exist</dd>
 </dl>
 </section>
 </li>
 <li>
 <section class="detail" id="join(java.lang.Class,java.lang.String,org.cojen.tupl.Table...)">
 <h3>join</h3>
-<div class="member-signature"><span class="modifiers">static</span>&nbsp;<span class="type-parameters">&lt;J&gt;</span>&nbsp;<span class="return-type"><a href="Table.html" title="interface in org.cojen.tupl">Table</a>&lt;J&gt;</span>&nbsp;<span class="element-name">join</span><wbr><span class="parameters">(<a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/lang/Class.html" title="class or interface in java.lang" class="external-link">Class</a>&lt;J&gt;&nbsp;joinType,
- <a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;spec,
+<div class="member-signature"><span class="modifiers">static</span>&nbsp;<span class="type-parameters">&lt;J&gt;</span>&nbsp;<span class="return-type"><a href="Table.html" title="interface in org.cojen.tupl">Table</a>&lt;J&gt;</span>&nbsp;<span class="element-name">join</span><wbr><span class="parameters">(<a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/Class.html" title="class or interface in java.lang" class="external-link">Class</a>&lt;J&gt;&nbsp;joinType,
+ <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;spec,
  <a href="Table.html" title="interface in org.cojen.tupl">Table</a>&lt;?&gt;...&nbsp;tables)</span></div>
 <div class="block">Joins tables together into an unmodifiable view. The returned view doesn't have any
  primary key, and so operations which act upon one aren't supported. In addition, closing
@@ -984,8 +1077,8 @@ public interface MyRow {
 <dt>Parameters:</dt>
 <dd><code>spec</code> - join specification</dd>
 <dt>Throws:</dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/lang/NullPointerException.html" title="class or interface in java.lang" class="external-link">NullPointerException</a></code> - if any parameters are null</dd>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/lang/IllegalArgumentException.html" title="class or interface in java.lang" class="external-link">IllegalArgumentException</a></code> - if join type is malformed, or if the specification is
+<dd><code><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/NullPointerException.html" title="class or interface in java.lang" class="external-link">NullPointerException</a></code> - if any parameters are null</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/IllegalArgumentException.html" title="class or interface in java.lang" class="external-link">IllegalArgumentException</a></code> - if join type is malformed, or if the specification is
  malformed, or if there are any table matching issues</dd>
 <dt>See Also:</dt>
 <dd>
@@ -999,7 +1092,7 @@ public interface MyRow {
 <li>
 <section class="detail" id="comparator(java.lang.String)">
 <h3>comparator</h3>
-<div class="member-signature"><span class="modifiers">default</span>&nbsp;<span class="return-type"><a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/util/Comparator.html" title="class or interface in java.util" class="external-link">Comparator</a>&lt;<a href="Table.html" title="type parameter in Table">R</a>&gt;</span>&nbsp;<span class="element-name">comparator</span><wbr><span class="parameters">(<a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;spec)</span></div>
+<div class="member-signature"><span class="modifiers">default</span>&nbsp;<span class="return-type"><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/Comparator.html" title="class or interface in java.util" class="external-link">Comparator</a>&lt;<a href="Table.html" title="type parameter in Table">R</a>&gt;</span>&nbsp;<span class="element-name">comparator</span><wbr><span class="parameters">(<a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;spec)</span></div>
 <div class="block">Returns a row comparator based on the given specification, which defines the ordering
  columns. Each column name is prefixed with '+' or '-', to indicate ascending or
  descending order. For example: <code>"+lastName+firstName-birthdate"</code>. By default,
@@ -1007,85 +1100,31 @@ public interface MyRow {
  nulls to be treated as lower than non-nulls.</div>
 <dl class="notes">
 <dt>Throws:</dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/lang/IllegalArgumentException.html" title="class or interface in java.lang" class="external-link">IllegalArgumentException</a></code> - if the specification is malformed</dd>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/lang/IllegalStateException.html" title="class or interface in java.lang" class="external-link">IllegalStateException</a></code> - if the specification refers to non-existent columns</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/IllegalArgumentException.html" title="class or interface in java.lang" class="external-link">IllegalArgumentException</a></code> - if the specification is malformed</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/IllegalStateException.html" title="class or interface in java.lang" class="external-link">IllegalStateException</a></code> - if the specification refers to non-existent columns</dd>
 </dl>
 </section>
 </li>
 <li>
 <section class="detail" id="predicate(java.lang.String,java.lang.Object...)">
 <h3>predicate</h3>
-<div class="member-signature"><span class="modifiers">default</span>&nbsp;<span class="return-type"><a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/util/function/Predicate.html" title="class or interface in java.util.function" class="external-link">Predicate</a>&lt;<a href="Table.html" title="type parameter in Table">R</a>&gt;</span>&nbsp;<span class="element-name">predicate</span><wbr><span class="parameters">(<a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;query,
- <a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/lang/Object.html" title="class or interface in java.lang" class="external-link">Object</a>...&nbsp;args)</span></div>
+<div class="member-signature"><span class="modifiers">default</span>&nbsp;<span class="return-type"><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/function/Predicate.html" title="class or interface in java.util.function" class="external-link">Predicate</a>&lt;<a href="Table.html" title="type parameter in Table">R</a>&gt;</span>&nbsp;<span class="element-name">predicate</span><wbr><span class="parameters">(<a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;query,
+ <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/Object.html" title="class or interface in java.lang" class="external-link">Object</a>...&nbsp;args)</span></div>
 <div class="block">Returns a row predicate for the given query expression and arguments.</div>
-</section>
-</li>
-<li>
-<section class="detail" id="scannerPlan(org.cojen.tupl.Transaction,java.lang.String,java.lang.Object...)">
-<h3>scannerPlan</h3>
-<div class="member-signature"><span class="return-type"><a href="diag/QueryPlan.html" title="class in org.cojen.tupl.diag">QueryPlan</a></span>&nbsp;<span class="element-name">scannerPlan</span><wbr><span class="parameters">(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
- <a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;query,
- <a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/lang/Object.html" title="class or interface in java.lang" class="external-link">Object</a>...&nbsp;args)</span>
-               throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
-<div class="block">Returns a query plan used by <a href="#newScanner(org.cojen.tupl.Transaction,java.lang.String,java.lang.Object...)"><code>newScanner</code></a>.</div>
-<dl class="notes">
-<dt>Parameters:</dt>
-<dd><code>txn</code> - optional transaction to be used; pass null for auto-commit mode</dd>
-<dd><code>query</code> - optional query expression</dd>
-<dd><code>args</code> - optional query arguments</dd>
-<dt>Throws:</dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
-</dl>
-</section>
-</li>
-<li>
-<section class="detail" id="updaterPlan(org.cojen.tupl.Transaction,java.lang.String,java.lang.Object...)">
-<h3>updaterPlan</h3>
-<div class="member-signature"><span class="modifiers">default</span>&nbsp;<span class="return-type"><a href="diag/QueryPlan.html" title="class in org.cojen.tupl.diag">QueryPlan</a></span>&nbsp;<span class="element-name">updaterPlan</span><wbr><span class="parameters">(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
- <a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;query,
- <a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/lang/Object.html" title="class or interface in java.lang" class="external-link">Object</a>...&nbsp;args)</span>
-                       throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
-<div class="block">Returns a query plan used by <a href="#newUpdater(org.cojen.tupl.Transaction,java.lang.String,java.lang.Object...)"><code>newUpdater</code></a>.</div>
-<dl class="notes">
-<dt>Parameters:</dt>
-<dd><code>txn</code> - optional transaction to be used; pass null for auto-commit mode</dd>
-<dd><code>query</code> - optional query expression</dd>
-<dd><code>args</code> - optional query arguments</dd>
-<dt>Throws:</dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
-</dl>
-</section>
-</li>
-<li>
-<section class="detail" id="streamPlan(org.cojen.tupl.Transaction,java.lang.String,java.lang.Object...)">
-<h3>streamPlan</h3>
-<div class="member-signature"><span class="modifiers">default</span>&nbsp;<span class="return-type"><a href="diag/QueryPlan.html" title="class in org.cojen.tupl.diag">QueryPlan</a></span>&nbsp;<span class="element-name">streamPlan</span><wbr><span class="parameters">(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
- <a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;query,
- <a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/lang/Object.html" title="class or interface in java.lang" class="external-link">Object</a>...&nbsp;args)</span>
-                      throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
-<div class="block">Returns a query plan used by <a href="#newStream(org.cojen.tupl.Transaction,java.lang.String,java.lang.Object...)"><code>newStream</code></a>.</div>
-<dl class="notes">
-<dt>Parameters:</dt>
-<dd><code>txn</code> - optional transaction to be used; pass null for auto-commit mode</dd>
-<dd><code>query</code> - optional query expression</dd>
-<dd><code>args</code> - optional query arguments</dd>
-<dt>Throws:</dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
-</dl>
 </section>
 </li>
 <li>
 <section class="detail" id="close()">
 <h3>close</h3>
 <div class="member-signature"><span class="return-type">void</span>&nbsp;<span class="element-name">close</span>()
-    throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
+    throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
 <dl class="notes">
 <dt>Specified by:</dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/lang/AutoCloseable.html#close()" title="class or interface in java.lang" class="external-link">close</a></code>&nbsp;in interface&nbsp;<code><a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/lang/AutoCloseable.html" title="class or interface in java.lang" class="external-link">AutoCloseable</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/AutoCloseable.html#close()" title="class or interface in java.lang" class="external-link">close</a></code>&nbsp;in interface&nbsp;<code><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/AutoCloseable.html" title="class or interface in java.lang" class="external-link">AutoCloseable</a></code></dd>
 <dt>Specified by:</dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/io/Closeable.html#close()" title="class or interface in java.io" class="external-link">close</a></code>&nbsp;in interface&nbsp;<code><a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/io/Closeable.html" title="class or interface in java.io" class="external-link">Closeable</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/io/Closeable.html#close()" title="class or interface in java.io" class="external-link">close</a></code>&nbsp;in interface&nbsp;<code><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/io/Closeable.html" title="class or interface in java.io" class="external-link">Closeable</a></code></dd>
 <dt>Throws:</dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
 <dt>See Also:</dt>
 <dd>
 <ul class="tag-list">
@@ -1110,7 +1149,7 @@ public interface MyRow {
 </main>
 <footer role="contentinfo">
 <hr>
-<p class="legal-copy"><small>Copyright &#169; 2011&#x2013;2023 <a href="https://github.com/cojen">Cojen</a>. All rights reserved.</small></p>
+<p class="legal-copy"><small>Copyright &#169; 2011&#x2013;2024 <a href="https://github.com/cojen">Cojen</a>. All rights reserved.</small></p>
 </footer>
 </div>
 </div>

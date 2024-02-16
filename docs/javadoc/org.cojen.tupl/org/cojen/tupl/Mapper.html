@@ -150,7 +150,7 @@ loadScripts(document, 'script');</script>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
 <div class="block">Override this method to customize the mapper's query plan.</div>
 </div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default <a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a></code></div>
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a></code></div>
 <div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#sourceProjection()" class="member-name-link">sourceProjection</a>()</code></div>
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
 <div class="block">Returns a comma-separated list of source columns which are needed by this <code>
@@ -175,7 +175,7 @@ loadScripts(document, 'script');</script>
 <h3 id="map(java.lang.Object,java.lang.Object)">map</h3>
 <div class="member-signature"><span class="return-type"><a href="Mapper.html" title="type parameter in Mapper">T</a></span>&nbsp;<span class="element-name">map</span><wbr><span class="parameters">(<a href="Mapper.html" title="type parameter in Mapper">R</a>&nbsp;source,
  <a href="Mapper.html" title="type parameter in Mapper">T</a>&nbsp;target)</span>
-throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
+throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
 <div class="block">Maps source rows to target rows.</div>
 <dl class="notes">
 <dt>Parameters:</dt>
@@ -184,7 +184,7 @@ throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/
 <dt>Returns:</dt>
 <dd>null if filtered out</dd>
 <dt>Throws:</dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
 </dl>
 </section>
 </li>
@@ -239,9 +239,10 @@ throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/
 <li>
 <section class="detail" id="sourceProjection()">
 <h3>sourceProjection</h3>
-<div class="member-signature"><span class="modifiers">default</span>&nbsp;<span class="return-type"><a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a></span>&nbsp;<span class="element-name">sourceProjection</span>()</div>
+<div class="member-signature"><span class="modifiers">default</span>&nbsp;<span class="return-type"><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a></span>&nbsp;<span class="element-name">sourceProjection</span>()</div>
 <div class="block">Returns a comma-separated list of source columns which are needed by this <code>
- Mapper</code>. Null is returned by default, which indicates that all columns are needed.</div>
+ Mapper</code>. Null is returned by default, which indicates that all columns are needed. The
+ implementation of this method must return a static constant.</div>
 </section>
 </li>
 <li>
@@ -266,7 +267,7 @@ throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/
 </main>
 <footer role="contentinfo">
 <hr>
-<p class="legal-copy"><small>Copyright &#169; 2011&#x2013;2023 <a href="https://github.com/cojen">Cojen</a>. All rights reserved.</small></p>
+<p class="legal-copy"><small>Copyright &#169; 2011&#x2013;2024 <a href="https://github.com/cojen">Cojen</a>. All rights reserved.</small></p>
 </footer>
 </div>
 </div>

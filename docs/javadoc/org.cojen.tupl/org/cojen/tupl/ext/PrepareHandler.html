@@ -145,7 +145,7 @@ extends <a href="Handler.html" title="interface in org.cojen.tupl.ext">Handler</
 <h3>prepare</h3>
 <div class="member-signature"><span class="return-type">void</span>&nbsp;<span class="element-name">prepare</span><wbr><span class="parameters">(<a href="../Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
  byte[]&nbsp;message)</span>
-      throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
+      throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
 <div class="block">Called to prepare a transaction or to recover one. Exclusive locks acquired by the
  transaction are always recovered, whether they were acquired explicitly or
  automatically. Shared and upgradable locks aren't recovered.
@@ -171,8 +171,8 @@ extends <a href="Handler.html" title="interface in org.cojen.tupl.ext">Handler</
 <dd><code>txn</code> - transaction the prepare applies to, which can be modified</dd>
 <dd><code>message</code> - optional message</dd>
 <dt>Throws:</dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/lang/NullPointerException.html" title="class or interface in java.lang" class="external-link">NullPointerException</a></code> - if transaction or message is null</dd>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/NullPointerException.html" title="class or interface in java.lang" class="external-link">NullPointerException</a></code> - if transaction or message is null</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
 </dl>
 </section>
 </li>
@@ -181,7 +181,7 @@ extends <a href="Handler.html" title="interface in org.cojen.tupl.ext">Handler</
 <h3>prepareCommit</h3>
 <div class="member-signature"><span class="return-type">void</span>&nbsp;<span class="element-name">prepareCommit</span><wbr><span class="parameters">(<a href="../Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
  byte[]&nbsp;message)</span>
-            throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
+            throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
 <div class="block">A prepare variant intended to be called by a two-phase commit coordinator after all
  participants have prepared their transactions. All changes made up to the prepare are
  effectively committed, their locks are released, and the changes cannot be rolled
@@ -203,8 +203,8 @@ extends <a href="Handler.html" title="interface in org.cojen.tupl.ext">Handler</
 <dd><code>txn</code> - transaction the prepare applies to, which can be modified</dd>
 <dd><code>message</code> - optional message</dd>
 <dt>Throws:</dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/lang/NullPointerException.html" title="class or interface in java.lang" class="external-link">NullPointerException</a></code> - if transaction or message is null</dd>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/NullPointerException.html" title="class or interface in java.lang" class="external-link">NullPointerException</a></code> - if transaction or message is null</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
 </dl>
 </section>
 </li>
@@ -217,7 +217,7 @@ extends <a href="Handler.html" title="interface in org.cojen.tupl.ext">Handler</
 </main>
 <footer role="contentinfo">
 <hr>
-<p class="legal-copy"><small>Copyright &#169; 2011&#x2013;2023 <a href="https://github.com/cojen">Cojen</a>. All rights reserved.</small></p>
+<p class="legal-copy"><small>Copyright &#169; 2011&#x2013;2024 <a href="https://github.com/cojen">Cojen</a>. All rights reserved.</small></p>
 </footer>
 </div>
 </div>
