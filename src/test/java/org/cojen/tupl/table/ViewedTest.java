@@ -86,11 +86,11 @@ public class ViewedTest {
 
         var row = view.newRow();
         row.id(1);
-        assertTrue(view.load(null, row));
+        view.load(null, row);
         assertTrue(view.exists(null, row));
         row.name("hello");
         view.store(null, row);
-        assertTrue(view.load(null, row));
+        view.load(null, row);
         assertEquals("hello", row.name());
         row.name("world");
         var row2 = view.exchange(null, row);
@@ -101,7 +101,7 @@ public class ViewedTest {
         } catch (UniqueConstraintException e) {
         }
         view.replace(null, row2);
-        assertTrue(view.load(null, row2));
+        view.load(null, row2);
         assertEquals("{id=1, num=2, name=hello}", row2.toString());
         row = view.newRow();
         row.id(2);
@@ -109,7 +109,7 @@ public class ViewedTest {
         view.update(null, row);
         row = view.newRow();
         row.id(2);
-        assertTrue(view.load(null, row));
+        view.load(null, row);
         assertEquals("{id=2, num=999, name=name-2}", row.toString());
         row = view.newRow();
         row.id(2);
@@ -117,7 +117,7 @@ public class ViewedTest {
         view.merge(null, row);
         assertEquals("{id=2, num=9999, name=name-2}", row.toString());
         var txn = view.newTransaction(null);
-        assertTrue(view.delete(txn, row2));
+        view.delete(txn, row2);
         assertFalse(view.exists(txn, row2));
         txn.reset();
 
@@ -220,7 +220,7 @@ public class ViewedTest {
         var row = view.newRow();
 
         row.id(3);
-        assertTrue(view.load(null, row));
+        view.load(null, row);
         assertTrue(view.exists(null, row));
 
         row.id(1);
@@ -237,7 +237,7 @@ public class ViewedTest {
 
         row.id(100);
         row.name("xxx");
-        assertFalse(view.load(null, row));
+        assertFalse(view.tryLoad(null, row));
         assertEquals("{*id=100}", row.toString());
 
         row.name("name-x");
@@ -249,7 +249,7 @@ public class ViewedTest {
         }
         row.num(1);
         view.store(null, row);
-        assertTrue(view.load(null, row));
+        view.load(null, row);
         assertEquals("{id=100, num=1, name=name-x}", row.toString());
 
         row.num(111);
@@ -324,9 +324,9 @@ public class ViewedTest {
         }
         row.id(300);
         row.num(100);
-        assertFalse(view.delete(null, row));
+        assertFalse(view.tryDelete(null, row));
         row.id(3);
-        assertTrue(view.delete(null, row));
+        view.delete(null, row);
 
         try (var scanner = view.newScanner(null)) {
             row = scanner.row();
@@ -453,7 +453,7 @@ public class ViewedTest {
         var row = view.newRow();
 
         row.id(8);
-        assertTrue(view.load(null, row));
+        view.load(null, row);
         assertTrue(view.exists(null, row));
 
         row.id(1);
@@ -495,7 +495,7 @@ public class ViewedTest {
 
         var row = view.newRow();
         row.id(1);
-        assertTrue(view.load(null, row));
+        view.load(null, row);
         assertEquals("{id=1, name=name-1}", row.toString());
         assertTrue(view.exists(null, row));
         row.name("hello");
@@ -504,7 +504,7 @@ public class ViewedTest {
             fail();
         } catch (ViewConstraintException e) {
         }
-        assertTrue(view.load(null, row));
+        view.load(null, row);
         assertEquals("name-1", row.name());
         try {
             view.exchange(null, row);
@@ -535,7 +535,7 @@ public class ViewedTest {
         view.update(null, row);
         row = view.newRow();
         row.id(2);
-        assertTrue(view.load(null, row));
+        view.load(null, row);
         assertEquals("{id=2, name=hello}", row.toString());
         row = view.newRow();
         row.id(2);
@@ -577,7 +577,7 @@ public class ViewedTest {
         var row = view.newRow();
 
         row.id(3);
-        assertTrue(view.load(null, row));
+        view.load(null, row);
         assertEquals("{id=3, name=name-3}", row.toString());
         assertTrue(view.exists(null, row));
 
@@ -595,7 +595,7 @@ public class ViewedTest {
 
         row.id(100);
         row.name("xxx");
-        assertFalse(view.load(null, row));
+        assertFalse(view.tryLoad(null, row));
         assertEquals("{*id=100}", row.toString());
 
         row.name("name-x");
@@ -646,7 +646,7 @@ public class ViewedTest {
         var row = view.newRow();
 
         row.id(9);
-        assertTrue(view.load(null, row));
+        view.load(null, row);
         assertEquals("{id=9, name=name-9}", row.toString());
     }
 

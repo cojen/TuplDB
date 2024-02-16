@@ -3,8 +3,10 @@ Changelog
 
 v1.8.0
 ------
-* The insert, replace, update, and merge methods now throw UniqueConstraintException or
-  NoSuchRowException instead of returning false. The declared return type is now void.
+
+* The load, insert, replace, update, merge, and delete methods now throw a special exception
+  instead of returning false. The declared return type is now void. Each of these methods has a
+  corresponding "try" variant which supports the original behavior.
 
 v1.7.0 (2023-03-04)
 ------

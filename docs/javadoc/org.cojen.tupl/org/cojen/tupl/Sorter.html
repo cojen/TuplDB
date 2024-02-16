@@ -188,15 +188,15 @@ loadScripts(document, 'script');</script>
 <h3>add</h3>
 <div class="member-signature"><span class="return-type">void</span>&nbsp;<span class="element-name">add</span><wbr><span class="parameters">(byte[]&nbsp;key,
  byte[]&nbsp;value)</span>
-  throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
+  throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
 <div class="block">Add an entry into the sorter. If multiple entries are added with matching keys, only the
  last one added is kept. After a sorter is fully finished or reset, no entries exist in
  the sorter, and new entries can be added for another sort.</div>
 <dl class="notes">
 <dt>Throws:</dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/lang/IllegalStateException.html" title="class or interface in java.lang" class="external-link">IllegalStateException</a></code> - if sort is finishing in another thread</dd>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/io/InterruptedIOException.html" title="class or interface in java.io" class="external-link">InterruptedIOException</a></code> - if reset by another thread</dd>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/IllegalStateException.html" title="class or interface in java.lang" class="external-link">IllegalStateException</a></code> - if sort is finishing in another thread</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/io/InterruptedIOException.html" title="class or interface in java.io" class="external-link">InterruptedIOException</a></code> - if reset by another thread</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
 </dl>
 </section>
 </li>
@@ -206,7 +206,7 @@ loadScripts(document, 'script');</script>
 <div class="member-signature"><span class="return-type">void</span>&nbsp;<span class="element-name">addBatch</span><wbr><span class="parameters">(byte[][]&nbsp;kvPairs,
  int&nbsp;offset,
  int&nbsp;size)</span>
-       throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
+       throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
 <div class="block">Add a batch of entries into the sorter, which can be more efficient than adding each
  entry separately. If multiple entries are added with matching keys, only the last one
  added is kept. After a sorter is fully finished or reset, no entries exist in the
@@ -217,9 +217,9 @@ loadScripts(document, 'script');</script>
 <dd><code>offset</code> - offset into key-value pair array</dd>
 <dd><code>size</code> - batch size (number of key-value pairs)</dd>
 <dt>Throws:</dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/lang/IllegalStateException.html" title="class or interface in java.lang" class="external-link">IllegalStateException</a></code> - if sort is finishing in another thread</dd>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/io/InterruptedIOException.html" title="class or interface in java.io" class="external-link">InterruptedIOException</a></code> - if reset by another thread</dd>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/IllegalStateException.html" title="class or interface in java.lang" class="external-link">IllegalStateException</a></code> - if sort is finishing in another thread</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/io/InterruptedIOException.html" title="class or interface in java.io" class="external-link">InterruptedIOException</a></code> - if reset by another thread</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
 </dl>
 </section>
 </li>
@@ -227,16 +227,16 @@ loadScripts(document, 'script');</script>
 <section class="detail" id="addAll(org.cojen.tupl.Scanner)">
 <h3>addAll</h3>
 <div class="member-signature"><span class="modifiers">default</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="element-name">addAll</span><wbr><span class="parameters">(<a href="Scanner.html" title="interface in org.cojen.tupl">Scanner</a>&lt;<a href="Entry.html" title="interface in org.cojen.tupl">Entry</a>&gt;&nbsp;s)</span>
-             throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
+             throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
 <div class="block">Add all remaining items from the given scanner into the sorter. If multiple entries are
  added with matching keys, only the last one added is kept. After a sorter is fully
  finished or reset, no entries exist in the sorter, and new entries can be added for
  another sort.</div>
 <dl class="notes">
 <dt>Throws:</dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/lang/IllegalStateException.html" title="class or interface in java.lang" class="external-link">IllegalStateException</a></code> - if sort is finishing in another thread</dd>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/io/InterruptedIOException.html" title="class or interface in java.io" class="external-link">InterruptedIOException</a></code> - if reset by another thread</dd>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/IllegalStateException.html" title="class or interface in java.lang" class="external-link">IllegalStateException</a></code> - if sort is finishing in another thread</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/io/InterruptedIOException.html" title="class or interface in java.io" class="external-link">InterruptedIOException</a></code> - if reset by another thread</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
 </dl>
 </section>
 </li>
@@ -244,13 +244,13 @@ loadScripts(document, 'script');</script>
 <section class="detail" id="finish()">
 <h3>finish</h3>
 <div class="member-signature"><span class="return-type"><a href="Index.html" title="interface in org.cojen.tupl">Index</a></span>&nbsp;<span class="element-name">finish</span>()
-      throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
+      throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
 <div class="block">Finish sorting the entries, and return a temporary index with the results.</div>
 <dl class="notes">
 <dt>Throws:</dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/lang/IllegalStateException.html" title="class or interface in java.lang" class="external-link">IllegalStateException</a></code> - if sort is finishing in another thread</dd>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/io/InterruptedIOException.html" title="class or interface in java.io" class="external-link">InterruptedIOException</a></code> - if reset by another thread</dd>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/IllegalStateException.html" title="class or interface in java.lang" class="external-link">IllegalStateException</a></code> - if sort is finishing in another thread</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/io/InterruptedIOException.html" title="class or interface in java.io" class="external-link">InterruptedIOException</a></code> - if reset by another thread</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
 <dt>See Also:</dt>
 <dd>
 <ul class="tag-list">
@@ -264,16 +264,16 @@ loadScripts(document, 'script');</script>
 <section class="detail" id="finishScan()">
 <h3>finishScan</h3>
 <div class="member-signature"><span class="return-type"><a href="Scanner.html" title="interface in org.cojen.tupl">Scanner</a>&lt;<a href="Entry.html" title="interface in org.cojen.tupl">Entry</a>&gt;</span>&nbsp;<span class="element-name">finishScan</span>()
-                   throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
+                   throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
 <div class="block">Returns a single-use Scanner over the sorted results, which deletes temporary resources
  as it goes. Invoking this method causes the sort to be asynchronously finished, and the
  Scanner might block waiting for entries to become available. Closing the Scanner before
  the sort is finished interrupts it.</div>
 <dl class="notes">
 <dt>Throws:</dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/lang/IllegalStateException.html" title="class or interface in java.lang" class="external-link">IllegalStateException</a></code> - if sort is finishing in another thread</dd>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/io/InterruptedIOException.html" title="class or interface in java.io" class="external-link">InterruptedIOException</a></code> - if reset by another thread</dd>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/IllegalStateException.html" title="class or interface in java.lang" class="external-link">IllegalStateException</a></code> - if sort is finishing in another thread</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/io/InterruptedIOException.html" title="class or interface in java.io" class="external-link">InterruptedIOException</a></code> - if reset by another thread</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
 </dl>
 </section>
 </li>
@@ -281,7 +281,7 @@ loadScripts(document, 'script');</script>
 <section class="detail" id="finishScan(org.cojen.tupl.Scanner)">
 <h3>finishScan</h3>
 <div class="member-signature"><span class="return-type"><a href="Scanner.html" title="interface in org.cojen.tupl">Scanner</a>&lt;<a href="Entry.html" title="interface in org.cojen.tupl">Entry</a>&gt;</span>&nbsp;<span class="element-name">finishScan</span><wbr><span class="parameters">(<a href="Scanner.html" title="interface in org.cojen.tupl">Scanner</a>&lt;<a href="Entry.html" title="interface in org.cojen.tupl">Entry</a>&gt;&nbsp;s)</span>
-                   throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
+                   throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
 <div class="block">Returns a single-use Scanner over the sorted results, which deletes temporary resources
  as it goes. Invoking this method causes the sort to be asynchronously finished, and the
  Scanner might block waiting for entries to become available. Closing the Scanner before
@@ -290,9 +290,9 @@ loadScripts(document, 'script');</script>
 <dt>Parameters:</dt>
 <dd><code>s</code> - source of additional entries to add to the sorter before finishing</dd>
 <dt>Throws:</dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/lang/IllegalStateException.html" title="class or interface in java.lang" class="external-link">IllegalStateException</a></code> - if sort is finishing in another thread</dd>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/io/InterruptedIOException.html" title="class or interface in java.io" class="external-link">InterruptedIOException</a></code> - if reset by another thread</dd>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/IllegalStateException.html" title="class or interface in java.lang" class="external-link">IllegalStateException</a></code> - if sort is finishing in another thread</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/io/InterruptedIOException.html" title="class or interface in java.io" class="external-link">InterruptedIOException</a></code> - if reset by another thread</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
 </dl>
 </section>
 </li>
@@ -300,13 +300,13 @@ loadScripts(document, 'script');</script>
 <section class="detail" id="finishScanReverse()">
 <h3>finishScanReverse</h3>
 <div class="member-signature"><span class="return-type"><a href="Scanner.html" title="interface in org.cojen.tupl">Scanner</a>&lt;<a href="Entry.html" title="interface in org.cojen.tupl">Entry</a>&gt;</span>&nbsp;<span class="element-name">finishScanReverse</span>()
-                          throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
+                          throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
 <div class="block">Same as <a href="#finishScan()"><code>finishScan</code></a>, but in reverse order.</div>
 <dl class="notes">
 <dt>Throws:</dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/lang/IllegalStateException.html" title="class or interface in java.lang" class="external-link">IllegalStateException</a></code> - if sort is finishing in another thread</dd>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/io/InterruptedIOException.html" title="class or interface in java.io" class="external-link">InterruptedIOException</a></code> - if reset by another thread</dd>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/IllegalStateException.html" title="class or interface in java.lang" class="external-link">IllegalStateException</a></code> - if sort is finishing in another thread</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/io/InterruptedIOException.html" title="class or interface in java.io" class="external-link">InterruptedIOException</a></code> - if reset by another thread</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
 </dl>
 </section>
 </li>
@@ -314,15 +314,15 @@ loadScripts(document, 'script');</script>
 <section class="detail" id="finishScanReverse(org.cojen.tupl.Scanner)">
 <h3>finishScanReverse</h3>
 <div class="member-signature"><span class="return-type"><a href="Scanner.html" title="interface in org.cojen.tupl">Scanner</a>&lt;<a href="Entry.html" title="interface in org.cojen.tupl">Entry</a>&gt;</span>&nbsp;<span class="element-name">finishScanReverse</span><wbr><span class="parameters">(<a href="Scanner.html" title="interface in org.cojen.tupl">Scanner</a>&lt;<a href="Entry.html" title="interface in org.cojen.tupl">Entry</a>&gt;&nbsp;s)</span>
-                          throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
+                          throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
 <div class="block">Same as <a href="#finishScan(org.cojen.tupl.Scanner)"><code>finishScan</code></a>, but in reverse order.</div>
 <dl class="notes">
 <dt>Parameters:</dt>
 <dd><code>s</code> - source of additional entries to add to the sorter before finishing</dd>
 <dt>Throws:</dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/lang/IllegalStateException.html" title="class or interface in java.lang" class="external-link">IllegalStateException</a></code> - if sort is finishing in another thread</dd>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/io/InterruptedIOException.html" title="class or interface in java.io" class="external-link">InterruptedIOException</a></code> - if reset by another thread</dd>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/IllegalStateException.html" title="class or interface in java.lang" class="external-link">IllegalStateException</a></code> - if sort is finishing in another thread</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/io/InterruptedIOException.html" title="class or interface in java.io" class="external-link">InterruptedIOException</a></code> - if reset by another thread</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
 </dl>
 </section>
 </li>
@@ -338,12 +338,12 @@ loadScripts(document, 'script');</script>
 <section class="detail" id="reset()">
 <h3>reset</h3>
 <div class="member-signature"><span class="return-type">void</span>&nbsp;<span class="element-name">reset</span>()
-    throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
+    throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
 <div class="block">Discards all the entries and frees up space in the database. Can be called to interrupt
  any sort which is in progress.</div>
 <dl class="notes">
 <dt>Throws:</dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
 </dl>
 </section>
 </li>
@@ -356,7 +356,7 @@ loadScripts(document, 'script');</script>
 </main>
 <footer role="contentinfo">
 <hr>
-<p class="legal-copy"><small>Copyright &#169; 2011&#x2013;2023 <a href="https://github.com/cojen">Cojen</a>. All rights reserved.</small></p>
+<p class="legal-copy"><small>Copyright &#169; 2011&#x2013;2024 <a href="https://github.com/cojen">Cojen</a>. All rights reserved.</small></p>
 </footer>
 </div>
 </div>

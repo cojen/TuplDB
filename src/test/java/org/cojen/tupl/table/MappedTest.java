@@ -285,7 +285,7 @@ public class MappedTest {
         assertFalse(mapped.exists(null, row));
         assertEquals("{id=1, num=123, str=hello}", row.toString()); // no side effect
 
-        assertFalse(mapped.load(null, row));
+        assertFalse(mapped.tryLoad(null, row));
         // When the load fails, only the target columns which map to source primary key columns
         // should still be set. This guards against accidentally using a row when the caller
         // failed to check the load return value. Loading against a plain table behaves in a
@@ -300,7 +300,7 @@ public class MappedTest {
 
         assertFalse(mapped.isEmpty());
 
-        assertTrue(mapped.load(null, row));
+        mapped.load(null, row);
         assertEquals("{id=2, num=234, str=123}", row.toString());
 
         assertTrue(mapped.exists(null, row));
@@ -320,14 +320,14 @@ public class MappedTest {
 
         row.str("2");
         mapped.store(null, row);
-        assertTrue(mapped.load(null, row));
+        mapped.load(null, row);
         assertEquals("{id=2, num=234, str=2}", row.toString());
 
         row.num(111);
         TestRow old = mapped.exchange(null, row);
         assertEquals("{id=2, num=111, str=2}", row.toString());
         assertEquals("{id=2, num=234, str=2}", old.toString());
-        assertTrue(mapped.load(null, row));
+        mapped.load(null, row);
         assertEquals("{id=2, num=111, str=2}", row.toString());
 
         row = mapped.newRow();
@@ -344,14 +344,14 @@ public class MappedTest {
         row.str("9999");
         assertNull(mapped.exchange(null, row));
         assertEquals("{id=999, num=999, str=9999}", row.toString());
-        assertTrue(mapped.load(null, row));
+        mapped.load(null, row);
         assertEquals("{id=999, num=999, str=9999}", row.toString());
 
         row.str("hello");
         mTable.store(null, row);
         row.str("8");
         assertNull(mapped.exchange(null, row));
-        assertTrue(mapped.load(null, row));
+        mapped.load(null, row);
         assertEquals("{id=999, num=999, str=8}", row.toString());
 
         row = mapped.newRow();
@@ -360,13 +360,13 @@ public class MappedTest {
         row.str("1000");
         mapped.insert(null, row);
         assertEquals("{id=1000, num=1000, str=1000}", row.toString());
-        assertTrue(mapped.load(null, row));
+        mapped.load(null, row);
         assertEquals("{id=1000, num=1000, str=1000}", row.toString());
 
         row.num(1);
         mapped.replace(null, row);
         assertEquals("{id=1000, num=1, str=1000}", row.toString());
-        assertTrue(mapped.load(null, row));
+        mapped.load(null, row);
         assertEquals("{id=1000, num=1, str=1000}", row.toString());
 
         row.id(0);
@@ -381,7 +381,7 @@ public class MappedTest {
         row.num(2);
         mapped.update(null, row);
         assertEquals("{id=1000, num=2, str=1000}", row.toString());
-        assertTrue(mapped.load(null, row));
+        mapped.load(null, row);
         assertEquals("{id=1000, num=2, str=1000}", row.toString());
 
         row.id(0);
@@ -398,7 +398,7 @@ public class MappedTest {
         row.num(99);
         mapped.merge(null, row);
         assertEquals("{id=1000, num=99, str=1000}", row.toString());
-        assertTrue(mapped.load(null, row));
+        mapped.load(null, row);
         assertEquals("{id=1000, num=99, str=1000}", row.toString());
 
         row.id(0);
@@ -418,10 +418,10 @@ public class MappedTest {
         mapped.merge(null, row);
         assertEquals("{}", row.toString());
         row.id(1000);
-        assertFalse(mapped.load(null, row));
+        assertFalse(mapped.tryLoad(null, row));
 
-        assertTrue(mapped.delete(null, row));
-        assertFalse(mapped.delete(null, row));
+        assertTrue(mapped.tryDelete(null, row));
+        assertFalse(mapped.tryDelete(null, row));
 
         try (var scanner = mapped.newScanner(null)) {
             row = scanner.row();

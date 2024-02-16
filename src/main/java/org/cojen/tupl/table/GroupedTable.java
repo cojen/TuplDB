@@ -188,7 +188,7 @@ public abstract class GroupedTable<S, T> extends AbstractMappedTable<S, T>
     }
 
     @Override
-    public final boolean load(Transaction txn, T row) throws IOException {
+    public final boolean tryLoad(Transaction txn, T row) throws IOException {
         throw new ViewConstraintException();
     }
 

@@ -176,17 +176,17 @@ public final class RemoteProxyMaker {
     private MethodHandles.Lookup makeDirect() {
         addRequireSet("requireAllSet", mRowGen.info.allColumns);
 
-        addByKeyDirectMethod("load");
+        addByKeyDirectMethod("tryLoad");
         addByKeyDirectMethod("exists");
-        addByKeyDirectMethod("delete");
+        addByKeyDirectMethod("tryDelete");
 
         addStoreDirectMethod("store");
         addStoreDirectMethod("exchange");
-        addStoreDirectMethod("insert");
-        addStoreDirectMethod("replace");
+        addStoreDirectMethod("tryInsert");
+        addStoreDirectMethod("tryReplace");
 
-        addUpdateDirectMethod("update");
-        addUpdateDirectMethod("merge");
+        addUpdateDirectMethod("tryUpdate");
+        addUpdateDirectMethod("tryMerge");
 
         // The Updater methods don't currently act upon encoded bytes directly but instead act
         // upon resolved row objects. This is somewhat less efficient, but a remote Updater
@@ -262,7 +262,7 @@ public final class RemoteProxyMaker {
     }
 
     /**
-     * @param variant "load", "exists", or "delete"
+     * @param variant "tryLoad", "exists", or "tryDelete"
      */
     private void addByKeyDirectMethod(String variant) {
         MethodMaker mm = mClassMaker.addMethod
@@ -282,7 +282,7 @@ public final class RemoteProxyMaker {
 
         var valueVar = makerVar.invoke(variant, mm.field("table"), txnVar, keyVar, pipeVar);
 
-        if (variant == "load") {
+        if (variant == "tryLoad") {
             Label done = mm.label();
             valueVar.ifEq(null, done);
             convertAndWriteValue(pipeVar, valueVar);
@@ -299,7 +299,7 @@ public final class RemoteProxyMaker {
     }
 
     /**
-     * @param variant "store", "exchange", "insert", or "replace"
+     * @param variant "store", "exchange", "tryinsert", or "tryReplace"
      */
     private void addStoreDirectMethod(String variant) {
         MethodMaker mm = mClassMaker.addMethod
@@ -317,7 +317,7 @@ public final class RemoteProxyMaker {
 
         var makerVar = mm.var(RemoteProxyMaker.class);
 
-        if (variant != "replace" && mAutoColumn != null) {
+        if (variant != "tryReplace" && mAutoColumn != null) {
             // Check if all columns are set except the automatic column.
             var allButAuto = new TreeMap<>(mRowGen.info.allColumns);
             allButAuto.remove(mAutoColumn.name);
@@ -385,7 +385,7 @@ public final class RemoteProxyMaker {
     }
 
     /**
-     * @param variant "update" or "merge"
+     * @param variant "tryUpdate" or "tryMerge"
      */
     private void addUpdateDirectMethod(String variant) {
         MethodMaker mm = mClassMaker.addMethod
@@ -411,13 +411,13 @@ public final class RemoteProxyMaker {
         var newValueVar = decodeValue(makerVar, pipeVar);
 
         Label mergeReply;
-        if (variant == "merge") {
+        if (variant == "tryMerge") {
             var resultVar = makerVar.invoke("mergeReplace", mm.field("table"), txnVar,
                                             mm.field("EMPTY_ROW"), keyVar, newValueVar, pipeVar);
             mergeReply = mm.label();
             resultVar.ifTrue(mergeReply);
         } else {
-            makerVar.invoke("replace", mm.field("table"), txnVar,
+            makerVar.invoke("tryReplace", mm.field("table"), txnVar,
                             mm.field("EMPTY_ROW"), keyVar, newValueVar, pipeVar);
             mergeReply = null;
         }
@@ -452,7 +452,7 @@ public final class RemoteProxyMaker {
         var resultVar = makerVar.invoke(variant, mm.field("table"), txnVar, mm.field("EMPTY_ROW"),
                                         keyVar, updaterVar, pipeVar);
 
-        if (variant == "merge") {
+        if (variant == "tryMerge") {
             newValueVar.set(resultVar);
             Label done = mm.label();
             newValueVar.ifEq(null, done);
@@ -940,7 +940,7 @@ public final class RemoteProxyMaker {
      *
      * @return the loaded value; if non-null, the caller must write the response, etc.
      */
-    public static byte[] load(BaseTable table, Transaction txn, byte[] key, Pipe pipe)
+    public static byte[] tryLoad(BaseTable table, Transaction txn, byte[] key, Pipe pipe)
         throws IOException
     {
         attempt: {
@@ -1048,19 +1048,20 @@ public final class RemoteProxyMaker {
      * Called by generated code.
      */
     @SuppressWarnings("unchecked")
-    public static void insert(BaseTable table, Transaction txn, Object row,
-                              byte[] key, byte[] value, Pipe pipe)
+    public static void tryInsert(BaseTable table, Transaction txn, Object row,
+                                 byte[] key, byte[] value, Pipe pipe)
         throws IOException
     {
         attempt: {
+            boolean result;
             try {
-                table.insertAndTrigger(txn, row, key, value);
+                result = table.insertAndTrigger(txn, row, key, value);
             } catch (Throwable e) {
                 pipe.writeObject(e);
                 break attempt;
             }
             pipe.writeNull(); // no exception
-            pipe.writeByte(1); // success
+            writeResult(result, pipe);
         }
 
         pipe.flush();
@@ -1071,19 +1072,20 @@ public final class RemoteProxyMaker {
      * Called by generated code.
      */
     @SuppressWarnings("unchecked")
-    public static void replace(BaseTable table, Transaction txn, Object row,
-                               byte[] key, byte[] value, Pipe pipe)
+    public static void tryReplace(BaseTable table, Transaction txn, Object row,
+                                  byte[] key, byte[] value, Pipe pipe)
         throws IOException
     {
         attempt: {
+            boolean result;
             try {
-                table.replaceAndTrigger(txn, row, key, value);
+                result = table.replaceAndTrigger(txn, row, key, value);
             } catch (Throwable e) {
                 pipe.writeObject(e);
                 break attempt;
             }
             pipe.writeNull(); // no exception
-            pipe.writeByte(1); // success
+            writeResult(result, pipe);
         }
 
         pipe.flush();
@@ -1094,8 +1096,8 @@ public final class RemoteProxyMaker {
      * Called by generated code.
      */
     @SuppressWarnings("unchecked")
-    public static void update(BaseTable table, Transaction txn, Object row,
-                              byte[] key, BaseTable.ValueUpdater updater, Pipe pipe)
+    public static void tryUpdate(BaseTable table, Transaction txn, Object row,
+                                 byte[] key, BaseTable.ValueUpdater updater, Pipe pipe)
         throws IOException
     {
         attempt: {
@@ -1107,7 +1109,7 @@ public final class RemoteProxyMaker {
                 break attempt;
             }
             pipe.writeNull(); // no exception
-            pipe.writeByte(1); // success
+            pipe.writeByte(newValue != null ? 1 : 0); // success or failure
         }
 
         pipe.flush();
@@ -1120,8 +1122,8 @@ public final class RemoteProxyMaker {
      * @return the new value; if non-null, the caller must write the response, etc.
      */
     @SuppressWarnings("unchecked")
-    public static byte[] merge(BaseTable table, Transaction txn, Object row,
-                               byte[] key, BaseTable.ValueUpdater updater, Pipe pipe)
+    public static byte[] tryMerge(BaseTable table, Transaction txn, Object row,
+                                  byte[] key, BaseTable.ValueUpdater updater, Pipe pipe)
         throws IOException
     {
         attempt: {
@@ -1133,8 +1135,12 @@ public final class RemoteProxyMaker {
                 break attempt;
             }
             pipe.writeNull(); // no exception
-            pipe.writeByte(1); // success
-            return newValue;
+            if (newValue == null) {
+                pipe.writeByte(0);
+            } else {
+                pipe.writeByte(1);
+                return newValue;
+            }
         }
 
         pipe.flush();
@@ -1154,15 +1160,20 @@ public final class RemoteProxyMaker {
         throws IOException
     {
         attempt: {
+            boolean result;
             try {
-                table.replaceAndTrigger(txn, row, key, value);
+                result = table.replaceAndTrigger(txn, row, key, value);
             } catch (Throwable e) {
                 pipe.writeObject(e);
                 break attempt;
             }
             pipe.writeNull(); // no exception
-            pipe.writeByte(1); // success
-            return true;
+            if (!result) {
+                pipe.writeByte(0);
+            } else {
+                pipe.writeByte(1);
+                return true;
+            }
         }
 
         pipe.flush();
@@ -1175,7 +1186,7 @@ public final class RemoteProxyMaker {
      * Called by generated code.
      */
     @SuppressWarnings("unchecked")
-    public static void delete(BaseTable table, Transaction txn, byte[] key, Pipe pipe)
+    public static void tryDelete(BaseTable table, Transaction txn, byte[] key, Pipe pipe)
         throws IOException
     {
         attempt: {
@@ -1262,17 +1273,17 @@ public final class RemoteProxyMaker {
         addDecodeRow();
         addEncodeColumns(false);
 
-        addByKeyConvertMethod("load");
+        addByKeyConvertMethod("tryLoad");
         addByKeyConvertMethod("exists");
-        addByKeyConvertMethod("delete");
+        addByKeyConvertMethod("tryDelete");
 
         addStoreConvertMethod("store");
         addStoreConvertMethod("exchange");
-        addStoreConvertMethod("insert");
-        addStoreConvertMethod("replace");
+        addStoreConvertMethod("tryInsert");
+        addStoreConvertMethod("tryReplace");
 
-        addUpdateConvertMethod("update");
-        addUpdateConvertMethod("merge");
+        addUpdateConvertMethod("tryUpdate");
+        addUpdateConvertMethod("tryMerge");
 
         // The encodeKeyColumns method is needed by the Updater methods.
         addEncodeColumns(true);
@@ -1286,7 +1297,7 @@ public final class RemoteProxyMaker {
     }
 
     /**
-     * @param variant "load", "exists", or "delete"
+     * @param variant "tryLoad", "exists", or "tryDelete"
      */
     private void addByKeyConvertMethod(String variant) {
         MethodMaker mm = mClassMaker.addMethod
@@ -1307,7 +1318,7 @@ public final class RemoteProxyMaker {
 
         var makerVar = mm.var(RemoteProxyMaker.class);
 
-        if (variant != "load") {
+        if (variant != "tryLoad") {
             mm.catch_(opTryStart, Throwable.class, exVar -> {
                 pipeVar.invoke("writeObject", exVar);
                 finish.goto_();
@@ -1351,7 +1362,7 @@ public final class RemoteProxyMaker {
     }
 
     /**
-     * @param variant "store", "exchange", "insert", or "replace"
+     * @param variant "store", "exchange", "tryInsert", or "tryReplace"
      */
     private void addStoreConvertMethod(String variant) {
         MethodMaker mm = mClassMaker.addMethod
@@ -1368,7 +1379,7 @@ public final class RemoteProxyMaker {
 
         Variable isAutoVar = null;
 
-        if (variant != "replace" && mAutoColumn != null) {
+        if (variant != "tryReplace" && mAutoColumn != null) {
             // Check if the automatic column is unset -- the isAutoVar value will be zero.
             int columnNum = mRowGen.info.keyColumns.size() - 1;
             int mask = mRowGen.stateFieldMask(columnNum);
@@ -1391,7 +1402,11 @@ public final class RemoteProxyMaker {
 
             autoCheck(isAutoVar, rowVar, pipeVar, finish);
 
-            pipeVar.invoke("writeByte", 1); // success
+            if (variant == "store") {
+                pipeVar.invoke("writeByte", 1); // success
+            } else {
+                makerVar.invoke("writeResult", resultVar, pipeVar);
+            }
         } else {
             // Enter a transaction scope to roll back the operation if the call to
             // encodeValueColumns throws an exception.
@@ -1472,7 +1487,7 @@ public final class RemoteProxyMaker {
     }
 
     /**
-     * @param variant "update" or "merge"
+     * @param variant "tryUpdate" or "tryMerge"
      */
     private void addUpdateConvertMethod(String variant) {
         MethodMaker mm = mClassMaker.addMethod
@@ -1491,8 +1506,8 @@ public final class RemoteProxyMaker {
 
         var makerVar = mm.var(RemoteProxyMaker.class);
 
-        if (variant == "update") {
-            mm.field("table").invoke(variant, txnVar, rowVar);
+        if (variant == "tryUpdate") {
+            var resultVar = mm.field("table").invoke(variant, txnVar, rowVar);
 
             mm.catch_(opTryStart, Throwable.class, exVar -> {
                 pipeVar.invoke("writeObject", exVar);
@@ -1500,14 +1515,17 @@ public final class RemoteProxyMaker {
             });
 
             pipeVar.invoke("writeNull"); // no exception
-            pipeVar.invoke("writeByte", 1); // success
+            makerVar.invoke("writeResult", resultVar, pipeVar);
         } else {
             // Enter a transaction scope to roll back the operation if the call to
             // encodeValueColumns throws an exception.
             txnVar.set(mm.field("table").invoke("enterScope", txnVar));
             Label txnStart = mm.label().here();
 
-            mm.field("table").invoke(variant, txnVar, rowVar);
+            var resultVar = mm.field("table").invoke(variant, txnVar, rowVar);
+
+            Label noOperation = mm.label();
+            resultVar.ifFalse(noOperation);
 
             var bytesVar = mm.invoke("encodeValueColumns", rowVar.cast(mRowClass), true);
 
@@ -1524,6 +1542,11 @@ public final class RemoteProxyMaker {
             bytesVar.aset(0, 1); // set the result code
 
             pipeVar.invoke("write", bytesVar);
+            finish.goto_();
+
+            noOperation.here();
+            pipeVar.invoke("writeNull"); // no exception
+            pipeVar.invoke("writeByte", 0);
         }
 
         finish.here();

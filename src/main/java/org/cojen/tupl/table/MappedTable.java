@@ -220,10 +220,10 @@ public abstract class MappedTable<S, T> extends AbstractMappedTable<S, T>
     }
 
     @Override
-    public final boolean load(Transaction txn, T targetRow) throws IOException {
+    public final boolean tryLoad(Transaction txn, T targetRow) throws IOException {
         Objects.requireNonNull(targetRow);
         S sourceRow = inversePk().inverseMapForLoad(mSource, targetRow);
-        if (mSource.load(txn, sourceRow)) {
+        if (mSource.tryLoad(txn, sourceRow)) {
             T mappedRow = mMapper.map(sourceRow, newRow());
             if (mappedRow != null) {
                 cleanRow(mappedRow);
@@ -239,7 +239,7 @@ public abstract class MappedTable<S, T> extends AbstractMappedTable<S, T>
     public final boolean exists(Transaction txn, T targetRow) throws IOException {
         Objects.requireNonNull(targetRow);
         S sourceRow = inversePk().inverseMapForLoad(mSource, targetRow);
-        return mSource.load(txn, sourceRow) && mMapper.map(sourceRow, newRow()) != null;
+        return mSource.tryLoad(txn, sourceRow) && mMapper.map(sourceRow, newRow()) != null;
     }
 
     @Override
@@ -269,38 +269,49 @@ public abstract class MappedTable<S, T> extends AbstractMappedTable<S, T>
     }
 
     @Override
-    public final void insert(Transaction txn, T targetRow) throws IOException {
+    public final boolean tryInsert(Transaction txn, T targetRow) throws IOException {
         Objects.requireNonNull(targetRow);
         S sourceRow = inverseFull().inverseMap(mSource, targetRow);
         mMapper.checkStore(mSource, sourceRow);
-        mSource.insert(txn, sourceRow);
+        if (!mSource.tryInsert(txn, sourceRow)) {
+            return false;
+        }
         cleanRow(targetRow);
+        return true;
     }
 
     @Override
-    public final void replace(Transaction txn, T targetRow) throws IOException {
+    public final boolean tryReplace(Transaction txn, T targetRow) throws IOException {
         Objects.requireNonNull(targetRow);
         S sourceRow = inverseFull().inverseMap(mSource, targetRow);
         mMapper.checkStore(mSource, sourceRow);
-        mSource.replace(txn, sourceRow);
+        if (!mSource.tryReplace(txn, sourceRow)) {
+            return false;
+        }
         cleanRow(targetRow);
+        return true;
     }
 
     @Override
-    public final void update(Transaction txn, T targetRow) throws IOException {
+    public final boolean tryUpdate(Transaction txn, T targetRow) throws IOException {
         Objects.requireNonNull(targetRow);
         S sourceRow = inverseUpdate().inverseMap(mSource, targetRow);
         mMapper.checkUpdate(mSource, sourceRow);
-        mSource.update(txn, sourceRow);
+        if (!mSource.tryUpdate(txn, sourceRow)) {
+            return false;
+        }
         cleanRow(targetRow);
+        return true;
     }
 
     @Override
-    public final void merge(Transaction txn, T targetRow) throws IOException {
+    public final boolean tryMerge(Transaction txn, T targetRow) throws IOException {
         Objects.requireNonNull(targetRow);
         S sourceRow = inverseUpdate().inverseMap(mSource, targetRow);
         mMapper.checkUpdate(mSource, sourceRow);
-        mSource.merge(txn, sourceRow);
+        if (!mSource.tryMerge(txn, sourceRow)) {
+            return false;
+        }
         T mappedRow = mMapper.map(sourceRow, newRow());
         if (mappedRow != null) {
             cleanRow(mappedRow);
@@ -311,14 +322,15 @@ public abstract class MappedTable<S, T> extends AbstractMappedTable<S, T>
             // columns allows the operation to complete and signal that something is amiss.
             unsetRow(targetRow);
         }
+        return true;
     }
 
     @Override
-    public final boolean delete(Transaction txn, T targetRow) throws IOException {
+    public final boolean tryDelete(Transaction txn, T targetRow) throws IOException {
         Objects.requireNonNull(targetRow);
         S sourceRow = inversePk().inverseMap(mSource, targetRow);
         mMapper.checkDelete(mSource, sourceRow);
-        return mSource.delete(txn, sourceRow);
+        return mSource.tryDelete(txn, sourceRow);
     }
 
     @Override

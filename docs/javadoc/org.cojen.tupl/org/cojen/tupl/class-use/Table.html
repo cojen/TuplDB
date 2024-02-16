@@ -70,60 +70,60 @@ loadScripts(document, 'script');</script>
 <div class="table-header col-second">Method</div>
 <div class="table-header col-last">Description</div>
 <div class="col-first even-row-color"><code>default &lt;T&gt;&nbsp;<a href="../Table.html" title="interface in org.cojen.tupl">Table</a><wbr>&lt;T&gt;</code></div>
-<div class="col-second even-row-color"><span class="type-name-label">Table.</span><code><a href="../Table.html#aggregate(java.lang.Class,org.cojen.tupl.Aggregator.Factory)" class="member-name-link">aggregate</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/lang/Class.html" title="class or interface in java.lang" class="external-link">Class</a>&lt;T&gt;&nbsp;targetType,
+<div class="col-second even-row-color"><span class="type-name-label">Table.</span><code><a href="../Table.html#aggregate(java.lang.Class,org.cojen.tupl.Aggregator.Factory)" class="member-name-link">aggregate</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/Class.html" title="class or interface in java.lang" class="external-link">Class</a>&lt;T&gt;&nbsp;targetType,
  <a href="../Aggregator.Factory.html" title="interface in org.cojen.tupl">Aggregator.Factory</a>&lt;<a href="../Table.html" title="type parameter in Table">R</a>,<wbr>T&gt;&nbsp;factory)</code></div>
 <div class="col-last even-row-color">
 <div class="block">Returns a view backed by this table, consisting of aggregate rows, which are grouped by
  the <a href="../PrimaryKey.html" title="annotation interface in org.cojen.tupl"><code>primary key</code></a> of the target type.</div>
 </div>
 <div class="col-first odd-row-color"><code>&lt;R&gt;&nbsp;<a href="../Table.html" title="interface in org.cojen.tupl">Table</a><wbr>&lt;R&gt;</code></div>
-<div class="col-second odd-row-color"><span class="type-name-label">Index.</span><code><a href="../Index.html#asTable(java.lang.Class)" class="member-name-link">asTable</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/lang/Class.html" title="class or interface in java.lang" class="external-link">Class</a>&lt;R&gt;&nbsp;type)</code></div>
+<div class="col-second odd-row-color"><span class="type-name-label">Index.</span><code><a href="../Index.html#asTable(java.lang.Class)" class="member-name-link">asTable</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/Class.html" title="class or interface in java.lang" class="external-link">Class</a>&lt;R&gt;&nbsp;type)</code></div>
 <div class="col-last odd-row-color">
 <div class="block">Returns a <code>Table</code> instance which stores rows in this index.</div>
 </div>
 <div class="col-first even-row-color"><code>default &lt;R&gt;&nbsp;<a href="../Table.html" title="interface in org.cojen.tupl">Table</a><wbr>&lt;R&gt;</code></div>
-<div class="col-second even-row-color"><span class="type-name-label">Database.</span><code><a href="../Database.html#findTable(java.lang.Class)" class="member-name-link">findTable</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/lang/Class.html" title="class or interface in java.lang" class="external-link">Class</a>&lt;R&gt;&nbsp;type)</code></div>
+<div class="col-second even-row-color"><span class="type-name-label">Database.</span><code><a href="../Database.html#findTable(java.lang.Class)" class="member-name-link">findTable</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/Class.html" title="class or interface in java.lang" class="external-link">Class</a>&lt;R&gt;&nbsp;type)</code></div>
 <div class="col-last even-row-color">
 <div class="block">Convenience method which returns a <code>Table</code> that uses the index named by the row
  type itself.</div>
 </div>
 <div class="col-first odd-row-color"><code>default &lt;T&gt;&nbsp;<a href="../Table.html" title="interface in org.cojen.tupl">Table</a><wbr>&lt;T&gt;</code></div>
-<div class="col-second odd-row-color"><span class="type-name-label">Table.</span><code><a href="../Table.html#group(java.lang.String,java.lang.String,java.lang.Class,org.cojen.tupl.Grouper.Factory)" class="member-name-link">group</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;groupBy,
- <a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;orderBy,
- <a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/lang/Class.html" title="class or interface in java.lang" class="external-link">Class</a>&lt;T&gt;&nbsp;targetType,
+<div class="col-second odd-row-color"><span class="type-name-label">Table.</span><code><a href="../Table.html#group(java.lang.String,java.lang.String,java.lang.Class,org.cojen.tupl.Grouper.Factory)" class="member-name-link">group</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;groupBy,
+ <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;orderBy,
+ <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/Class.html" title="class or interface in java.lang" class="external-link">Class</a>&lt;T&gt;&nbsp;targetType,
  <a href="../Grouper.Factory.html" title="interface in org.cojen.tupl">Grouper.Factory</a>&lt;<a href="../Table.html" title="type parameter in Table">R</a>,<wbr>T&gt;&nbsp;factory)</code></div>
 <div class="col-last odd-row-color">
 <div class="block">Returns a view backed by this table, which processes groups of source rows into groups
  of target rows.</div>
 </div>
 <div class="col-first even-row-color"><code>static &lt;J&gt;&nbsp;<a href="../Table.html" title="interface in org.cojen.tupl">Table</a><wbr>&lt;J&gt;</code></div>
-<div class="col-second even-row-color"><span class="type-name-label">Table.</span><code><a href="../Table.html#join(java.lang.Class,java.lang.String,org.cojen.tupl.Table...)" class="member-name-link">join</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/lang/Class.html" title="class or interface in java.lang" class="external-link">Class</a>&lt;J&gt;&nbsp;joinType,
- <a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;spec,
+<div class="col-second even-row-color"><span class="type-name-label">Table.</span><code><a href="../Table.html#join(java.lang.Class,java.lang.String,org.cojen.tupl.Table...)" class="member-name-link">join</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/Class.html" title="class or interface in java.lang" class="external-link">Class</a>&lt;J&gt;&nbsp;joinType,
+ <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;spec,
  <a href="../Table.html" title="interface in org.cojen.tupl">Table</a>&lt;?&gt;...&nbsp;tables)</code></div>
 <div class="col-last even-row-color">
 <div class="block">Joins tables together into an unmodifiable view.</div>
 </div>
 <div class="col-first odd-row-color"><code>default &lt;T&gt;&nbsp;<a href="../Table.html" title="interface in org.cojen.tupl">Table</a><wbr>&lt;T&gt;</code></div>
-<div class="col-second odd-row-color"><span class="type-name-label">Table.</span><code><a href="../Table.html#map(java.lang.Class,org.cojen.tupl.Mapper)" class="member-name-link">map</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/lang/Class.html" title="class or interface in java.lang" class="external-link">Class</a>&lt;T&gt;&nbsp;targetType,
+<div class="col-second odd-row-color"><span class="type-name-label">Table.</span><code><a href="../Table.html#map(java.lang.Class,org.cojen.tupl.Mapper)" class="member-name-link">map</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/Class.html" title="class or interface in java.lang" class="external-link">Class</a>&lt;T&gt;&nbsp;targetType,
  <a href="../Mapper.html" title="interface in org.cojen.tupl">Mapper</a>&lt;<a href="../Table.html" title="type parameter in Table">R</a>,<wbr>T&gt;&nbsp;mapper)</code></div>
 <div class="col-last odd-row-color">
 <div class="block">Returns a view backed by this table, whose rows have been mapped to target rows.</div>
 </div>
 <div class="col-first even-row-color"><code>default &lt;J&gt;&nbsp;<a href="../Table.html" title="interface in org.cojen.tupl">Table</a><wbr>&lt;J&gt;</code></div>
-<div class="col-second even-row-color"><span class="type-name-label">Database.</span><code><a href="../Database.html#openJoinTable(java.lang.Class,java.lang.String)" class="member-name-link">openJoinTable</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/lang/Class.html" title="class or interface in java.lang" class="external-link">Class</a>&lt;J&gt;&nbsp;joinType,
- <a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;spec)</code></div>
+<div class="col-second even-row-color"><span class="type-name-label">Database.</span><code><a href="../Database.html#openJoinTable(java.lang.Class,java.lang.String)" class="member-name-link">openJoinTable</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/Class.html" title="class or interface in java.lang" class="external-link">Class</a>&lt;J&gt;&nbsp;joinType,
+ <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;spec)</code></div>
 <div class="col-last even-row-color">
 <div class="block">Convenience method which joins tables together, opening them if necessary.</div>
 </div>
 <div class="col-first odd-row-color"><code>default &lt;R&gt;&nbsp;<a href="../Table.html" title="interface in org.cojen.tupl">Table</a><wbr>&lt;R&gt;</code></div>
-<div class="col-second odd-row-color"><span class="type-name-label">Database.</span><code><a href="../Database.html#openTable(java.lang.Class)" class="member-name-link">openTable</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/lang/Class.html" title="class or interface in java.lang" class="external-link">Class</a>&lt;R&gt;&nbsp;type)</code></div>
+<div class="col-second odd-row-color"><span class="type-name-label">Database.</span><code><a href="../Database.html#openTable(java.lang.Class)" class="member-name-link">openTable</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/Class.html" title="class or interface in java.lang" class="external-link">Class</a>&lt;R&gt;&nbsp;type)</code></div>
 <div class="col-last odd-row-color">
 <div class="block">Convenience method which returns a <code>Table</code> that uses the index named by the row
  type itself.</div>
 </div>
 <div class="col-first even-row-color"><code>default <a href="../Table.html" title="interface in org.cojen.tupl">Table</a><wbr>&lt;<a href="../Table.html" title="type parameter in Table">R</a>&gt;</code></div>
-<div class="col-second even-row-color"><span class="type-name-label">Table.</span><code><a href="../Table.html#view(java.lang.String,java.lang.Object...)" class="member-name-link">view</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;query,
- <a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/lang/Object.html" title="class or interface in java.lang" class="external-link">Object</a>...&nbsp;args)</code></div>
+<div class="col-second even-row-color"><span class="type-name-label">Table.</span><code><a href="../Table.html#view(java.lang.String,java.lang.Object...)" class="member-name-link">view</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;query,
+ <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/Object.html" title="class or interface in java.lang" class="external-link">Object</a>...&nbsp;args)</code></div>
 <div class="col-last even-row-color">
 <div class="block">Returns a view backed by this table, whose rows and natural ordering are defined by the
  given query.</div>
@@ -153,8 +153,8 @@ loadScripts(document, 'script');</script>
 <div class="block">Checks if the given source row can be updated into the source table.</div>
 </div>
 <div class="col-first odd-row-color"><code>static &lt;J&gt;&nbsp;<a href="../Table.html" title="interface in org.cojen.tupl">Table</a><wbr>&lt;J&gt;</code></div>
-<div class="col-second odd-row-color"><span class="type-name-label">Table.</span><code><a href="../Table.html#join(java.lang.Class,java.lang.String,org.cojen.tupl.Table...)" class="member-name-link">join</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/lang/Class.html" title="class or interface in java.lang" class="external-link">Class</a>&lt;J&gt;&nbsp;joinType,
- <a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;spec,
+<div class="col-second odd-row-color"><span class="type-name-label">Table.</span><code><a href="../Table.html#join(java.lang.Class,java.lang.String,org.cojen.tupl.Table...)" class="member-name-link">join</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/Class.html" title="class or interface in java.lang" class="external-link">Class</a>&lt;J&gt;&nbsp;joinType,
+ <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;spec,
  <a href="../Table.html" title="interface in org.cojen.tupl">Table</a>&lt;?&gt;...&nbsp;tables)</code></div>
 <div class="col-last odd-row-color">
 <div class="block">Joins tables together into an unmodifiable view.</div>
@@ -167,7 +167,7 @@ loadScripts(document, 'script');</script>
 </main>
 <footer role="contentinfo">
 <hr>
-<p class="legal-copy"><small>Copyright &#169; 2011&#x2013;2023 <a href="https://github.com/cojen">Cojen</a>. All rights reserved.</small></p>
+<p class="legal-copy"><small>Copyright &#169; 2011&#x2013;2024 <a href="https://github.com/cojen">Cojen</a>. All rights reserved.</small></p>
 </footer>
 </div>
 </div>

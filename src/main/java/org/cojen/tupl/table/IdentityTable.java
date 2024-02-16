@@ -156,7 +156,7 @@ public final class IdentityTable implements Table<IdentityTable.Row>, Query<Iden
     }
 
     @Override
-    public boolean load(Transaction txn, Row row) {
+    public boolean tryLoad(Transaction txn, Row row) {
         return true;
     }
 

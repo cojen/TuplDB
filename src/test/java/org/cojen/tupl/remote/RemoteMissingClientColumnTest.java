@@ -163,7 +163,7 @@ public class RemoteMissingClientColumnTest {
         {
             TestRow row = mTable.newRow();
             row.id(1);
-            assertTrue(mTable.load(null, row));
+            mTable.load(null, row);
             assertEquals("hello", row.str1());
             assertEquals(222, row.num2());
         }

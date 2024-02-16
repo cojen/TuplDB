@@ -364,7 +364,8 @@ public class DynamicTableMaker extends TableMaker {
     {
         var indy = mm.var(DynamicTableMaker.class).indy
             ("indyDoUpdate", mStore.ref(), mRowType, mTableId, supportsTriggers() ? 1 : 0);
-        indy.invoke(null, "doUpdate", null, mm.this_(), rowVar, mergeVar, keyVar, cursorVar);
+        mm.return_(indy.invoke(boolean.class, "doUpdate",
+                               null, mm.this_(), rowVar, mergeVar, keyVar, cursorVar));
     }
 
     /**

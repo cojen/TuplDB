@@ -428,7 +428,7 @@ public class TableFinder {
             txn.lockMode(LockMode.REPEATABLE_READ);
             txn.durabilityMode(DurabilityMode.SYNC);
 
-            if (!mEntityTable.load(txn, entity)) {
+            if (!mEntityTable.tryLoad(txn, entity)) {
                 return null;
             }
 

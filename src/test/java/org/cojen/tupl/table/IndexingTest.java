@@ -110,7 +110,7 @@ public class IndexingTest {
         {
             TestRow row = table.newRow();
             row.path("path2");
-            assertTrue(alt.load(null, row));
+            alt.load(null, row);
             assertEquals(2, row.id());
             assertEquals("path2", row.path());
             try {
@@ -131,7 +131,7 @@ public class IndexingTest {
             row.path("pathx");
             row.name("xxx");
             row.id(2);
-            assertFalse(alt.load(null, row));
+            assertFalse(alt.tryLoad(null, row));
             assertTrue(row.toString().contains("{*path=pathx}"));
         }
 
@@ -144,7 +144,7 @@ public class IndexingTest {
             } catch (IllegalStateException e) {
             }
             row.name("name1");
-            assertTrue(ix1.load(null, row));
+            ix1.load(null, row);
             try {
                 row.path();
                 fail();
@@ -163,7 +163,7 @@ public class IndexingTest {
             row.name("namex");
             row.path("xxx");
             row.id(2);
-            assertFalse(ix1.load(null, row));
+            assertFalse(ix1.tryLoad(null, row));
             assertTrue(row.toString().contains("{*id=2, *name=namex}"));
         }
 
@@ -177,7 +177,7 @@ public class IndexingTest {
             } catch (IllegalStateException e) {
             }
             row.name("name2");
-            assertTrue(ix2.load(null, row));
+            ix2.load(null, row);
             try {
                 row.path();
                 fail();
@@ -197,7 +197,7 @@ public class IndexingTest {
             row.name("namex");
             row.path("xxx");
             row.id(2);
-            assertFalse(ix2.load(null, row));
+            assertFalse(ix2.tryLoad(null, row));
             assertTrue(row.toString().contains("{*id=2, *name=namex, *num=999}"));
         }
 
@@ -219,7 +219,7 @@ public class IndexingTest {
         {
             TestRow row = table.newRow();
             row.id(2);
-            assertTrue(table.delete(null, row));
+            table.delete(null, row);
         }
 
         scanExpect(alt, "{id=1, path=path1}", "{id=3, path=path3}");
@@ -232,7 +232,7 @@ public class IndexingTest {
             Transaction txn = db.newTransaction();
             TestRow row = table.newRow();
             row.id(3);
-            assertTrue(table.delete(txn, row));
+            table.delete(txn, row);
 
             {
                 TestRow rowx = table.newRow();
@@ -531,7 +531,7 @@ public class IndexingTest {
         {
             var row = table1.newRow();
             setters1[0].invoke(row, 1); // id
-            assertTrue(table1.delete(null, row));
+            table1.delete(null, row);
         }
 
         assertEquals(uniqueNames.size() - 1, count(nameTable));
@@ -540,7 +540,7 @@ public class IndexingTest {
         {
             var row = table2.newRow();
             setters2[0].invoke(row, 2); // id
-            assertTrue(table2.delete(null, row));
+            table2.delete(null, row);
         }
 
         assertEquals(uniqueNames.size() - 2, count(nameTable));
@@ -592,7 +592,7 @@ public class IndexingTest {
         Transaction txn1 = db.newTransaction();
         var lockedRow = table1.newRow();
         setters1[0].invoke(lockedRow, fillAmount / 2); // id
-        assertTrue(table1.delete(txn1, lockedRow));
+        table1.delete(txn1, lockedRow);
 
         ClassMaker cm = newRowTypeMaker(typeName, spec);
         addSecondaryIndex(cm, "name");
@@ -1197,8 +1197,8 @@ public class IndexingTest {
         for (R ra = s.row(); s.row() != null; ra = s.step(ra)) {
             found++;
             R rb = a.cloneRow(ra);
-            assertTrue(b.load(null, rb));
-            a.load(null, rb);
+            assertTrue(b.tryLoad(null, rb));
+            a.tryLoad(null, rb);
             if (ra.equals(rb)) {
                 assertEquals(ra.hashCode(), rb.hashCode());
             } else {
@@ -1285,13 +1285,13 @@ public class IndexingTest {
         row.num(100);
         table.store(null, row);
 
-        assertTrue(ix.load(null, row));
+        assertTrue(ix.tryLoad(null, row));
 
         row.num(200);
         table.update(null, row);
 
         row.num(200);
-        assertTrue(ix.load(null, row));
+        assertTrue(ix.tryLoad(null, row));
     }
 
     @PrimaryKey("id")
@@ -1333,7 +1333,7 @@ public class IndexingTest {
         for (int i=1; i<=3; i++) {
             TestRow expect = table.newRow();
             expect.id(2);
-            assertTrue(table.load(null, expect));
+            table.load(null, expect);
             
             Transaction txn = switch (i) {
                 case 1 -> db.newTransaction(); case 2 -> Transaction.BOGUS; default -> null;
@@ -1343,7 +1343,7 @@ public class IndexingTest {
                 TestRow row = alt.newRow();
                 row.path("path-2");
                 row.id(999); // should be ignored
-                assertTrue(alt.load(txn, row));
+                alt.load(txn, row);
                 assertEquals(expect, row);
             }
 
@@ -1355,7 +1355,7 @@ public class IndexingTest {
                 TestRow row = ix1.newRow();
                 row.name("name-2");
                 row.id(2);
-                assertTrue(ix1.load(txn, row));
+                ix1.load(txn, row);
                 assertEquals(expect, row);
             }
 
@@ -1368,7 +1368,7 @@ public class IndexingTest {
                 row.num(BigDecimal.valueOf(2));
                 row.name("name-2");
                 row.id(2);
-                assertTrue(ix2.load(txn, row));
+                ix2.load(txn, row);
                 assertEquals(expect, row);
             }
 
@@ -1382,7 +1382,7 @@ public class IndexingTest {
         for (int i=1; i<=3; i++) {
             TestRow expect = table.newRow();
             expect.id(2);
-            assertTrue(table.load(null, expect));
+            table.load(null, expect);
             
             Transaction txn = switch (i) {
                 case 1 -> db.newTransaction(); case 2 -> Transaction.BOGUS; default -> null;
@@ -1393,7 +1393,7 @@ public class IndexingTest {
                 row.path("path-x");
                 row.id(999); // should be ignored
                 TestRow copy = alt.cloneRow(row);
-                assertFalse(alt.load(txn, row));
+                assertFalse(alt.tryLoad(txn, row));
                 assertTrue(row.toString().contains("{*path=path-x}"));
                 // Fields must remain unchanged.
                 assertEquals(0, alt.comparator("+path+id").compare(row, copy));
@@ -1407,7 +1407,7 @@ public class IndexingTest {
                 TestRow row = ix1.newRow();
                 row.name("name-x");
                 row.id(2);
-                assertFalse(ix1.load(txn, row));
+                assertFalse(ix1.tryLoad(txn, row));
                 assertTrue(row.toString().contains("{*id=2, *name=name-x}"));
             }
 
@@ -1420,7 +1420,7 @@ public class IndexingTest {
                 row.num(BigDecimal.valueOf(2));
                 row.name("name-x");
                 row.id(2);
-                assertFalse(ix2.load(txn, row));
+                assertFalse(ix2.tryLoad(txn, row));
                 assertTrue(row.toString().contains("{*id=2, *name=name-x, *num=2}"));
             }
 
@@ -1481,7 +1481,7 @@ public class IndexingTest {
                 row.path("path");
                 row.id(999); // should be ignored
                 TestRow copy = alt.cloneRow(row);
-                assertFalse(alt.load(null, row));
+                assertFalse(alt.tryLoad(null, row));
                 assertTrue(row.toString().contains("{*path=path}"));
                 // Fields must remain unchanged.
                 assertEquals(0, alt.comparator("+path+id").compare(row, copy));

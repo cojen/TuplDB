@@ -104,7 +104,7 @@ public abstract class JoinTable<J> implements Table<J> {
     }
 
     @Override
-    public boolean load(Transaction txn, J row) throws IOException {
+    public boolean tryLoad(Transaction txn, J row) throws IOException {
         throw new UnsupportedOperationException();
     }
 

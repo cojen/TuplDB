@@ -18,7 +18,8 @@
 package org.cojen.tupl;
 
 /**
- * Thrown when attempting to write to a nonexistent row which was expected to exist.
+ * Thrown when attempting to read or write against a nonexistent row which was expected to
+ * exist.
  *
  * @author Brian S. O'Neill
  */

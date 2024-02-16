@@ -107,7 +107,7 @@ public class RemoteRowConvertTest {
         {
             TestRow row = mTable.newRow();
             row.id(1);
-            assertTrue(mTable.load(null, row));
+            assertTrue(mTable.tryLoad(null, row));
             assertEquals(row1, row);
             assertEquals(1, row.id());
             assertEquals(1, row.num1());
@@ -137,7 +137,7 @@ public class RemoteRowConvertTest {
         {
             TestRow row = mTable.newRow();
             row.id(1);
-            assertTrue(mTable.load(null, row));
+            assertTrue(mTable.tryLoad(null, row));
             assertEquals(row2, row);
         }
 
@@ -150,7 +150,7 @@ public class RemoteRowConvertTest {
         {
             TestRow row = mTable.newRow();
             row.id(1);
-            assertTrue(mTable.load(null, row));
+            assertTrue(mTable.tryLoad(null, row));
             assertEquals(10, row.num1());
             assertTrue(20.0 == row.num2());
             assertEquals(30, row.num3());
@@ -176,7 +176,7 @@ public class RemoteRowConvertTest {
         {
             TestRow row = mTable.newRow();
             row.id(1);
-            assertTrue(mTable.load(null, row));
+            assertTrue(mTable.tryLoad(null, row));
             assertEquals(100, row.num1());
             assertTrue(200.0 == row.num2());
             assertEquals(300, row.num3());
