@@ -49,6 +49,7 @@ import org.cojen.tupl.UniqueConstraintException;
 
 import org.cojen.tupl.core.RowPredicate;
 import org.cojen.tupl.core.RowPredicateLock;
+import org.cojen.tupl.core.Tuple;
 
 import org.cojen.tupl.diag.EventListener;
 import org.cojen.tupl.diag.EventType;
@@ -108,7 +109,7 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
 
     protected final RowPredicateLock<R> mIndexLock;
 
-    private WeakCache<Object, MethodHandle, byte[]> mDecodePartialCache;
+    private WeakCache<Tuple, MethodHandle, byte[]> mDecodePartialCache;
     private static final VarHandle cDecodePartialCacheHandle;
 
     private WeakCache<Object, MethodHandle, byte[]> mWriteRowCache;
@@ -876,21 +877,21 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
      * @see DecodePartialMaker
      */
     protected final MethodHandle decodePartialHandle(byte[] spec, int schemaVersion) {
-        WeakCache<Object, MethodHandle, byte[]> cache = mDecodePartialCache;
+        WeakCache<Tuple, MethodHandle, byte[]> cache = mDecodePartialCache;
 
         if (cache == null) {
             cache = new WeakCache<>() {
                 @Override
-                protected MethodHandle newValue(Object key, byte[] spec) {
+                protected MethodHandle newValue(Tuple key, byte[] spec) {
                     int schemaVersion = 0;
-                    if (key instanceof ArrayKey.PrefixBytes pb) {
-                        schemaVersion = pb.prefix;
+                    if (key.size() == 2) {
+                        schemaVersion = key.getInt(0);
                     }
                     return makeDecodePartialHandle(spec, schemaVersion);
                 }
             };
 
-            var existing = (WeakCache<Object, MethodHandle, byte[]>)
+            var existing = (WeakCache<Tuple, MethodHandle, byte[]>)
                 cDecodePartialCacheHandle.compareAndExchange(this, null, cache);
 
             if (existing != null) {
@@ -898,8 +899,8 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
             }
         }
 
-        final Object key = schemaVersion == 0 ?
-            ArrayKey.make(spec) : ArrayKey.make(schemaVersion, spec);
+        final Tuple key = schemaVersion == 0 ?
+            Tuple.make.with(spec) : Tuple.make.with(schemaVersion, spec);
 
         return cache.obtain(key, spec);
     }
@@ -953,7 +954,7 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
             }
         }
 
-        return cache.obtain(ArrayKey.make(spec), spec);
+        return cache.obtain(Tuple.make.with(spec), spec);
     }
 
     public final RemoteTableProxy newRemoteProxy(byte[] descriptor) throws IOException {

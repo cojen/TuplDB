@@ -32,6 +32,7 @@ import org.cojen.tupl.Transaction;
 import org.cojen.tupl.UnmodifiableViewException;
 
 import org.cojen.tupl.core.RowPredicateLock;
+import org.cojen.tupl.core.Tuple;
 
 import org.cojen.tupl.table.codec.ColumnCodec;
 
@@ -55,9 +56,9 @@ class StaticTableMaker extends TableMaker {
                 if (key instanceof Class type) {
                     return new StaticTableMaker(type, rowGen).finish();
                 } else {
-                    var pair = (ArrayKey.ObjPrefixBytes) key;
-                    var type = (Class) pair.prefix;
-                    byte[] secondaryDesc = pair.array;
+                    var tuple = (Tuple) key;
+                    var type = (Class) tuple.get(0);
+                    var secondaryDesc = (byte[]) tuple.get(1);
 
                     RowInfo indexRowInfo = RowStore.secondaryRowInfo(rowGen.info, secondaryDesc);
 
@@ -94,7 +95,7 @@ class StaticTableMaker extends TableMaker {
      * @param secondaryDesc secondary index descriptor
      */
     static Class<?> obtain(Class<?> type, RowGen rowGen, byte[] secondaryDesc) {
-        return cCache.obtain(ArrayKey.make(type, secondaryDesc), rowGen);
+        return cCache.obtain(Tuple.make.with(type, secondaryDesc), rowGen);
     }
 
     private final ColumnInfo mAutoColumn;
