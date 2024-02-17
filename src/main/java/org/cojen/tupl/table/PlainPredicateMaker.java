@@ -21,7 +21,7 @@ import java.lang.invoke.MethodHandle;
 
 import java.util.function.Predicate;
 
-import org.cojen.tupl.core.Pair;
+import org.cojen.tupl.core.Tuple;
 
 import org.cojen.tupl.table.filter.FalseFilter;
 import org.cojen.tupl.table.filter.Parser;
@@ -36,14 +36,14 @@ import org.cojen.tupl.table.filter.TrueFilter;
  * @author Brian S O'Neill
  */
 public final class PlainPredicateMaker {
-    private static final WeakCache<Pair<Class<?>, String>, MethodHandle, RowFilter> cCache;
+    private static final WeakCache<Tuple, MethodHandle, RowFilter> cCache;
 
     static {
         cCache = new WeakCache<>() {
             @Override
-            public MethodHandle newValue(Pair<Class<?>, String> key, RowFilter filter) {
-                Class<?> rowType = key.a();
-                String query = key.b();
+            public MethodHandle newValue(Tuple key, RowFilter filter) {
+                var rowType = (Class<?>) key.get(0);
+                String query = key.getString(1);
                 RowInfo info = RowInfo.find(rowType);
                 if (filter == null) {
                     filter = new Parser(info.allColumns, query).parseQuery(null).filter();
@@ -55,7 +55,7 @@ public final class PlainPredicateMaker {
                     var maker = new RowPredicateMaker(rowType, info.rowGen(), filter, filterStr);
                     return maker.finishPlain();
                 } else {
-                    return obtain(new Pair<>(rowType, filterStr), null);
+                    return obtain(Tuple.make.with(rowType, filterStr), null);
                 }
             }
         };
@@ -87,13 +87,13 @@ public final class PlainPredicateMaker {
      * MethodHandle signature: Predicate xxx(Object... args)
      */
     static MethodHandle predicateHandle(Class<?> rowType, String query) {
-        return cCache.obtain(new Pair<>(rowType, query), null);
+        return cCache.obtain(Tuple.make.with(rowType, query), null);
     }
 
     /**
      * MethodHandle signature: Predicate xxx(Object... args)
      */
     static MethodHandle predicateHandle(Class<?> rowType, RowFilter filter) {
-        return cCache.obtain(new Pair<>(rowType, filter.toString()), filter);
+        return cCache.obtain(Tuple.make.with(rowType, filter.toString()), filter);
     }
 }

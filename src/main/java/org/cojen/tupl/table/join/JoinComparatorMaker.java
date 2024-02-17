@@ -26,7 +26,7 @@ import java.util.Comparator;
 import org.cojen.maker.ClassMaker;
 import org.cojen.maker.MethodMaker;
 
-import org.cojen.tupl.core.Pair;
+import org.cojen.tupl.core.Tuple;
 
 import org.cojen.tupl.table.ComparatorMaker;
 import org.cojen.tupl.table.OrderBy;
@@ -39,20 +39,20 @@ import org.cojen.tupl.table.WeakCache;
  * @author Brian S O'Neill
  */
 final class JoinComparatorMaker<J> {
-    private static final WeakCache<Pair<Class<?>, String>, Comparator<?>, Object> cCache;
+    private static final WeakCache<Tuple, Comparator<?>, Object> cCache;
 
     static {
         cCache = new WeakCache<>() {
             @Override
-            public Comparator<?> newValue(Pair<Class<?>, String> key, Object unused) {
-                Class<?> joinType = key.a();
-                String spec = key.b();
+            public Comparator<?> newValue(Tuple key, Object unused) {
+                var joinType = (Class<?>) key.get(0);
+                String spec = key.getString(1);
                 var maker = new JoinComparatorMaker<>(joinType, spec);
                 String canonical = maker.canonicalSpec();
                 if (spec.equals(canonical)) {
                     return maker.finish();
                 } else {
-                    return obtain(new Pair<>(joinType, canonical), null);
+                    return obtain(Tuple.make.with(joinType, canonical), null);
                 }
             }
         };
@@ -63,7 +63,7 @@ final class JoinComparatorMaker<J> {
      */
     @SuppressWarnings("unchecked")
     static <J> Comparator<J> comparator(Class<J> joinType, String spec) {
-        return (Comparator<J>) cCache.obtain(new Pair<>(joinType, spec), null);
+        return (Comparator<J>) cCache.obtain(Tuple.make.with(joinType, spec), null);
     }
 
     private final Class<J> mJoinType;

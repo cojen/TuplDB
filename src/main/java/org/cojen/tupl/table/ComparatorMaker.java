@@ -32,7 +32,7 @@ import org.cojen.maker.Variable;
 
 import org.cojen.tupl.Table;
 
-import org.cojen.tupl.core.Pair;
+import org.cojen.tupl.core.Tuple;
 
 /**
  * @see Table#comparator
@@ -41,23 +41,23 @@ import org.cojen.tupl.core.Pair;
 public final class ComparatorMaker<R> {
     public static Comparator ZERO = (a, b) -> 0;
 
-    private static final WeakCache<Pair<Class<?>, String>, Comparator<?>, OrderBy> cCache;
+    private static final WeakCache<Tuple, Comparator<?>, OrderBy> cCache;
 
     static {
         cCache = new WeakCache<>() {
             @Override
-            public Comparator<?> newValue(Pair<Class<?>, String> key, OrderBy orderBy) {
-                Class<?> rowType = key.a();
+            public Comparator<?> newValue(Tuple key, OrderBy orderBy) {
+                var rowType = (Class<?>) key.get(0);
                 if (orderBy != null) {
                     return new ComparatorMaker<>(rowType, orderBy).finish();
                 } else {
-                    String spec = key.b();
+                    String spec = key.getString(1);
                     var maker = new ComparatorMaker<>(rowType, spec);
                     String canonical = maker.canonicalSpec();
                     if (spec.equals(canonical)) {
                         return maker.finish();
                     } else {
-                        return obtain(new Pair<>(rowType, canonical), null);
+                        return obtain(Tuple.make.with(rowType, canonical), null);
                     }
                 }
             }
@@ -69,7 +69,7 @@ public final class ComparatorMaker<R> {
      */
     @SuppressWarnings("unchecked")
     public static <R> Comparator<R> comparator(Class<R> rowType, String spec) {
-        return (Comparator<R>) cCache.obtain(new Pair<>(rowType, spec), null);
+        return (Comparator<R>) cCache.obtain(Tuple.make.with(rowType, spec), null);
     }
 
     /**
@@ -79,7 +79,7 @@ public final class ComparatorMaker<R> {
      */
     @SuppressWarnings("unchecked")
     public static <R> Comparator<R> comparator(Class<R> rowType, OrderBy orderBy, String spec) {
-        return (Comparator<R>) cCache.obtain(new Pair<>(rowType, spec), orderBy);
+        return (Comparator<R>) cCache.obtain(Tuple.make.with(rowType, spec), orderBy);
     }
 
     private final Class<R> mRowType;

@@ -40,7 +40,7 @@ import org.cojen.tupl.Scanner;
 import org.cojen.tupl.Table;
 import org.cojen.tupl.Transaction;
 
-import org.cojen.tupl.core.Triple;
+import org.cojen.tupl.core.Tuple;
 
 import org.cojen.tupl.diag.QueryPlan;
 
@@ -64,19 +64,19 @@ import org.cojen.tupl.table.filter.TrueFilter;
  * @author Brian S O'Neill
  */
 final class JoinQueryLauncherMaker {
-    private static final WeakCache<Triple<Class, String, String>, Class<?>, JoinTable<?>> cCache;
+    private static final WeakCache<Tuple, Class<?>, JoinTable<?>> cCache;
 
     static {
         cCache = new WeakCache<>() {
             @Override
-            public Class<?> newValue(Triple<Class, String, String> key, JoinTable<?> table) {
-                String queryStr = key.c();
+            public Class<?> newValue(Tuple key, JoinTable<?> table) {
+                String queryStr = key.getString(2);
                 var maker = new JoinQueryLauncherMaker(table, queryStr);
                 String canonical = maker.canonicalQuery();
                 if (queryStr.equals(canonical)) {
                     return maker.finish();
                 } else {
-                    return obtain(new Triple<>(key.a(), key.b(), canonical), table);
+                    return obtain(Tuple.make.with(key.get(0), key.getString(1), canonical), table);
                 }
             }
         };
@@ -96,7 +96,7 @@ final class JoinQueryLauncherMaker {
             return new DisjointUnionQueryLauncher<J>(launchers);
         }
 
-        var key = new Triple<>((Class) table.rowType(), table.joinSpecString(), queryStr);
+        var key = Tuple.make.with(table.rowType(), table.joinSpecString(), queryStr);
         Class<?> clazz = cCache.obtain(key, table);
 
         // Do this to prevent the table from discarding the reference to the JoinSpec early,

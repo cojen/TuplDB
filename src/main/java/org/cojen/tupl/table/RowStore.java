@@ -60,6 +60,7 @@ import org.cojen.tupl.core.CoreDatabase;
 import org.cojen.tupl.core.LHashTable;
 import org.cojen.tupl.core.RowPredicateLock;
 import org.cojen.tupl.core.ScanVisitor;
+import org.cojen.tupl.core.Tuple;
 
 import org.cojen.tupl.diag.EventListener;
 import org.cojen.tupl.diag.EventType;
@@ -487,7 +488,7 @@ public final class RowStore {
         (BaseTable<R> primaryTable, boolean alt, String... columns)
         throws IOException
     {
-        Object key = ArrayKey.make(primaryTable.rowType(), alt, columns);
+        Object key = Tuple.make.with(primaryTable.rowType(), alt, columns);
         WeakCache<Object, BaseTableIndex<R>, Object> indexTables =
             primaryTable.mTableManager.indexTables();
 
@@ -562,7 +563,7 @@ public final class RowStore {
             return null;
         }
 
-        Object key = ArrayKey.make(rowType, descriptor);
+        Object key = Tuple.make.with(rowType, descriptor);
 
         BaseTableIndex<R> table = indexTables.get(key);
 

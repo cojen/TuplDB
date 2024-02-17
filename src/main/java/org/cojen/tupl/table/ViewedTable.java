@@ -50,7 +50,7 @@ import org.cojen.tupl.Transaction;
 import org.cojen.tupl.Updater;
 import org.cojen.tupl.ViewConstraintException;
 
-import org.cojen.tupl.core.Pair;
+import org.cojen.tupl.core.Tuple;
 
 import org.cojen.tupl.diag.QueryPlan;
 
@@ -70,16 +70,16 @@ import org.cojen.tupl.table.filter.Visitor;
  * @see Table#view
  */
 public abstract sealed class ViewedTable<R> extends WrappedTable<R, R> {
-    private static final WeakCache<Pair<Class, String>, MethodHandle, QuerySpec> cFactoryCache;
+    private static final WeakCache<Tuple, MethodHandle, QuerySpec> cFactoryCache;
 
-    private static final WeakCache<Pair<Class, String>, Helper, ViewedTable> cHelperCache;
+    private static final WeakCache<Tuple, Helper, ViewedTable> cHelperCache;
 
     static {
         cFactoryCache = new WeakCache<>() {
             @Override
-            public MethodHandle newValue(Pair<Class, String> key, QuerySpec query) {
-                Class<?> rowType = key.a();
-                String queryStr = key.b();
+            public MethodHandle newValue(Tuple key, QuerySpec query) {
+                var rowType = (Class<?>) key.get(0);
+                String queryStr = key.getString(1);
 
                 RowInfo rowInfo = RowInfo.find(rowType);
 
@@ -87,7 +87,7 @@ public abstract sealed class ViewedTable<R> extends WrappedTable<R, R> {
                     query = new Parser(rowInfo.allColumns, queryStr).parseQuery(null);
                     String canonical = query.toString();
                     if (!canonical.equals(queryStr)) {
-                        return obtain(new Pair<>(rowType, canonical), query);
+                        return obtain(Tuple.make.with(rowType, canonical), query);
                     }
                 }
 
@@ -104,8 +104,8 @@ public abstract sealed class ViewedTable<R> extends WrappedTable<R, R> {
         cHelperCache = new WeakCache<>() {
             @Override
             @SuppressWarnings("unchecked")
-            public Helper newValue(Pair<Class, String> key, ViewedTable table) {
-                Class rowType = key.a();
+            public Helper newValue(Tuple key, ViewedTable table) {
+                var rowType = (Class<?>) key.get(0);
                 return makeHelper(rowType, table);
             }
         };
@@ -114,7 +114,7 @@ public abstract sealed class ViewedTable<R> extends WrappedTable<R, R> {
     public static <R> ViewedTable<R> view(Table<R> source, String query, Object... args) {
         Objects.requireNonNull(query);
         try {
-            var key = new Pair<Class, String>(source.rowType(), query);
+            var key = Tuple.make.with(source.rowType(), query);
             return (ViewedTable<R>) cFactoryCache.obtain(key, null).invokeExact(source, args);
         } catch (Throwable e) {
             throw RowUtils.rethrow(e);
@@ -472,7 +472,7 @@ public abstract sealed class ViewedTable<R> extends WrappedTable<R, R> {
         var helper = (Helper<R>) cHelperHandle.getVolatile(this);
 
         if (helper == null) {
-            var key = new Pair<Class, String>(rowType(), mQueryStr);
+            var key = Tuple.make.with(rowType(), mQueryStr);
             try {
                 helper = (Helper<R>) cHelperCache.obtain(key, this);
             } catch (Throwable e) {
