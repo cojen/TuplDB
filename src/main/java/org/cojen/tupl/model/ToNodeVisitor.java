@@ -96,7 +96,7 @@ final class ToNodeVisitor implements Visitor {
 
     @Override
     public void visit(ColumnToConstantFilter filter) {
-        finish(filter, ConstantNode.make(filter.constant()));
+        finish(filter, (ConstantNode) filter.constant());
     }
 
     private void finish(ColumnFilter filter, Node right) {

@@ -56,10 +56,11 @@ final class SelectUnmappedNode extends SelectNode {
             final int fMaxArgument = maxArgument;
 
             filter = filter.constantsToArguments((ColumnToConstantFilter f) -> {
-                Integer arg = fArgMap.get(f.constant());
+                Object value = ((ConstantNode) f.constant()).value();
+                Integer arg = fArgMap.get(value);
                 if (arg == null) {
                     arg = fMaxArgument + fArgMap.size() + 1;
-                    fArgMap.put(f.constant(), arg);
+                    fArgMap.put(value, arg);
                 }
                 return arg;
             });

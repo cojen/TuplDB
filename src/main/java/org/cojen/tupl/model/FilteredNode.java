@@ -111,7 +111,7 @@ public final class FilteredNode extends BinaryOpNode {
                     return new ColumnToArgFilter(leftCol, mOp, right.ordinal());
                 } else if (mOriginalRight instanceof ConstantNode right) {
                     columns.putIfAbsent(leftCol.name, left);
-                    return new ColumnToConstantFilter(leftCol, mOp, right.value());
+                    return new ColumnToConstantFilter(leftCol, mOp, right);
                 }
             }
         } else if (mOriginalRight instanceof ColumnNode right) {
@@ -124,7 +124,7 @@ public final class FilteredNode extends BinaryOpNode {
                 } else if (mOriginalLeft instanceof ConstantNode left) {
                     int op = ColumnFilter.reverseOperator(mOp);
                     columns.putIfAbsent(rightCol.name, right);
-                    return new ColumnToConstantFilter(rightCol, op, left.value());
+                    return new ColumnToConstantFilter(rightCol, op, left);
                 }
             }
         }

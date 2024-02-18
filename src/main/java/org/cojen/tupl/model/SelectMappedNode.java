@@ -134,8 +134,7 @@ final class SelectMappedNode extends SelectNode {
         if (from == mFrom && projection == mProjection && where == mWhere) {
             return this;
         }
-        return new SelectMappedNode(type(), name(), from, mFilter, where, projection,
-                                    mMaxArgument);
+        return new SelectMappedNode(type(), name(), from, mFilter, where, projection, mMaxArgument);
     }
 
     @Override
