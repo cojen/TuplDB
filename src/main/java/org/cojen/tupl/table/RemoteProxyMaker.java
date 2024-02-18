@@ -36,6 +36,8 @@ import org.cojen.maker.Variable;
 
 import org.cojen.tupl.Transaction;
 
+import org.cojen.tupl.core.Tuple;
+
 import org.cojen.tupl.remote.RemoteTableProxy;
 import org.cojen.tupl.remote.RemoteTransaction;
 import org.cojen.tupl.remote.RemoteUpdater;
@@ -50,12 +52,10 @@ import org.cojen.tupl.table.codec.ColumnCodec;
  * @author Brian S O'Neill
  */
 public final class RemoteProxyMaker {
-    private record CacheKey(Class<?> tableClass, byte[] descriptor) { }
-
-    private static final SoftCache<CacheKey, MethodHandle, BaseTable> cCache = new SoftCache<>() {
+    private static final SoftCache<Tuple, MethodHandle, BaseTable> cCache = new SoftCache<>() {
         @Override
-        protected MethodHandle newValue(CacheKey key, BaseTable table) {
-            return new RemoteProxyMaker(table, key.descriptor).finish();
+        protected MethodHandle newValue(Tuple key, BaseTable table) {
+            return new RemoteProxyMaker(table, (byte[]) key.get(1)).finish();
         }
     };
 
@@ -64,7 +64,7 @@ public final class RemoteProxyMaker {
      * @param descriptor encoding format is defined by RowHeader class
      */
     static RemoteTableProxy make(BaseTable<?> table, int schemaVersion, byte[] descriptor) {
-        var mh = cCache.obtain(new CacheKey(table.getClass(), descriptor), table);
+        var mh = cCache.obtain(Tuple.make.with(table.getClass(), descriptor), table);
         try {
             return (RemoteTableProxy) mh.invoke(table, schemaVersion);
         } catch (Throwable e) {
