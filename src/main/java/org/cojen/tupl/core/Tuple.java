@@ -125,6 +125,8 @@ public abstract class Tuple extends AbstractList implements RandomAccess {
 
         public abstract Tuple with(Object e0, boolean e1, Object[] e2);
 
+        public abstract Tuple with(Object[] e0, Object e1);
+
         static CallSite indyWith(MethodHandles.Lookup lookup, String name, MethodType mt) {
             MethodMaker mm = MethodMaker.begin(lookup, name, mt);
             makeWith(lookup, mm, mt.parameterArray());
@@ -133,10 +135,11 @@ public abstract class Tuple extends AbstractList implements RandomAccess {
     }
 
     private static Maker makeMaker() {
-        ClassMaker cm = ClassMaker.begin(null, MethodHandles.lookup());
+        MethodHandles.Lookup lookup = MethodHandles.lookup();
+        ClassMaker cm = ClassMaker.begin(null, lookup);
         cm.final_().extend(Maker.class);
 
-        cm.addConstructor().private_();
+        cm.addConstructor();
 
         makeHashCode(cm);
         makeEquals(cm);
@@ -155,8 +158,7 @@ public abstract class Tuple extends AbstractList implements RandomAccess {
             }
         }
 
-        MethodHandles.Lookup lookup = cm.finishLookup();
-        Class<?> clazz = lookup.lookupClass();
+        Class<?> clazz = cm.finish();
 
         try {
             MethodHandle mh = lookup.findConstructor(clazz, MethodType.methodType(void.class));
