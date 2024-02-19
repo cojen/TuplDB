@@ -218,6 +218,18 @@ public final class JoinNode extends RelationNode {
         return ci;
     }
 
+    private static final byte K_TYPE = KeyEncoder.allocType();
+
+    @Override
+    protected void encodeKey(KeyEncoder enc) {
+        if (enc.encode(this, K_TYPE)) {
+            assert mJoinType < 256;
+            enc.encodeByte(mJoinType);
+            mLeft.encodeKey(enc);
+            mRight.encodeKey(enc);
+        }
+    }
+
     @Override
     public int hashCode() {
         int hash = mJoinType;

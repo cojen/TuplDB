@@ -175,6 +175,19 @@ public final class TupleType extends Type {
             : new TupleType(clazz(), TYPE_REFERENCE | TYPE_NULLABLE, mColumns, mFields);
     }
 
+    private static final byte K_TYPE = KeyEncoder.allocType();
+
+    @Override
+    protected void encodeKey(KeyEncoder enc) {
+        if (enc.encode(this, K_TYPE)) {
+            enc.encodeUnsignedVarInt(mColumns.length);
+            for (Column c : mColumns) {
+                c.type().encodeKey(enc);
+                enc.encodeString(c.name());
+            }
+        }
+    }
+
     @Override
     public int hashCode() {
         int hash = clazz().hashCode();

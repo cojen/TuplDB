@@ -75,6 +75,18 @@ public final class TableNode extends RelationNode {
         return mTable;
     }
 
+    private static final byte K_TYPE = KeyEncoder.allocType();
+
+    @Override
+    protected void encodeKey(KeyEncoder enc) {
+        if (enc.encode(this, K_TYPE)) {
+            // Note that the Table instance isn't encoded, only the row type it acts upon. This
+            // is because generated code doesn't maintain static references to Tables, and thus
+            // Table instances doesn't affect what the code looks like.
+            enc.encodeClass(mTable.rowType());
+        }
+    }
+
     @Override
     public int hashCode() {
         return mTable.hashCode();

@@ -55,18 +55,27 @@ public final class BasicType extends Type {
             clazz = boxedType();
         }
 
-        return make(clazz, typeCode() | TYPE_NULLABLE);
+        return make(clazz, typeCode | TYPE_NULLABLE);
+    }
+
+    private static final byte K_TYPE = KeyEncoder.allocType();
+
+    @Override
+    protected void encodeKey(KeyEncoder enc) {
+        if (enc.encode(this, K_TYPE)) {
+            enc.encodeInt(typeCode);
+        }
     }
 
     @Override
     public int hashCode() {
-        return clazz().hashCode() * 31 + typeCode();
+        return clazz().hashCode() * 31 + typeCode;
     }
 
     @Override
     public boolean equals(Object obj) {
         return obj instanceof BasicType bt
-            && clazz() == bt.clazz() && typeCode == bt.typeCode();
+            && clazz() == bt.clazz() && typeCode == bt.typeCode;
     }
 
     @Override

@@ -138,17 +138,23 @@ final class SelectMappedNode extends SelectNode {
     }
 
     @Override
+    protected Object makeCode() {
+        return makeMapper();
+    }
+
+    @Override
     @SuppressWarnings("unchecked")
     protected TableProvider doMakeTableProvider() {
         TableProvider source = mFrom.makeTableProvider();
 
-        int argCount = maxArgument();
-        MapperFactory factory = makeMapper(argCount);
+        var factory = (MapperFactory) code(); // indirectly calls makeMapper
 
         TupleType tt = type().tupleType();
         Class targetClass = tt.clazz();
 
         Map<String, String> projectionMap = tt.makeProjectionMap();
+
+        int argCount = maxArgument();
 
         if (argCount == 0) {
             return TableProvider.make
@@ -177,16 +183,24 @@ final class SelectMappedNode extends SelectNode {
         Mapper<?, ?> get(Object[] args);
     }
 
-    // FIXME: I might want to cache these things. Use a string key?
-
-    private MapperFactory makeMapper(int argCount) {
+    private MapperFactory makeMapper() {
         Class<?> targetClass = type().tupleType().clazz();
 
         ClassMaker cm = RowGen.beginClassMaker
             (SelectMappedNode.class, targetClass, targetClass.getName(), null, "mapper")
             .implement(Mapper.class).implement(MapperFactory.class).final_();
 
-        cm.addConstructor().private_();
+        // Keep a reference to the factory instance, to prevent it from being garbage collected
+        // as long as the generated class still exists.
+        cm.addField(Object.class, "_").private_().static_();
+
+        {
+            MethodMaker ctor = cm.addConstructor().private_();
+            ctor.invokeSuperConstructor();
+            ctor.field("_").set(ctor.this_());
+        }
+
+        int argCount = maxArgument();
 
         // The Mapper is also its own MapperFactory.
         {
@@ -439,9 +453,8 @@ final class SelectMappedNode extends SelectNode {
         if (mFilter == TrueFilter.THE) {
             return;
         }
-        String filterExpr = mFilter.toString();
         MethodMaker mm = cm.addMethod(QueryPlan.class, "plan", QueryPlan.Mapper.class).public_();
-        mm.return_(mm.new_(QueryPlan.Filter.class, filterExpr, mm.param(0)));
+        mm.return_(mm.new_(QueryPlan.Filter.class, filterString(), mm.param(0)));
     }
 
     // FIXME: Finish the check methods, which just applies the filter. Columns that don't need

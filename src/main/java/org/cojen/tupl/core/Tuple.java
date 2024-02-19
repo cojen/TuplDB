@@ -101,6 +101,10 @@ public abstract class Tuple extends AbstractList implements RandomAccess {
 
         public abstract Tuple with(byte[] e0);
 
+        public abstract Tuple with(byte[] e0, Object e1);
+
+        public abstract Tuple with(byte[] e0, Object[] e1);
+
         public abstract Tuple with(int e0, byte[] e1);
 
         public abstract Tuple with(int e0, Object e1);

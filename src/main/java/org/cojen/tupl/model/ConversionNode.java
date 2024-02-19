@@ -23,7 +23,6 @@ import java.util.Set;
 import org.cojen.maker.MethodMaker;
 import org.cojen.maker.Variable;
 
-import org.cojen.tupl.table.ColumnInfo;
 import org.cojen.tupl.table.Converter;
 
 /**
@@ -123,6 +122,16 @@ public final class ConversionNode extends Node {
             return this;
         }
         return new ConversionNode(node, mType);
+    }
+
+    private static final byte K_TYPE = KeyEncoder.allocType();
+
+    @Override
+    protected void encodeKey(KeyEncoder enc) {
+        if (enc.encode(this, K_TYPE)) {
+            mNode.encodeKey(enc);
+            mType.encodeKey(enc);
+        }
     }
 
     @Override

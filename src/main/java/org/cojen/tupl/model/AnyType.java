@@ -49,6 +49,13 @@ public final class AnyType extends Type {
         return 1872601810;
     }
 
+    private static final byte K_TYPE = KeyEncoder.allocType();
+
+    @Override
+    protected void encodeKey(KeyEncoder enc) {
+        enc.encodeType(K_TYPE);
+    }
+
     @Override
     public boolean equals(Object obj) {
         return obj == THE;

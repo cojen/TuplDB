@@ -112,6 +112,15 @@ public abstract sealed class CommandNode extends Node permits CommandNode.Basic,
             return this;
         }
 
+        private static final byte K_TYPE = KeyEncoder.allocType();
+
+        @Override
+        protected void encodeKey(KeyEncoder enc) {
+            if (enc.encode(this, K_TYPE)) {
+                enc.encodeObject(mCommand);
+            }
+        }
+
         @Override
         public int hashCode() {
             return name().hashCode() * 31 + mCommand.hashCode();

@@ -38,6 +38,18 @@ public final class RelationType extends Type {
         mCardinality = cardinality;
     }
 
+    private static final byte K_TYPE = KeyEncoder.allocType();
+
+    @Override
+    protected void encodeKey(KeyEncoder enc) {
+        if (enc.encode(this, K_TYPE)) {
+            mType.encodeKey(enc);
+            int ordinal = mCardinality.ordinal();
+            assert ordinal < 256;
+            enc.encodeByte(ordinal);
+        }
+    }
+
     @Override
     public int hashCode() {
         return mType.hashCode() * 31 + mCardinality.hashCode();

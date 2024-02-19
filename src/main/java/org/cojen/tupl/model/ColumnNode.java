@@ -140,6 +140,16 @@ public final class ColumnNode extends Node {
         return mColumn;
     }
 
+    private static final byte K_TYPE = KeyEncoder.allocType();
+
+    @Override
+    protected void encodeKey(KeyEncoder enc) {
+        if (enc.encode(this, K_TYPE)) {
+            mFrom.encodeKey(enc);
+            enc.encodeString(mColumn.name());
+        }
+    }
+
     @Override
     public int hashCode() {
         int hash = mFrom.hashCode();

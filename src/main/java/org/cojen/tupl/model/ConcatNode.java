@@ -179,6 +179,15 @@ public final class ConcatNode extends Node {
         return new ConcatNode(mType, mName, left, right);
     }
 
+    private static final byte K_TYPE = KeyEncoder.allocType();
+
+    @Override
+    protected void encodeKey(KeyEncoder enc) {
+        if (enc.encode(this, K_TYPE)) {
+            enc.encodeNodes(subNodes());
+        }
+    }
+
     @Override
     public int hashCode() {
         return Arrays.hashCode(subNodes());

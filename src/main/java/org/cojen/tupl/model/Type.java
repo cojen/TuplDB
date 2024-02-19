@@ -50,6 +50,11 @@ public abstract sealed class Type extends ColumnInfo
      */
     public abstract Type nullable();
 
+    /**
+     * @see Node#encodeKey
+     */
+    protected abstract void encodeKey(KeyEncoder enc);
+
     @Override
     public abstract int hashCode();
 

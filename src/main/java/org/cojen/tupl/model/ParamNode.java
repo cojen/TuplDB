@@ -136,6 +136,15 @@ public final class ParamNode extends Node {
         return mOrdinal;
     }
 
+    private static final byte K_TYPE = KeyEncoder.allocType();
+
+    @Override
+    protected void encodeKey(KeyEncoder enc) {
+        if (enc.encode(this, K_TYPE)) {
+            enc.encodeUnsignedVarInt(mOrdinal);
+        }
+    }
+
     @Override
     public int hashCode() {
         return mOrdinal * 970840757;

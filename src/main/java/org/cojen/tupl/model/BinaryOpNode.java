@@ -155,7 +155,7 @@ public sealed class BinaryOpNode extends Node permits FilteredNode {
     }
 
     @Override
-    public Type type() {
+    public final Type type() {
         return mType;
     }
 
@@ -169,7 +169,7 @@ public sealed class BinaryOpNode extends Node permits FilteredNode {
     }
 
     @Override
-    public String name() {
+    public final String name() {
         if (mName == null) {
             var b = new StringBuilder();
             append(b, mLeft);
@@ -201,12 +201,12 @@ public sealed class BinaryOpNode extends Node permits FilteredNode {
     }
 
     @Override
-    public int maxArgument() {
+    public final int maxArgument() {
         return Math.max(mLeft.maxArgument(), mRight.maxArgument());
     }
 
     @Override
-    public boolean isPureFunction() {
+    public final boolean isPureFunction() {
         return mLeft.isPureFunction() && mRight.isPureFunction();
     }
 
@@ -216,7 +216,7 @@ public sealed class BinaryOpNode extends Node permits FilteredNode {
     }
 
     @Override
-    public void evalColumns(Set<String> columns) {
+    public final void evalColumns(Set<String> columns) {
         mLeft.evalColumns(columns);
         mRight.evalColumns(columns);
     }
@@ -329,8 +329,20 @@ public sealed class BinaryOpNode extends Node permits FilteredNode {
         return new BinaryOpNode(mType, mName, mOp, left, right);
     }
 
+    private static final byte K_TYPE = KeyEncoder.allocType();
+
     @Override
-    public int hashCode() {
+    public final void encodeKey(KeyEncoder enc) {
+        if (enc.encode(this, K_TYPE)) {
+            assert mOp < 256;
+            enc.encodeByte(mOp);
+            mLeft.encodeKey(enc);
+            mRight.encodeKey(enc);
+        }
+    }
+
+    @Override
+    public final int hashCode() {
         int hash = mType.hashCode();
         hash = hash * 31 + mOp;
         hash = hash * 31 + mLeft.hashCode();
@@ -339,13 +351,13 @@ public sealed class BinaryOpNode extends Node permits FilteredNode {
     }
 
     @Override
-    public boolean equals(Object obj) {
+    public final boolean equals(Object obj) {
         return obj instanceof BinaryOpNode bon
             && mType.equals(bon.mType) && mOp == bon.mOp
             && mLeft.equals(bon.mLeft) && mRight.equals(bon.mRight);
     }
 
-    protected String opString() {
+    protected final String opString() {
         return opString(mOp);
     }
 

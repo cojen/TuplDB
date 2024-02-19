@@ -44,6 +44,13 @@ final class NullType extends Type {
         return type.nullable();
     }
 
+    private static final byte K_TYPE = KeyEncoder.allocType();
+
+    @Override
+    protected void encodeKey(KeyEncoder enc) {
+        enc.encodeType(K_TYPE);
+    }
+
     @Override
     public int hashCode() {
         return 334611107;

@@ -148,7 +148,7 @@ final class SelectUnmappedNode extends SelectNode {
         qb.append('}');
 
         if (mFilter != TrueFilter.THE) {
-            qb.append(' ').append(mFilter);
+            qb.append(' ').append(filterString());
         }
 
         String viewQuery = qb.toString();

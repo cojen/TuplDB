@@ -329,7 +329,10 @@ public abstract sealed class SelectNode extends RelationNode
     protected final RelationNode mFrom;
     protected final RowFilter mFilter;
     protected final Node[] mProjection;
+
     protected final int mMaxArgument;
+
+    private String mFilterString;
 
     private TableProvider<?> mTableProvider;
 
@@ -387,6 +390,25 @@ public abstract sealed class SelectNode extends RelationNode
     }
 
     protected abstract TableProvider<?> doMakeTableProvider();
+
+    protected final String filterString() {
+        String str = mFilterString;
+        if (str == null) {
+            mFilterString = str = mFilter.toString();
+        }
+        return str;
+    }
+
+    private static final byte K_TYPE = KeyEncoder.allocType();
+
+    @Override
+    public final void encodeKey(KeyEncoder enc) {
+        if (enc.encode(this, K_TYPE)) {
+            mFrom.encodeKey(enc);
+            enc.encodeString(filterString());
+            enc.encodeNodes(mProjection);
+        }
+    }
 
     @Override
     public final int hashCode() {

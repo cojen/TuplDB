@@ -28,6 +28,7 @@ import org.cojen.maker.Variable;
  * instance that the field belongs to must be the enclosing class of the method being made.
  *
  * @author Brian S. O'Neill
+ * @see Node#replaceConstants
  */
 public final class FieldNode extends Node {
     static FieldNode make(Type type, String name) {
@@ -100,6 +101,16 @@ public final class FieldNode extends Node {
     @Override
     public FieldNode replaceConstants(Map<ConstantNode, FieldNode> map, String prefix) {
         return this;
+    }
+
+    private static final byte K_TYPE = KeyEncoder.allocType();
+
+    @Override
+    protected void encodeKey(KeyEncoder enc) {
+        if (enc.encode(this, K_TYPE)) {
+            mType.encodeKey(enc);
+            enc.encodeString(mName);
+        }
     }
 
     @Override

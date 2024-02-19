@@ -345,6 +345,43 @@ public sealed class ConstantNode extends Node {
         return value;
     }
 
+    private static final byte K_TYPE = KeyEncoder.allocType();
+
+    @Override
+    public final void encodeKey(KeyEncoder enc) {
+        if (!enc.encode(this, K_TYPE)) {
+            return;
+        }
+
+        int typeCode = mType.typeCode();
+        enc.encodeInt(typeCode);
+
+        Object value = mValue;
+
+        if (value == null) {
+            if (Type.isNullable(typeCode)) {
+                enc.encodeBoolean(false);
+            } else {
+                throw new AssertionError();
+            }
+        } else if (Type.isNullable(typeCode)) {
+            enc.encodeBoolean(true);
+        }
+
+        switch (typeCode) {
+        case TYPE_BOOLEAN -> enc.encodeBoolean((Boolean) value);
+        case TYPE_BYTE    -> enc.encodeByte((Byte) value);
+        case TYPE_SHORT   -> enc.encodeShort((Short) value);
+        case TYPE_CHAR    -> enc.encodeShort((Character) value);
+        case TYPE_INT     -> enc.encodeInt((Integer) value);
+        case TYPE_LONG    -> enc.encodeLong((Long) value);
+        case TYPE_FLOAT   -> enc.encodeInt(Float.floatToIntBits((Float) value));
+        case TYPE_DOUBLE  -> enc.encodeLong(Double.doubleToLongBits((Double) value));
+        case TYPE_UTF8    -> enc.encodeString((String) value);
+        default           -> enc.encodeObject(value);
+        }
+    }
+
     @Override
     public int hashCode() {
         return mType.hashCode() * 31 + Objects.hashCode(mValue);

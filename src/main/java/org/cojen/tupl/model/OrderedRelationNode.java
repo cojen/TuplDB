@@ -19,6 +19,7 @@ package org.cojen.tupl.model;
 
 import java.util.Arrays;
 import java.util.Map;
+import java.util.Objects;
 
 import org.cojen.tupl.Table;
 
@@ -130,6 +131,29 @@ public final class OrderedRelationNode extends RelationNode {
         };
     }
 
+    private static final byte K_TYPE = KeyEncoder.allocType();
+
+    @Override
+    protected void encodeKey(KeyEncoder enc) {
+        if (!enc.encode(this, K_TYPE)) {
+            return;
+        }
+
+        mFrom.encodeKey(enc);
+        enc.encodeStrings(mOrderBy);
+        enc.encodeInts(mOrderByFlags);
+
+        if (mProjectonMap == null) {
+            enc.encodeByte(0);
+        } else {
+            enc.encodeUnsignedVarInt(mProjectonMap.size());
+            for (Map.Entry<String, String> e : mProjectonMap.entrySet()) {
+                enc.encodeString(e.getKey());
+                enc.encodeString(e.getValue());
+            }
+        }
+    }
+
     @Override
     public int hashCode() {
         int hash = mFrom.hashCode();
@@ -143,6 +167,7 @@ public final class OrderedRelationNode extends RelationNode {
         return obj instanceof OrderedRelationNode orn
             && mFrom.equals(orn.mFrom)
             && Arrays.equals(mOrderBy, orn.mOrderBy)
-            && Arrays.equals(mOrderByFlags, orn.mOrderByFlags);
+            && Arrays.equals(mOrderByFlags, orn.mOrderByFlags)
+            && Objects.equals(mProjectonMap, orn.mProjectonMap);
     }
 }

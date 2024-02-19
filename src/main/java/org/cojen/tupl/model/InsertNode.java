@@ -113,6 +113,7 @@ public final class InsertNode extends CommandNode {
     private final ColumnNode[] mColumns;
     private final Node[] mValues;
     private final RelationNode mSelect;
+
     private final Map<ConstantNode, FieldNode> mFieldMap;
 
     private InsertNode(String name, TableNode table, ColumnNode[] columns, Node[] values,
@@ -169,9 +170,27 @@ public final class InsertNode extends CommandNode {
         return new InsertNode(name(), mTableNode, columns, mValues, select, mFieldMap);
     }
 
+    private static final byte K_TYPE = KeyEncoder.allocType();
+
+    @Override
+    protected Object makeCode() {
+        return makeCommandHandle();
+    }
+
+    @Override
+    protected void encodeKey(KeyEncoder enc) {
+        if (enc.encode(this, K_TYPE)) {
+            mTableNode.encodeKey(enc);
+            enc.encodeNodes(mColumns);
+            enc.encodeNodes(mValues);
+            enc.encodeObject(mSelect);
+        }
+    }
+
     @Override
     public int hashCode() {
         int hash = mTableNode.hashCode();
+        hash = hash * 31 + Arrays.hashCode(mColumns);
         hash = hash * 31 + Arrays.hashCode(mValues);
         if (mSelect != null) {
             hash = hash * 31 + mSelect.hashCode();
@@ -181,13 +200,16 @@ public final class InsertNode extends CommandNode {
 
     @Override
     public boolean equals(Object obj) {
-        return obj instanceof InsertNode in && mTableNode == in.mTableNode 
-            && Arrays.equals(mValues, in.mValues) && Objects.equals(mSelect, in.mSelect);
+        return obj instanceof InsertNode in
+            && mTableNode == in.mTableNode 
+            && Arrays.equals(mColumns, in.mColumns)
+            && Arrays.equals(mValues, in.mValues)
+            && Objects.equals(mSelect, in.mSelect);
     }
 
     @Override
     public Command makeCommand() {
-        MethodHandle mh = makeCommandClass();
+        var mh = (MethodHandle) code(); // indirectly calls makeCommandHandle
 
         Object[] fieldValues;
         if (mFieldMap.isEmpty()) {
@@ -217,15 +239,16 @@ public final class InsertNode extends CommandNode {
      * If there are no fields to set, the fieldValues parameter is Object and is ignored.
      * Likewise, if there's no select, the select parameter is Object and ignored.
      */
-    private MethodHandle makeCommandClass() {
-        // FIXME: Cache by rowType, field param types, select row type, column names, and value
-        // nodes.
-
+    private MethodHandle makeCommandHandle() {
         Class<?> rowType = mTableNode.table().rowType();
 
         ClassMaker cm = RowGen.beginClassMaker
             (InsertNode.class, rowType, rowType.getName(), null, "insert")
             .implement(Command.class).final_();
+
+        // Keep a reference to the MethodHandle instance, to prevent it from being garbage
+        // collected as long as the generated class still exists.
+        cm.addField(Object.class, "_").static_().private_();
 
         cm.addField(Table.class, "table").private_().final_();
 
@@ -369,7 +392,12 @@ public final class InsertNode extends CommandNode {
         Class<?> clazz = lookup.lookupClass();
 
         try {
-            return lookup.findConstructor(clazz, mt);
+            MethodHandle mh = lookup.findConstructor(clazz, mt);
+
+            // Assign the singleton reference.
+            lookup.findStaticVarHandle(clazz, "_", Object.class).set(mh);
+
+            return mh;
         } catch (Throwable e) {
             throw Utils.rethrow(e);
         }

@@ -263,6 +263,17 @@ public final class CaseNode extends Node {
         return new CaseNode(mType, mName, conditions, results, elseResult);
     }
 
+    private static final byte K_TYPE = KeyEncoder.allocType();
+
+    @Override
+    protected void encodeKey(KeyEncoder enc) {
+        if (enc.encode(this, K_TYPE)) {
+            enc.encodeNodes(mConditions);
+            enc.encodeNodes(mResults);
+            mElseResult.encodeKey(enc);
+        }
+    }
+
     @Override
     public int hashCode() {
         int hash = mElseResult.hashCode();
