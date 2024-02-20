@@ -187,36 +187,47 @@ public final class TableManager<R> {
      * changed, a new trigger is installed on all tables. Caller is expected to hold a lock
      * which prevents concurrent calls to this method, which isn't thread-safe.
      *
+     * <p>IMPORTANT: An optional task object is returned by this method to clear all the
+     * necessary query caches, which must be run after the transaction commits. The task isn't
+     * expected to be slow, and so it can run in the current thread. Running the task before
+     * the transaction commits can lead to deadlock. The deadlock is caused by a combination of
+     * the transaction lock and synchronized methods in QueryLauncher.Delegate.
+     *
      * @param tableVersion non-zero current table definition version
      * @param rs used to open secondary indexes
      * @param txn holds the lock
      * @param secondaries maps index descriptor to index id and state
+     * @return an optional task to clear the query caches
      */
-    boolean update(long tableVersion, RowStore rs, Transaction txn, View secondaries)
+    Runnable update(long tableVersion, RowStore rs, Transaction txn, View secondaries)
         throws IOException
     {
         if (tableVersion == mTableVersion) {
-            return false;
+            return null;
         }
 
+        Runnable task;
+
         List<BaseTable<R>> tables = mTables.copyValues();
+
         if (tables != null) {
             for (var table : tables) {
                 Class<R> rowType = table.rowType();
                 RowInfo primaryInfo = RowInfo.find(rowType);
                 update(table, rowType, primaryInfo, rs, txn, secondaries);
-                table.clearQueryCache();
             }
+            task = () -> tables.forEach(BaseTable::clearQueryCache);
         } else {
             RowInfo primaryInfo = rs.decodeExisting(txn, null, mPrimaryIndex.id());
             if (primaryInfo != null) {
                 update(null, null, primaryInfo, rs, txn, secondaries);
             }
+            task = null;
         }
 
         mTableVersion = tableVersion;
 
-        return true;
+        return task;
     }
 
     /**

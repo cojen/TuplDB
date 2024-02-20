@@ -755,6 +755,8 @@ public final class RowStore {
     void examineSecondaries(TableManager<?> manager) throws IOException {
         long indexId = manager.mPrimaryIndex.id();
 
+        Runnable clearTask;
+
         // Can use NO_FLUSH because transaction will be only used for reading data.
         Transaction txn = mDatabase.newTransaction(DurabilityMode.NO_FLUSH);
         try {
@@ -773,9 +775,13 @@ public final class RowStore {
 
             txn.lockMode(LockMode.READ_COMMITTED);
 
-            manager.update(tableVersion, this, txn, viewExtended(indexId, K_SECONDARY));
+            clearTask = manager.update(tableVersion, this, txn, viewExtended(indexId, K_SECONDARY));
         } finally {
             txn.reset();
+        }
+
+        if (clearTask != null) {
+            clearTask.run();
         }
     }
 
@@ -822,6 +828,8 @@ public final class RowStore {
 
         boolean activated = false;
 
+        Runnable clearTask;
+
         // Use NO_REDO it because this method can be called by a replica.
         Transaction txn = mDatabase.newTransaction(DurabilityMode.NO_REDO);
         try {
@@ -856,11 +864,15 @@ public final class RowStore {
                 }
             }
 
-            backfill.mManager.update(tableVersion, this, txn, secondariesView);
+            clearTask = backfill.mManager.update(tableVersion, this, txn, secondariesView);
 
             txn.commit();
         } finally {
             txn.reset();
+        }
+
+        if (clearTask != null) {
+            clearTask.run();
         }
 
         if (activated) {
