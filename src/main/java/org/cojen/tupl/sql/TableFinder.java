@@ -295,7 +295,7 @@ public class TableFinder {
     {
         String canonicalName = fullNameFor(tableName).toLowerCase();
 
-        var alteration = new Alteration() {
+        var alteration = new Alteration(tableName) {
             boolean result = true;
 
             @Override
@@ -421,7 +421,18 @@ public class TableFinder {
         entity.schema(searchSchema);
         entity.name(searchName);
 
-        RowInfo rowInfo;
+        RowInfo rowInfo = null;
+
+        List<Alteration> alterations = null;
+
+        synchronized (mRowTypeCache) {
+            if (mRowTypeAlterations != null) {
+                alterations = mRowTypeAlterations.remove(canonicalName);
+                if (mRowTypeAlterations.isEmpty()) {
+                    mRowTypeAlterations = null;
+                }
+            }
+        }
 
         Transaction txn = mDb.newTransaction();
         try {
@@ -429,6 +440,11 @@ public class TableFinder {
             txn.durabilityMode(DurabilityMode.SYNC);
 
             if (!mEntityTable.tryLoad(txn, entity)) {
+                if (alterations != null) {
+                    for (Alteration alt : alterations) {
+                        alt.failed(null, null);
+                    }
+                }
                 return null;
             }
 
@@ -463,17 +479,6 @@ public class TableFinder {
                 }
             }
 
-            List<Alteration> alterations = null;
-
-            synchronized (mRowTypeCache) {
-                if (mRowTypeAlterations != null) {
-                    alterations = mRowTypeAlterations.remove(canonicalName);
-                    if (mRowTypeAlterations.isEmpty()) {
-                        mRowTypeAlterations = null;
-                    }
-                }
-            }
-
             if (alterations != null) {
                 for (Alteration alt : alterations) {
                     txn.enter();
@@ -487,6 +492,13 @@ public class TableFinder {
             }
 
             txn.commit();
+        } catch (Throwable e) {
+            if (alterations != null) {
+                for (Alteration alt : alterations) {
+                    alt.failed(e, rowInfo);
+                }
+            }
+            throw e;
         } finally {
             txn.reset();
         }
@@ -499,7 +511,27 @@ public class TableFinder {
     }
 
     private abstract class Alteration {
+        protected final String mTableName;
+
         private volatile Object mFinished;
+
+        /**
+         * @param tableName original table name which was requested to be altered
+         */
+        Alteration(String tableName) {
+            mTableName = tableName;
+        }
+
+        /**
+         * Called when tryFindRowType threw an exception or couldn't find the RowInfo. If the
+         * given exception is null, then the RowInfo must also be null.
+         *
+         * @param e is null if no exception
+         * @param rowInfo is null if not found
+         */
+        final void failed(Throwable e, RowInfo rowInfo) {
+            mFinished = e == null ? false : e;
+        }
 
         /**
          * The implementation is expected to modify the given RowInfo object or return a new
@@ -509,7 +541,7 @@ public class TableFinder {
             try {
                 rowInfo = doApply(txn, entity, rowInfo);
                 mFinished = true;
-            } catch (IOException e) {
+            } catch (Throwable e) {
                 mFinished = e;
             }
             return rowInfo;
@@ -517,11 +549,20 @@ public class TableFinder {
 
         final void check() throws IOException {
             Object finished = mFinished;
-            if (finished instanceof IOException e) {
-                throw e;
-            } else if (finished != Boolean.TRUE) {
-                throw new AssertionError();
+
+            if (finished == Boolean.TRUE) {
+                return;
             }
+
+            if (finished == Boolean.FALSE) {
+                throw new IllegalStateException("Table isn't found: " + mTableName);
+            }
+
+            if (finished instanceof Throwable e) {
+                throw Utils.rethrow(e);
+            }
+
+            throw new AssertionError();
         }
 
         abstract RowInfo doApply(Transaction txn, EntityInfo entity, RowInfo rowInfo)
