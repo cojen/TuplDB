@@ -162,12 +162,16 @@ public final class InsertNode extends CommandNode {
 
     @Override
     public InsertNode replaceConstants(Map<ConstantNode, FieldNode> map, String prefix) {
+        var table = mTableNode.replaceConstants(map, prefix);
         var columns = (ColumnNode[]) Node.replaceConstants(mColumns, map, prefix);
+        var values = (Node[]) Node.replaceConstants(mValues, map, prefix);
         RelationNode select = mSelect.replaceConstants(map, prefix);
-        if (columns == mColumns && select == mSelect) {
+
+        if (table == mTableNode && columns == mColumns && values == mValues && select == mSelect) {
             return this;
         }
-        return new InsertNode(name(), mTableNode, columns, mValues, select, mFieldMap);
+
+        return new InsertNode(name(), table, columns, values, select, mFieldMap);
     }
 
     private static final byte K_TYPE = KeyEncoder.allocType();
@@ -183,7 +187,7 @@ public final class InsertNode extends CommandNode {
             mTableNode.encodeKey(enc);
             enc.encodeNodes(mColumns);
             enc.encodeNodes(mValues);
-            enc.encodeObject(mSelect);
+            enc.encodeOptionalNode(mSelect);
         }
     }
 
@@ -201,7 +205,7 @@ public final class InsertNode extends CommandNode {
     @Override
     public boolean equals(Object obj) {
         return obj instanceof InsertNode in
-            && mTableNode == in.mTableNode 
+            && mTableNode.equals(in.mTableNode)
             && Arrays.equals(mColumns, in.mColumns)
             && Arrays.equals(mValues, in.mValues)
             && Objects.equals(mSelect, in.mSelect);

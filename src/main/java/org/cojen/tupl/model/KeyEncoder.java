@@ -169,6 +169,15 @@ final class KeyEncoder {
         encodeUnsignedVarInt(id);
     }
 
+    void encodeOptionalNode(Node node) {
+        if (node == null) {
+            encodeBoolean(false);
+        } else {
+            encodeBoolean(true);
+            node.encodeKey(this);
+        }
+    }
+
     void encodeInts(int[] ints) {
         if (ints == null) {
             encodeByte(0);
