@@ -226,6 +226,8 @@ public final class DbDataSource implements DataSource {
             stmt = StatementProcessor.process(sql, new Scope(mFinder));
         } catch (IOException e) {
             throw new SQLException(e);
+        } catch (NullPointerException e) {
+            throw new SQLException(e);
         } catch (Exception e) {
             if (e instanceof SQLException se) {
                 throw se;
