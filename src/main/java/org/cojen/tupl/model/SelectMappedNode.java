@@ -235,12 +235,9 @@ final class SelectMappedNode extends SelectNode {
         addToStringMethod(cm);
         addPlanMethod(cm);
 
-        // FIXME: These only need to be added if CRUD operations work.
-        if (false) {
-            addCheckStoreMethod(cm);
-            addCheckUpdateMethod(cm);
-            addCheckDeleteMethod(cm);
-        }
+        addCheckStoreMethod(cm);
+        addCheckUpdateMethod(cm);
+        addCheckDeleteMethod(cm);
 
         MethodHandles.Lookup lookup = cm.finishHidden();
         Class<?> clazz = lookup.lookupClass();
@@ -463,6 +460,8 @@ final class SelectMappedNode extends SelectNode {
     // passes. If true, must check the column value.
 
     private void addCheckStoreMethod(ClassMaker cm) {
+        // FIXME: No need to override if CRUD operations don't work.
+
         MethodMaker mm = cm.addMethod(null, "checkStore", Table.class, Object.class).public_();
 
         if (mFilter == TrueFilter.THE) {
