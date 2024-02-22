@@ -644,6 +644,14 @@ public abstract class MappedTable<S, T> extends AbstractMappedTable<S, T>
 
             done.here();
             mm.return_(targetRowVar);
+
+            // Need to wrap the "check" methods which are used by MappedUpdater.
+
+            mm = cm.addMethod(null, "checkUpdate", Table.class, Object.class).public_();
+            mm.field("mapper").invoke("checkUpdate", mm.param(0), mm.param(1));
+
+            mm = cm.addMethod(null, "checkDelete", Table.class, Object.class).public_();
+            mm.field("mapper").invoke("checkDelete", mm.param(0), mm.param(1));
         }
 
         splitter.addPrepareArgsMethod(cm);
