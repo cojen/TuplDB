@@ -810,7 +810,7 @@ public final class RowStore {
 
         // Index won't be found if it was concurrently dropped.
         if (ix != null) {
-            examineSecondaries(tableManager(ix));
+            examineSecondaries(tableManager(ix), false);
         }
 
         return true;
@@ -818,8 +818,10 @@ public final class RowStore {
 
     /**
      * Also called from TableManager.asTable.
+     *
+     * @param newTable is true when called by TableManager.asTable
      */
-    void examineSecondaries(TableManager<?> manager) throws IOException {
+    void examineSecondaries(TableManager<?> manager, boolean newTable) throws IOException {
         long indexId = manager.mPrimaryIndex.id();
 
         Runnable clearTask;
@@ -842,7 +844,8 @@ public final class RowStore {
 
             txn.lockMode(LockMode.READ_COMMITTED);
 
-            clearTask = manager.update(tableVersion, this, txn, viewExtended(indexId, K_SECONDARY));
+            clearTask = manager.update
+                (tableVersion, this, txn, viewExtended(indexId, K_SECONDARY), newTable);
         } finally {
             txn.reset();
         }
@@ -931,7 +934,7 @@ public final class RowStore {
                 }
             }
 
-            clearTask = backfill.mManager.update(tableVersion, this, txn, secondariesView);
+            clearTask = backfill.mManager.update(tableVersion, this, txn, secondariesView, false);
 
             txn.commit();
         } finally {

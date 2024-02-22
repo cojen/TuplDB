@@ -95,7 +95,7 @@ public final class TableManager<R> {
         });
 
         // Must be called after the table is added to the cache. No harm if called redundantly.
-        rs.examineSecondaries(this);
+        rs.examineSecondaries(this, true);
 
         Worker worker = worker(false);
         if (worker != null && ix.isEmpty()) {
@@ -197,12 +197,15 @@ public final class TableManager<R> {
      * @param rs used to open secondary indexes
      * @param txn holds the lock
      * @param secondaries maps index descriptor to index id and state
+     * @param newTable is true to install a trigger even when the version didn't change;
+     * should be true when creating a new Table instance
      * @return an optional task to clear the query caches
      */
-    Runnable update(long tableVersion, RowStore rs, Transaction txn, View secondaries)
+    Runnable update(long tableVersion, RowStore rs, Transaction txn, View secondaries,
+                    boolean newTable)
         throws IOException
     {
-        if (tableVersion == mTableVersion) {
+        if (!newTable && tableVersion == mTableVersion) {
             return null;
         }
 
