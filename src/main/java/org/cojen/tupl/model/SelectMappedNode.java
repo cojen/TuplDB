@@ -33,7 +33,6 @@ import org.cojen.maker.Variable;
 import org.cojen.tupl.Mapper;
 import org.cojen.tupl.Table;
 import org.cojen.tupl.Untransformed;
-import org.cojen.tupl.ViewConstraintException;
 
 import org.cojen.tupl.diag.QueryPlan;
 
@@ -93,28 +92,6 @@ final class SelectMappedNode extends SelectNode {
         mWhere = node.mWhere;
         mRequireRemap = node.mRequireRemap;
     }
-
-    /* FIXME: Notes
-
-       - The Mapper evaluates the "where" filter and returns null if it yields false. Any
-         ColumnNodes which were projected (and have inverses) cannot be skipped because
-         MappedTable doesn't always apply an appropriate filter against the source. The
-         QueryPlan node should show the additional filtering which is applied.
-
-       - The above comment might be wrong with respect to column skipping. Need to check the
-         implementation of the MappedTable with respect to load, etc. If columns can be removed
-         from the filter, it needs to obey the rules of RowFilter.split. It might be related to
-         full inverse mapping of the primary key. If the primary key is fully (inverse) mapped,
-         then CRUD operations work. It's the store operation that must always check the full
-         filter.
-
-       - If the primary key is fully mapped, CRUD operations work, and so the Mapper must apply
-         the full filter. Only when CRUD operations don't work can the Mapper use a split
-         remainder filter.
-
-       - However, the MappedUpdater will call the checkUpdate and checkDelete methods. So
-         perhaps always define those methods? Just checkStore can be skipped.
-    */
 
     @Override
     public SelectMappedNode withName(String name) {
@@ -235,9 +212,12 @@ final class SelectMappedNode extends SelectNode {
         addToStringMethod(cm);
         addPlanMethod(cm);
 
-        addCheckStoreMethod(cm);
-        addCheckUpdateMethod(cm);
-        addCheckDeleteMethod(cm);
+        // Override the check methods to do nothing. This behavior is correct for an update
+        // statement, because it permits altering the row to appear outside the set of rows
+        // selected by the filter. This behavior is incorrect for a view, which disallows
+        // creating or altering rows such that they appear outside the view's bounds. A view
+        // needs to check another filter before allowing the operation to proceed.
+        addCheckMethods(cm);
 
         MethodHandles.Lookup lookup = cm.finishHidden();
         Class<?> clazz = lookup.lookupClass();
@@ -454,46 +434,13 @@ final class SelectMappedNode extends SelectNode {
         mm.return_(mm.new_(QueryPlan.Filter.class, filterString(), mm.param(0)));
     }
 
-    // FIXME: Finish the check methods, which just applies the filter. Columns that don't need
-    // to be checked effectively evaluate to true. For checkUpdate, any columns not in the
-    // primary key must also call the isSet method. If it returns false, then the column check
-    // passes. If true, must check the column value.
-
-    private void addCheckStoreMethod(ClassMaker cm) {
-        // FIXME: No need to override if CRUD operations don't work.
-
-        MethodMaker mm = cm.addMethod(null, "checkStore", Table.class, Object.class).public_();
-
-        if (mFilter == TrueFilter.THE) {
-            // Nothing to check.
-            return;
+    protected void addCheckMethods(ClassMaker cm) {
+        for (int i=0; i<3; i++) {
+            String name = "check" + switch(i) {
+                default -> "Store"; case 1 -> "Update"; case 2 -> "Delete";
+            };
+            cm.addMethod(null, name, Table.class, Object.class).public_().override();
+            // The method is simply empty.
         }
-
-        // FIXME: checkStore
-        mm.new_(ViewConstraintException.class).throw_();
-    }
-
-    private void addCheckUpdateMethod(ClassMaker cm) {
-        MethodMaker mm = cm.addMethod(null, "checkUpdate", Table.class, Object.class).public_();
-
-        if (mFilter == TrueFilter.THE) {
-            // Nothing to check.
-            return;
-        }
-
-        // FIXME: checkUpdate
-        mm.new_(ViewConstraintException.class).throw_();
-    }
-
-    private void addCheckDeleteMethod(ClassMaker cm) {
-        MethodMaker mm = cm.addMethod(null, "checkDelete", Table.class, Object.class).public_();
-
-        if (mFilter == TrueFilter.THE) {
-            // Nothing to check.
-            return;
-        }
-
-        // FIXME: checkDelete
-        mm.new_(ViewConstraintException.class).throw_();
     }
 }
