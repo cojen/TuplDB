@@ -102,11 +102,6 @@ public class AggregatedJoinTest {
             target.count(count);
             return target;
         }
-
-        @Override
-        public String toString() {
-            return getClass().getSimpleName();
-        }
     }
 
     @Test
@@ -123,7 +118,6 @@ public class AggregatedJoinTest {
 - nested loops join
   - first
     - aggregate: org.cojen.tupl.table.join.AggregatedJoinTest$Agg
-      using: Aggregator1
       - full scan over primary key: org.cojen.tupl.table.join.Department
         key columns: +id
   - join
@@ -146,7 +140,6 @@ public class AggregatedJoinTest {
 - nested loops join
   - first
     - aggregate: org.cojen.tupl.table.join.AggregatedJoinTest$Agg
-      using: Aggregator1
       - full scan over primary key: org.cojen.tupl.table.join.Department
         key columns: +id
   - join
@@ -179,7 +172,6 @@ public class AggregatedJoinTest {
 - nested loops join
   - first
     - aggregate: org.cojen.tupl.table.join.AggregatedJoinTest$AggByCompany
-      using: Aggregator1
       group by: companyId
       - sort: +companyId
         - full scan over primary key: org.cojen.tupl.table.join.Department
@@ -206,7 +198,6 @@ public class AggregatedJoinTest {
 - nested loops join
   - first
     - aggregate: org.cojen.tupl.table.join.AggregatedJoinTest$AggByCompany
-      using: Aggregator1
       group by: companyId
       - sort: +companyId
         - full scan over primary key: org.cojen.tupl.table.join.Department
@@ -236,7 +227,6 @@ public class AggregatedJoinTest {
     assignments: ?2 = department.companyId
   - join
     - aggregate: org.cojen.tupl.table.join.AggregatedJoinTest$AggByCompany
-      using: Aggregator1
       group by: companyId
       - filter: companyId == ?2
         - full scan over primary key: org.cojen.tupl.table.join.Department
@@ -255,7 +245,6 @@ public class AggregatedJoinTest {
 - nested loops join
   - first
     - aggregate: org.cojen.tupl.table.join.AggregatedJoinTest$AggByCompany
-      using: Aggregator1
       group by: companyId
       - filter: companyId == ?1
         - full scan over primary key: org.cojen.tupl.table.join.Department

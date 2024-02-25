@@ -744,9 +744,9 @@ public abstract class MappedTable<S, T> extends AbstractMappedTable<S, T>
 
             var targetVar = mm.var(Class.class).set(targetType).invoke("getName");
             var mapperVar = mm.field("table").invoke("mapper");
-            var usingVar = mapperVar.invoke("toString");
+            var operationVar = mapperVar.invoke("operation");
 
-            var mapperPlanVar = mm.new_(QueryPlan.Mapper.class, targetVar, usingVar, planVar);
+            var mapperPlanVar = mm.new_(QueryPlan.Mapper.class, targetVar, operationVar, planVar);
             planVar.set(mapperVar.invoke("plan", mapperPlanVar));
 
             if (targetRemainder != TrueFilter.THE) {

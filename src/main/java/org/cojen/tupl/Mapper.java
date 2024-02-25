@@ -90,6 +90,14 @@ public interface Mapper<R, T> {
     }
 
     /**
+     * Override this method to describe the operation performed by the mapper, which is then
+     * passed to the {@code QueryPlan.Mapper} instance.
+     */
+    default String operation() {
+        return null;
+    }
+
+    /**
      * Override this method to customize the mapper's query plan.
      *
      * @param plan original plan

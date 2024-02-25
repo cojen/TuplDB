@@ -64,14 +64,14 @@ public class MappedJoinTest {
 - nested loops join
   - first
     - map: org.cojen.tupl.table.join.MappedJoinTest$Emp
-      using: ToEmp
+      operation: ToEmp
       - full scan over primary key: org.cojen.tupl.table.join.Employee
         key columns: +id
     assignments: ?1 = emp.deptId
   - join
     - filter: id == ?1
       - map: org.cojen.tupl.table.join.MappedJoinTest$Dept
-        using: ToDept
+        operation: ToDept
         - full scan over primary key: org.cojen.tupl.table.join.Department
           key columns: +id
             """;
@@ -90,7 +90,7 @@ public class MappedJoinTest {
 - nested loops join
   - first
     - map: org.cojen.tupl.table.join.MappedJoinTest$Emp
-      using: ToEmp
+      operation: ToEmp
       - filter: lastName == ?2
         - full scan over primary key: org.cojen.tupl.table.join.Employee
           key columns: +id
@@ -98,7 +98,7 @@ public class MappedJoinTest {
   - join
     - filter: id == ?2
       - map: org.cojen.tupl.table.join.MappedJoinTest$Dept
-        using: ToDept
+        operation: ToDept
         - full scan over primary key: org.cojen.tupl.table.join.Department
           key columns: +id
             """;
@@ -114,16 +114,16 @@ public class MappedJoinTest {
         plan = """
 - filter: deptName == ?1
   - map: org.cojen.tupl.table.join.MappedJoinTest$EmpAndDept
-    using: ToEmpAndDept
+    operation: ToEmpAndDept
     - nested loops join
       - first
         - map: org.cojen.tupl.table.join.MappedJoinTest$Emp
-          using: ToEmp
+          operation: ToEmp
           - full scan over primary key: org.cojen.tupl.table.join.Employee
             key columns: +id
       - join
         - map: org.cojen.tupl.table.join.MappedJoinTest$Dept
-          using: ToDept
+          operation: ToDept
           - full scan over primary key: org.cojen.tupl.table.join.Department
             key columns: +id
             """;
@@ -231,7 +231,7 @@ public class MappedJoinTest {
         }
 
         @Override
-        public String toString() {
+        public String operation() {
             return getClass().getSimpleName();
         }
     }
@@ -245,7 +245,7 @@ public class MappedJoinTest {
         }
 
         @Override
-        public String toString() {
+        public String operation() {
             return getClass().getSimpleName();
         }
     }
@@ -268,7 +268,7 @@ public class MappedJoinTest {
         }
 
         @Override
-        public String toString() {
+        public String operation() {
             return getClass().getSimpleName();
         }
     }

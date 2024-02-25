@@ -361,12 +361,12 @@ public abstract class GroupedTable<S, T> extends AbstractMappedTable<S, T>
             final var planVar = sourceQueryVar.invoke("scannerPlan", txnVar, argsVar);
 
             var targetVar = mm.var(Class.class).set(targetType).invoke("getName");
-            var usingVar = tableVar.invoke("grouperString");
+            var operationVar = tableVar.invoke("operation");
             var groupByVar = tableVar.invoke("groupByColumns");
             var orderByVar = tableVar.invoke("orderByColumns");
 
             var grouperPlanVar = mm.new_
-                (QueryPlan.Grouper.class, targetVar, usingVar, groupByVar, orderByVar, planVar);
+                (QueryPlan.Grouper.class, targetVar, operationVar, groupByVar, orderByVar, planVar);
             planVar.set(tableVar.invoke("plan", grouperPlanVar));
 
             if (targetRemainder != TrueFilter.THE) {
@@ -507,10 +507,8 @@ public abstract class GroupedTable<S, T> extends AbstractMappedTable<S, T>
     /**
      * Called by generated Query instances.
      */
-    public final String grouperString() throws IOException {
-        try (Grouper<S, T> grouper = mGrouperFactory.newGrouper()) {
-            return grouper.toString();
-        }
+    public final String operation() {
+        return mGrouperFactory.operation();
     }
 
     /**
