@@ -54,6 +54,14 @@ public interface Grouper<R, T> extends Closeable {
         }
 
         /**
+         * Override this method to describe the operation performed by the grouper, which is
+         * then passed to the {@code QueryPlan.Grouper} instance.
+         */
+        default String operation() {
+            return null;
+        }
+
+        /**
          * Override this method to customize the grouper's query plan.
          *
          * @param plan original plan

@@ -158,7 +158,7 @@ public class MappedTest {
 
         QueryPlan.Mapper plan = (QueryPlan.Mapper) mapped.queryAll().scannerPlan(null);
         assertEquals(TestRow.class.getName(), plan.target);
-        assertTrue(plan.using.contains("org.cojen.tupl.table.MappedTest"));
+        assertNull(plan.operation);
         assertEquals(mTable.queryAll().scannerPlan(null), plan.source);
 
         QueryPlan plan2 = mapped.query("{*}").scannerPlan(null);
@@ -687,7 +687,7 @@ public class MappedTest {
         var plan3 = mapped.query(query).scannerPlan(null);
         assertEquals("""
 - map: org.cojen.tupl.table.MappedTest$Renamed
-  using: Renamer
+  operation: Rename
   - filter: str >= ?2
     - reverse full scan over primary key: org.cojen.tupl.table.MappedTest$TestRow
       key columns: +id
@@ -749,8 +749,8 @@ public class MappedTest {
         }
 
         @Override
-        public String toString() {
-            return "Renamer";
+        public String operation() {
+            return "Rename";
         }
     }
 
