@@ -137,6 +137,32 @@ public final class FilteredNode extends BinaryOpNode {
     }
 
     @Override
+    public boolean isSimpleDisjunction(Map<ColumnNode, Node> matches) {
+        if (mOp == OP_AND) {
+            return mLeft.isSimpleDisjunction(matches) && mRight.isSimpleDisjunction(matches);
+        }
+
+        if (mOp == OP_EQ) {
+            ColumnNode cn;
+            if ((cn = mLeft.extractColumn()) != null) {
+                if (isParamOrConstant(mRight)) {
+                    return matches.putIfAbsent(cn, mRight) == null;
+                }
+            } else if ((cn = mRight.extractColumn()) != null) {
+                if (isParamOrConstant(mLeft)) {
+                    return matches.putIfAbsent(cn, mLeft) == null;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    private static boolean isParamOrConstant(Node node) {
+        return node instanceof ParamNode || node instanceof ConstantNode;
+    }
+
+    @Override
     public boolean isNullable() {
         return false;
     }

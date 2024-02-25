@@ -22,6 +22,8 @@ import java.io.IOException;
 import java.util.Iterator;
 import java.util.List;
 
+import net.sf.jsqlparser.expression.Expression;
+
 import net.sf.jsqlparser.expression.operators.relational.ExpressionList;
 
 import net.sf.jsqlparser.parser.CCJSqlParser;
@@ -63,6 +65,7 @@ import org.cojen.tupl.model.Node;
 import org.cojen.tupl.model.RelationNode;
 import org.cojen.tupl.model.SimpleCommand;
 import org.cojen.tupl.model.TableNode;
+import org.cojen.tupl.model.UpdateNode;
 
 import org.cojen.tupl.io.Utils;
 
@@ -124,7 +127,51 @@ public class StatementProcessor implements StatementVisitor {
 
     @Override
     public void visit(Update update) {
-        fail();
+        if (update.getOutputClause() != null || 
+            update.getWithItemsList() != null ||
+            update.getFromItem() != null ||
+            update.getJoins() != null ||
+            update.getStartJoins() != null || 
+            update.getOrderByElements() != null ||
+            update.getLimit() != null ||
+            update.getReturningClause() != null ||
+            update.getModifierPriority() != null ||
+            update.isModifierIgnore())
+        {
+            throw fail();
+        }
+
+        TableNode tableNode = findTableNode(update.getTable().getFullyQualifiedName());
+
+        Scope scope = mScope.withFrom(tableNode);
+
+        Node whereNode = null;
+
+        Expression whereExpr = update.getWhere();
+        if (whereExpr != null) {
+            whereNode = ExpressionProcessor.process(whereExpr, scope);
+        }
+
+        List<UpdateSet> updateSets = update.getUpdateSets();
+        var columnNodes = new ColumnNode[updateSets.size()];
+        var valueNodes = new Node[columnNodes.length];
+
+        int i = 0;
+        for (UpdateSet set : updateSets) {
+            ExpressionList<Column> columns = set.getColumns();
+            if (columns.size() != 1) {
+                throw fail();
+            }
+            ExpressionList<?> values = set.getValues();
+            if (values.size() != 1) {
+                throw fail();
+            }
+            columnNodes[i] = findColumnNode(tableNode, columns.get(0));
+            valueNodes[i] = ExpressionProcessor.process(values.get(0), scope);
+            i++;
+        }
+
+        mStatement = UpdateNode.make(tableNode, whereNode, columnNodes, valueNodes);
     }
 
     @Override
@@ -141,20 +188,7 @@ public class StatementProcessor implements StatementVisitor {
             throw fail();
         }
 
-        String name = insert.getTable().getFullyQualifiedName();
-
-        Table table;
-        try {
-            table = mScope.findTable(name);
-        } catch (IOException e) {
-            throw Utils.rethrow(e);
-        }
-
-        if (table == null) {
-            throw new IllegalStateException("Table isn't found: " + name);
-        }
-
-        TableNode tableNode = TableNode.make(table);
+        TableNode tableNode = findTableNode(insert.getTable().getFullyQualifiedName());
 
         ExpressionList<Column> columns = insert.getColumns();
         var columnNodes = new ColumnNode[columns.size()];
@@ -184,6 +218,21 @@ public class StatementProcessor implements StatementVisitor {
         }
 
         mStatement = InsertNode.make(tableNode, columnNodes, valueNodes, selectNode);
+    }
+
+    private TableNode findTableNode(String name) {
+        Table table;
+        try {
+            table = mScope.findTable(name);
+        } catch (IOException e) {
+            throw Utils.rethrow(e);
+        }
+
+        if (table == null) {
+            throw new IllegalStateException("Table isn't found: " + name);
+        }
+
+        return TableNode.make(table, name);
     }
 
     private static ColumnNode findColumnNode(TableNode tableNode, Column column) {

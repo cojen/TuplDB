@@ -93,6 +93,11 @@ public final class ConversionNode extends Node {
     }
 
     @Override
+    public ColumnNode extractColumn() {
+        return mNode.extractColumn();
+    }
+
+    @Override
     public void evalColumns(Set<String> columns) {
         mNode.evalColumns(columns);
     }

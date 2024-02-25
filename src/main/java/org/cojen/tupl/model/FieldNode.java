@@ -50,7 +50,7 @@ public final class FieldNode extends Node {
 
     @Override
     public Node asType(Type type) {
-        throw new UnsupportedOperationException();
+        return ConversionNode.make(this, type);
     }
 
     @Override

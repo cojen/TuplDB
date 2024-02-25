@@ -114,6 +114,11 @@ public final class ColumnNode extends Node {
     }
 
     @Override
+    public ColumnNode extractColumn() {
+        return this;
+    }
+
+    @Override
     public void evalColumns(Set<String> columns) {
         columns.add(mColumn.name());
     }

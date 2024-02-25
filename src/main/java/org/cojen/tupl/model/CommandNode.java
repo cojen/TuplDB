@@ -27,7 +27,9 @@ import org.cojen.maker.Variable;
  *
  * @author Brian S. O'Neill
  */
-public abstract sealed class CommandNode extends Node permits CommandNode.Basic, InsertNode {
+public abstract sealed class CommandNode extends Node
+    permits CommandNode.Basic, InsertNode, UpdateNode
+{
     /**
      * Make a basic CommandNode which just wraps a command instance. The makeEval method isn't
      * supported.

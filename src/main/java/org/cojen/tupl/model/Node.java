@@ -104,9 +104,28 @@ public abstract sealed class Node
     }
 
     /**
+     * Returns true if this node represents a simple disjunction filter which exactly matches
+     * columns to parameters or constants, and every column is matched at most once.
+     *
+     * @param matches the matches are put into this map; the map values are either ParamNode or
+     * ConstantNode
+     */
+    public boolean isSimpleDisjunction(Map<ColumnNode, Node> matches) {
+        return false;
+    }
+
+    /**
      * Returns true if any path element is null or the evaluated result can be null.
      */
     public abstract boolean isNullable();
+
+    /**
+     * Returns a ColumnNode if this node is a ColumnNode, or if this node applies conversion to
+     * a ColumnNode. Null is returned otherwise.
+     */
+    public ColumnNode extractColumn() {
+        return null;
+    }
 
     /**
      * Adds into the given set the fully qualified names of all the columns that makeEval will
