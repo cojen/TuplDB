@@ -1815,7 +1815,9 @@ public final class RowStore {
      * @param typeName pass null to decode the current type name
      * @return null if not found
      */
-    RowInfo decodeExisting(Transaction txn, String typeName, long indexId) throws IOException {
+    public RowInfo decodeExisting(Transaction txn, String typeName, long indexId)
+        throws IOException
+    {
         byte[] currentData = mSchemata.load(txn, key(indexId));
         if (currentData == null) {
             return null;
@@ -1884,6 +1886,7 @@ public final class RowStore {
             var ci = new ColumnInfo();
             ci.name = name;
             ci.typeCode = decodeIntLE(primaryData, pos); pos += 4;
+            ci.assignType();
             info.allColumns.put(name, ci);
         }
 
