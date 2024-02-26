@@ -175,8 +175,8 @@ public class GroupedTest {
         }
 
         @Override
-        public String operation() {
-            return "Grouped1";
+        public QueryPlan.Grouper plan(QueryPlan.Grouper plan) {
+            return plan.withOperation("Grouped1");
         }
 
         @Untransformed

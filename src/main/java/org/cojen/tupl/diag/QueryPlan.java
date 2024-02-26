@@ -397,6 +397,10 @@ public abstract sealed class QueryPlan implements Serializable {
             this.source = source;
         }
 
+        public Mapper withOperation(String operation) {
+            return new Mapper(target, operation, source);
+        }
+
         @Override
         void appendTo(Appendable a, String in1, String in2) throws IOException {
             a.append(in1).append("map").append(": ").append(target).append('\n');
@@ -448,6 +452,10 @@ public abstract sealed class QueryPlan implements Serializable {
             this.operation = operation;
             this.groupBy = groupBy;
             this.source = source;
+        }
+
+        public Aggregator withOperation(String operation) {
+            return new Aggregator(target, operation, groupBy, source);
         }
 
         @Override
@@ -511,6 +519,10 @@ public abstract sealed class QueryPlan implements Serializable {
             this.groupBy = groupBy;
             this.orderBy = orderBy;
             this.source = source;
+        }
+
+        public Grouper withOperation(String operation) {
+            return new Grouper(target, operation, groupBy, orderBy, source);
         }
 
         @Override

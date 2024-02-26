@@ -22,6 +22,8 @@ import static org.junit.Assert.*;
 
 import org.cojen.tupl.*;
 
+import org.cojen.tupl.diag.QueryPlan;
+
 /**
  * 
  *
@@ -231,8 +233,8 @@ public class MappedJoinTest {
         }
 
         @Override
-        public String operation() {
-            return getClass().getSimpleName();
+        public QueryPlan.Mapper plan(QueryPlan.Mapper plan) {
+            return plan.withOperation(getClass().getSimpleName());
         }
     }
 
@@ -245,8 +247,8 @@ public class MappedJoinTest {
         }
 
         @Override
-        public String operation() {
-            return getClass().getSimpleName();
+        public QueryPlan.Mapper plan(QueryPlan.Mapper plan) {
+            return plan.withOperation(getClass().getSimpleName());
         }
     }
 
@@ -268,8 +270,8 @@ public class MappedJoinTest {
         }
 
         @Override
-        public String operation() {
-            return getClass().getSimpleName();
+        public QueryPlan.Mapper plan(QueryPlan.Mapper plan) {
+            return plan.withOperation(getClass().getSimpleName());
         }
     }
 }

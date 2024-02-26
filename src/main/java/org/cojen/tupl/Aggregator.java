@@ -46,14 +46,6 @@ public interface Aggregator<R, T> extends Closeable {
         }
 
         /**
-         * Override this method to describe the operation performed by the aggregator, which is
-         * then passed to the {@code QueryPlan.Aggregator} instance.
-         */
-        default String operation() {
-            return null;
-        }
-
-        /**
          * Override this method to customize the aggregator's query plan.
          *
          * @param plan original plan
