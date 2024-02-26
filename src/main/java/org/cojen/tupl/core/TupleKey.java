@@ -101,6 +101,10 @@ public abstract class TupleKey extends AbstractList implements RandomAccess {
 
         public abstract TupleKey with(byte[] e0);
 
+        public abstract TupleKey with(byte[] e0, Object e1);
+
+        public abstract TupleKey with(byte[] e0, Object[] e1);
+
         public abstract TupleKey with(int e0, byte[] e1);
 
         public abstract TupleKey with(int e0, Object e1);
