@@ -140,8 +140,8 @@ public class AggregatedTest {
         }
 
         @Override
-        public String operation() {
-            return "Aggregator1";
+        public QueryPlan.Aggregator plan(QueryPlan.Aggregator plan) {
+            return plan.withOperation("Aggregator1");
         }
     }
 

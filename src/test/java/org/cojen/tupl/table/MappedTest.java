@@ -749,8 +749,8 @@ public class MappedTest {
         }
 
         @Override
-        public String operation() {
-            return "Rename";
+        public QueryPlan.Mapper plan(QueryPlan.Mapper plan) {
+            return plan.withOperation("Rename");
         }
     }
 

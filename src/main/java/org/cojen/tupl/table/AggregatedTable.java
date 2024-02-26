@@ -568,11 +568,10 @@ public abstract class AggregatedTable<S, T> extends WrappedTable<S, T>
             final var planVar = sourceQueryVar.invoke("scannerPlan", txnVar, argsVar);
 
             var targetVar = mm.var(Class.class).set(targetType).invoke("getName");
-            var operationVar = tableVar.invoke("operation");
             var groupByVar = tableVar.invoke("groupByColumns");
 
             var aggregatorPlanVar = mm.new_
-                (QueryPlan.Aggregator.class, targetVar, operationVar, groupByVar, planVar);
+                (QueryPlan.Aggregator.class, targetVar, null, groupByVar, planVar);
             planVar.set(tableVar.invoke("plan", aggregatorPlanVar));
 
             if (targetQuery.filter() != TrueFilter.THE) {
@@ -632,13 +631,6 @@ public abstract class AggregatedTable<S, T> extends WrappedTable<S, T>
             }
             throw e;
         }
-    }
-
-    /**
-     * Called by generated Query instances.
-     */
-    public final String operation() {
-        return mAggregatorFactory.operation();
     }
 
     /**
