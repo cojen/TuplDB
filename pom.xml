@@ -255,7 +255,8 @@
           <parallel>classes</parallel>
           <perCoreThreadCount>false</perCoreThreadCount>
           <threadCount>6</threadCount>
-          <argLine>${argLine} -Xmx5g</argLine>
+          <argLine>-Xmx5g</argLine>
+          <!--argLine>${argLine} -Xmx5g</argLine>-->
         </configuration>
       </plugin>
 
