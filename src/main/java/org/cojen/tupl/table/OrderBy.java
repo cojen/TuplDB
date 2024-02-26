@@ -177,6 +177,18 @@ public final class OrderBy extends LinkedHashMap<String, OrderBy.Rule> {
             return c;
         }
 
+        /**
+         * Returns a string suitable for use in a secondary index declaration.
+         */
+        public String asIndexElement() {
+            if (!isDescending() && !isNullLow()) {
+                return column.name;
+            }
+            var b = new StringBuilder(2 + column.name.length());
+            appendTo(b);
+            return b.toString();
+        }
+
         public boolean isDescending() {
             return ColumnInfo.isDescending(type);
         }
