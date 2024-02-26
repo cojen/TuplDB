@@ -38,7 +38,7 @@ import org.cojen.maker.MethodMaker;
 import org.cojen.maker.Variable;
 
 /**
- * Generates various types of tuple objects. Example: Tuple.make.with("hello", "world")
+ * Generates various types of tuple objects. Example: TupleKey.make.with("hello", "world")
  *
  * <p>A special feature is that array elements are properly handled when calling the {@code
  * hashCode}, {@code equals}, and {@code toString} methods. The sub elements of the array are
@@ -47,7 +47,7 @@ import org.cojen.maker.Variable;
  *
  * @author Brian S. O'Neill
  */
-public abstract class Tuple extends AbstractList implements RandomAccess {
+public abstract class TupleKey extends AbstractList implements RandomAccess {
     public static final Maker make = makeMaker();
 
     /**
@@ -99,37 +99,37 @@ public abstract class Tuple extends AbstractList implements RandomAccess {
         // The "with" methods and custom tuple classes are generated on demand, and so there's
         // no harm in declaring more than is actually needed at runtime.
 
-        public abstract Tuple with(byte[] e0);
+        public abstract TupleKey with(byte[] e0);
 
-        public abstract Tuple with(byte[] e0, Object e1);
+        public abstract TupleKey with(byte[] e0, Object e1);
 
-        public abstract Tuple with(byte[] e0, Object[] e1);
+        public abstract TupleKey with(byte[] e0, Object[] e1);
 
-        public abstract Tuple with(int e0, byte[] e1);
+        public abstract TupleKey with(int e0, byte[] e1);
 
-        public abstract Tuple with(int e0, Object e1);
+        public abstract TupleKey with(int e0, Object e1);
 
-        public abstract Tuple with(Object e0, boolean e1);
+        public abstract TupleKey with(Object e0, boolean e1);
 
-        public abstract Tuple with(Object e0, long e1);
+        public abstract TupleKey with(Object e0, long e1);
 
-        public abstract Tuple with(Object e0, byte[] e1);
+        public abstract TupleKey with(Object e0, byte[] e1);
 
-        public abstract Tuple with(Object e0, Object e1);
+        public abstract TupleKey with(Object e0, Object e1);
 
-        public abstract Tuple with(Object e0, Object[] e1);
+        public abstract TupleKey with(Object e0, Object[] e1);
 
-        public abstract Tuple with(Object e0, Object e1, Object e2);
+        public abstract TupleKey with(Object e0, Object e1, Object e2);
 
-        public abstract Tuple with(Object e0, Object e1, String e2);
+        public abstract TupleKey with(Object e0, Object e1, String e2);
 
-        public abstract Tuple with(Object e0, Object e1, Object[] e2);
+        public abstract TupleKey with(Object e0, Object e1, Object[] e2);
 
-        public abstract Tuple with(Object e0, String e1, String e2);
+        public abstract TupleKey with(Object e0, String e1, String e2);
 
-        public abstract Tuple with(Object e0, boolean e1, Object[] e2);
+        public abstract TupleKey with(Object e0, boolean e1, Object[] e2);
 
-        public abstract Tuple with(Object[] e0, Object e1);
+        public abstract TupleKey with(Object[] e0, Object e1);
 
         static CallSite indyWith(MethodHandles.Lookup lookup, String name, MethodType mt) {
             MethodMaker mm = MethodMaker.begin(lookup, name, mt);
@@ -153,12 +153,12 @@ public abstract class Tuple extends AbstractList implements RandomAccess {
             if (Modifier.isAbstract(m.getModifiers())) {
                 String name = m.getName();
                 Class<?>[] types = m.getParameterTypes();
-                MethodMaker mm = cm.addMethod(Tuple.class, name, (Object[]) types).public_();
+                MethodMaker mm = cm.addMethod(TupleKey.class, name, (Object[]) types).public_();
                 var params = new Object[types.length];
                 for (int i=0; i<types.length; i++) {
                     params[i] = mm.param(i);
                 }
-                mm.return_(mm.this_().indy("indyWith").invoke(Tuple.class, name, null, params));
+                mm.return_(mm.this_().indy("indyWith").invoke(TupleKey.class, name, null, params));
             }
         }
 
@@ -277,7 +277,7 @@ public abstract class Tuple extends AbstractList implements RandomAccess {
     }
 
     private static void makeWith(MethodHandles.Lookup lookup, MethodMaker mm, Class<?>[] types) {
-        ClassMaker cm = ClassMaker.begin(null, lookup).final_().extend(Tuple.class);
+        ClassMaker cm = ClassMaker.begin(null, lookup).final_().extend(TupleKey.class);
 
         MethodMaker ctor = cm.addConstructor((Object[]) types);
         ctor.invokeSuperConstructor();
