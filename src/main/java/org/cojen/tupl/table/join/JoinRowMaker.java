@@ -94,7 +94,7 @@ public class JoinRowMaker {
         // Add column fields.
         for (ColumnInfo info : mJoinInfo.allColumns.values()) {
             // Define fields as public such that they're accessible by generated code located
-            // in different packages. Using different packages faciliates class unloading.
+            // in different packages. Using different packages facilitates class unloading.
             mClassMaker.addField(info.type, info.name).public_();
         }
 
