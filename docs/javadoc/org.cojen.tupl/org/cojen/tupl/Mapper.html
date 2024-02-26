@@ -145,20 +145,14 @@ loadScripts(document, 'script');</script>
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
 <div class="block">Maps source rows to target rows.</div>
 </div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a></code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#operation()" class="member-name-link">operation</a>()</code></div>
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default <a href="diag/QueryPlan.html" title="class in org.cojen.tupl.diag">QueryPlan</a></code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#plan(org.cojen.tupl.diag.QueryPlan.Mapper)" class="member-name-link">plan</a><wbr>(<a href="diag/QueryPlan.Mapper.html" title="class in org.cojen.tupl.diag">QueryPlan.Mapper</a>&nbsp;plan)</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
-<div class="block">Override this method to describe the operation performed by the mapper, which is then
- passed to the <code>QueryPlan.Mapper</code> instance.</div>
-</div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default <a href="diag/QueryPlan.html" title="class in org.cojen.tupl.diag">QueryPlan</a></code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#plan(org.cojen.tupl.diag.QueryPlan.Mapper)" class="member-name-link">plan</a><wbr>(<a href="diag/QueryPlan.Mapper.html" title="class in org.cojen.tupl.diag">QueryPlan.Mapper</a>&nbsp;plan)</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
 <div class="block">Override this method to customize the mapper's query plan.</div>
 </div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a></code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#sourceProjection()" class="member-name-link">sourceProjection</a>()</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a></code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#sourceProjection()" class="member-name-link">sourceProjection</a>()</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
 <div class="block">Returns a comma-separated list of source columns which are needed by this <code>
  Mapper</code>.</div>
 </div>
@@ -249,14 +243,6 @@ throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/
 <div class="block">Returns a comma-separated list of source columns which are needed by this <code>
  Mapper</code>. Null is returned by default, which indicates that all columns are needed. The
  implementation of this method must return a static constant.</div>
-</section>
-</li>
-<li>
-<section class="detail" id="operation()">
-<h3>operation</h3>
-<div class="member-signature"><span class="modifiers">default</span>&nbsp;<span class="return-type"><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a></span>&nbsp;<span class="element-name">operation</span>()</div>
-<div class="block">Override this method to describe the operation performed by the mapper, which is then
- passed to the <code>QueryPlan.Mapper</code> instance.</div>
 </section>
 </li>
 <li>
