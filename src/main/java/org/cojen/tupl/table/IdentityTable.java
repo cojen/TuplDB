@@ -37,7 +37,9 @@ import org.cojen.tupl.Updater;
 
 import org.cojen.tupl.diag.QueryPlan;
 
+import org.cojen.tupl.table.filter.FalseFilter;
 import org.cojen.tupl.table.filter.Parser;
+import org.cojen.tupl.table.filter.QuerySpec;
 
 /**
  * Defines an unmodifiable table consisting of one row with no columns. It represents the
@@ -119,21 +121,13 @@ public final class IdentityTable implements Table<IdentityTable.Row>, Query<Iden
     }
 
     @Override
-    public Scanner<Row> newScanner(Transaction txn, String query, Object... args) {
-        validate(query);
-        return new ScanOne();
-    }
-
-    @Override
     public Scanner<Row> newScanner(Row row, Transaction txn, String query, Object... args) {
-        validate(query);
-        return new ScanOne(row);
+        return findsAnything(query) ? new ScanOne(row) : EmptyScanner.the();
     }
 
     @Override
     public Query<Row> query(String query) {
-        validate(query);
-        return this;
+        return findsAnything(query) ? this : EmptyQuery.the();
     }
 
     @Override
@@ -147,15 +141,8 @@ public final class IdentityTable implements Table<IdentityTable.Row>, Query<Iden
     }
 
     @Override
-    public boolean anyRows(Transaction txn, String query, Object... args) {
-        validate(query);
-        return true;
-    }
-       
-    @Override
     public boolean anyRows(Row row, Transaction txn, String query, Object... args) {
-        validate(query);
-        return true;
+        return findsAnything(query);
     }
        
     @Override
@@ -180,8 +167,7 @@ public final class IdentityTable implements Table<IdentityTable.Row>, Query<Iden
 
     @Override
     public Table<Row> view(String query, Object... args) {
-        validate(query);
-        return this;
+        return findsAnything(query) ? this : ViewedTable.view(this, query, args);
     }
 
     @Override
@@ -233,6 +219,7 @@ public final class IdentityTable implements Table<IdentityTable.Row>, Query<Iden
         return true;
     }
 
+    @Override
     public boolean anyRows(Row row, Transaction txn, Object... args) {
         return true;
     }
@@ -242,10 +229,13 @@ public final class IdentityTable implements Table<IdentityTable.Row>, Query<Iden
         return new QueryPlan.Identity();
     }
 
-    private static void validate(String query) {
-        if (!query.equals("{}") && !query.equals("{*}")) {
-            new Parser(Collections.emptyMap(), query).parseQuery(null);
+    private static boolean findsAnything(String query) {
+        switch (query) {
+        case "{}", "{*}", "()": return true;
+        case "{} !()", "{*} !()", "!()": return false;
         }
+        QuerySpec spec = new Parser(Collections.emptyMap(), query).parseQuery(null);
+        return spec.filter() != FalseFilter.THE;
     }
 
     private static final class ScanOne implements Scanner<Row> {
