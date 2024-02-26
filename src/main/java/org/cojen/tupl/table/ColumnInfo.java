@@ -112,12 +112,16 @@ public class ColumnInfo implements Cloneable {
 
     public boolean hidden;
 
-    long autoMin, autoMax;
+    public long autoMin, autoMax;
 
     private String mPrefix;
     private ColumnInfo mTail;
 
-    boolean isAutomatic() {
+    public boolean isHidden() {
+        return hidden;
+    }
+
+    public boolean isAutomatic() {
         return autoMin != autoMax;
     }
 
@@ -129,12 +133,26 @@ public class ColumnInfo implements Cloneable {
         return typeCode & 0b11111;
     }
 
+    public int modifiers() {
+        return modifiers(typeCode);
+    }
+
+    public static int modifiers(int typeCode) {
+        return typeCode & ~0b11111;
+    }
+
     public int unorderedTypeCode() {
         return unorderedTypeCode(typeCode);
     }
 
     public static int unorderedTypeCode(int typeCode) {
         return typeCode & ~TYPE_DESCENDING;
+    }
+
+    public boolean isSigned() {
+        int plain = plainTypeCode();
+        return (TYPE_BYTE <= plain && plain <= TYPE_DOUBLE) 
+            || (TYPE_BIG_INTEGER <= plain && plain <= TYPE_BIG_DECIMAL);
     }
 
     public boolean isUnsigned() {
@@ -145,7 +163,7 @@ public class ColumnInfo implements Cloneable {
         return plainTypeCode(typeCode) < 0b01000;
     }
 
-    boolean isUnsignedInteger() {
+    public boolean isUnsignedInteger() {
         return isUnsignedInteger(typeCode);
     }
 
@@ -173,11 +191,11 @@ public class ColumnInfo implements Cloneable {
         return isNullable(typeCode);
     }
 
-    static boolean isNullable(int typeCode) {
+    public static boolean isNullable(int typeCode) {
         return (typeCode & TYPE_NULLABLE) != 0;
     }
 
-    boolean isArray() {
+    public boolean isArray() {
         return isArray(typeCode);
     }
 
@@ -188,7 +206,7 @@ public class ColumnInfo implements Cloneable {
     /**
      * @return true if type is primitive and not nullable
      */
-    boolean isPrimitive() {
+    public boolean isPrimitive() {
         return isPrimitive(typeCode);
     }
 
@@ -310,6 +328,26 @@ public class ColumnInfo implements Cloneable {
 
     public boolean isScalarType() {
         return plainTypeCode() != TYPE_REFERENCE;
+    }
+
+    public boolean isNumber() {
+        return isNumber(typeCode);
+    }
+
+    public static boolean isNumber(int typeCode) {
+        typeCode &= 0b11111;
+        return (0b00001 <= typeCode && typeCode <= 0b10011)
+            || (TYPE_BIG_INTEGER <= typeCode && typeCode <= TYPE_BIG_DECIMAL);
+    }
+
+    public boolean isSignedNumber() {
+        return isSignedNumber(typeCode);
+    }
+
+    public static boolean isSignedNumber(int typeCode) {
+        typeCode &= 0b11111;
+        return (0b01001 <= typeCode && typeCode <= 0b10011)
+            || (TYPE_BIG_INTEGER <= typeCode && typeCode <= TYPE_BIG_DECIMAL);
     }
 
     /**
