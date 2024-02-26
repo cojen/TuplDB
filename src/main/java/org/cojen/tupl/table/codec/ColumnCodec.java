@@ -226,6 +226,10 @@ public abstract class ColumnCodec {
                 return new BigDecimalColumnCodec(info, unscaledCodec, null);
             }
 
+        case TYPE_REFERENCE:
+            // Cannot be persisted.
+            return new VoidColumnCodec(info, null);
+
         default:
             throw new AssertionError();
         }
@@ -315,7 +319,7 @@ public abstract class ColumnCodec {
     protected abstract int doHashCode();
 
     /**
-     * F_LAST, F_NULLS, F_LEX, etc.
+     * F_LAST, F_LEX, etc.
      */
     public abstract int codecFlags();
 
