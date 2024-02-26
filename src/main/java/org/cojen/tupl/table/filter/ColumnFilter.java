@@ -33,7 +33,7 @@ import static java.lang.Integer.MAX_VALUE;
  * @author Brian S O'Neill
  */
 public abstract sealed class ColumnFilter extends TermFilter
-    permits ColumnToArgFilter, ColumnToColumnFilter
+    permits ColumnToArgFilter, ColumnToColumnFilter, ColumnToConstantFilter
 {
     public static final int OP_EQ = 0, OP_NE = 1, OP_GE = 2, OP_LT = 3, OP_LE = 4, OP_GT = 5;
 

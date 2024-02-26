@@ -23,6 +23,7 @@ import java.util.Objects;
 import java.util.function.Function;
 import java.util.function.IntUnaryOperator;
 import java.util.function.Predicate;
+import java.util.function.ToIntFunction;
 
 import org.cojen.tupl.table.ColumnInfo;
 
@@ -202,6 +203,16 @@ public abstract sealed class RowFilter implements Comparable<RowFilter>
      * filter instance is returned.
      */
     public abstract RowFilter argumentAsNull(int argNum);
+
+    /**
+     * Returns this filter modified such that all constants matched by the given function are
+     * converted to arguments. If no constants have been replaced, then the original filter
+     * instance is returned.
+     *
+     * @param function accepts a constant filter and returns an argument; it can return 0 if
+     * the filter shouldn't be converted
+     */
+    public abstract RowFilter constantsToArguments(ToIntFunction<ColumnToConstantFilter> function);
 
     /**
      * Remove terms which refer to columns which aren't in the given set. A strict parameter

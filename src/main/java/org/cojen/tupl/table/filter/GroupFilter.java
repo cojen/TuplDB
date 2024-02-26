@@ -23,7 +23,7 @@ import java.util.Arrays;
 
 import java.util.function.Function;
 import java.util.function.IntUnaryOperator;
-
+import java.util.function.ToIntFunction;
 
 /**
  * 
@@ -120,29 +120,25 @@ public abstract sealed class GroupFilter extends RowFilter permits AndFilter, Or
 
     @Override
     public final RowFilter replaceArguments(IntUnaryOperator function) {
-        RowFilter[] subFilters = mSubFilters;
-
-        for (int i=0; i<subFilters.length; i++) {
-            RowFilter sub = subFilters[i];
-            RowFilter modified = sub.replaceArguments(function);
-            if (modified != sub) {
-                if (subFilters == mSubFilters) {
-                    subFilters = subFilters.clone();
-                }
-                subFilters[i] = modified;
-            }
-        }
-
-        return subFilters == mSubFilters ? this : newInstance(subFilters);
+        return transform(sub -> sub.replaceArguments(function));
     }
 
     @Override
     public final RowFilter argumentAsNull(int argNum) {
+        return transform(sub -> sub.argumentAsNull(argNum));
+    }
+
+    @Override
+    public final RowFilter constantsToArguments(ToIntFunction<ColumnToConstantFilter> function) {
+        return transform(sub -> sub.constantsToArguments(function));
+    }
+
+    private RowFilter transform(Function<RowFilter, RowFilter> transformer) {
         RowFilter[] subFilters = mSubFilters;
 
         for (int i=0; i<subFilters.length; i++) {
             RowFilter sub = subFilters[i];
-            RowFilter modified = sub.argumentAsNull(argNum);
+            RowFilter modified = transformer.apply(sub);
             if (modified != sub) {
                 if (subFilters == mSubFilters) {
                     subFilters = subFilters.clone();
