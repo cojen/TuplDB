@@ -39,17 +39,15 @@ import org.cojen.tupl.Entry;
 import org.cojen.tupl.Index;
 import org.cojen.tupl.LockMode;
 import org.cojen.tupl.LockResult;
-import org.cojen.tupl.NoSuchRowException;
 import org.cojen.tupl.Query;
 import org.cojen.tupl.Scanner;
 import org.cojen.tupl.Updater;
 import org.cojen.tupl.Table;
 import org.cojen.tupl.Transaction;
-import org.cojen.tupl.UniqueConstraintException;
 
 import org.cojen.tupl.core.RowPredicate;
 import org.cojen.tupl.core.RowPredicateLock;
-import org.cojen.tupl.core.Tuple;
+import org.cojen.tupl.core.TupleKey;
 
 import org.cojen.tupl.diag.EventListener;
 import org.cojen.tupl.diag.EventType;
@@ -109,7 +107,7 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
 
     protected final RowPredicateLock<R> mIndexLock;
 
-    private WeakCache<Tuple, MethodHandle, byte[]> mDecodePartialCache;
+    private WeakCache<TupleKey, MethodHandle, byte[]> mDecodePartialCache;
     private static final VarHandle cDecodePartialCacheHandle;
 
     private WeakCache<Object, MethodHandle, byte[]> mWriteRowCache;
@@ -877,12 +875,12 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
      * @see DecodePartialMaker
      */
     protected final MethodHandle decodePartialHandle(byte[] spec, int schemaVersion) {
-        WeakCache<Tuple, MethodHandle, byte[]> cache = mDecodePartialCache;
+        WeakCache<TupleKey, MethodHandle, byte[]> cache = mDecodePartialCache;
 
         if (cache == null) {
             cache = new WeakCache<>() {
                 @Override
-                protected MethodHandle newValue(Tuple key, byte[] spec) {
+                protected MethodHandle newValue(TupleKey key, byte[] spec) {
                     int schemaVersion = 0;
                     if (key.size() == 2) {
                         schemaVersion = key.getInt(0);
@@ -891,7 +889,7 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
                 }
             };
 
-            var existing = (WeakCache<Tuple, MethodHandle, byte[]>)
+            var existing = (WeakCache<TupleKey, MethodHandle, byte[]>)
                 cDecodePartialCacheHandle.compareAndExchange(this, null, cache);
 
             if (existing != null) {
@@ -899,8 +897,8 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
             }
         }
 
-        final Tuple key = schemaVersion == 0 ?
-            Tuple.make.with(spec) : Tuple.make.with(schemaVersion, spec);
+        final TupleKey key = schemaVersion == 0 ?
+            TupleKey.make.with(spec) : TupleKey.make.with(schemaVersion, spec);
 
         return cache.obtain(key, spec);
     }
@@ -954,7 +952,7 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
             }
         }
 
-        return cache.obtain(Tuple.make.with(spec), spec);
+        return cache.obtain(TupleKey.make.with(spec), spec);
     }
 
     public final RemoteTableProxy newRemoteProxy(byte[] descriptor) throws IOException {

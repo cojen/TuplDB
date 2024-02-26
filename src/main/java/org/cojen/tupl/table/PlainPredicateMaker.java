@@ -21,7 +21,7 @@ import java.lang.invoke.MethodHandle;
 
 import java.util.function.Predicate;
 
-import org.cojen.tupl.core.Tuple;
+import org.cojen.tupl.core.TupleKey;
 
 import org.cojen.tupl.table.filter.FalseFilter;
 import org.cojen.tupl.table.filter.Parser;
@@ -36,12 +36,12 @@ import org.cojen.tupl.table.filter.TrueFilter;
  * @author Brian S O'Neill
  */
 public final class PlainPredicateMaker {
-    private static final WeakCache<Tuple, MethodHandle, RowFilter> cCache;
+    private static final WeakCache<TupleKey, MethodHandle, RowFilter> cCache;
 
     static {
         cCache = new WeakCache<>() {
             @Override
-            public MethodHandle newValue(Tuple key, RowFilter filter) {
+            public MethodHandle newValue(TupleKey key, RowFilter filter) {
                 var rowType = (Class<?>) key.get(0);
                 String query = key.getString(1);
                 RowInfo info = RowInfo.find(rowType);
@@ -55,7 +55,7 @@ public final class PlainPredicateMaker {
                     var maker = new RowPredicateMaker(rowType, info.rowGen(), filter, filterStr);
                     return maker.finishPlain();
                 } else {
-                    return obtain(Tuple.make.with(rowType, filterStr), null);
+                    return obtain(TupleKey.make.with(rowType, filterStr), null);
                 }
             }
         };
@@ -87,13 +87,13 @@ public final class PlainPredicateMaker {
      * MethodHandle signature: Predicate xxx(Object... args)
      */
     static MethodHandle predicateHandle(Class<?> rowType, String query) {
-        return cCache.obtain(Tuple.make.with(rowType, query), null);
+        return cCache.obtain(TupleKey.make.with(rowType, query), null);
     }
 
     /**
      * MethodHandle signature: Predicate xxx(Object... args)
      */
     static MethodHandle predicateHandle(Class<?> rowType, RowFilter filter) {
-        return cCache.obtain(Tuple.make.with(rowType, filter.toString()), filter);
+        return cCache.obtain(TupleKey.make.with(rowType, filter.toString()), filter);
     }
 }
