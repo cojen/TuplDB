@@ -27,7 +27,7 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 
-import org.cojen.tupl.core.Tuple;
+import org.cojen.tupl.core.TupleKey;
 import org.cojen.tupl.core.Utils;
 
 /**
@@ -234,14 +234,14 @@ final class KeyEncoder {
         int numObjects = mObjectMap.size();
 
         if (numObjects == 0) {
-            return Tuple.make.with(bytes);
+            return TupleKey.make.with(bytes);
         }
 
         if (numObjects == 1) {
-            return Tuple.make.with(bytes, mObjectMap.keySet().iterator().next());
+            return TupleKey.make.with(bytes, mObjectMap.keySet().iterator().next());
         }
 
-        return Tuple.make.with(bytes, mObjectMap.keySet().toArray(new Object[numObjects]));
+        return TupleKey.make.with(bytes, mObjectMap.keySet().toArray(new Object[numObjects]));
     }
 
     private void ensureCapacity(int amt) {

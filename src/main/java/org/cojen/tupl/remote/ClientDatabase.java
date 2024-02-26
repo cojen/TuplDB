@@ -50,7 +50,7 @@ import org.cojen.tupl.Sorter;
 import org.cojen.tupl.Transaction;
 import org.cojen.tupl.View;
 
-import org.cojen.tupl.core.Tuple;
+import org.cojen.tupl.core.TupleKey;
 
 import org.cojen.tupl.diag.CompactionObserver;
 import org.cojen.tupl.diag.DatabaseStats;
@@ -135,7 +135,7 @@ public final class ClientDatabase implements Database {
     }
 
     private ClientIndex findIndex(byte[] name, boolean open) throws IOException {
-        return ClientCache.get(Tuple.make.with(this, name), key -> {
+        return ClientCache.get(TupleKey.make.with(this, name), key -> {
             RemoteIndex rindex;
             try {
                 rindex = open ? mRemote.openIndex(name) : mRemote.findIndex(name);
@@ -149,7 +149,7 @@ public final class ClientDatabase implements Database {
 
     @Override
     public ClientIndex indexById(long id) throws IOException {
-        return ClientCache.get(Tuple.make.with(this, id), key -> {
+        return ClientCache.get(TupleKey.make.with(this, id), key -> {
             RemoteIndex rindex;
             try {
                 rindex = mRemote.indexById(id);
@@ -190,7 +190,7 @@ public final class ClientDatabase implements Database {
     }
 
     private View indexRegistry(boolean byName) throws IOException {
-        return ClientCache.get(Tuple.make.with(this, byName), key -> {
+        return ClientCache.get(TupleKey.make.with(this, byName), key -> {
             RemoteView rview;
             try {
                 rview = byName ? mRemote.indexRegistryByName() : mRemote.indexRegistryById();
@@ -222,7 +222,7 @@ public final class ClientDatabase implements Database {
 
     @Override
     public CustomHandler customWriter(String name) throws IOException {
-        return ClientCache.get(Tuple.make.with(CustomHandler.class, this, name), key -> {
+        return ClientCache.get(TupleKey.make.with(CustomHandler.class, this, name), key -> {
             RemoteCustomHandler handler;
             try {
                 handler = mRemote.customWriter(name);
@@ -236,7 +236,7 @@ public final class ClientDatabase implements Database {
 
     @Override
     public PrepareHandler prepareWriter(String name) throws IOException {
-        return ClientCache.get(Tuple.make.with(PrepareHandler.class, this, name), key -> {
+        return ClientCache.get(TupleKey.make.with(PrepareHandler.class, this, name), key -> {
             RemotePrepareHandler handler;
             try {
                 handler = mRemote.prepareWriter(name);

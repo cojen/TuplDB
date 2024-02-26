@@ -32,7 +32,7 @@ import org.cojen.maker.Variable;
 
 import org.cojen.tupl.Table;
 
-import org.cojen.tupl.core.Tuple;
+import org.cojen.tupl.core.TupleKey;
 
 /**
  * @see Table#comparator
@@ -41,12 +41,12 @@ import org.cojen.tupl.core.Tuple;
 public final class ComparatorMaker<R> {
     public static Comparator ZERO = (a, b) -> 0;
 
-    private static final WeakCache<Tuple, Comparator<?>, OrderBy> cCache;
+    private static final WeakCache<TupleKey, Comparator<?>, OrderBy> cCache;
 
     static {
         cCache = new WeakCache<>() {
             @Override
-            public Comparator<?> newValue(Tuple key, OrderBy orderBy) {
+            public Comparator<?> newValue(TupleKey key, OrderBy orderBy) {
                 var rowType = (Class<?>) key.get(0);
                 if (orderBy != null) {
                     return new ComparatorMaker<>(rowType, orderBy).finish();
@@ -57,7 +57,7 @@ public final class ComparatorMaker<R> {
                     if (spec.equals(canonical)) {
                         return maker.finish();
                     } else {
-                        return obtain(Tuple.make.with(rowType, canonical), null);
+                        return obtain(TupleKey.make.with(rowType, canonical), null);
                     }
                 }
             }
@@ -69,7 +69,7 @@ public final class ComparatorMaker<R> {
      */
     @SuppressWarnings("unchecked")
     public static <R> Comparator<R> comparator(Class<R> rowType, String spec) {
-        return (Comparator<R>) cCache.obtain(Tuple.make.with(rowType, spec), null);
+        return (Comparator<R>) cCache.obtain(TupleKey.make.with(rowType, spec), null);
     }
 
     /**
@@ -79,7 +79,7 @@ public final class ComparatorMaker<R> {
      */
     @SuppressWarnings("unchecked")
     public static <R> Comparator<R> comparator(Class<R> rowType, OrderBy orderBy, String spec) {
-        return (Comparator<R>) cCache.obtain(Tuple.make.with(rowType, spec), orderBy);
+        return (Comparator<R>) cCache.obtain(TupleKey.make.with(rowType, spec), orderBy);
     }
 
     private final Class<R> mRowType;

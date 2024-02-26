@@ -25,15 +25,15 @@ import static org.junit.Assert.*;
  *
  * @author Brian S. O'Neill
  */
-public class TupleTest {
+public class TupleKeyTest {
     public static void main(String[] args) throws Exception {
-        org.junit.runner.JUnitCore.main(TupleTest.class.getName());
+        org.junit.runner.JUnitCore.main(TupleKeyTest.class.getName());
     }
 
     @Test
     public void test1() throws Exception {
-        Tuple t1 = Tuple.make.with("hello".getBytes());
-        Tuple t2 = Tuple.make.with("hello".getBytes());
+        TupleKey t1 = TupleKey.make.with("hello".getBytes());
+        TupleKey t2 = TupleKey.make.with("hello".getBytes());
 
         assertEquals(1, t1.size());
         assertEquals(byte[].class, t1.type(0));
@@ -75,15 +75,15 @@ public class TupleTest {
 
         assertEquals("([104, 101, 108, 108, 111])", t1.toString());
 
-        Tuple t3 = Tuple.make.with("world".getBytes());
+        TupleKey t3 = TupleKey.make.with("world".getBytes());
         assertNotEquals(t1, t3);
         assertNotEquals(t1.toString(), t3.toString());
     }
 
     @Test
     public void test2() throws Exception {
-        Tuple t1 = Tuple.make.with(10, "hello".getBytes());
-        Tuple t2 = Tuple.make.with(10, "hello".getBytes());
+        TupleKey t1 = TupleKey.make.with(10, "hello".getBytes());
+        TupleKey t2 = TupleKey.make.with(10, "hello".getBytes());
 
         assertEquals(2, t1.size());
         assertEquals(int.class, t1.type(0));
@@ -99,19 +99,19 @@ public class TupleTest {
 
         assertEquals("(10, [104, 101, 108, 108, 111])", t1.toString());
 
-        Tuple t3 = Tuple.make.with(2, "hello".getBytes());
+        TupleKey t3 = TupleKey.make.with(2, "hello".getBytes());
         assertNotEquals(t1, t3);
         assertNotEquals(t1.toString(), t3.toString());
 
-        Tuple t4 = Tuple.make.with(10, "world".getBytes());
+        TupleKey t4 = TupleKey.make.with(10, "world".getBytes());
         assertNotEquals(t1, t4);
         assertNotEquals(t1.toString(), t4.toString());
     }
 
     @Test
     public void test3() throws Exception {
-        Tuple t1 = Tuple.make.with(10, (Object) "hello");
-        Tuple t2 = Tuple.make.with(10, (Object) new String("hello"));
+        TupleKey t1 = TupleKey.make.with(10, (Object) "hello");
+        TupleKey t2 = TupleKey.make.with(10, (Object) new String("hello"));
 
         assertEquals(2, t1.size());
         assertEquals(int.class, t1.type(0));
@@ -127,19 +127,19 @@ public class TupleTest {
 
         assertEquals("(10, hello)", t1.toString());
 
-        Tuple t3 = Tuple.make.with(2, (Object) "hello");
+        TupleKey t3 = TupleKey.make.with(2, (Object) "hello");
         assertNotEquals(t1, t3);
         assertNotEquals(t1.toString(), t3.toString());
 
-        Tuple t4 = Tuple.make.with(10, (Object) "world");
+        TupleKey t4 = TupleKey.make.with(10, (Object) "world");
         assertNotEquals(t1, t4);
         assertNotEquals(t1.toString(), t4.toString());
     }
 
     @Test
     public void test4() throws Exception {
-        Tuple t1 = Tuple.make.with((Object) new int[] {1, 2}, true);
-        Tuple t2 = Tuple.make.with((Object) new int[] {1, 2}, true);
+        TupleKey t1 = TupleKey.make.with((Object) new int[] {1, 2}, true);
+        TupleKey t2 = TupleKey.make.with((Object) new int[] {1, 2}, true);
 
         assertEquals(2, t1.size());
         assertEquals(Object.class, t1.type(0));
@@ -153,19 +153,19 @@ public class TupleTest {
 
         assertEquals("([1, 2], true)", t1.toString());
 
-        Tuple t3 = Tuple.make.with((Object) new int[] {1, 2}, false);
+        TupleKey t3 = TupleKey.make.with((Object) new int[] {1, 2}, false);
         assertNotEquals(t1, t3);
         assertNotEquals(t1.toString(), t3.toString());
 
-        Tuple t4 = Tuple.make.with((Object) new int[] {2, 3}, true);
+        TupleKey t4 = TupleKey.make.with((Object) new int[] {2, 3}, true);
         assertNotEquals(t1, t4);
         assertNotEquals(t1.toString(), t4.toString());
     }
 
     @Test
     public void test5() throws Exception {
-        Tuple t1 = Tuple.make.with((Object) new Object[] {"a", 2}, true);
-        Tuple t2 = Tuple.make.with((Object) new Object[] {"a", 2}, true);
+        TupleKey t1 = TupleKey.make.with((Object) new Object[] {"a", 2}, true);
+        TupleKey t2 = TupleKey.make.with((Object) new Object[] {"a", 2}, true);
 
         assertEquals(2, t1.size());
         assertEquals(Object.class, t1.type(0));
@@ -179,23 +179,23 @@ public class TupleTest {
 
         assertEquals("([a, 2], true)", t1.toString());
 
-        Tuple t3 = Tuple.make.with((Object) new Object[] {"a", 2}, false);
+        TupleKey t3 = TupleKey.make.with((Object) new Object[] {"a", 2}, false);
         assertNotEquals(t1, t3);
         assertNotEquals(t1.toString(), t3.toString());
 
-        Tuple t4 = Tuple.make.with((Object) new Object[] {"b", 2}, true);
+        TupleKey t4 = TupleKey.make.with((Object) new Object[] {"b", 2}, true);
         assertNotEquals(t1, t4);
         assertNotEquals(t1.toString(), t4.toString());
 
-        Tuple t5 = Tuple.make.with((Object) false, true);
+        TupleKey t5 = TupleKey.make.with((Object) false, true);
         assertNotEquals(t1, t5);
         assertNotEquals(t1.toString(), t5.toString());
     }
 
     @Test
     public void test6() throws Exception {
-        Tuple t1 = Tuple.make.with((Object) "hello", (Object) new String[] {"a", "b"});
-        Tuple t2 = Tuple.make.with((Object) new String("hello"), (Object) new String[] {"a", "b"});
+        TupleKey t1 = TupleKey.make.with((Object) "hello", (Object) new String[] {"a", "b"});
+        TupleKey t2 = TupleKey.make.with((Object) new String("hello"), (Object) new String[] {"a", "b"});
 
         assertEquals(2, t1.size());
         assertEquals(Object.class, t1.type(0));
@@ -209,19 +209,19 @@ public class TupleTest {
 
         assertEquals("(hello, [a, b])", t1.toString());
 
-        Tuple t3 = Tuple.make.with((Object) "hello", (Object) new String[] {"a", "c"});
+        TupleKey t3 = TupleKey.make.with((Object) "hello", (Object) new String[] {"a", "c"});
         assertNotEquals(t1, t3);
         assertNotEquals(t1.toString(), t3.toString());
 
-        Tuple t4 = Tuple.make.with((Object) "world", (Object) new String[] {"a", "b"});
+        TupleKey t4 = TupleKey.make.with((Object) "world", (Object) new String[] {"a", "b"});
         assertNotEquals(t1, t4);
         assertNotEquals(t1.toString(), t4.toString());
     }
 
     @Test
     public void test7() throws Exception {
-        Tuple t1 = Tuple.make.with((Object) "a", "b", (String) "c");
-        Tuple t2 = Tuple.make.with((Object) new String("a"),
+        TupleKey t1 = TupleKey.make.with((Object) "a", "b", (String) "c");
+        TupleKey t2 = TupleKey.make.with((Object) new String("a"),
                                    new String("b"), (String) new String("c"));
 
         assertEquals(3, t1.size());
@@ -240,15 +240,15 @@ public class TupleTest {
 
         assertEquals("(a, b, c)", t1.toString());
 
-        Tuple t3 = Tuple.make.with((Object) "a", "x", (String) "c");
+        TupleKey t3 = TupleKey.make.with((Object) "a", "x", (String) "c");
         assertNotEquals(t1, t3);
         assertNotEquals(t1.toString(), t3.toString());
     }
 
     @Test
     public void test8() throws Exception {
-        Tuple t1 = Tuple.make.with(new Object[] {1, "b"}, (Object) new String("x"));
-        Tuple t2 = Tuple.make.with(new Object[] {1, new String("b")}, (Object) "x");
+        TupleKey t1 = TupleKey.make.with(new Object[] {1, "b"}, (Object) new String("x"));
+        TupleKey t2 = TupleKey.make.with(new Object[] {1, new String("b")}, (Object) "x");
 
         assertEquals(2, t1.size());
         assertEquals(Object[].class, t1.type(0));
@@ -262,7 +262,7 @@ public class TupleTest {
 
         assertEquals("([1, b], x)", t1.toString());
 
-        Tuple t3 = Tuple.make.with(new Object[] {2, "b"}, (Object) "x");
+        TupleKey t3 = TupleKey.make.with(new Object[] {2, "b"}, (Object) "x");
         assertNotEquals(t1, t3);
         assertNotEquals(t1.toString(), t3.toString());
     }
