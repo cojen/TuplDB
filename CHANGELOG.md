@@ -4,9 +4,74 @@ Changelog
 v1.8.0
 ------
 
-* The load, insert, replace, update, merge, and delete methods now throw a special exception
-  instead of returning false. The declared return type is now void. Each of these methods has a
-  corresponding "try" variant which supports the original behavior.
+* Bug fixes:
+  * Fixed a rare deadlock in the recovery subsystem when applying an index rename operation.
+  * Don't delete corrupt log files when opening in read-only mode.
+  * Don't attempt to checkpoint a read-only database, which will fail.
+  * Various fixes to the generated code for decoding rows from their binary representation.
+  * Various fixes to the table predicate locking subsystem.
+  * Index tables are now cached by their primary table row type to prevent conflicts when
+    multiple versions of the primary row type class exist.
+  * Ensure that the trigger for managing secondary index is installed when opening a table.
+  * Fixed deletion of tables which have secondary indexes.
+  * Prevent secondary indexes from being used when the corresponding table is closed.
+  * Abort in-progress secondary scans when closing a table.
+  * Fixed a deadlock when table indexes change.
+  * Fixed a concurrent modification exception which can occur during a secondary index backfill.
+  * The generated row comparator classes now honor columns which have null low ordering.
+  * The generated row predicate classes check if a column is set when being accessed, throwing
+    an exception instead of silently accepting null as valid.
+  * The generated row predicate classes now support comparisons between columns with different
+    types.
+  * Reduced the amount of cached direct byte buffers that can accumulate due to the use of
+    thread-local variables. A specialized cache is used instead.
+  * Promptly shutdown any table-related background tasks when the database is closed.
+  * The verifier doesn't attempt to check nodes which are in an ephemeral split state.
+  * Fixed local host acquisition with respect to ipv6, as used by the replication subsystem.
+  * Calling `View.isEmpty` now checks if the underlying index is closed, throwing a
+    `ClosedIndexException` if so.
+
+* Breaking changes:
+  * The `load`, `insert`, `replace`, `update`, `merge`, and `delete` methods now throw an
+    exception instead of returning a boolean value. The original methods are supported in the
+    form of newly added "try" variants: `tryLoad`, `tryInsert`, `tryReplace`, `tryUpdate`,
+    `tryMerge`, and `tryDelete`.
+  * The `Table` methods for obtaining `QueryPlan` instances have been moved to the new `Query`
+    interface.
+  * Removed some classes and methods in the io package that cannot easily be adapted to work
+    with FFM/Panama, but they're not needed anyhow.
+  * `LatchCondition` is now an inner class, `Latch.Condition`.
+
+* New features:
+  * Defined a new `Query` interface which directly represents a runnable query. It can be used
+    as an alternative to passing query strings to the `Table` class all the time.
+  * The `Query` interface has a `deleteAll` method, which provides new functionality not
+    available in the `Table` interface.
+  * Added a `Table.map` method for supporting custom row filtering and transforming.
+  * Added a `Table.aggregate` method for supporting row aggregation.
+  * Added a `Table.group` method for supporting custom row aggregation and window functions.
+  * Added a `Table.join` method which performs a relational join against two tables.
+  * Added a `Table.view` method which returns a table which restricts the set of rows to those
+    bounded by a query.
+  * Added a `Table.anyRows` method.
+  * Added new `Table` methods which act upon row instances: `cleanRow` and `isSet`.
+  * The `Scanner` interface permits a null step row instead of throwing an exception. When null
+    is passed to the `step` method, a new row instance is created automatically. Likewise, the
+    `delete` and `update` methods of the `Updater` interace permit a null row to be passed in.
+  * Added a `Transaction.rollback` method, which unlike the `exit` method, doesn't exit the
+    current transaction scope.
+  * The `Database.verify` method now checks for duplicate page identifiers in the free list.
+
+* Performance improvements:
+  * Binary search has been optimized by performing 8-byte comparisons instead of 1-byte
+    comparisons.
+  * The primary database cache now uses transparent huge pages, on Linux only.
+  * Support the random access flag when opening mapped files.
+  * When selecting an index for a full scan of a table, natural ordering of the index is now
+    considered.
+  * When two indexes are both covering, favor the one whose natural order matches the requested
+    order before considering the total number of index columns.
+
 
 v1.7.0 (2023-03-04)
 ------
