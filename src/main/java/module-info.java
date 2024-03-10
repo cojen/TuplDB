@@ -11,6 +11,8 @@ module org.cojen.tupl {
     exports org.cojen.tupl.tools;
     exports org.cojen.tupl.util;
 
+    requires net.sf.jsqlparser;
+
     requires jdk.unsupported;
 
     requires com.sun.jna;
