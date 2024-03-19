@@ -52,14 +52,14 @@ import static org.cojen.tupl.core.Node.*;
  */
 public final class DirectPageOps {
     private static final sun.misc.Unsafe UNSAFE;
-    private static final long ARRAY_OFFSET;
+    private static final long BYTE_ARRAY_OFFSET;
 
     static {
         try {
             var theUnsafe = sun.misc.Unsafe.class.getDeclaredField("theUnsafe");
             theUnsafe.setAccessible(true);
             UNSAFE = (sun.misc.Unsafe) theUnsafe.get(null);
-            ARRAY_OFFSET = UNSAFE.arrayBaseOffset(byte[].class);
+            BYTE_ARRAY_OFFSET = UNSAFE.arrayBaseOffset(byte[].class);
         } catch (Throwable e) {
             throw Utils.rethrow(e);
         }
