@@ -107,7 +107,7 @@ import org.cojen.tupl.io.PageArray;
 
 import org.cojen.tupl.repl.StreamReplicator;
 
-import org.cojen.tupl.rows.RowStore;
+import org.cojen.tupl.table.RowStore;
 
 import org.cojen.tupl.util.Latch;
 import org.cojen.tupl.util.Runner;
@@ -6166,7 +6166,7 @@ final class _LocalDatabase extends CoreDatabase {
     private void checkpoint(int force, long sizeThreshold, long delayThresholdNanos)
         throws IOException
     {
-        while (!isClosed() && !isCacheOnly()) {
+        while (!isClosed() && !isCacheOnly() && mCheckpointer != null) {
             // Checkpoint lock ensures consistent state between page store and logs.
             mCheckpointLock.lock();
             try {

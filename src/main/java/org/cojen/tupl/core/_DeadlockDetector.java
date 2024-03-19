@@ -28,7 +28,7 @@ import org.cojen.tupl.Index;
 
 import org.cojen.tupl.diag.DeadlockInfo;
 
-import org.cojen.tupl.rows.RowStore;
+import org.cojen.tupl.table.RowStore;
 
 /**
  * Used internally by _Locker. Only detects deadlocks caused by independent threads. A thread
