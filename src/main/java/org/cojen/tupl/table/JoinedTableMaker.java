@@ -235,7 +235,7 @@ public class JoinedTableMaker extends TableMaker {
 
     private void addJoinedLoadMethod() {
         MethodMaker mm = mClassMaker.addMethod
-            (boolean.class, "load", Transaction.class, Object.class).public_();
+            (boolean.class, "tryLoad", Transaction.class, Object.class).public_();
 
         Variable txnVar = mm.param(0);
         Variable rowVar = mm.param(1).cast(mRowClass);

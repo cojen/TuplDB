@@ -792,7 +792,7 @@ public class IndexLockTest {
 
         sleep(1000);
 
-        assertFalse(replicaTable.load(null, row));
+        assertFalse(replicaTable.tryLoad(null, row));
 
         assertEquals(3, scanner.row().id());
 
@@ -802,7 +802,7 @@ public class IndexLockTest {
 
         w1.await();
 
-        assertTrue(replicaTable.load(null, row));
+        assertTrue(replicaTable.tryLoad(null, row));
         assertEquals("name-5", row.name());
 
         assertEquals("name-5", scanner.step().name());
@@ -847,7 +847,7 @@ public class IndexLockTest {
 
         fence(leaderRepl, replicaRepl);
 
-        assertTrue(replicaTable.load(null, row));
+        assertTrue(replicaTable.tryLoad(null, row));
         assertEquals("name-5", row.name());
 
         assertEquals(3, scanner.row().id());

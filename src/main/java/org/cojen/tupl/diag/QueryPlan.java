@@ -126,8 +126,8 @@ public abstract sealed class QueryPlan implements Serializable {
         }
 
         boolean matches(Table other) {
-            return Objects.equals(table, other.table) && Objects.equals(which, other.which) &&
-                Arrays.equals(keyColumns, other.keyColumns);
+            return Objects.equals(table, other.table) && Objects.equals(which, other.which)
+                && Arrays.equals(keyColumns, other.keyColumns);
         }
 
         @Override
@@ -253,8 +253,8 @@ public abstract sealed class QueryPlan implements Serializable {
         }
 
         boolean matches(RangeScan other) {
-            return super.matches(other) &&
-                Objects.equals(low, other.low) && Objects.equals(high, other.high);
+            return super.matches(other)
+                && Objects.equals(low, other.low) && Objects.equals(high, other.high);
         }
 
         @Override
@@ -364,8 +364,8 @@ public abstract sealed class QueryPlan implements Serializable {
         }
 
         boolean matches(Filter other) {
-            return Objects.equals(expression, other.expression) &&
-                Objects.equals(source, other.source);
+            return Objects.equals(expression, other.expression)
+                && Objects.equals(source, other.source);
         }
 
         @Override
@@ -383,25 +383,29 @@ public abstract sealed class QueryPlan implements Serializable {
         private static final long serialVersionUID = 1L;
 
         public final String target;
-        public final String using;
+        public final String operation;
         public final QueryPlan source;
 
         /**
          * @param target describes the target row type
-         * @param using describes the map operation (optional)
+         * @param operation describes the map operation (optional)
          * @param source child plan node
          */
-        public Mapper(String target, String using, QueryPlan source) {
+        public Mapper(String target, String operation, QueryPlan source) {
             this.target = target;
-            this.using = using;
+            this.operation = operation;
             this.source = source;
+        }
+
+        public Mapper withOperation(String operation) {
+            return new Mapper(target, operation, source);
         }
 
         @Override
         void appendTo(Appendable a, String in1, String in2) throws IOException {
             a.append(in1).append("map").append(": ").append(target).append('\n');
-            if (using != null) {
-                appendItem(a, in2, "using").append(using).append('\n');
+            if (operation != null) {
+                appendItem(a, in2, "operation").append(operation).append('\n');
             }
             appendSub(a, in2, null, source);
         }
@@ -412,14 +416,15 @@ public abstract sealed class QueryPlan implements Serializable {
         }
 
         boolean matches(Mapper other) {
-            return Objects.equals(target, other.target) && Objects.equals(using, other.using) &&
-                Objects.equals(source, other.source);
+            return Objects.equals(target, other.target)
+                && Objects.equals(operation, other.operation)
+                && Objects.equals(source, other.source);
         }
 
         @Override
         public int hashCode() {
             int hash = Objects.hashCode(target);
-            hash = hash * 31 + Objects.hashCode(using);
+            hash = hash * 31 + Objects.hashCode(operation);
             hash = hash * 31 + Objects.hashCode(source);
             return hash ^ -677855948;
         }
@@ -432,28 +437,32 @@ public abstract sealed class QueryPlan implements Serializable {
         private static final long serialVersionUID = 1L;
 
         public final String target;
-        public final String using;
+        public final String operation;
         public final String[] groupBy;
         public final QueryPlan source;
 
         /**
          * @param target describes the target row type
-         * @param using describes the aggregate operation (optional)
+         * @param operation describes the aggregate operation (optional)
          * @param groupBy group-by columns (or null if none)
          * @param source child plan node
          */
-        public Aggregator(String target, String using, String[] groupBy, QueryPlan source) {
+        public Aggregator(String target, String operation, String[] groupBy, QueryPlan source) {
             this.target = target;
-            this.using = using;
+            this.operation = operation;
             this.groupBy = groupBy;
             this.source = source;
+        }
+
+        public Aggregator withOperation(String operation) {
+            return new Aggregator(target, operation, groupBy, source);
         }
 
         @Override
         void appendTo(Appendable a, String in1, String in2) throws IOException {
             a.append(in1).append("aggregate").append(": ").append(target).append('\n');
-            if (using != null) {
-                appendItem(a, in2, "using").append(using).append('\n');
+            if (operation != null) {
+                appendItem(a, in2, "operation").append(operation).append('\n');
             }
             if (groupBy != null && groupBy.length != 0) {
                 appendItem(a, in2, "group by");
@@ -468,14 +477,15 @@ public abstract sealed class QueryPlan implements Serializable {
         }
 
         boolean matches(Aggregator other) {
-            return Objects.equals(target, other.target) && Objects.equals(using, other.using) &&
-                Arrays.equals(groupBy, other.groupBy) && Objects.equals(source, other.source);
+            return Objects.equals(target, other.target)
+                && Objects.equals(operation, other.operation)
+                && Arrays.equals(groupBy, other.groupBy) && Objects.equals(source, other.source);
         }
 
         @Override
         public int hashCode() {
             int hash = Objects.hashCode(target);
-            hash = hash * 31 + Objects.hashCode(using);
+            hash = hash * 31 + Objects.hashCode(operation);
             hash = hash * 31 + Arrays.hashCode(groupBy);
             hash = hash * 31 + Objects.hashCode(source);
             return hash ^ -356180746;
@@ -489,33 +499,37 @@ public abstract sealed class QueryPlan implements Serializable {
         private static final long serialVersionUID = 1L;
 
         public final String target;
-        public final String using;
+        public final String operation;
         public final String[] groupBy, orderBy;
         public final QueryPlan source;
 
         /**
          * @param target describes the target row type
-         * @param using describes the group operation (optional)
+         * @param operation describes the group operation (optional)
          * @param groupBy group-by columns (or null if none)
          * @param orderBy order-by columns (or null if none)
          * @param source child plan node
          */
-        public Grouper(String target, String using,
+        public Grouper(String target, String operation,
                        String[] groupBy, String[] orderBy,
                        QueryPlan source)
         {
             this.target = target;
-            this.using = using;
+            this.operation = operation;
             this.groupBy = groupBy;
             this.orderBy = orderBy;
             this.source = source;
         }
 
+        public Grouper withOperation(String operation) {
+            return new Grouper(target, operation, groupBy, orderBy, source);
+        }
+
         @Override
         void appendTo(Appendable a, String in1, String in2) throws IOException {
             a.append(in1).append("group").append(": ").append(target).append('\n');
-            if (using != null) {
-                appendItem(a, in2, "using").append(using).append('\n');
+            if (operation != null) {
+                appendItem(a, in2, "operation").append(operation).append('\n');
             }
             if (groupBy != null && groupBy.length != 0) {
                 appendItem(a, in2, "group by");
@@ -534,15 +548,16 @@ public abstract sealed class QueryPlan implements Serializable {
         }
 
         boolean matches(Grouper other) {
-            return Objects.equals(target, other.target) && Objects.equals(using, other.using) &&
-                Arrays.equals(groupBy, other.groupBy) && Arrays.equals(orderBy, other.orderBy) &&
-                Objects.equals(source, other.source);
+            return Objects.equals(target, other.target)
+                && Objects.equals(operation, other.operation)
+                && Arrays.equals(groupBy, other.groupBy) && Arrays.equals(orderBy, other.orderBy)
+                && Objects.equals(source, other.source);
         }
 
         @Override
         public int hashCode() {
             int hash = Objects.hashCode(target);
-            hash = hash * 31 + Objects.hashCode(using);
+            hash = hash * 31 + Objects.hashCode(operation);
             hash = hash * 31 + Arrays.hashCode(groupBy);
             hash = hash * 31 + Arrays.hashCode(orderBy);
             hash = hash * 31 + Objects.hashCode(source);
@@ -618,8 +633,8 @@ public abstract sealed class QueryPlan implements Serializable {
         }
 
         boolean matches(Sort other) {
-            return Arrays.equals(sortColumns, other.sortColumns) &&
-                Objects.equals(source, other.source);
+            return Arrays.equals(sortColumns, other.sortColumns)
+                && Objects.equals(source, other.source);
         }
 
         @Override
@@ -705,8 +720,8 @@ public abstract sealed class QueryPlan implements Serializable {
         }
 
         boolean matches(NaturalJoin other) {
-            return Arrays.equals(columns, other.columns) &&
-                Objects.equals(target, other.target) && Objects.equals(source, other.source);
+            return Arrays.equals(columns, other.columns)
+                && Objects.equals(target, other.target) && Objects.equals(source, other.source);
         }
 
         @Override
@@ -950,9 +965,9 @@ public abstract sealed class QueryPlan implements Serializable {
             }
 
             boolean matches(Level other) {
-                return Objects.equals(type, other.type) &&
-                    Objects.equals(source, other.source) &&
-                    Objects.equals(assignments, other.assignments);
+                return Objects.equals(type, other.type)
+                    && Objects.equals(source, other.source)
+                    && Objects.equals(assignments, other.assignments);
             }
 
             @Override

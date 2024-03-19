@@ -26,7 +26,7 @@ import org.cojen.tupl.Index;
 import org.cojen.tupl.Table;
 import org.cojen.tupl.Transaction;
 
-import org.cojen.tupl.core.Pair;
+import org.cojen.tupl.core.TupleKey;
 
 import org.cojen.tupl.diag.IndexStats;
 import org.cojen.tupl.diag.VerificationObserver;
@@ -60,7 +60,7 @@ class ClientIndex extends ClientView<RemoteIndex> implements Index {
 
     @Override
     public <R> Table<R> asTable(Class<R> type) throws IOException {
-        return ClientCache.get(new Pair<>(this, type), key -> {
+        return ClientCache.get(TupleKey.make.with(this, type), key -> {
             RemoteTable rtable;
             try {
                 rtable = mRemote.asTable(type.getName());

@@ -15,13 +15,19 @@
  *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-package org.cojen.tupl.core;
+package org.cojen.tupl.table;
+
+import java.lang.annotation.*;
 
 /**
- * A very exciting record.
+ * Annotation which indicates that a row or column doesn't need to support persistence. Columns
+ * which have a type which have an unsupported binary encoding are simply skipped over. When
+ * such a column is decoded, a suitable value is chosen by the Converter.setDefault method
  *
- * @author Brian S O'Neill
- * @see Triple
+ * @author Brian S. O'Neill
  */
-public record Pair<A, B>(A a, B b) {
+@Documented
+@Retention(RetentionPolicy.RUNTIME)
+@Target({ElementType.METHOD, ElementType.TYPE})
+public @interface Unpersisted {
 }

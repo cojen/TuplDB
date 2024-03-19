@@ -65,7 +65,7 @@ public abstract class ClientTableHelper<R> implements Table<R> {
     /**
      * @param pipe is recycled or closed as a side effect
      */
-    public abstract boolean load(R row, Pipe pipe) throws IOException;
+    public abstract boolean tryLoad(R row, Pipe pipe) throws IOException;
 
     /**
      * @param pipe is recycled or closed as a side effect
@@ -85,27 +85,27 @@ public abstract class ClientTableHelper<R> implements Table<R> {
     /**
      * @param pipe is recycled or closed as a side effect
      */
-    public abstract void insert(R row, Pipe pipe) throws IOException;
+    public abstract boolean tryInsert(R row, Pipe pipe) throws IOException;
 
     /**
      * @param pipe is recycled or closed as a side effect
      */
-    public abstract void replace(R row, Pipe pipe) throws IOException;
+    public abstract boolean tryReplace(R row, Pipe pipe) throws IOException;
 
     /**
      * @param pipe is recycled or closed as a side effect
      */
-    public abstract void update(R row, Pipe pipe) throws IOException;
+    public abstract boolean tryUpdate(R row, Pipe pipe) throws IOException;
 
     /**
      * @param pipe is recycled or closed as a side effect
      */
-    public abstract void merge(R row, Pipe pipe) throws IOException;
+    public abstract boolean tryMerge(R row, Pipe pipe) throws IOException;
 
     /**
      * @param pipe is recycled or closed as a side effect
      */
-    public abstract boolean delete(R row, Pipe pipe) throws IOException;
+    public abstract boolean tryDelete(R row, Pipe pipe) throws IOException;
 
     /**
      * @param pipe is recycled or closed as a side effect
@@ -225,17 +225,17 @@ public abstract class ClientTableHelper<R> implements Table<R> {
 
         addEncodeMethods(cm, rowGen, rowClass);
 
-        addByKeyMethod("load", cm, rowGen, rowClass);
+        addByKeyMethod("tryLoad", cm, rowGen, rowClass);
         addByKeyMethod("exists", cm, rowGen, rowClass);
-        addByKeyMethod("delete", cm, rowGen, rowClass);
+        addByKeyMethod("tryDelete", cm, rowGen, rowClass);
 
         addStoreMethod("store", null, cm, rowGen, rowClass);
         addStoreMethod("exchange", rowType, cm, rowGen, rowClass);
-        addStoreMethod("insert", null, cm, rowGen, rowClass);
-        addStoreMethod("replace", null, cm, rowGen, rowClass);
+        addStoreMethod("tryInsert", boolean.class, cm, rowGen, rowClass);
+        addStoreMethod("tryReplace", boolean.class, cm, rowGen, rowClass);
 
-        addUpdateMethod("update", cm, rowGen, rowClass);
-        addUpdateMethod("merge", cm, rowGen, rowClass);
+        addUpdateMethod("tryUpdate", cm, rowGen, rowClass);
+        addUpdateMethod("tryMerge", cm, rowGen, rowClass);
 
         addUpdaterAccessMethod("updaterRow", cm, rowGen, rowClass);
         addUpdaterAccessMethod("updaterStep", cm, rowGen, rowClass);
@@ -282,7 +282,7 @@ public abstract class ClientTableHelper<R> implements Table<R> {
     }
 
     /**
-     * @param variant "load", "exists", or "delete"
+     * @param variant "tryLoad", "exists", or "tryDelete"
      */
     private static void addByKeyMethod(String variant,
                                        ClassMaker cm, RowGen rowGen, Class<?> rowClass)
@@ -298,7 +298,7 @@ public abstract class ClientTableHelper<R> implements Table<R> {
 
         var resultVar = pipeVar.invoke("readByte");
 
-        if (variant == "load") {
+        if (variant == "tryLoad") {
             Label notLoaded = mm.label();
             resultVar.ifEq(0, notLoaded);
             decodeValueColumns(rowGen, rowVar, pipeVar);
@@ -319,7 +319,7 @@ public abstract class ClientTableHelper<R> implements Table<R> {
     }
 
     /**
-     * @param variant "store", "exchange", "insert", or "replace"
+     * @param variant "store", "exchange", "tryInsert", or "tryReplace"
      */
     private static void addStoreMethod(String variant, Class returnType,
                                        ClassMaker cm, RowGen rowGen, Class<?> rowClass)
@@ -335,7 +335,7 @@ public abstract class ClientTableHelper<R> implements Table<R> {
 
         var resultVar = pipeVar.invoke("readByte");
 
-        auto: if (variant != "replace") {
+        auto: if (variant != "tryReplace") {
             // If the last column could be automatically generated, need to check that case.
             // Note that this will never be the case with the replace method, because the
             // caller must provide a full key up front.
@@ -364,20 +364,20 @@ public abstract class ClientTableHelper<R> implements Table<R> {
                 TableMaker.markAllClean(rowVar, rowGen, rowGen);
                 mm.invoke("success", pipeVar);
                 mm.return_(null);
-            } else if (variant == "insert") {
+            } else if (variant == "tryInsert") {
                 TableMaker.markAllClean(rowVar, rowGen, rowGen);
                 mm.invoke("success", pipeVar);
-                mm.return_();
+                mm.return_(true);
             }
 
             noAutoKey.here();
         }
 
-        if (variant != "exchange") {
+        if (variant == "store") {
             TableMaker.markAllClean(rowVar, rowGen, rowGen);
             mm.invoke("success", pipeVar);
             mm.return_();
-        } else {
+        } else if (variant == "exchange") {
             TableMaker.markAllClean(rowVar, rowGen, rowGen);
             Variable oldRowVar = mm.var(rowClass).set(null);
             Label noOldRow = mm.label();
@@ -389,6 +389,13 @@ public abstract class ClientTableHelper<R> implements Table<R> {
             noOldRow.here();
             mm.invoke("success", pipeVar);
             mm.return_(oldRowVar);
+        } else {
+            Label noOperation = mm.label();
+            resultVar.ifEq(0, noOperation);
+            TableMaker.markAllClean(rowVar, rowGen, rowGen);
+            noOperation.here();
+            mm.invoke("success", pipeVar);
+            mm.return_(resultVar.ne(0));
         }
 
         mm.catch_(tryStart, Throwable.class, exVar -> {
@@ -398,12 +405,12 @@ public abstract class ClientTableHelper<R> implements Table<R> {
     }
 
     /**
-     * @param variant "update" or "merge"
+     * @param variant "tryUpdate" or "tryMerge"
      */
     private static void addUpdateMethod(String variant,
                                         ClassMaker cm, RowGen rowGen, Class<?> rowClass)
     {
-        MethodMaker mm = cm.addMethod(null, variant, Object.class, Pipe.class).public_();
+        MethodMaker mm = cm.addMethod(boolean.class, variant, Object.class, Pipe.class).public_();
 
         var rowVar = mm.param(0).cast(rowClass);
         var pipeVar = mm.param(1);
@@ -417,7 +424,7 @@ public abstract class ClientTableHelper<R> implements Table<R> {
         Label noOperation = mm.label();
         resultVar.ifEq(0, noOperation);
 
-        if (variant == "update") {
+        if (variant == "tryUpdate") {
             mm.invoke("cleanRow", rowVar);
         } else {
             decodeValueColumns(rowGen, rowVar, pipeVar);
@@ -426,7 +433,7 @@ public abstract class ClientTableHelper<R> implements Table<R> {
 
         noOperation.here();
         mm.invoke("success", pipeVar);
-        mm.return_();
+        mm.return_(resultVar.ne(0));
 
         mm.catch_(tryStart, Throwable.class, exVar -> {
             mm.invoke("fail", pipeVar, exVar);

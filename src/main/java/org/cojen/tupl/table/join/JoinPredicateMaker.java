@@ -33,7 +33,7 @@ import org.cojen.maker.Variable;
 
 import org.cojen.tupl.Table;
 
-import org.cojen.tupl.core.Pair;
+import org.cojen.tupl.core.TupleKey;
 
 import org.cojen.tupl.table.ColumnInfo;
 import org.cojen.tupl.table.CompareUtils;
@@ -58,21 +58,21 @@ import org.cojen.tupl.table.filter.Visitor;
  * @author Brian S O'Neill
  */
 public final class JoinPredicateMaker implements Visitor {
-    private static final WeakCache<Pair<Class<?>, String>, Class<?>, RowFilter> cCache;
+    private static final WeakCache<TupleKey, Class<?>, RowFilter> cCache;
 
     static {
         cCache = new WeakCache<>() {
             @Override
-            public Class<?> newValue(Pair<Class<?>, String> key, RowFilter filter) {
-                Class<?> joinType = key.a();
-                String queryStr = key.b();
+            public Class<?> newValue(TupleKey key, RowFilter filter) {
+                var joinType = (Class<?>) key.get(0);
+                String queryStr = key.getString(1);
                 var maker = new JoinPredicateMaker(joinType, queryStr, filter);
                 RowFilter canonical = maker.mFilter;
                 String canonicalStr = canonical.toString();
                 if (queryStr.equals(canonicalStr)) {
                     return maker.finish();
                 } else {
-                    return obtain(new Pair<>(joinType, canonicalStr), canonical);
+                    return obtain(TupleKey.make.with(joinType, canonicalStr), canonical);
                 }
             }
         };
@@ -102,7 +102,7 @@ public final class JoinPredicateMaker implements Visitor {
      * @param filter if is null, the filter might be parsed from queryStr
      */
     private static MethodHandle find(Class<?> joinType, String queryStr, RowFilter filter) {
-        Class<?> clazz = cCache.obtain(new Pair<>(joinType, queryStr), filter);
+        Class<?> clazz = cCache.obtain(TupleKey.make.with(joinType, queryStr), filter);
         MethodType mt = MethodType.methodType(void.class, Object[].class);
         try {
             return MethodHandles.lookup().findConstructor(clazz, mt);
@@ -117,7 +117,7 @@ public final class JoinPredicateMaker implements Visitor {
 
     private MethodMaker mCtorMaker, mTestMaker;
     private Variable mRowVar;
-    private Map<Pair<Integer, Class<?>>, String> mArgFieldMap;
+    private Map<TupleKey, String> mArgFieldMap;
     private Label mPass, mFail;
 
     JoinPredicateMaker(Class<?> joinType, RowFilter filter) {
@@ -230,7 +230,7 @@ public final class JoinPredicateMaker implements Visitor {
 
         Class<?> argType = ci.type;
 
-        var fieldKey = new Pair<Integer, Class<?>>(filter.argument(), argType);
+        var fieldKey = TupleKey.make.with(filter.argument(), argType);
 
         if (mArgFieldMap == null) {
             mArgFieldMap = new HashMap<>();

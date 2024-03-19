@@ -89,25 +89,22 @@ loadScripts(document, 'script');</script>
 <div class="block">Override this method to customize the mapper's query plan.</div>
 </div>
 <div class="col-first odd-row-color"><code><a href="../QueryPlan.html" title="class in org.cojen.tupl.diag">QueryPlan</a></code></div>
-<div class="col-second odd-row-color"><span class="type-name-label">Table.</span><code><a href="../../Table.html#scannerPlan(org.cojen.tupl.Transaction,java.lang.String,java.lang.Object...)" class="member-name-link">scannerPlan</a><wbr>(<a href="../../Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
- <a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;query,
- <a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/lang/Object.html" title="class or interface in java.lang" class="external-link">Object</a>...&nbsp;args)</code></div>
+<div class="col-second odd-row-color"><span class="type-name-label">Query.</span><code><a href="../../Query.html#scannerPlan(org.cojen.tupl.Transaction,java.lang.Object...)" class="member-name-link">scannerPlan</a><wbr>(<a href="../../Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
+ <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/Object.html" title="class or interface in java.lang" class="external-link">Object</a>...&nbsp;args)</code></div>
 <div class="col-last odd-row-color">
-<div class="block">Returns a query plan used by <a href="../../Table.html#newScanner(org.cojen.tupl.Transaction,java.lang.String,java.lang.Object...)"><code>newScanner</code></a>.</div>
+<div class="block">Returns a query plan used by <a href="../../Query.html#newScanner(org.cojen.tupl.Transaction,java.lang.Object...)"><code>newScanner</code></a>.</div>
 </div>
 <div class="col-first even-row-color"><code>default <a href="../QueryPlan.html" title="class in org.cojen.tupl.diag">QueryPlan</a></code></div>
-<div class="col-second even-row-color"><span class="type-name-label">Table.</span><code><a href="../../Table.html#streamPlan(org.cojen.tupl.Transaction,java.lang.String,java.lang.Object...)" class="member-name-link">streamPlan</a><wbr>(<a href="../../Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
- <a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;query,
- <a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/lang/Object.html" title="class or interface in java.lang" class="external-link">Object</a>...&nbsp;args)</code></div>
+<div class="col-second even-row-color"><span class="type-name-label">Query.</span><code><a href="../../Query.html#streamPlan(org.cojen.tupl.Transaction,java.lang.Object...)" class="member-name-link">streamPlan</a><wbr>(<a href="../../Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
+ <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/Object.html" title="class or interface in java.lang" class="external-link">Object</a>...&nbsp;args)</code></div>
 <div class="col-last even-row-color">
-<div class="block">Returns a query plan used by <a href="../../Table.html#newStream(org.cojen.tupl.Transaction,java.lang.String,java.lang.Object...)"><code>newStream</code></a>.</div>
+<div class="block">Returns a query plan used by <a href="../../Query.html#newStream(org.cojen.tupl.Transaction,java.lang.Object...)"><code>newStream</code></a>.</div>
 </div>
 <div class="col-first odd-row-color"><code>default <a href="../QueryPlan.html" title="class in org.cojen.tupl.diag">QueryPlan</a></code></div>
-<div class="col-second odd-row-color"><span class="type-name-label">Table.</span><code><a href="../../Table.html#updaterPlan(org.cojen.tupl.Transaction,java.lang.String,java.lang.Object...)" class="member-name-link">updaterPlan</a><wbr>(<a href="../../Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
- <a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;query,
- <a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/lang/Object.html" title="class or interface in java.lang" class="external-link">Object</a>...&nbsp;args)</code></div>
+<div class="col-second odd-row-color"><span class="type-name-label">Query.</span><code><a href="../../Query.html#updaterPlan(org.cojen.tupl.Transaction,java.lang.Object...)" class="member-name-link">updaterPlan</a><wbr>(<a href="../../Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
+ <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/Object.html" title="class or interface in java.lang" class="external-link">Object</a>...&nbsp;args)</code></div>
 <div class="col-last odd-row-color">
-<div class="block">Returns a query plan used by <a href="../../Table.html#newUpdater(org.cojen.tupl.Transaction,java.lang.String,java.lang.Object...)"><code>newUpdater</code></a>.</div>
+<div class="block">Returns a query plan used by <a href="../../Query.html#newUpdater(org.cojen.tupl.Transaction,java.lang.Object...)"><code>newUpdater</code></a>.</div>
 </div>
 </div>
 </section>
@@ -273,9 +270,9 @@ loadScripts(document, 'script');</script>
 <div class="table-header col-second">Constructor</div>
 <div class="table-header col-last">Description</div>
 <div class="col-first even-row-color"><code>&nbsp;</code></div>
-<div class="col-second even-row-color"><code><a href="../QueryPlan.Aggregator.html#%3Cinit%3E(java.lang.String,java.lang.String,java.lang.String%5B%5D,org.cojen.tupl.diag.QueryPlan)" class="member-name-link">Aggregator</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;target,
- <a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;using,
- <a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>[]&nbsp;groupBy,
+<div class="col-second even-row-color"><code><a href="../QueryPlan.Aggregator.html#%3Cinit%3E(java.lang.String,java.lang.String,java.lang.String%5B%5D,org.cojen.tupl.diag.QueryPlan)" class="member-name-link">Aggregator</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;target,
+ <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;operation,
+ <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>[]&nbsp;groupBy,
  <a href="../QueryPlan.html" title="class in org.cojen.tupl.diag">QueryPlan</a>&nbsp;source)</code></div>
 <div class="col-last even-row-color">&nbsp;</div>
 <div class="col-first odd-row-color"><code>&nbsp;</code></div>
@@ -285,46 +282,46 @@ loadScripts(document, 'script');</script>
 <div class="col-second even-row-color"><code><a href="../QueryPlan.Exists.html#%3Cinit%3E(org.cojen.tupl.diag.QueryPlan)" class="member-name-link">Exists</a><wbr>(<a href="../QueryPlan.html" title="class in org.cojen.tupl.diag">QueryPlan</a>&nbsp;source)</code></div>
 <div class="col-last even-row-color">&nbsp;</div>
 <div class="col-first odd-row-color"><code>&nbsp;</code></div>
-<div class="col-second odd-row-color"><code><a href="../QueryPlan.Filter.html#%3Cinit%3E(java.lang.String,org.cojen.tupl.diag.QueryPlan)" class="member-name-link">Filter</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;expression,
+<div class="col-second odd-row-color"><code><a href="../QueryPlan.Filter.html#%3Cinit%3E(java.lang.String,org.cojen.tupl.diag.QueryPlan)" class="member-name-link">Filter</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;expression,
  <a href="../QueryPlan.html" title="class in org.cojen.tupl.diag">QueryPlan</a>&nbsp;source)</code></div>
 <div class="col-last odd-row-color">&nbsp;</div>
 <div class="col-first even-row-color"><code>&nbsp;</code></div>
-<div class="col-second even-row-color"><code><a href="../QueryPlan.Grouper.html#%3Cinit%3E(java.lang.String,java.lang.String,java.lang.String%5B%5D,java.lang.String%5B%5D,org.cojen.tupl.diag.QueryPlan)" class="member-name-link">Grouper</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;target,
- <a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;using,
- <a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>[]&nbsp;groupBy,
- <a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>[]&nbsp;orderBy,
+<div class="col-second even-row-color"><code><a href="../QueryPlan.Grouper.html#%3Cinit%3E(java.lang.String,java.lang.String,java.lang.String%5B%5D,java.lang.String%5B%5D,org.cojen.tupl.diag.QueryPlan)" class="member-name-link">Grouper</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;target,
+ <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;operation,
+ <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>[]&nbsp;groupBy,
+ <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>[]&nbsp;orderBy,
  <a href="../QueryPlan.html" title="class in org.cojen.tupl.diag">QueryPlan</a>&nbsp;source)</code></div>
 <div class="col-last even-row-color">&nbsp;</div>
 <div class="col-first odd-row-color"><code>&nbsp;</code></div>
-<div class="col-second odd-row-color"><code><a href="../QueryPlan.GroupSort.html#%3Cinit%3E(java.lang.String%5B%5D,java.lang.String%5B%5D,org.cojen.tupl.diag.QueryPlan)" class="member-name-link">GroupSort</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>[]&nbsp;groupColumns,
- <a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>[]&nbsp;sortColumns,
+<div class="col-second odd-row-color"><code><a href="../QueryPlan.GroupSort.html#%3Cinit%3E(java.lang.String%5B%5D,java.lang.String%5B%5D,org.cojen.tupl.diag.QueryPlan)" class="member-name-link">GroupSort</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>[]&nbsp;groupColumns,
+ <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>[]&nbsp;sortColumns,
  <a href="../QueryPlan.html" title="class in org.cojen.tupl.diag">QueryPlan</a>&nbsp;source)</code></div>
 <div class="col-last odd-row-color">&nbsp;</div>
 <div class="col-first even-row-color"><code>&nbsp;</code></div>
-<div class="col-second even-row-color"><code><a href="../QueryPlan.NestedLoopsJoin.Level.html#%3Cinit%3E(java.lang.String,org.cojen.tupl.diag.QueryPlan,java.util.Map)" class="member-name-link">Level</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;type,
+<div class="col-second even-row-color"><code><a href="../QueryPlan.NestedLoopsJoin.Level.html#%3Cinit%3E(java.lang.String,org.cojen.tupl.diag.QueryPlan,java.util.Map)" class="member-name-link">Level</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;type,
  <a href="../QueryPlan.html" title="class in org.cojen.tupl.diag">QueryPlan</a>&nbsp;source,
- <a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/util/Map.html" title="class or interface in java.util" class="external-link">Map</a>&lt;<a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/lang/Integer.html" title="class or interface in java.lang" class="external-link">Integer</a>,<wbr><a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&gt;&nbsp;assignments)</code></div>
+ <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/Map.html" title="class or interface in java.util" class="external-link">Map</a>&lt;<a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/Integer.html" title="class or interface in java.lang" class="external-link">Integer</a>,<wbr><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&gt;&nbsp;assignments)</code></div>
 <div class="col-last even-row-color">&nbsp;</div>
 <div class="col-first odd-row-color"><code>&nbsp;</code></div>
-<div class="col-second odd-row-color"><code><a href="../QueryPlan.Mapper.html#%3Cinit%3E(java.lang.String,java.lang.String,org.cojen.tupl.diag.QueryPlan)" class="member-name-link">Mapper</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;target,
- <a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;using,
+<div class="col-second odd-row-color"><code><a href="../QueryPlan.Mapper.html#%3Cinit%3E(java.lang.String,java.lang.String,org.cojen.tupl.diag.QueryPlan)" class="member-name-link">Mapper</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;target,
+ <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;operation,
  <a href="../QueryPlan.html" title="class in org.cojen.tupl.diag">QueryPlan</a>&nbsp;source)</code></div>
 <div class="col-last odd-row-color">&nbsp;</div>
 <div class="col-first even-row-color"><code>&nbsp;</code></div>
-<div class="col-second even-row-color"><code><a href="../QueryPlan.NaturalJoin.html#%3Cinit%3E(java.lang.String%5B%5D,org.cojen.tupl.diag.QueryPlan,org.cojen.tupl.diag.QueryPlan)" class="member-name-link">NaturalJoin</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>[]&nbsp;columns,
+<div class="col-second even-row-color"><code><a href="../QueryPlan.NaturalJoin.html#%3Cinit%3E(java.lang.String%5B%5D,org.cojen.tupl.diag.QueryPlan,org.cojen.tupl.diag.QueryPlan)" class="member-name-link">NaturalJoin</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>[]&nbsp;columns,
  <a href="../QueryPlan.html" title="class in org.cojen.tupl.diag">QueryPlan</a>&nbsp;target,
  <a href="../QueryPlan.html" title="class in org.cojen.tupl.diag">QueryPlan</a>&nbsp;source)</code></div>
 <div class="col-last even-row-color">&nbsp;</div>
 <div class="col-first odd-row-color"><code>&nbsp;</code></div>
-<div class="col-second odd-row-color"><code><a href="../QueryPlan.PrimaryJoin.html#%3Cinit%3E(java.lang.String,java.lang.String%5B%5D,org.cojen.tupl.diag.QueryPlan)" class="member-name-link">PrimaryJoin</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;table,
- <a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>[]&nbsp;keyColumns,
+<div class="col-second odd-row-color"><code><a href="../QueryPlan.PrimaryJoin.html#%3Cinit%3E(java.lang.String,java.lang.String%5B%5D,org.cojen.tupl.diag.QueryPlan)" class="member-name-link">PrimaryJoin</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;table,
+ <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>[]&nbsp;keyColumns,
  <a href="../QueryPlan.html" title="class in org.cojen.tupl.diag">QueryPlan</a>&nbsp;source)</code></div>
 <div class="col-last odd-row-color">&nbsp;</div>
 <div class="col-first even-row-color"><code>&nbsp;</code></div>
 <div class="col-second even-row-color"><code><a href="../QueryPlan.RangeUnion.html#%3Cinit%3E(org.cojen.tupl.diag.QueryPlan...)" class="member-name-link">RangeUnion</a><wbr>(<a href="../QueryPlan.html" title="class in org.cojen.tupl.diag">QueryPlan</a>...&nbsp;sources)</code></div>
 <div class="col-last even-row-color">&nbsp;</div>
 <div class="col-first odd-row-color"><code>&nbsp;</code></div>
-<div class="col-second odd-row-color"><code><a href="../QueryPlan.Sort.html#%3Cinit%3E(java.lang.String%5B%5D,org.cojen.tupl.diag.QueryPlan)" class="member-name-link">Sort</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>[]&nbsp;sortColumns,
+<div class="col-second odd-row-color"><code><a href="../QueryPlan.Sort.html#%3Cinit%3E(java.lang.String%5B%5D,org.cojen.tupl.diag.QueryPlan)" class="member-name-link">Sort</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>[]&nbsp;sortColumns,
  <a href="../QueryPlan.html" title="class in org.cojen.tupl.diag">QueryPlan</a>&nbsp;source)</code></div>
 <div class="col-last odd-row-color">&nbsp;</div>
 </div>
@@ -335,7 +332,7 @@ loadScripts(document, 'script');</script>
 </main>
 <footer role="contentinfo">
 <hr>
-<p class="legal-copy"><small>Copyright &#169; 2011&#x2013;2023 <a href="https://github.com/cojen">Cojen</a>. All rights reserved.</small></p>
+<p class="legal-copy"><small>Copyright &#169; 2011&#x2013;2024 <a href="https://github.com/cojen">Cojen</a>. All rights reserved.</small></p>
 </footer>
 </div>
 </div>

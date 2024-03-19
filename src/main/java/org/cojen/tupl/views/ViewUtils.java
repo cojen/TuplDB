@@ -28,6 +28,7 @@ import org.cojen.tupl.Index;
 import org.cojen.tupl.LockFailureException;
 import org.cojen.tupl.LockInterruptedException;
 import org.cojen.tupl.LockResult;
+import org.cojen.tupl.Table;
 import org.cojen.tupl.Transaction;
 import org.cojen.tupl.View;
 import org.cojen.tupl.ViewConstraintException;
@@ -322,6 +323,18 @@ public class ViewUtils {
             c.link(txn);
             c.autoload(auto);
         }
+    }
+
+    /**
+     * Returns a new transaction or enters a scope.
+     */
+    public static Transaction enterScope(Table table, Transaction txn) throws IOException {
+        if (txn == null) {
+            txn = table.newTransaction(null);
+        } else if (!txn.isBogus()) {
+            txn.enter();
+        }
+        return txn;
     }
 
     /**

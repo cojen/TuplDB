@@ -40,10 +40,10 @@ import org.cojen.tupl.table.filter.TrueFilter;
 /**
  * @author Brian S O'Neill
  */
-final class JoinSpec {
+public final class JoinSpec {
     // Note: The toLeftJoin method depends on the right types being left plus one. Also, no
     // types can be zero.
-    static final int T_INNER = 1, T_STRAIGHT = 2,
+    public static final int T_INNER = 1, T_STRAIGHT = 2,
         T_LEFT_OUTER = 3, T_RIGHT_OUTER = 4, T_FULL_OUTER = 5,
         T_LEFT_ANTI = 6, T_RIGHT_ANTI = 7, T_FULL_ANTI = 8;
 
@@ -220,6 +220,39 @@ final class JoinSpec {
 
     public static boolean isFullJoin(int type) {
         return type == T_FULL_OUTER || type == T_FULL_ANTI;
+    }
+
+    /**
+     * @return true if the left side of a join with the given type can produce null rows
+     */
+    public static boolean isLeftNullable(int type) {
+        return switch (type) {
+            default -> false;
+            case T_RIGHT_OUTER, T_FULL_OUTER, T_RIGHT_ANTI, T_FULL_ANTI -> true;
+        };
+    }
+
+    /**
+     * @return true if the right side of a join with the given type can produce null rows
+     */
+    public static boolean isRightNullable(int type) {
+        return switch (type) {
+            default -> false;
+            case T_LEFT_OUTER, T_FULL_OUTER, T_LEFT_ANTI, T_FULL_ANTI -> true;
+        };
+    }
+
+    public static String typeToString(int type) {
+        return switch (type) {
+            default -> ":";
+            case T_STRAIGHT -> "::";
+            case T_LEFT_OUTER -> ">:";
+            case T_RIGHT_OUTER -> ":<";
+            case T_FULL_OUTER -> ">:<";
+            case T_LEFT_ANTI -> ">";
+            case T_RIGHT_ANTI -> "<";
+            case T_FULL_ANTI -> "><";
+        };
     }
 
     /**
@@ -610,20 +643,7 @@ final class JoinSpec {
         @Override
         void appendTo(StringBuilder b) {
             mLeftChild.appendTo(b);
-
-            String typeStr = switch (mType) {
-                default -> ":";
-                case T_STRAIGHT -> "::";
-                case T_LEFT_OUTER -> ">:";
-                case T_RIGHT_OUTER -> ":<";
-                case T_FULL_OUTER -> ">:<";
-                case T_LEFT_ANTI -> ">";
-                case T_RIGHT_ANTI -> "<";
-                case T_FULL_ANTI -> "><";
-            };
-
-            b.append(' ').append(typeStr).append(' ');
-
+            b.append(' ').append(typeToString(mType)).append(' ');
             mRightChild.appendGroupedTo(b);
         }
     }

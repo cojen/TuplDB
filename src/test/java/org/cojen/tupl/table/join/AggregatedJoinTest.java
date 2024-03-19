@@ -102,11 +102,6 @@ public class AggregatedJoinTest {
             target.count(count);
             return target;
         }
-
-        @Override
-        public String toString() {
-            return getClass().getSimpleName();
-        }
     }
 
     @Test
@@ -122,12 +117,11 @@ public class AggregatedJoinTest {
         String plan = """
 - nested loops join
   - first
-    - aggregate: org.cojen.tupl.rows.join.AggregatedJoinTest$Agg
-      using: Aggregator1
-      - full scan over primary key: org.cojen.tupl.rows.join.Department
+    - aggregate: org.cojen.tupl.table.join.AggregatedJoinTest$Agg
+      - full scan over primary key: org.cojen.tupl.table.join.Department
         key columns: +id
   - join
-    - full scan over primary key: org.cojen.tupl.rows.join.Employee
+    - full scan over primary key: org.cojen.tupl.table.join.Employee
       key columns: +id
             """;
 
@@ -145,13 +139,12 @@ public class AggregatedJoinTest {
         plan = """
 - nested loops join
   - first
-    - aggregate: org.cojen.tupl.rows.join.AggregatedJoinTest$Agg
-      using: Aggregator1
-      - full scan over primary key: org.cojen.tupl.rows.join.Department
+    - aggregate: org.cojen.tupl.table.join.AggregatedJoinTest$Agg
+      - full scan over primary key: org.cojen.tupl.table.join.Department
         key columns: +id
   - join
     - filter: departmentId == ?1
-      - full scan over primary key: org.cojen.tupl.rows.join.Employee
+      - full scan over primary key: org.cojen.tupl.table.join.Employee
         key columns: +id
             """;
 
@@ -178,14 +171,13 @@ public class AggregatedJoinTest {
         String plan = """
 - nested loops join
   - first
-    - aggregate: org.cojen.tupl.rows.join.AggregatedJoinTest$AggByCompany
-      using: Aggregator1
+    - aggregate: org.cojen.tupl.table.join.AggregatedJoinTest$AggByCompany
       group by: companyId
       - sort: +companyId
-        - full scan over primary key: org.cojen.tupl.rows.join.Department
+        - full scan over primary key: org.cojen.tupl.table.join.Department
           key columns: +id
   - join
-    - full scan over primary key: org.cojen.tupl.rows.join.Department
+    - full scan over primary key: org.cojen.tupl.table.join.Department
       key columns: +id
             """;
 
@@ -205,16 +197,15 @@ public class AggregatedJoinTest {
         plan = """
 - nested loops join
   - first
-    - aggregate: org.cojen.tupl.rows.join.AggregatedJoinTest$AggByCompany
-      using: Aggregator1
+    - aggregate: org.cojen.tupl.table.join.AggregatedJoinTest$AggByCompany
       group by: companyId
       - sort: +companyId
-        - full scan over primary key: org.cojen.tupl.rows.join.Department
+        - full scan over primary key: org.cojen.tupl.table.join.Department
           key columns: +id
     assignments: ?1 = agg.companyId
   - join
     - filter: companyId == ?1
-      - full scan over primary key: org.cojen.tupl.rows.join.Department
+      - full scan over primary key: org.cojen.tupl.table.join.Department
         key columns: +id
             """;
 
@@ -231,15 +222,14 @@ public class AggregatedJoinTest {
 - nested loops join
   - first
     - filter: companyId == ?1
-      - full scan over primary key: org.cojen.tupl.rows.join.Department
+      - full scan over primary key: org.cojen.tupl.table.join.Department
         key columns: +id
     assignments: ?2 = department.companyId
   - join
-    - aggregate: org.cojen.tupl.rows.join.AggregatedJoinTest$AggByCompany
-      using: Aggregator1
+    - aggregate: org.cojen.tupl.table.join.AggregatedJoinTest$AggByCompany
       group by: companyId
       - filter: companyId == ?2
-        - full scan over primary key: org.cojen.tupl.rows.join.Department
+        - full scan over primary key: org.cojen.tupl.table.join.Department
           key columns: +id
             """;
 
@@ -254,16 +244,15 @@ public class AggregatedJoinTest {
         plan = """
 - nested loops join
   - first
-    - aggregate: org.cojen.tupl.rows.join.AggregatedJoinTest$AggByCompany
-      using: Aggregator1
+    - aggregate: org.cojen.tupl.table.join.AggregatedJoinTest$AggByCompany
       group by: companyId
       - filter: companyId == ?1
-        - full scan over primary key: org.cojen.tupl.rows.join.Department
+        - full scan over primary key: org.cojen.tupl.table.join.Department
           key columns: +id
     assignments: ?2 = agg.companyId
   - join
     - filter: companyId == ?2
-      - full scan over primary key: org.cojen.tupl.rows.join.Department
+      - full scan over primary key: org.cojen.tupl.table.join.Department
         key columns: +id
             """;
 

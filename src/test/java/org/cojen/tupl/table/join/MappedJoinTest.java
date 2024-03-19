@@ -22,6 +22,8 @@ import static org.junit.Assert.*;
 
 import org.cojen.tupl.*;
 
+import org.cojen.tupl.diag.QueryPlan;
+
 /**
  * 
  *
@@ -63,16 +65,16 @@ public class MappedJoinTest {
         var plan = """
 - nested loops join
   - first
-    - map: org.cojen.tupl.rows.join.MappedJoinTest$Emp
-      using: ToEmp
-      - full scan over primary key: org.cojen.tupl.rows.join.Employee
+    - map: org.cojen.tupl.table.join.MappedJoinTest$Emp
+      operation: ToEmp
+      - full scan over primary key: org.cojen.tupl.table.join.Employee
         key columns: +id
     assignments: ?1 = emp.deptId
   - join
     - filter: id == ?1
-      - map: org.cojen.tupl.rows.join.MappedJoinTest$Dept
-        using: ToDept
-        - full scan over primary key: org.cojen.tupl.rows.join.Department
+      - map: org.cojen.tupl.table.join.MappedJoinTest$Dept
+        operation: ToDept
+        - full scan over primary key: org.cojen.tupl.table.join.Department
           key columns: +id
             """;
 
@@ -89,17 +91,17 @@ public class MappedJoinTest {
         plan = """
 - nested loops join
   - first
-    - map: org.cojen.tupl.rows.join.MappedJoinTest$Emp
-      using: ToEmp
+    - map: org.cojen.tupl.table.join.MappedJoinTest$Emp
+      operation: ToEmp
       - filter: lastName == ?2
-        - full scan over primary key: org.cojen.tupl.rows.join.Employee
+        - full scan over primary key: org.cojen.tupl.table.join.Employee
           key columns: +id
     assignments: ?2 = emp.deptId
   - join
     - filter: id == ?2
-      - map: org.cojen.tupl.rows.join.MappedJoinTest$Dept
-        using: ToDept
-        - full scan over primary key: org.cojen.tupl.rows.join.Department
+      - map: org.cojen.tupl.table.join.MappedJoinTest$Dept
+        operation: ToDept
+        - full scan over primary key: org.cojen.tupl.table.join.Department
           key columns: +id
             """;
 
@@ -113,18 +115,18 @@ public class MappedJoinTest {
 
         plan = """
 - filter: deptName == ?1
-  - map: org.cojen.tupl.rows.join.MappedJoinTest$EmpAndDept
-    using: ToEmpAndDept
+  - map: org.cojen.tupl.table.join.MappedJoinTest$EmpAndDept
+    operation: ToEmpAndDept
     - nested loops join
       - first
-        - map: org.cojen.tupl.rows.join.MappedJoinTest$Emp
-          using: ToEmp
-          - full scan over primary key: org.cojen.tupl.rows.join.Employee
+        - map: org.cojen.tupl.table.join.MappedJoinTest$Emp
+          operation: ToEmp
+          - full scan over primary key: org.cojen.tupl.table.join.Employee
             key columns: +id
       - join
-        - map: org.cojen.tupl.rows.join.MappedJoinTest$Dept
-          using: ToDept
-          - full scan over primary key: org.cojen.tupl.rows.join.Department
+        - map: org.cojen.tupl.table.join.MappedJoinTest$Dept
+          operation: ToDept
+          - full scan over primary key: org.cojen.tupl.table.join.Department
             key columns: +id
             """;
 
@@ -231,8 +233,8 @@ public class MappedJoinTest {
         }
 
         @Override
-        public String toString() {
-            return getClass().getSimpleName();
+        public QueryPlan.Mapper plan(QueryPlan.Mapper plan) {
+            return plan.withOperation(getClass().getSimpleName());
         }
     }
 
@@ -245,8 +247,8 @@ public class MappedJoinTest {
         }
 
         @Override
-        public String toString() {
-            return getClass().getSimpleName();
+        public QueryPlan.Mapper plan(QueryPlan.Mapper plan) {
+            return plan.withOperation(getClass().getSimpleName());
         }
     }
 
@@ -268,8 +270,8 @@ public class MappedJoinTest {
         }
 
         @Override
-        public String toString() {
-            return getClass().getSimpleName();
+        public QueryPlan.Mapper plan(QueryPlan.Mapper plan) {
+            return plan.withOperation(getClass().getSimpleName());
         }
     }
 }

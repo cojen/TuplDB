@@ -188,7 +188,7 @@ public abstract class GroupedTable<S, T> extends AbstractMappedTable<S, T>
     }
 
     @Override
-    public final boolean load(Transaction txn, T row) throws IOException {
+    public final boolean tryLoad(Transaction txn, T row) throws IOException {
         throw new ViewConstraintException();
     }
 
@@ -361,12 +361,11 @@ public abstract class GroupedTable<S, T> extends AbstractMappedTable<S, T>
             final var planVar = sourceQueryVar.invoke("scannerPlan", txnVar, argsVar);
 
             var targetVar = mm.var(Class.class).set(targetType).invoke("getName");
-            var usingVar = tableVar.invoke("grouperString");
             var groupByVar = tableVar.invoke("groupByColumns");
             var orderByVar = tableVar.invoke("orderByColumns");
 
             var grouperPlanVar = mm.new_
-                (QueryPlan.Grouper.class, targetVar, usingVar, groupByVar, orderByVar, planVar);
+                (QueryPlan.Grouper.class, targetVar, null, groupByVar, orderByVar, planVar);
             planVar.set(tableVar.invoke("plan", grouperPlanVar));
 
             if (targetRemainder != TrueFilter.THE) {
@@ -501,15 +500,6 @@ public abstract class GroupedTable<S, T> extends AbstractMappedTable<S, T>
                 RowUtils.suppress(e, e2);
             }
             throw e;
-        }
-    }
-
-    /**
-     * Called by generated Query instances.
-     */
-    public final String grouperString() throws IOException {
-        try (Grouper<S, T> grouper = mGrouperFactory.newGrouper()) {
-            return grouper.toString();
         }
     }
 

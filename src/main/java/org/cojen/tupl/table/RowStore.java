@@ -38,6 +38,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
+import java.util.WeakHashMap;
 
 import java.util.function.Consumer;
 import java.util.function.Supplier;
@@ -60,6 +61,7 @@ import org.cojen.tupl.core.CoreDatabase;
 import org.cojen.tupl.core.LHashTable;
 import org.cojen.tupl.core.RowPredicateLock;
 import org.cojen.tupl.core.ScanVisitor;
+import org.cojen.tupl.core.TupleKey;
 
 import org.cojen.tupl.diag.EventListener;
 import org.cojen.tupl.diag.EventType;
@@ -67,6 +69,7 @@ import org.cojen.tupl.diag.EventType;
 import org.cojen.tupl.util.Runner;
 
 import static org.cojen.tupl.table.RowUtils.*;
+import static org.cojen.tupl.table.SchemaChangeListener.*;
 
 /**
  * Main class for managing row persistence via tables.
@@ -109,6 +112,8 @@ public final class RowStore {
     private final WeakCache<Index, TableManager<?>, Object> mTableManagers;
 
     private final LHashTable.Obj<RowPredicateLock<?>> mIndexLocks;
+
+    private Object mSchemaChangeListeners;
 
     private WeakCache<TranscoderKey, Transcoder, SecondaryInfo> mSortTranscoderCache;
     private static final VarHandle cSortTranscoderCacheHandle;
@@ -156,6 +161,69 @@ public final class RowStore {
                 uncaught(e);
             }
         });
+    }
+
+    @SuppressWarnings("unchecked")
+    public synchronized void addSchemaChangeListener(SchemaChangeListener listener) {
+        Object obj = mSchemaChangeListeners;
+        if (obj == null) {
+            mSchemaChangeListeners = new WeakReference(listener);
+        } else if (obj instanceof WeakHashMap listeners) {
+            listeners.put(listener, true);
+        } else {
+            var existing = (SchemaChangeListener) ((WeakReference) obj).get();
+            if (existing == null) {
+                mSchemaChangeListeners = new WeakReference(listener);
+            } else {
+                var listeners = new WeakHashMap();
+                listeners.put(existing, true);
+                listeners.put(listener, true);
+                mSchemaChangeListeners = listeners;
+            }
+        }
+    }
+
+    public synchronized void removeSchemaChangeListener(SchemaChangeListener listener) {
+        Object obj = mSchemaChangeListeners;
+        if (obj instanceof WeakReference ref) {
+            obj = ref.get();
+            if (obj == null || obj == listener) {
+                mSchemaChangeListeners = null;
+            }
+        } else if (obj instanceof WeakHashMap listeners) {
+            listeners.remove(listener);
+            if (listeners.isEmpty()) {
+                mSchemaChangeListeners = null;
+            }
+        }
+    }
+
+    private synchronized void notifySchemaChangeListeners(long tableId, int changes) {
+        Object obj = mSchemaChangeListeners;
+        if (obj instanceof WeakReference ref) {
+            obj = ref.get();
+            if (obj == null) {
+                mSchemaChangeListeners = null;
+            } else {
+                try {
+                    ((SchemaChangeListener) obj).schemaChanged(tableId, changes);
+                } catch (Throwable e) {
+                    uncaught(e);
+                }
+            }
+        } else if (obj instanceof WeakHashMap listeners) {
+            if (listeners.isEmpty()) {
+                mSchemaChangeListeners = null;
+            } else {
+                for (Object listener : listeners.keySet()) {
+                    try {
+                        ((SchemaChangeListener) listener).schemaChanged(tableId, changes);
+                    } catch (Throwable e) {
+                        uncaught(e);
+                    }
+                }
+            }
+        }
     }
 
     /**
@@ -339,7 +407,7 @@ public final class RowStore {
                     var mh = new DynamicTableMaker(type, info.rowGen(), this, ix.id()).finish();
                     table = (BaseTable) mh.invoke(manager, ix, indexLock);
                 } else {
-                    Class tableClass = StaticTableMaker.obtain(type, RowInfo.find(type).rowGen());
+                    Class tableClass = StaticTableMaker.obtain(type, info.rowGen());
                     table = (BaseTable) tableClass.getConstructor
                         (TableManager.class, Index.class, RowPredicateLock.class)
                         .newInstance(manager, ix, indexLock);
@@ -487,7 +555,7 @@ public final class RowStore {
         (BaseTable<R> primaryTable, boolean alt, String... columns)
         throws IOException
     {
-        Object key = ArrayKey.make(alt, columns);
+        Object key = TupleKey.make.with(primaryTable.rowType(), alt, columns);
         WeakCache<Object, BaseTableIndex<R>, Object> indexTables =
             primaryTable.mTableManager.indexTables();
 
@@ -554,7 +622,7 @@ public final class RowStore {
                         continue;
                     }
                     indexId = decodeLongLE(c.value(), 0);
-                    indexRowInfo = secondaryRowInfo(RowInfo.find(rowType), c.key());
+                    indexRowInfo = secondaryRowInfo(rowInfo, c.key());
                     descriptor = c.key();
                     break find;
                 }
@@ -562,7 +630,7 @@ public final class RowStore {
             return null;
         }
 
-        Object key = ArrayKey.make(descriptor);
+        Object key = TupleKey.make.with(rowType, descriptor);
 
         BaseTableIndex<R> table = indexTables.get(key);
 
@@ -577,8 +645,8 @@ public final class RowStore {
         }
 
         // Indexes don't have indexes.
-        indexRowInfo.alternateKeys = Collections.emptyNavigableSet();
-        indexRowInfo.secondaryIndexes = Collections.emptyNavigableSet();
+        indexRowInfo.alternateKeys = EmptyNavigableSet.the();
+        indexRowInfo.secondaryIndexes = EmptyNavigableSet.the();
 
         RowPredicateLock<R> indexLock = indexLock(ix);
 
@@ -742,7 +810,7 @@ public final class RowStore {
 
         // Index won't be found if it was concurrently dropped.
         if (ix != null) {
-            examineSecondaries(tableManager(ix));
+            examineSecondaries(tableManager(ix), false);
         }
 
         return true;
@@ -750,9 +818,13 @@ public final class RowStore {
 
     /**
      * Also called from TableManager.asTable.
+     *
+     * @param newTable is true when called by TableManager.asTable
      */
-    void examineSecondaries(TableManager<?> manager) throws IOException {
+    void examineSecondaries(TableManager<?> manager, boolean newTable) throws IOException {
         long indexId = manager.mPrimaryIndex.id();
+
+        Runnable clearTask;
 
         // Can use NO_FLUSH because transaction will be only used for reading data.
         Transaction txn = mDatabase.newTransaction(DurabilityMode.NO_FLUSH);
@@ -772,9 +844,14 @@ public final class RowStore {
 
             txn.lockMode(LockMode.READ_COMMITTED);
 
-            manager.update(tableVersion, this, txn, viewExtended(indexId, K_SECONDARY));
+            clearTask = manager.update
+                (tableVersion, this, txn, viewExtended(indexId, K_SECONDARY), newTable);
         } finally {
             txn.reset();
+        }
+
+        if (clearTask != null) {
+            clearTask.run();
         }
     }
 
@@ -821,6 +898,8 @@ public final class RowStore {
 
         boolean activated = false;
 
+        Runnable clearTask;
+
         // Use NO_REDO it because this method can be called by a replica.
         Transaction txn = mDatabase.newTransaction(DurabilityMode.NO_REDO);
         try {
@@ -855,14 +934,20 @@ public final class RowStore {
                 }
             }
 
-            backfill.mManager.update(tableVersion, this, txn, secondariesView);
+            clearTask = backfill.mManager.update(tableVersion, this, txn, secondariesView, false);
 
             txn.commit();
         } finally {
             txn.reset();
         }
 
+        if (clearTask != null) {
+            clearTask.run();
+        }
+
         if (activated) {
+            notifySchemaChangeListeners(backfill.mManager.primaryIndex().id(), CHANGE_ADD_INDEX);
+
             // With NO_REDO, need a checkpoint to ensure durability. If the database is closed
             // before it finishes, the whole backfill process starts over when the database is
             // later reopened.
@@ -964,6 +1049,8 @@ public final class RowStore {
         if (deleteTasks == null) {
             return true;
         }
+
+        notifySchemaChangeListeners(primaryIndexId, CHANGE_DROP);
 
         final var tasks = deleteTasks;
 
@@ -1183,6 +1270,8 @@ public final class RowStore {
                                 task = taskFactory.get();
                             }
 
+                            notifySchemaChangeListeners(primaryIndexId, CHANGE_DROP_INDEX);
+
                             task.run();
 
                             if (listener != null) {
@@ -1221,6 +1310,7 @@ public final class RowStore {
 
         int schemaVersion;
         long tableVersion;
+        int changes = 0;
 
         Map<Index, byte[]> secondariesToDelete = null;
 
@@ -1231,6 +1321,7 @@ public final class RowStore {
             current.find(key(indexId));
 
             if (current.value() == null) {
+                schemaVersion = 0;
                 tableVersion = 0;
             } else {
                 // Check if the schema has changed.
@@ -1277,11 +1368,15 @@ public final class RowStore {
 
                 byte[] schemaVersions = byHash.value();
                 if (schemaVersions != null) {
+                    int currentSchemaVersion = schemaVersion;
                     for (int pos=0; pos<schemaVersions.length; pos+=4) {
                         schemaVersion = decodeIntLE(schemaVersions, pos);
                         RowInfo existing = decodeExisting
                             (txn, info.name, indexId, null, schemaVersion);
                         if (info.matches(existing)) {
+                            if (schemaVersion != currentSchemaVersion) {
+                                changes |= CHANGE_SCHEMA;
+                            }
                             break assignVersion;
                         }
                     }
@@ -1297,9 +1392,11 @@ public final class RowStore {
                     if (highest.value() == null) {
                         // First version.
                         schemaVersion = 1;
+                        changes |= CHANGE_CREATE;
                     } else {
                         byte[] key = highest.key();
                         schemaVersion = decodeIntBE(key, key.length - 4) + 1;
+                        changes |= CHANGE_SCHEMA;
                     }
 
                     highest.findNearby(key(indexId, schemaVersion));
@@ -1462,6 +1559,10 @@ public final class RowStore {
         if (notify) {
             // We're currently the leader, and so this method must be invoked directly.
             notifySchema(indexId);
+        }
+
+        if (changes != 0) {
+            notifySchemaChangeListeners(indexId, changes);
         }
 
         return schemaVersion;
@@ -1714,7 +1815,9 @@ public final class RowStore {
      * @param typeName pass null to decode the current type name
      * @return null if not found
      */
-    RowInfo decodeExisting(Transaction txn, String typeName, long indexId) throws IOException {
+    public RowInfo decodeExisting(Transaction txn, String typeName, long indexId)
+        throws IOException
+    {
         byte[] currentData = mSchemata.load(txn, key(indexId));
         if (currentData == null) {
             return null;
@@ -1783,6 +1886,7 @@ public final class RowStore {
             var ci = new ColumnInfo();
             ci.name = name;
             ci.typeCode = decodeIntLE(primaryData, pos); pos += 4;
+            ci.assignType();
             info.allColumns.put(name, ci);
         }
 
@@ -1804,13 +1908,13 @@ public final class RowStore {
             info.alternateKeys = new TreeSet<>(ColumnSetComparator.THE);
             pos = decodeColumnSets(currentData, 4 + 8, names, info.alternateKeys);
             if (info.alternateKeys.isEmpty()) {
-                info.alternateKeys = Collections.emptyNavigableSet();
+                info.alternateKeys = EmptyNavigableSet.the();
             }
 
             info.secondaryIndexes = new TreeSet<>(ColumnSetComparator.THE);
             pos = decodeColumnSets(currentData, pos, names, info.secondaryIndexes);
             if (info.secondaryIndexes.isEmpty()) {
-                info.secondaryIndexes = Collections.emptyNavigableSet();
+                info.secondaryIndexes = EmptyNavigableSet.the();
             }
 
             if (pos < currentData.length) {

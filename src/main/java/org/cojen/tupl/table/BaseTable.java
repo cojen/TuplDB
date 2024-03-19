@@ -39,16 +39,15 @@ import org.cojen.tupl.Entry;
 import org.cojen.tupl.Index;
 import org.cojen.tupl.LockMode;
 import org.cojen.tupl.LockResult;
-import org.cojen.tupl.NoSuchRowException;
 import org.cojen.tupl.Query;
 import org.cojen.tupl.Scanner;
 import org.cojen.tupl.Updater;
 import org.cojen.tupl.Table;
 import org.cojen.tupl.Transaction;
-import org.cojen.tupl.UniqueConstraintException;
 
 import org.cojen.tupl.core.RowPredicate;
 import org.cojen.tupl.core.RowPredicateLock;
+import org.cojen.tupl.core.TupleKey;
 
 import org.cojen.tupl.diag.EventListener;
 import org.cojen.tupl.diag.EventType;
@@ -108,7 +107,7 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
 
     protected final RowPredicateLock<R> mIndexLock;
 
-    private WeakCache<Object, MethodHandle, byte[]> mDecodePartialCache;
+    private WeakCache<TupleKey, MethodHandle, byte[]> mDecodePartialCache;
     private static final VarHandle cDecodePartialCacheHandle;
 
     private WeakCache<Object, MethodHandle, byte[]> mWriteRowCache;
@@ -876,21 +875,21 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
      * @see DecodePartialMaker
      */
     protected final MethodHandle decodePartialHandle(byte[] spec, int schemaVersion) {
-        WeakCache<Object, MethodHandle, byte[]> cache = mDecodePartialCache;
+        WeakCache<TupleKey, MethodHandle, byte[]> cache = mDecodePartialCache;
 
         if (cache == null) {
             cache = new WeakCache<>() {
                 @Override
-                protected MethodHandle newValue(Object key, byte[] spec) {
+                protected MethodHandle newValue(TupleKey key, byte[] spec) {
                     int schemaVersion = 0;
-                    if (key instanceof ArrayKey.PrefixBytes pb) {
-                        schemaVersion = pb.prefix;
+                    if (key.size() == 2) {
+                        schemaVersion = key.getInt(0);
                     }
                     return makeDecodePartialHandle(spec, schemaVersion);
                 }
             };
 
-            var existing = (WeakCache<Object, MethodHandle, byte[]>)
+            var existing = (WeakCache<TupleKey, MethodHandle, byte[]>)
                 cDecodePartialCacheHandle.compareAndExchange(this, null, cache);
 
             if (existing != null) {
@@ -898,8 +897,8 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
             }
         }
 
-        final Object key = schemaVersion == 0 ?
-            ArrayKey.make(spec) : ArrayKey.make(schemaVersion, spec);
+        final TupleKey key = schemaVersion == 0 ?
+            TupleKey.make.with(spec) : TupleKey.make.with(schemaVersion, spec);
 
         return cache.obtain(key, spec);
     }
@@ -953,7 +952,7 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
             }
         }
 
-        return cache.obtain(ArrayKey.make(spec), spec);
+        return cache.obtain(TupleKey.make.with(spec), spec);
     }
 
     public final RemoteTableProxy newRemoteProxy(byte[] descriptor) throws IOException {
@@ -1038,7 +1037,7 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
     /**
      * Called when no trigger is installed.
      */
-    protected final void insertNoTrigger(Transaction txn, R row, byte[] key, byte[] value)
+    protected final boolean tryInsertNoTrigger(Transaction txn, R row, byte[] key, byte[] value)
         throws IOException
     {
         Index source = mSource;
@@ -1056,15 +1055,13 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
             txn.exit();
         }
 
-        if (!result) {
-            throw new UniqueConstraintException("Primary key");
-        }
+        return result;
     }
 
     /**
      * Called when no trigger is installed.
      */
-    protected final void replaceNoTrigger(Transaction txn, R row, byte[] key, byte[] value)
+    protected final boolean tryReplaceNoTrigger(Transaction txn, R row, byte[] key, byte[] value)
         throws IOException
     {
         Index source = mSource;
@@ -1086,9 +1083,7 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
             txn.exit();
         }
 
-        if (!result) {
-            throw new NoSuchRowException();
-        }
+        return result;
     }
 
     /**
@@ -1215,7 +1210,7 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
      *
      * @see RemoteProxyMaker
      */
-    final void insertAndTrigger(Transaction txn, R row, byte[] key, byte[] value)
+    final boolean insertAndTrigger(Transaction txn, R row, byte[] key, byte[] value)
         throws IOException
     {
         // See comments in storeAndTrigger.
@@ -1239,10 +1234,7 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
                             result = source.insert(txn, key, value);
                         }
                         txn.commit();
-                        if (result) {
-                            return;
-                        }
-                        throw new UniqueConstraintException("Primary key");
+                        return result;
                     }
 
                     if (mode != Trigger.DISABLED) {
@@ -1252,11 +1244,11 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
                                 c.find(key);
                             }
                             if (c.value() != null) {
-                                throw new UniqueConstraintException("Primary key");
+                                return false;
                             } else {
                                 trigger.insertP(txn, row, key, value);
                                 c.commit(value);
-                                return;
+                                return true;
                             }
                         }
                     }
@@ -1275,7 +1267,7 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
      *
      * @see RemoteProxyMaker
      */
-    final void replaceAndTrigger(Transaction txn, R row, byte[] key, byte[] value)
+    final boolean replaceAndTrigger(Transaction txn, R row, byte[] key, byte[] value)
         throws IOException
     {
         // See comments in storeAndTrigger.
@@ -1301,10 +1293,10 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
                         try (var closer = mIndexLock.openAcquireP(txn, row, key, value)) {
                             if (source.replace(txn, key, value)) {
                                 txn.commit();
-                                return;
+                                return true;
                             }
                         }
-                        throw new NoSuchRowException();
+                        return false;
                     }
 
                     if (mode != Trigger.DISABLED) {
@@ -1314,12 +1306,12 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
                             }
                             byte[] oldValue = c.value();
                             if (oldValue == null) {
-                                throw new NoSuchRowException();
+                                return false;
                             }
                             c.store(value);
                             trigger.storeP(txn, row, key, oldValue, value);
                             txn.commit();
-                            return;
+                            return true;
                         }
                     }
                 } finally {
@@ -1348,7 +1340,7 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
      * be empty, and it's never modified by this method.
      *
      * @see RemoteProxyMaker
-     * @return the new value
+     * @return the new value, or null if none
      */
     final byte[] updateAndTrigger(Transaction txn, R row, byte[] key, ValueUpdater updater)
         throws IOException
@@ -1368,7 +1360,7 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
                 LockResult result = c.find(key);
                 originalValue = c.value();
                 if (originalValue == null) {
-                    throw new NoSuchRowException();
+                    return null;
                 }
                 newValue = updater.updateValue(originalValue);
                 if (tryOpenAcquireP(txn, row, key, c, result, newValue)) {

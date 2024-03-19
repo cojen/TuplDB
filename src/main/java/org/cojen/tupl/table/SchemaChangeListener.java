@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2023 Cojen.org
+ *  Copyright (C) 2024 Cojen.org
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU Affero General Public License as
@@ -15,13 +15,21 @@
  *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-package org.cojen.tupl.core;
+package org.cojen.tupl.table;
 
 /**
- * A very exciting record.
- *
- * @author Brian S O'Neill
- * @see Pair
+ * @author Brian S. O'Neill
+ * @see RowStore#addSchemaChangeListener
  */
-public record Triple<A, B, C>(A a, B b, C c) {
+public interface SchemaChangeListener {
+    static final int CHANGE_CREATE = 1;      // table is created
+    static final int CHANGE_SCHEMA = 2;      // columns are added or dropped
+    static final int CHANGE_DROP = 4;        // the table is dropped
+    static final int CHANGE_ADD_INDEX = 8;   // a secondary index or alternate key is added
+    static final int CHANGE_DROP_INDEX = 16; // a secondary index or alternate key is dropped
+
+    /**
+     * @param tableId id of table's primary index
+     */
+    void schemaChanged(long tableId, int changes);
 }

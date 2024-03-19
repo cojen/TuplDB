@@ -50,7 +50,7 @@ import org.cojen.tupl.Transaction;
 import org.cojen.tupl.Updater;
 import org.cojen.tupl.ViewConstraintException;
 
-import org.cojen.tupl.core.Pair;
+import org.cojen.tupl.core.TupleKey;
 
 import org.cojen.tupl.diag.QueryPlan;
 
@@ -70,16 +70,16 @@ import org.cojen.tupl.table.filter.Visitor;
  * @see Table#view
  */
 public abstract sealed class ViewedTable<R> extends WrappedTable<R, R> {
-    private static final WeakCache<Pair<Class, String>, MethodHandle, QuerySpec> cFactoryCache;
+    private static final WeakCache<TupleKey, MethodHandle, QuerySpec> cFactoryCache;
 
-    private static final WeakCache<Pair<Class, String>, Helper, ViewedTable> cHelperCache;
+    private static final WeakCache<TupleKey, Helper, ViewedTable> cHelperCache;
 
     static {
         cFactoryCache = new WeakCache<>() {
             @Override
-            public MethodHandle newValue(Pair<Class, String> key, QuerySpec query) {
-                Class<?> rowType = key.a();
-                String queryStr = key.b();
+            public MethodHandle newValue(TupleKey key, QuerySpec query) {
+                var rowType = (Class<?>) key.get(0);
+                String queryStr = key.getString(1);
 
                 RowInfo rowInfo = RowInfo.find(rowType);
 
@@ -87,7 +87,7 @@ public abstract sealed class ViewedTable<R> extends WrappedTable<R, R> {
                     query = new Parser(rowInfo.allColumns, queryStr).parseQuery(null);
                     String canonical = query.toString();
                     if (!canonical.equals(queryStr)) {
-                        return obtain(new Pair<>(rowType, canonical), query);
+                        return obtain(TupleKey.make.with(rowType, canonical), query);
                     }
                 }
 
@@ -104,8 +104,8 @@ public abstract sealed class ViewedTable<R> extends WrappedTable<R, R> {
         cHelperCache = new WeakCache<>() {
             @Override
             @SuppressWarnings("unchecked")
-            public Helper newValue(Pair<Class, String> key, ViewedTable table) {
-                Class rowType = key.a();
+            public Helper newValue(TupleKey key, ViewedTable table) {
+                var rowType = (Class<?>) key.get(0);
                 return makeHelper(rowType, table);
             }
         };
@@ -114,7 +114,7 @@ public abstract sealed class ViewedTable<R> extends WrappedTable<R, R> {
     public static <R> ViewedTable<R> view(Table<R> source, String query, Object... args) {
         Objects.requireNonNull(query);
         try {
-            var key = new Pair<Class, String>(source.rowType(), query);
+            var key = TupleKey.make.with(source.rowType(), query);
             return (ViewedTable<R>) cFactoryCache.obtain(key, null).invokeExact(source, args);
         } catch (Throwable e) {
             throw RowUtils.rethrow(e);
@@ -472,7 +472,7 @@ public abstract sealed class ViewedTable<R> extends WrappedTable<R, R> {
         var helper = (Helper<R>) cHelperHandle.getVolatile(this);
 
         if (helper == null) {
-            var key = new Pair<Class, String>(rowType(), mQueryStr);
+            var key = TupleKey.make.with(rowType(), mQueryStr);
             try {
                 helper = (Helper<R>) cHelperCache.obtain(key, this);
             } catch (Throwable e) {
@@ -666,7 +666,7 @@ public abstract sealed class ViewedTable<R> extends WrappedTable<R, R> {
          * Loads the row using a Scanner against a query filter which fuses the view's query
          * specification and the row's primary key columns.
          */
-        final boolean load(ViewedTable<R> table, Transaction txn, R row) throws IOException {
+        final boolean tryLoad(ViewedTable<R> table, Transaction txn, R row) throws IOException {
             checkPk(row);
 
             // Note that there's no quick option (unlike `exists` or `delete`) because a
@@ -774,11 +774,11 @@ public abstract sealed class ViewedTable<R> extends WrappedTable<R, R> {
          * Deletes the row using an Updater against a query filter which fuses the view's query
          * specification and the row's primary key columns.
          */
-        final boolean delete(ViewedTable<R> table, Transaction txn, R row) throws IOException {
+        final boolean tryDelete(ViewedTable<R> table, Transaction txn, R row) throws IOException {
             checkPk(row);
 
             if (isPkFilter()) { // quick option
-                return table.mSource.delete(txn, row);
+                return table.mSource.tryDelete(txn, row);
             }
 
             Query<R> query = fusedPkQueryEmptyProjection(table);
@@ -939,8 +939,8 @@ public abstract sealed class ViewedTable<R> extends WrappedTable<R, R> {
         }
 
         @Override
-        public boolean load(Transaction txn, R row) throws IOException {
-            return mSource.load(txn, row);
+        public boolean tryLoad(Transaction txn, R row) throws IOException {
+            return mSource.tryLoad(txn, row);
         }
 
         @Override
@@ -979,8 +979,8 @@ public abstract sealed class ViewedTable<R> extends WrappedTable<R, R> {
         }
 
         @Override
-        public boolean delete(Transaction txn, R row) throws IOException {
-            return mSource.delete(txn, row);
+        public boolean tryDelete(Transaction txn, R row) throws IOException {
+            return mSource.tryDelete(txn, row);
         }
     }
 
@@ -995,13 +995,13 @@ public abstract sealed class ViewedTable<R> extends WrappedTable<R, R> {
         }
 
         @Override
-        public boolean load(Transaction txn, R row) throws IOException {
+        public boolean tryLoad(Transaction txn, R row) throws IOException {
             Helper<R> helper = helper();
             if (helper.isPkFilter()) { // quick option (all columns are projected)
                 helper.checkPk(row);
-                return mSource.load(txn, row);
+                return mSource.tryLoad(txn, row);
             } else {
-                return helper.load(this, txn, row);
+                return helper.tryLoad(this, txn, row);
             }
         }
 
@@ -1041,8 +1041,8 @@ public abstract sealed class ViewedTable<R> extends WrappedTable<R, R> {
         }
 
         @Override
-        public boolean delete(Transaction txn, R row) throws IOException {
-            return helper().delete(this, txn, row);
+        public boolean tryDelete(Transaction txn, R row) throws IOException {
+            return helper().tryDelete(this, txn, row);
         }
     }
 
@@ -1058,8 +1058,8 @@ public abstract sealed class ViewedTable<R> extends WrappedTable<R, R> {
         }
 
         @Override
-        public boolean load(Transaction txn, R row) throws IOException {
-            return helper().load(this, txn, row);
+        public boolean tryLoad(Transaction txn, R row) throws IOException {
+            return helper().tryLoad(this, txn, row);
         }
 
         // Inherited from NoFilter class (just calls mSource.exists).
@@ -1100,7 +1100,7 @@ public abstract sealed class ViewedTable<R> extends WrappedTable<R, R> {
         }
 
         // Inherited from NoFilter class (just calls mSource.delete).
-        //public boolean delete(Transaction txn, R row) throws IOException
+        //public boolean tryDelete(Transaction txn, R row) throws IOException
     }
 
     /**
@@ -1115,8 +1115,8 @@ public abstract sealed class ViewedTable<R> extends WrappedTable<R, R> {
         }
 
         @Override
-        public boolean load(Transaction txn, R row) throws IOException {
-            return helper().load(this, txn, row);
+        public boolean tryLoad(Transaction txn, R row) throws IOException {
+            return helper().tryLoad(this, txn, row);
         }
 
         // Inherited from HasFilter class (just calls the helper).
@@ -1153,7 +1153,7 @@ public abstract sealed class ViewedTable<R> extends WrappedTable<R, R> {
         //public void merge(Transaction txn, R row) throws IOException
 
         // Inherited from HasFilter class (just calls the helper).
-        //public boolean delete(Transaction txn, R row) throws IOException
+        //public boolean tryDelete(Transaction txn, R row) throws IOException
     }
 
     /**
@@ -1168,7 +1168,7 @@ public abstract sealed class ViewedTable<R> extends WrappedTable<R, R> {
         }
 
         @Override
-        public boolean load(Transaction txn, R row) throws IOException {
+        public boolean tryLoad(Transaction txn, R row) throws IOException {
             // Requires primary key columns.
             throw projectionConstraint();
         }
@@ -1204,7 +1204,7 @@ public abstract sealed class ViewedTable<R> extends WrappedTable<R, R> {
         }
 
         @Override
-        public boolean delete(Transaction txn, R row) throws IOException {
+        public boolean tryDelete(Transaction txn, R row) throws IOException {
             // Requires primary key columns.
             throw projectionConstraint();
         }
@@ -1222,7 +1222,7 @@ public abstract sealed class ViewedTable<R> extends WrappedTable<R, R> {
         }
 
         @Override
-        public boolean load(Transaction txn, R row) throws IOException {
+        public boolean tryLoad(Transaction txn, R row) throws IOException {
             // Requires primary key columns.
             throw projectionConstraint();
         }
@@ -1258,7 +1258,7 @@ public abstract sealed class ViewedTable<R> extends WrappedTable<R, R> {
         }
 
         @Override
-        public boolean delete(Transaction txn, R row) throws IOException {
+        public boolean tryDelete(Transaction txn, R row) throws IOException {
             // Requires primary key columns.
             throw projectionConstraint();
         }

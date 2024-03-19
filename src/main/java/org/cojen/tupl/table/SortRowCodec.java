@@ -31,7 +31,7 @@ import org.cojen.maker.Label;
 import org.cojen.maker.MethodMaker;
 import org.cojen.maker.Variable;
 
-import org.cojen.tupl.core.Triple;
+import org.cojen.tupl.core.TupleKey;
 
 import org.cojen.tupl.table.codec.ColumnCodec;
 
@@ -57,19 +57,17 @@ public abstract class SortRowCodec<R> implements RowDecoder<R> {
                                            Set<String> projection, String orderBySpec)
     {
         return (SortRowCodec<R>) cCache.obtain
-            (new Triple<>(rowType, projection, orderBySpec), null);
+            (TupleKey.make.with(rowType, projection, orderBySpec), null);
     }
 
-    private static final WeakCache
-        <Triple<Class<?>, Set<String>, String>, SortRowCodec<?>, Object> cCache;
+    private static final WeakCache<TupleKey, SortRowCodec<?>, Object> cCache;
 
     static {
         cCache = new WeakCache<>() {
             @Override
-            public SortRowCodec<?> newValue
-                (Triple<Class<?>, Set<String>, String> key, Object unused)
-            {
-                return make(key.a(), key.b(), key.c());
+            @SuppressWarnings("unchecked")
+            public SortRowCodec<?> newValue(TupleKey key, Object unused) {
+                return make((Class<?>) key.get(0), (Set<String>) key.get(1), key.getString(2));
             }
         };
     }

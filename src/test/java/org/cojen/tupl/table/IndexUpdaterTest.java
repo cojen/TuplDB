@@ -106,19 +106,19 @@ public class IndexUpdaterTest {
         TestRow row = mTable.newRow();
 
         row.id(1);
-        assertFalse(mTable.load(null, row));
+        assertFalse(mTable.tryLoad(null, row));
         row.str1("str-1");
-        assertFalse(mIndex.load(null, row));
+        assertFalse(mIndex.tryLoad(null, row));
 
         row.id(5);
-        assertFalse(mTable.load(null, row));
+        assertFalse(mTable.tryLoad(null, row));
         row.str1("str-5");
-        assertFalse(mIndex.load(null, row));
+        assertFalse(mIndex.tryLoad(null, row));
 
         row.id(3);
-        assertTrue(mTable.load(null, row));
+        assertTrue(mTable.tryLoad(null, row));
         row.str1("str-3");
-        assertTrue(mIndex.load(null, row));
+        assertTrue(mIndex.tryLoad(null, row));
     }
 
     @Test
@@ -324,7 +324,7 @@ public class IndexUpdaterTest {
                 pre.accept(row);
             }
 
-            assertTrue(table.load(null, row));
+            assertTrue(table.tryLoad(null, row));
 
             if (post != null) {
                 post.accept(row);

@@ -20,7 +20,6 @@ package org.cojen.tupl.table;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 
-import java.util.Collections;
 import java.util.Map;
 import java.util.TreeMap;
 
@@ -28,13 +27,12 @@ import org.cojen.maker.Label;
 import org.cojen.maker.MethodMaker;
 import org.cojen.maker.Variable;
 
-import org.cojen.tupl.NoSuchRowException;
 import org.cojen.tupl.Index;
 import org.cojen.tupl.Transaction;
-import org.cojen.tupl.UniqueConstraintException;
 import org.cojen.tupl.UnmodifiableViewException;
 
 import org.cojen.tupl.core.RowPredicateLock;
+import org.cojen.tupl.core.TupleKey;
 
 import org.cojen.tupl.table.codec.ColumnCodec;
 
@@ -58,15 +56,15 @@ class StaticTableMaker extends TableMaker {
                 if (key instanceof Class type) {
                     return new StaticTableMaker(type, rowGen).finish();
                 } else {
-                    var pair = (ArrayKey.ObjPrefixBytes) key;
-                    var type = (Class) pair.prefix;
-                    byte[] secondaryDesc = pair.array;
+                    var tuple = (TupleKey) key;
+                    var type = (Class) tuple.get(0);
+                    var secondaryDesc = (byte[]) tuple.get(1);
 
                     RowInfo indexRowInfo = RowStore.secondaryRowInfo(rowGen.info, secondaryDesc);
 
                     // Indexes don't have indexes.
-                    indexRowInfo.alternateKeys = Collections.emptyNavigableSet();
-                    indexRowInfo.secondaryIndexes = Collections.emptyNavigableSet();
+                    indexRowInfo.alternateKeys = EmptyNavigableSet.the();
+                    indexRowInfo.secondaryIndexes = EmptyNavigableSet.the();
         
                     RowGen codecGen = indexRowInfo.rowGen();
 
@@ -97,7 +95,7 @@ class StaticTableMaker extends TableMaker {
      * @param secondaryDesc secondary index descriptor
      */
     static Class<?> obtain(Class<?> type, RowGen rowGen, byte[] secondaryDesc) {
-        return cCache.obtain(ArrayKey.make(type, secondaryDesc), rowGen);
+        return cCache.obtain(TupleKey.make.with(type, secondaryDesc), rowGen);
     }
 
     private final ColumnInfo mAutoColumn;
@@ -299,21 +297,22 @@ class StaticTableMaker extends TableMaker {
 
         // Add the public load/store methods, etc.
 
-        addByKeyMethod("load");
+        addByKeyMethod("tryLoad");
         addByKeyMethod("exists");
 
         if (isPrimaryTable()) {
-            addByKeyMethod("delete");
+            addByKeyMethod("tryDelete");
 
             addStoreMethod("store", null);
             addStoreMethod("exchange", mRowType);
-            addStoreMethod("insert", null);
-            addStoreMethod("replace", null);
+            addStoreMethod("tryInsert", boolean.class);
+            addStoreMethod("tryReplace", boolean.class);
 
             // Add a method called by the update methods. The implementation might depend on
             // dynamic code generation.
             MethodMaker mm = mClassMaker.addMethod
-                (null, "doUpdate", Transaction.class, mRowClass, boolean.class).protected_();
+                (boolean.class, "doUpdate", Transaction.class, mRowClass, boolean.class)
+                .protected_();
 
             if (isEvolvable()) {
                 mm.abstract_();
@@ -321,8 +320,8 @@ class StaticTableMaker extends TableMaker {
                 addDoUpdateMethod(mm);
             }
 
-            addUpdateMethod("update", false);
-            addUpdateMethod("merge", true);
+            addUpdateMethod("tryUpdate", false);
+            addUpdateMethod("tryMerge", true);
         }
 
         addMarkAllCleanMethod();
@@ -474,7 +473,7 @@ class StaticTableMaker extends TableMaker {
     }
 
     /**
-     * @param variant "load", "exists", or "delete"
+     * @param variant "tryLoad", "exists", or "tryDelete"
      */
     private void addByKeyMethod(String variant) {
         MethodMaker mm = mClassMaker.addMethod
@@ -495,8 +494,16 @@ class StaticTableMaker extends TableMaker {
 
         final Variable valueVar;
 
-        if (variant != "delete" || !supportsTriggers()) {
-            valueVar = source.invoke(variant, txnVar, keyVar);
+        if (variant != "tryDelete" || !supportsTriggers()) {
+            String sourceMethod;
+            if (variant == "tryLoad") {
+                sourceMethod = "load";
+            } else if (variant == "tryDelete") {
+                sourceMethod = "delete";
+            } else {
+                sourceMethod = variant;
+            }
+            valueVar = source.invoke(sourceMethod, txnVar, keyVar);
         } else {
             var triggerVar = mm.var(Trigger.class);
             Label skipLabel = mm.label();
@@ -524,13 +531,13 @@ class StaticTableMaker extends TableMaker {
 
             skipLabel.here();
 
-            assert variant == "delete";
-            valueVar = source.invoke(variant, txnVar, keyVar);
+            assert variant == "tryDelete";
+            valueVar = source.invoke("delete", txnVar, keyVar);
 
             mm.finally_(triggerStart, () -> triggerVar.invoke("releaseShared"));
         }
 
-        if (variant != "load") {
+        if (variant != "tryLoad") {
             mm.return_(valueVar);
         } else {
             Label notNull = mm.label();
@@ -545,7 +552,7 @@ class StaticTableMaker extends TableMaker {
     }
 
     /**
-     * @param variant "store", "exchange", "insert", or "replace"
+     * @param variant "store", "exchange", "tryInsert", or "tryReplace"
      */
     private void addStoreMethod(String variant, Class returnType) {
         MethodMaker mm = mClassMaker.addMethod
@@ -557,12 +564,14 @@ class StaticTableMaker extends TableMaker {
         Label ready = mm.label();
         mm.invoke("checkAllSet", rowVar).ifTrue(ready);
 
-        if (variant != "replace" && mAutoColumn != null) {
+        if (variant != "tryReplace" && mAutoColumn != null) {
             Label notReady = mm.label();
             mm.invoke("checkAllButAutoSet", rowVar).ifFalse(notReady);
             mm.invoke("storeAuto", txnVar, rowVar);
             if (variant == "exchange") {
                 mm.return_(null);
+            } else if (variant == "tryInsert") {
+                mm.return_(true);
             } else {
                 mm.return_();
             }
@@ -607,7 +616,7 @@ class StaticTableMaker extends TableMaker {
             Variable closerVar = mm.field("mIndexLock").invoke("openAcquire", txnVar, rowVar);
             Label opStart = mm.label().here();
 
-            if (variant == "replace") {
+            if (variant == "tryReplace") {
                 // Note that although that calling replace doesn't insert a new physical row,
                 // it can insert a logical row, depending on which query predicates now match.
                 // For this reason, it needs to always call openAcquire.
@@ -616,25 +625,25 @@ class StaticTableMaker extends TableMaker {
                 var oldValueVar = cursorVar.invoke("value");
                 Label passed = mm.label();
                 oldValueVar.ifNe(null, passed);
-                mm.new_(NoSuchRowException.class).throw_();
+                mm.return_(false);
                 passed.here();
                 cursorVar.invoke("store", valueVar);
                 triggerVar.invoke("store", txnVar, rowVar, keyVar, oldValueVar, valueVar);
                 txnVar.invoke("commit");
                 markAllClean(rowVar);
-                mm.return_();
-            } else if (variant == "insert") {
+                mm.return_(true);
+            } else if (variant == "tryInsert") {
                 cursorVar.invoke("autoload", false);
                 cursorVar.invoke("find", keyVar);
                 mm.finally_(opStart, () -> closerVar.invoke("close"));
                 Label passed = mm.label();
                 cursorVar.invoke("value").ifEq(null, passed);
-                mm.new_(UniqueConstraintException.class, "Primary key").throw_();
+                mm.return_(false);
                 passed.here();
                 triggerVar.invoke("insert", txnVar, rowVar, keyVar, valueVar);
                 cursorVar.invoke("commit", valueVar);
                 markAllClean(rowVar);
-                mm.return_();
+                mm.return_(true);
             } else { // "store" or "exchange"
                 cursorVar.invoke("find", keyVar);
                 mm.finally_(opStart, () -> closerVar.invoke("close"));
@@ -675,8 +684,18 @@ class StaticTableMaker extends TableMaker {
         }
 
         if (returnType == null) {
-            // This case is expected for all but the "exchange" variant.
+            // This case is expected only for the "store" variant.
             markAllClean(rowVar);
+            return;
+        }
+
+        if (variant != "exchange") {
+            // This case is expected for the "tryInsert" and "tryReplace" variants.
+            Label failed = mm.label();
+            resultVar.ifFalse(failed);
+            markAllClean(rowVar);
+            failed.here();
+            mm.return_(resultVar);
             return;
         }
 
@@ -701,7 +720,7 @@ class StaticTableMaker extends TableMaker {
     }
 
     /**
-     * @param variant "store", "exchange", "insert", or "replace"
+     * @param variant "store", "exchange", "tryInsert", or "tryReplace"
      */
     private Variable storeNoTrigger(MethodMaker mm, String variant,
                                     Variable txnVar, Variable rowVar,
@@ -758,13 +777,13 @@ class StaticTableMaker extends TableMaker {
      */
     private void addUpdateMethod(String variant, boolean merge) {
         MethodMaker mm = mClassMaker.addMethod
-            (void.class, variant, Transaction.class, Object.class).public_();
+            (boolean.class, variant, Transaction.class, Object.class).public_();
         Variable txnVar = mm.param(0);
         Variable rowVar = mm.param(1).cast(mRowClass);
         Variable source = mm.field("mSource");
         txnVar.set(mm.var(ViewUtils.class).invoke("enterScope", source, txnVar));
         Label tryStart = mm.label().here();
-        mm.invoke("doUpdate", txnVar, rowVar, merge);
+        mm.return_(mm.invoke("doUpdate", txnVar, rowVar, merge));
         mm.finally_(tryStart, () -> txnVar.invoke("exit"));
     }
 

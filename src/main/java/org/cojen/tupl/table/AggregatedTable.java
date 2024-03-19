@@ -183,10 +183,11 @@ public abstract class AggregatedTable<S, T> extends WrappedTable<S, T>
                 targetInfo.rowGen().checkSet(mm, targetInfo.keyColumns, mm.param(0));
             }
 
-            // Override the load method.
+            // Override the tryLoad method.
             {
                 MethodMaker mm = cm.addMethod
-                    (boolean.class, "load", Transaction.class, Object.class).public_().override();
+                    (boolean.class, "tryLoad", Transaction.class, Object.class);
+                mm.public_().override();
 
                 Variable txnVar = mm.param(0);
                 Variable rowVar = mm.param(1).cast(targetClass);
@@ -216,7 +217,7 @@ public abstract class AggregatedTable<S, T> extends WrappedTable<S, T>
                 mm.return_(foundVar);
             }
 
-            // Override the exists method. Note that the implementation just calls the load
+            // Override the exists method. Note that the implementation just calls the tryLoad
             // method, and so there's no performance advantage. In theory, a different query
             // could be used which doesn't project any columns, but it won't make a real
             // difference because the projection implementation just unsets the columns rather
@@ -224,7 +225,7 @@ public abstract class AggregatedTable<S, T> extends WrappedTable<S, T>
             {
                 MethodMaker mm = cm.addMethod
                     (boolean.class, "exists", Transaction.class, Object.class).public_().override();
-                mm.return_(mm.invoke("load", mm.param(0), mm.invoke("cloneRow", mm.param(1))));
+                mm.return_(mm.invoke("tryLoad", mm.param(0), mm.invoke("cloneRow", mm.param(1))));
             }
         }
 
@@ -301,7 +302,7 @@ public abstract class AggregatedTable<S, T> extends WrappedTable<S, T>
      * This method must be overridden when the target row has a primary key.
      */
     @Override
-    public boolean load(Transaction txn, T targetRow) throws IOException {
+    public boolean tryLoad(Transaction txn, T targetRow) throws IOException {
         Scanner<T> s = newScanner(targetRow, txn);
         boolean found = s.row() != null;
         s.close();
@@ -567,11 +568,10 @@ public abstract class AggregatedTable<S, T> extends WrappedTable<S, T>
             final var planVar = sourceQueryVar.invoke("scannerPlan", txnVar, argsVar);
 
             var targetVar = mm.var(Class.class).set(targetType).invoke("getName");
-            var usingVar = tableVar.invoke("aggregatorString");
             var groupByVar = tableVar.invoke("groupByColumns");
 
             var aggregatorPlanVar = mm.new_
-                (QueryPlan.Aggregator.class, targetVar, usingVar, groupByVar, planVar);
+                (QueryPlan.Aggregator.class, targetVar, null, groupByVar, planVar);
             planVar.set(tableVar.invoke("plan", aggregatorPlanVar));
 
             if (targetQuery.filter() != TrueFilter.THE) {
@@ -630,15 +630,6 @@ public abstract class AggregatedTable<S, T> extends WrappedTable<S, T>
                 RowUtils.suppress(e, e2);
             }
             throw e;
-        }
-    }
-
-    /**
-     * Called by generated Query instances.
-     */
-    public final String aggregatorString() throws IOException {
-        try (Aggregator<S, T> aggregator = mAggregatorFactory.newAggregator()) {
-            return aggregator.toString();
         }
     }
 

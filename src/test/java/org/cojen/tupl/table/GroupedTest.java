@@ -153,11 +153,6 @@ public class GroupedTest {
             target.avgNum(mSum / (double) mPos);
             return target;
         }
-
-        @Override
-        public String toString() {
-            return "Grouped1";
-        }
     }
 
     public static class Grouped1Factory implements Grouper.Factory<TestRow, TestRowGroup> {
@@ -177,6 +172,11 @@ public class GroupedTest {
         @Override
         public String sourceProjection() {
             return "name, num";
+        }
+
+        @Override
+        public QueryPlan.Grouper plan(QueryPlan.Grouper plan) {
+            return plan.withOperation("Grouped1");
         }
 
         @Untransformed
@@ -231,9 +231,9 @@ public class GroupedTest {
 
         QueryPlan plan = grouped.queryAll().scannerPlan(null);
         assertEquals("""
-- group: org.cojen.tupl.rows.GroupedTest$TestRowGroup
-  using: Grouped1
-  - full scan over primary key: org.cojen.tupl.rows.GroupedTest$TestRow
+- group: org.cojen.tupl.table.GroupedTest$TestRowGroup
+  operation: Grouped1
+  - full scan over primary key: org.cojen.tupl.table.GroupedTest$TestRow
     key columns: +id
                      """,
                      plan.toString());
@@ -259,10 +259,10 @@ public class GroupedTest {
 
         plan = grouped.queryAll().scannerPlan(null);
         assertEquals("""
-- group: org.cojen.tupl.rows.GroupedTest$TestRowGroup
-  using: Grouped1
+- group: org.cojen.tupl.table.GroupedTest$TestRowGroup
+  operation: Grouped1
   order by: -id
-  - reverse full scan over primary key: org.cojen.tupl.rows.GroupedTest$TestRow
+  - reverse full scan over primary key: org.cojen.tupl.table.GroupedTest$TestRow
     key columns: +id
                      """,
                      plan.toString());
@@ -288,11 +288,11 @@ public class GroupedTest {
 
         plan = grouped.queryAll().scannerPlan(null);
         assertEquals("""
-- group: org.cojen.tupl.rows.GroupedTest$TestRowGroup
-  using: Grouped1
+- group: org.cojen.tupl.table.GroupedTest$TestRowGroup
+  operation: Grouped1
   group by: +name
   - sort: +name
-    - full scan over primary key: org.cojen.tupl.rows.GroupedTest$TestRow
+    - full scan over primary key: org.cojen.tupl.table.GroupedTest$TestRow
       key columns: +id
                      """,
                      plan.toString());
@@ -318,12 +318,12 @@ public class GroupedTest {
 
         plan = grouped.queryAll().scannerPlan(null);
         assertEquals("""
-- group: org.cojen.tupl.rows.GroupedTest$TestRowGroup
-  using: Grouped1
+- group: org.cojen.tupl.table.GroupedTest$TestRowGroup
+  operation: Grouped1
   group by: +name
   order by: -id
   - sort: +name, -id
-    - full scan over primary key: org.cojen.tupl.rows.GroupedTest$TestRow
+    - full scan over primary key: org.cojen.tupl.table.GroupedTest$TestRow
       key columns: +id
                      """,
                      plan.toString());
@@ -347,12 +347,12 @@ public class GroupedTest {
         plan = grouped.query("count == ?").scannerPlan(null, 1);
         assertEquals("""
 - filter: count == ?1
-  - group: org.cojen.tupl.rows.GroupedTest$TestRowGroup
-    using: Grouped1
+  - group: org.cojen.tupl.table.GroupedTest$TestRowGroup
+    operation: Grouped1
     group by: +name
     order by: -id
     - sort: +name, -id
-      - full scan over primary key: org.cojen.tupl.rows.GroupedTest$TestRow
+      - full scan over primary key: org.cojen.tupl.table.GroupedTest$TestRow
         key columns: +id
                      """,
                      plan.toString());
@@ -373,12 +373,12 @@ public class GroupedTest {
 
         plan = grouped.query("{*, ~sumNum}").scannerPlan(null);
         assertEquals("""
-- group: org.cojen.tupl.rows.GroupedTest$TestRowGroup
-  using: Grouped1
+- group: org.cojen.tupl.table.GroupedTest$TestRowGroup
+  operation: Grouped1
   group by: +name
   order by: -id
   - sort: +name, -id
-    - full scan over primary key: org.cojen.tupl.rows.GroupedTest$TestRow
+    - full scan over primary key: org.cojen.tupl.table.GroupedTest$TestRow
       key columns: +id
                      """,
                      plan.toString());
@@ -402,12 +402,12 @@ public class GroupedTest {
         plan = grouped.query("{*, ~sumNum} count == ?").scannerPlan(null, 1);
         assertEquals("""
 - filter: count == ?1
-  - group: org.cojen.tupl.rows.GroupedTest$TestRowGroup
-    using: Grouped1
+  - group: org.cojen.tupl.table.GroupedTest$TestRowGroup
+    operation: Grouped1
     group by: +name
     order by: -id
     - sort: +name, -id
-      - full scan over primary key: org.cojen.tupl.rows.GroupedTest$TestRow
+      - full scan over primary key: org.cojen.tupl.table.GroupedTest$TestRow
         key columns: +id
                      """,
                      plan.toString());
@@ -459,12 +459,12 @@ public class GroupedTest {
         QueryPlan plan = grouped.query("{*, -avgNum}").scannerPlan(null);
         assertEquals("""
 - sort: -avgNum
-  - group: org.cojen.tupl.rows.GroupedTest$TestRowGroup
-    using: Grouped1
+  - group: org.cojen.tupl.table.GroupedTest$TestRowGroup
+    operation: Grouped1
     group by: +name
     order by: +id
     - sort: +name, +id
-      - full scan over primary key: org.cojen.tupl.rows.GroupedTest$TestRow
+      - full scan over primary key: org.cojen.tupl.table.GroupedTest$TestRow
         key columns: +id
                      """,
                      plan.toString());
@@ -487,12 +487,12 @@ public class GroupedTest {
 
         plan = grouped.query("{*, -name}").scannerPlan(null);
         assertEquals("""
-- group: org.cojen.tupl.rows.GroupedTest$TestRowGroup
-  using: Grouped1
+- group: org.cojen.tupl.table.GroupedTest$TestRowGroup
+  operation: Grouped1
   group by: +name
   order by: +id
   - sort: -name, +id
-    - full scan over primary key: org.cojen.tupl.rows.GroupedTest$TestRow
+    - full scan over primary key: org.cojen.tupl.table.GroupedTest$TestRow
       key columns: +id
                      """,
                      plan.toString());
@@ -517,12 +517,12 @@ public class GroupedTest {
         assertEquals("""
 - sort: -name, +avgNum
   - filter: count > ?1
-    - group: org.cojen.tupl.rows.GroupedTest$TestRowGroup
-      using: Grouped1
+    - group: org.cojen.tupl.table.GroupedTest$TestRowGroup
+      operation: Grouped1
       group by: +name
       order by: +id
       - sort: -name, +id
-        - full scan over primary key: org.cojen.tupl.rows.GroupedTest$TestRow
+        - full scan over primary key: org.cojen.tupl.table.GroupedTest$TestRow
           key columns: +id
                      """,
                      plan.toString());

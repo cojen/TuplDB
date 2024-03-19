@@ -28,7 +28,7 @@ import org.cojen.dirmi.Remote;
  * @author Brian S O'Neill
  */
 public interface RemoteTableProxy extends Remote {
-    public Pipe load(RemoteTransaction txn, Pipe pipe) throws IOException;
+    public Pipe tryLoad(RemoteTransaction txn, Pipe pipe) throws IOException;
 
     public Pipe exists(RemoteTransaction txn, Pipe pipe) throws IOException;
 
@@ -36,15 +36,15 @@ public interface RemoteTableProxy extends Remote {
 
     public Pipe exchange(RemoteTransaction txn, Pipe pipe) throws IOException;
 
-    public Pipe insert(RemoteTransaction txn, Pipe pipe) throws IOException;
+    public Pipe tryInsert(RemoteTransaction txn, Pipe pipe) throws IOException;
 
-    public Pipe replace(RemoteTransaction txn, Pipe pipe) throws IOException;
+    public Pipe tryReplace(RemoteTransaction txn, Pipe pipe) throws IOException;
 
-    public Pipe update(RemoteTransaction txn, Pipe pipe) throws IOException;
+    public Pipe tryUpdate(RemoteTransaction txn, Pipe pipe) throws IOException;
 
-    public Pipe merge(RemoteTransaction txn, Pipe pipe) throws IOException;
+    public Pipe tryMerge(RemoteTransaction txn, Pipe pipe) throws IOException;
 
-    public Pipe delete(RemoteTransaction txn, Pipe pipe) throws IOException;
+    public Pipe tryDelete(RemoteTransaction txn, Pipe pipe) throws IOException;
 
     public Pipe row(RemoteUpdater updater, Pipe pipe) throws IOException;
 
