@@ -170,7 +170,7 @@
       <plugin>
         <groupId>org.codehaus.mojo</groupId>
         <artifactId>exec-maven-plugin</artifactId>
-        <version>1.6.0</version>
+        <version>3.2.0</version>
         <executions>
           <execution>
             <id>page-access-transformer</id>
@@ -185,7 +185,7 @@
           <arguments>
             <argument>-cp</argument>
             <argument>;</argument>
-            <argument>src/main/java/org/cojen/tupl/tools/PageAccessTransformer.java</argument>
+            <argument>src/test/java/org/cojen/tupl/tools/PageAccessTransformer.java</argument>
             <argument>src/main/java/org/cojen/tupl/core</argument>
             <argument>src/main/java/org/cojen/tupl/core</argument>
             <argument>clean</argument>
