@@ -28,6 +28,8 @@ import org.cojen.tupl.table.ConvertUtils;
 import org.cojen.tupl.table.OrderBy;
 import org.cojen.tupl.table.SimpleParser;
 
+import static org.cojen.tupl.table.ColumnInfo.*;
+
 /**
  * 
  *
@@ -172,12 +174,12 @@ public final class Parser extends SimpleParser {
                             } else if (orderBy.containsKey(name)) {
                                 break orderBy;
                             }
-                            int type = column.typeCode;
+                            int type = column.typeCode & ~(TYPE_DESCENDING | TYPE_NULL_LOW);
                             if ((prefix & 0b011) == 0b011) {
-                                type |= ColumnInfo.TYPE_DESCENDING;
+                                type |= TYPE_DESCENDING;
                             }
                             if ((prefix & 0b100) == 0b100) {
-                                type |= ColumnInfo.TYPE_NULL_LOW;
+                                type |= TYPE_NULL_LOW;
                             }
                             orderBy.put(name, new OrderBy.Rule(column, type));
                         }
