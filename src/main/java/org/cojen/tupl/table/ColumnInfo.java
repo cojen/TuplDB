@@ -171,6 +171,18 @@ public class ColumnInfo implements Cloneable {
         return isUnsigned(typeCode) && plainTypeCode(typeCode) != TYPE_BOOLEAN;
     }
 
+    /**
+     * Returns true for integer primitive types and BigInteger. Can also be an array.
+     */
+    public boolean isInteger() {
+        return isInteger(typeCode);
+    }
+
+    public static boolean isInteger(int typeCode) {
+        int plain = plainTypeCode(typeCode);
+        return (TYPE_UBYTE <= plain && plain <= TYPE_LONG) || plain == TYPE_BIG_INTEGER;
+    }
+
     public boolean isNullLow() {
         return isNullLow(typeCode);
     }

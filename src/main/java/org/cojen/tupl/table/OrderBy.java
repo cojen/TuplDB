@@ -66,7 +66,7 @@ public final class OrderBy extends LinkedHashMap<String, OrderBy.Rule> {
         super(orderBy);
     }
 
-    private OrderBy(int capacity) {
+    public OrderBy(int capacity) {
         super(capacity, 1);
     }
 
