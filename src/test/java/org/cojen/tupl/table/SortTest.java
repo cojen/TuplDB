@@ -188,4 +188,174 @@ public class SortTest {
         int v2();
         void v2(int v);
     }
+
+    @Test
+    public void nullLow() throws Exception {
+        // Test sorting against a column which is ordered null low (default is null high).
+        Table<TestRow2> table = mDb.openTable(TestRow2.class);
+
+        {
+            TestRow2 row = table.newRow();
+            row.id(1);
+            row.name("b");
+            table.insert(null, row);
+            row.id(1);
+            row.name(null);
+            table.insert(null, row);
+            row.id(1);
+            row.name("c");
+            table.insert(null, row);
+            row.id(1);
+            row.name("a");
+            table.insert(null, row);
+
+        }
+
+        try (Scanner<TestRow2> s = table.newScanner(null, "{+name}")) {
+            TestRow2 row = s.row();
+            assertEquals("a", row.name());
+            row = s.step(row);
+            assertEquals("b", row.name());
+            row = s.step(row);
+            assertEquals("c", row.name());
+            row = s.step(row);
+            assertEquals(null, row.name());
+            row = s.step(row);
+            assertNull(row);
+        }
+
+        try (Scanner<TestRow2> s = table.newScanner(null, "{+!name}")) {
+            TestRow2 row = s.row();
+            assertEquals(null, row.name());
+            row = s.step(row);
+            assertEquals("a", row.name());
+            row = s.step(row);
+            assertEquals("b", row.name());
+            row = s.step(row);
+            assertEquals("c", row.name());
+            row = s.step(row);
+            assertNull(row);
+        }
+
+        try (Scanner<TestRow2> s = table.newScanner(null, "{-name}")) {
+            TestRow2 row = s.row();
+            assertEquals(null, row.name());
+            row = s.step(row);
+            assertEquals("c", row.name());
+            row = s.step(row);
+            assertEquals("b", row.name());
+            row = s.step(row);
+            assertEquals("a", row.name());
+            row = s.step(row);
+            assertNull(row);
+        }
+
+        try (Scanner<TestRow2> s = table.newScanner(null, "{-!name}")) {
+            TestRow2 row = s.row();
+            assertEquals("c", row.name());
+            row = s.step(row);
+            assertEquals("b", row.name());
+            row = s.step(row);
+            assertEquals("a", row.name());
+            row = s.step(row);
+            assertEquals(null, row.name());
+            row = s.step(row);
+            assertNull(row);
+        }
+    }
+ 
+    @PrimaryKey({"id", "+!name"})
+    public static interface TestRow2 {
+        int id();
+        void id(int id);
+
+        @Nullable
+        String name();
+        void name(String name);
+    }
+
+    @Test
+    public void descending() throws Exception {
+        // Test sorting against a column which is descending (default is ascending).
+        Table<TestRow3> table = mDb.openTable(TestRow3.class);
+
+        {
+            TestRow3 row = table.newRow();
+            row.id(1);
+            row.name("b");
+            table.insert(null, row);
+            row.id(1);
+            row.name(null);
+            table.insert(null, row);
+            row.id(1);
+            row.name("c");
+            table.insert(null, row);
+            row.id(1);
+            row.name("a");
+            table.insert(null, row);
+
+        }
+
+        try (Scanner<TestRow3> s = table.newScanner(null, "{+name}")) {
+            TestRow3 row = s.row();
+            assertEquals("a", row.name());
+            row = s.step(row);
+            assertEquals("b", row.name());
+            row = s.step(row);
+            assertEquals("c", row.name());
+            row = s.step(row);
+            assertEquals(null, row.name());
+            row = s.step(row);
+            assertNull(row);
+        }
+
+        try (Scanner<TestRow3> s = table.newScanner(null, "{+!name}")) {
+            TestRow3 row = s.row();
+            assertEquals(null, row.name());
+            row = s.step(row);
+            assertEquals("a", row.name());
+            row = s.step(row);
+            assertEquals("b", row.name());
+            row = s.step(row);
+            assertEquals("c", row.name());
+            row = s.step(row);
+            assertNull(row);
+        }
+
+        try (Scanner<TestRow3> s = table.newScanner(null, "{-name}")) {
+            TestRow3 row = s.row();
+            assertEquals(null, row.name());
+            row = s.step(row);
+            assertEquals("c", row.name());
+            row = s.step(row);
+            assertEquals("b", row.name());
+            row = s.step(row);
+            assertEquals("a", row.name());
+            row = s.step(row);
+            assertNull(row);
+        }
+
+        try (Scanner<TestRow3> s = table.newScanner(null, "{-!name}")) {
+            TestRow3 row = s.row();
+            assertEquals("c", row.name());
+            row = s.step(row);
+            assertEquals("b", row.name());
+            row = s.step(row);
+            assertEquals("a", row.name());
+            row = s.step(row);
+            assertEquals(null, row.name());
+            row = s.step(row);
+            assertNull(row);
+        }
+    }
+
+    @PrimaryKey({"id", "-name"})
+    public static interface TestRow3 {
+        int id();
+        void id(int id);
+
+        @Nullable
+        String name();
+        void name(String name);
+    }
 }
