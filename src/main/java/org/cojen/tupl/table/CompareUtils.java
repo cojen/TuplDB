@@ -84,18 +84,17 @@ public class CompareUtils {
             argVar.ifEq(null, selectColumnToNullArg(colInfo, op, pass, fail));
         }
 
-        // At this point, neither variable is null. Note that a column which is primitive can
-        // still be boxed.
+        // At this point, neither variable is null, but they can still be a boxed.
 
-        if (colInfo.isPrimitive()) {
-            if (!argInfo.isPrimitive()) {
+        if (colInfo.isPrimitiveOrBoxed()) {
+            if (!argInfo.isPrimitiveOrBoxed()) {
                 throw new IllegalArgumentException("Incomparable types");
             }
             comparePrimitives(mm, colInfo, colVar, argInfo, argVar, op, pass, fail);
             return;
         }
 
-        if (argInfo.isPrimitive()) {
+        if (argInfo.isPrimitiveOrBoxed()) {
             throw new IllegalArgumentException("Incomparable types");
         }
 

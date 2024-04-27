@@ -218,6 +218,20 @@ public class ColumnInfo implements Cloneable {
     }
 
     /**
+     * @return true if type is primitive and possibly nullable
+     */
+    public boolean isPrimitiveOrBoxed() {
+        return isPrimitiveOrBoxed(typeCode);
+    }
+
+    /**
+     * @return true if type is primitive and possibly nullable
+     */
+    public static boolean isPrimitiveOrBoxed(int typeCode) {
+        return (typeCode & ~(TYPE_DESCENDING | TYPE_NULLABLE)) < 0b11000;
+    }
+
+    /**
      * @param typeCode must be plain
      */
     public static boolean isFloat(int typeCode) {
