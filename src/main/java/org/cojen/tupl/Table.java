@@ -190,9 +190,7 @@ public interface Table<R> extends Closeable {
     /**
      * @hidden
      */
-    public default Scanner<R> newScanner(R row, Transaction txn, String query)
-        throws IOException
-    {
+    public default Scanner<R> newScanner(R row, Transaction txn, String query) throws IOException {
         return newScanner(row, txn, query, NO_ARGS);
     }
 
@@ -210,6 +208,13 @@ public interface Table<R> extends Closeable {
      * @throws IllegalStateException if transaction belongs to another database instance
      */
     public default Updater<R> newUpdater(Transaction txn) throws IOException {
+        return newUpdater(null, txn);
+    }
+
+    /**
+     * @hidden
+     */
+    public default Updater<R> newUpdater(R row, Transaction txn) throws IOException {
         throw new UnmodifiableViewException();
     }
 
@@ -230,7 +235,7 @@ public interface Table<R> extends Closeable {
     public default Updater<R> newUpdater(Transaction txn, String query, Object... args)
         throws IOException
     {
-        throw new UnmodifiableViewException();
+        return newUpdater(null, txn, query, args);
     }
 
     /**
@@ -238,6 +243,22 @@ public interface Table<R> extends Closeable {
      */
     public default Updater<R> newUpdater(Transaction txn, String query) throws IOException {
         return newUpdater(txn, query, NO_ARGS);
+    }
+
+    /**
+     * @hidden
+     */
+    public default Updater<R> newUpdater(R row, Transaction txn, String query, Object... args)
+        throws IOException
+    {
+        throw new UnmodifiableViewException();
+    }
+
+    /**
+     * @hidden
+     */
+    public default Updater<R> newUpdater(R row, Transaction txn, String query) throws IOException {
+        return newUpdater(row, txn, query, NO_ARGS);
     }
 
     /**

@@ -102,7 +102,7 @@ public abstract class BaseTableIndex<R> extends BaseTable<R> {
     }
 
     @Override
-    protected Updater<R> newUpdater(R row, Transaction txn, String filter, Object... args)
+    public Updater<R> newUpdater(R row, Transaction txn, String filter, Object... args)
         throws IOException
     {
         // By default, this will throw an UnmodifiableViewException. See below.

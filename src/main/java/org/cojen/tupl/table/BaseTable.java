@@ -245,7 +245,8 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
         return newUpdater(null, txn);
     }
 
-    final Updater<R> newUpdater(R row, Transaction txn) throws IOException {
+    @Override
+    public final Updater<R> newUpdater(R row, Transaction txn) throws IOException {
         return newUpdater(row, txn, unfiltered());
     }
 
@@ -256,7 +257,8 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
         return newUpdater(null, txn, queryStr, args);
     }
 
-    protected Updater<R> newUpdater(R row, Transaction txn, String queryStr, Object... args)
+    @Override
+    public Updater<R> newUpdater(R row, Transaction txn, String queryStr, Object... args)
         throws IOException
     {
         return query(queryStr).newUpdater(row, txn, args);
