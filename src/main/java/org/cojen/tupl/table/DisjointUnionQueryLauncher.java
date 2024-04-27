@@ -109,9 +109,16 @@ public final class DisjointUnionQueryLauncher<R> extends QueryLauncher<R> {
     }
 
     @Override
-    public void closeIndexes() throws IOException {
+    protected void closeIndexes() throws IOException {
         for (QueryLauncher launcher : mLaunchers) {
             launcher.closeIndexes();
+        }
+    }
+
+    @Override
+    protected void clearCache() {
+        for (QueryLauncher launcher : mLaunchers) {
+            launcher.clearCache();
         }
     }
 }
