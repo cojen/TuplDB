@@ -22,6 +22,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -55,7 +56,7 @@ public final class TupleType extends Type {
 
         RowTypeMaker.Result makerResult = RowTypeMaker.find(null, types);
 
-        var projectionMap = new HashMap<String, String>(projection.size() * 2);
+        var projectionMap = new LinkedHashMap<String, String>(projection.size() * 2);
 
         Iterator<ProjExpr> it = projection.iterator();
 
