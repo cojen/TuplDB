@@ -144,13 +144,15 @@ final class ClientTable<R> implements Table<R> {
     }
 
     @Override
-    public Updater<R> newUpdater(Transaction txn) throws IOException {
-        return newUpdater(mRemote.newUpdater(mDb.remoteTransaction(txn), null), null);
+    public Updater<R> newUpdater(R row, Transaction txn) throws IOException {
+        return newUpdater(mRemote.newUpdater(mDb.remoteTransaction(txn), null), row);
     }
 
     @Override
-    public Updater<R> newUpdater(Transaction txn, String query, Object... args) throws IOException {
-        return newUpdater(mRemote.newUpdater(mDb.remoteTransaction(txn), null, query, args), null);
+    public Updater<R> newUpdater(R row, Transaction txn, String query, Object... args)
+        throws IOException
+    {
+        return newUpdater(mRemote.newUpdater(mDb.remoteTransaction(txn), null, query, args), row);
     }
 
     ClientUpdater<R> newUpdater(Pipe pipe, R row) throws IOException {

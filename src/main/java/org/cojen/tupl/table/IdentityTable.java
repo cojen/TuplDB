@@ -33,6 +33,7 @@ import org.cojen.tupl.Query;
 import org.cojen.tupl.Scanner;
 import org.cojen.tupl.Table;
 import org.cojen.tupl.Transaction;
+import org.cojen.tupl.UnmodifiableViewException;
 import org.cojen.tupl.Updater;
 
 import org.cojen.tupl.diag.QueryPlan;
@@ -206,7 +207,12 @@ public final class IdentityTable implements Table<IdentityTable.Row>, Query<Iden
 
     @Override
     public Updater<Row> newUpdater(Transaction txn) throws IOException {
-        return newUpdater(txn, RowUtils.NO_ARGS);
+        throw new UnmodifiableViewException();
+    }
+
+    @Override
+    public Updater<Row> newUpdater(Row row, Transaction txn) throws IOException {
+        throw new UnmodifiableViewException();
     }
 
     @Override
