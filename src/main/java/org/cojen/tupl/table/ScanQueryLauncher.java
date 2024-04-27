@@ -74,7 +74,12 @@ class ScanQueryLauncher<R> extends QueryLauncher<R> {
     }
 
     @Override
-    public void closeIndexes() throws IOException {
+    protected void closeIndexes() throws IOException {
         mTable.close();
+    }
+
+    @Override
+    protected void clearCache() {
+        // Nothing to do.
     }
 }

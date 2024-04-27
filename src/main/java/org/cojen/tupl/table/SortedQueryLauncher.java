@@ -155,8 +155,13 @@ final class SortedQueryLauncher<R> extends QueryLauncher<R> {
     }
 
     @Override
-    public void closeIndexes() throws IOException {
+    protected void closeIndexes() throws IOException {
         mSource.closeIndexes();
         mTable.close();
+    }
+
+    @Override
+    protected void clearCache() {
+        mSource.clearCache();
     }
 }

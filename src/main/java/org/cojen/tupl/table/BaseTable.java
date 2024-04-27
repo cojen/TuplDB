@@ -84,9 +84,9 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
 
     private final MultiCache<String, ScanControllerFactory<R>, QuerySpec> mFilterFactoryCache;
 
-    class QueryCache extends SoftCache<String, QueryLauncher.Delegate<R>, QuerySpec> {
+    class QueryCache extends SoftCache<String, QueryLauncher<R>, QuerySpec> {
         @Override
-        public QueryLauncher.Delegate<R> newValue(String queryStr, QuerySpec query) {
+        public QueryLauncher<R> newValue(String queryStr, QuerySpec query) {
             if (query != null) {
                 return new QueryLauncher.Delegate<>(BaseTable.this, query);
             }
@@ -370,7 +370,7 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
     }
 
     @Override
-    public QueryLauncher.Delegate<R> query(String queryStr) {
+    public QueryLauncher<R> query(String queryStr) {
         return mQueryCache.obtain(queryStr, null);
     }
 
@@ -507,7 +507,7 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
         // affected, athough it would be nice if those always aborted too.
 
         if (mQueryCache != null) {
-            mQueryCache.clear((QueryLauncher.Delegate<R> launcher) -> {
+            mQueryCache.clear(launcher -> {
                 try {
                     launcher.closeIndexes();
                 } catch (IOException e) {
@@ -830,7 +830,7 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
      */
     void clearQueryCache() {
         if (mQueryCache != null) {
-            mQueryCache.traverse(QueryLauncher.Delegate::clear);
+            mQueryCache.traverse(QueryLauncher::clearCache);
         }
     }
 

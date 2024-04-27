@@ -77,8 +77,12 @@ public abstract class QueryLauncher<R> implements Query<R> {
      * Is called when the BaseTable is closed, in order to close all the secondary indexes
      * referenced by this query. This method must not be public.
      */
-    protected void closeIndexes() throws IOException {
-    }
+    protected abstract void closeIndexes() throws IOException;
+
+    /**
+     * Clears any cached state.
+     */
+    protected abstract void clearCache();
 
     /**
      * Defines a delegating launcher which lazily creates the underlying launchers.
@@ -203,7 +207,8 @@ public abstract class QueryLauncher<R> implements Query<R> {
         /**
          * Clears the cached launcher instances.
          */
-        public synchronized void clear() {
+        @Override
+        protected synchronized void clearCache() {
             mForScanner = null;
             mForScannerDoubleCheck = null;
             mForUpdater = null;
@@ -315,12 +320,12 @@ public abstract class QueryLauncher<R> implements Query<R> {
          * thrown. An index might have been dropped, so check and retry. Returns a new
          * QueryLauncher to use or else throws the original exception.
          */
-        private QueryLauncher.Delegate<R> retry(Throwable cause) {
+        private QueryLauncher<R> retry(Throwable cause) {
             // A ClosedIndexException could have come from the dropped index directly, and a
             // LockFailureException could be caused while waiting for the index lock. Other
             // exceptions aren't expected so don't bother trying to obtain a new launcher.
             if (cause instanceof ClosedIndexException || cause instanceof LockFailureException) {
-                QueryLauncher.Delegate<R> newLauncher;
+                QueryLauncher<R> newLauncher;
                 try {
                     newLauncher = mTable.query(mQueryStr);
                     if (newLauncher != this) {
