@@ -26,6 +26,8 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+import java.util.regex.Pattern;
+
 import org.cojen.tupl.table.ColumnInfo;
 import org.cojen.tupl.table.ColumnSet;
 import org.cojen.tupl.table.IdentityTable;
@@ -58,6 +60,9 @@ public final class TupleType extends Type {
         // Maps field names to usage count.
         var fieldMap = new HashMap<String, Integer>();
 
+        // Matches characters which cannot appear in field and method names.
+        final Pattern p = Pattern.compile("\\.|\\;|\\[|\\/|\\<|\\>");
+
         for (ProjExpr pe : projection) {
             if (pe.hasExclude()) {
                 continue;
@@ -70,8 +75,7 @@ public final class TupleType extends Type {
             if (fieldName.isEmpty()) {
                 fieldName = "_";
             } else {
-                // Replace reserved field and method characters with underscore.
-                fieldName = fieldName.replaceAll("\\.|\\;|\\[|\\/|\\<|\\>", "_");
+                fieldName = p.matcher(fieldName).replaceAll("_");
             }
 
             // Ensure that all field names are unique, replacing them if necessary.
