@@ -51,6 +51,11 @@ public final class ConversionExpr extends WrappedExpr {
     }
 
     @Override
+    public Type type() {
+        return mType;
+    }
+
+    @Override
     public Expr asType(Type type) {
         return make(startPos(), endPos(), this, type);
     }

@@ -39,7 +39,7 @@ abstract sealed class WrappedExpr extends Expr
     }
 
     @Override
-    public final Type type() {
+    public Type type() {
         return mExpr.type();
     }
 

@@ -219,7 +219,7 @@ public abstract sealed class Expr
     }
 
     public static boolean mustSetExact(Class<?> type, Object value) {
-        return value != null && !type.isPrimitive()
+        return value != null && !(value instanceof Variable) && !type.isPrimitive()
             && !String.class.isAssignableFrom(type)
             && !Class.class.isAssignableFrom(type);
     }

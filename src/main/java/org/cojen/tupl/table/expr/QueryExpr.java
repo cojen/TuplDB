@@ -115,9 +115,6 @@ public abstract sealed class QueryExpr extends RelationExpr
             }
         }
 
-        System.out.println("projection: " + projection);
-        System.out.println("pureProjection: " + pureProjection);
-
         // Split the filter such that the unmapped part can be pushed down. The remaining
         // mapped part must be handled by a Mapper. The unmapped part is guaranteed to have no
         // OpaqueFilters. If it did, UnmappedQueryExpr would produce a broken query string.
@@ -134,8 +131,6 @@ public abstract sealed class QueryExpr extends RelationExpr
 
             final var columns = new HashMap<String, ColumnExpr>();
             final RowFilter originalRowFilter = filter.toRowFilter(info, columns);
-
-            System.out.println("converted columns: " + columns);
 
             // Try to transform the filter to cnf, to make split method be more effective. If
             // this isn't possible, then filtering might not be pushed down as much.
@@ -154,9 +149,6 @@ public abstract sealed class QueryExpr extends RelationExpr
                 rowFilter = originalRowFilter;
             }
 
-            System.out.println("originalRowFilter: " + originalRowFilter);
-            System.out.println("rowFilter: " + rowFilter);
-
             var splitRowFilters = new RowFilter[2];
             rowFilter.split(info.allColumns, splitRowFilters);
 
@@ -174,10 +166,6 @@ public abstract sealed class QueryExpr extends RelationExpr
             } else {
                 mappedFilter = new ToExprVisitor(columns).apply(mappedRowFilter.reduceMore());
             }
-
-            System.out.println("unmappedRowFilter: " + unmappedRowFilter);
-            System.out.println("mappedRowFilter: " + mappedRowFilter);
-            System.out.println("mappedFilter: " + mappedFilter);
         }
 
         // Attempt to push down filtering and projection by replacing the "from" expression
