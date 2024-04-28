@@ -73,7 +73,7 @@ public interface Aggregator<R, T> extends Closeable {
     R accumulate(R source) throws IOException;
 
     /**
-     * Called produce an aggregate result for the current group. This method is expected to
+     * Called to produce an aggregate result for the current group. This method is expected to
      * assign the appropriate target column values, except for the primary key. The primary key
      * columns are assigned automatically by the caller.
      *
