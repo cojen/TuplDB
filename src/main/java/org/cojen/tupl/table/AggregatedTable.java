@@ -248,23 +248,6 @@ public abstract class AggregatedTable<S, T> extends WrappedTable<S, T>
         return mh;
     }
 
-    private static String groupByString(Collection<ColumnInfo> columns) {
-        var bob = new StringBuilder();
-
-        for (ColumnInfo column : columns) {
-            if (bob.length() != 0) {
-                bob.append(", ");
-            }
-            bob.append(column.isDescending() ? '-' : '+');
-            if (column.isNullLow()) {
-                bob.append('!');
-            }
-            bob.append(column.name);
-        }
-
-        return bob.toString();
-    }
-
     private static String queryString(Collection<ColumnInfo> columns) {
         var bob = new StringBuilder();
 
