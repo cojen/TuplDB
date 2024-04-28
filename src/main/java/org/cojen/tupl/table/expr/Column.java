@@ -26,7 +26,7 @@ import java.util.List;
  * @author Brian S. O'Neill
  * @see TupleType
  */
-public final class Column implements Named {
+public sealed class Column implements Named {
     private final Type mType;
     private final String mName, mFieldName;
 
@@ -36,8 +36,8 @@ public final class Column implements Named {
      * @param name visible column name (can be fully qualified)
      * @param fieldName actual name used by the row class (can be fully qualified)
      */
-    public static Column make(Type type, String name, String fieldName) {
-        return new Column(type, name, fieldName);
+    public static Column make(Type type, String name, String fieldName, boolean hidden) {
+        return hidden ? new Hidden(type, name, fieldName) : new Column(type, name, fieldName);
     }
 
     private Column(Type type, String name, String fieldName) {
@@ -48,6 +48,10 @@ public final class Column implements Named {
 
     public Type type() {
         return mType;
+    }
+
+    public boolean isHidden() {
+        return false;
     }
 
     @Override
@@ -131,10 +135,14 @@ public final class Column implements Named {
 
     void encodeKey(KeyEncoder enc) {
         if (enc.encode(this, K_TYPE)) {
-            mType.encodeKey(enc);
-            enc.encodeString(mName);
-            enc.encodeString(mFieldName);
+            doEncodeKey(enc);
         }
+    }
+
+    void doEncodeKey(KeyEncoder enc) {
+        mType.encodeKey(enc);
+        enc.encodeString(mName);
+        enc.encodeString(mFieldName);
     }
 
     @Override
@@ -151,12 +159,33 @@ public final class Column implements Named {
             obj instanceof Column c
             && mType.equals(c.mType)
             && mName.equals(c.mName)
-            && mFieldName.equals(c.mFieldName);
+            && mFieldName.equals(c.mFieldName)
+            && isHidden() == c.isHidden();
     }
 
     @Override
     public String toString() {
         return '{' + "type=" + mType + ", " + "name=" + mName + ", " +
             "fieldName=" + mFieldName + '}';
+    }
+
+    private static final class Hidden extends Column {
+        private Hidden(Type type, String name, String fieldName) {
+            super(type, name, fieldName);
+        }
+
+        @Override
+        public boolean isHidden() {
+            return true;
+        }
+
+        private static final byte K_TYPE = KeyEncoder.allocType();
+
+        @Override
+        void encodeKey(KeyEncoder enc) {
+            if (enc.encode(this, K_TYPE)) {
+                doEncodeKey(enc);
+            }
+        }
     }
 }

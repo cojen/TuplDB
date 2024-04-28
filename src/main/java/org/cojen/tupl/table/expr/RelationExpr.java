@@ -105,7 +105,8 @@ public abstract sealed class RelationExpr extends Expr permits TableExpr, QueryE
                                fieldPrefix + column.fieldName() + '.');
             } else {
                 column = Column.make
-                    (column.type(), namePrefix + column.name(), fieldPrefix + column.fieldName());
+                    (column.type(), namePrefix + column.name(), fieldPrefix + column.fieldName(),
+                     column.isHidden());
                 consumer.accept(ProjExpr.make(-1, -1, ColumnExpr.make(-1, -1, tt, column), 0));
             }
         }

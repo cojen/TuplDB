@@ -216,18 +216,21 @@ public final class Parser {
                     throw new QueryException("Wildcard can be specified at most once", peek);
                 }
 
-                final Set<String> fwildcards = wildcards = new HashSet<String>();
+                wildcards = new HashSet<String>();
                 final int startPos = first.startPos();
                 final TupleType rowType = rowType();
 
                 for (int i=0; i<rowType.numColumns(); i++) {
                     Column c = rowType.column(i);
-                    map.computeIfAbsent(c.name(), n -> {
-                        fwildcards.add(n);
-                        return ProjExpr.make
-                            (startPos, startPos,
-                             ColumnExpr.make(startPos, startPos, rowType, c), 0);
-                    });
+                    String name = c.name();
+                    if (!map.containsKey(name)) {
+                        wildcards.add(name);
+                        if (!c.isHidden()) {
+                            map.put(name, ProjExpr.make
+                                    (startPos, startPos,
+                                     ColumnExpr.make(startPos, startPos, rowType, c), 0));
+                        }
+                    }
                 }
             } else {
                 String name = expr.name();
@@ -247,8 +250,10 @@ public final class Parser {
                                 map.put(name, existing.withExclude());
                             }
                         } else if (map.remove(name) == null) {
-                            throw new QueryException
-                                ("Excluded projection not found: " + name, expr);
+                            if (wildcards == null || !wildcards.remove(name)) {
+                                throw new QueryException
+                                    ("Excluded projection not found: " + name, expr);
+                            }
                         }
                         break addProjection;
                     }

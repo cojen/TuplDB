@@ -95,21 +95,21 @@ public final class TupleType extends Type {
 
             for (ColumnInfo ci : keys.values()) {
                 String name = ci.name;
-                columns[ix++] = Column.make(BasicType.make(ci), name, name);
+                columns[ix++] = Column.make(BasicType.make(ci), name, name, ci.isHidden());
             }
             for (ColumnInfo ci : values.values()) {
                 String name = ci.name;
-                columns[ix++] = Column.make(BasicType.make(ci), name, name);
+                columns[ix++] = Column.make(BasicType.make(ci), name, name, ci.isHidden());
             }
         } else {
             columns = new Column[projection.size()];
 
             for (String name : projection.keySet()) {
-                ColumnInfo column = ColumnSet.findColumn(info.allColumns, name);
-                if (column == null) {
+                ColumnInfo ci = ColumnSet.findColumn(info.allColumns, name);
+                if (ci == null) {
                     throw new IllegalArgumentException("Unknown column: " + name);
                 }
-                columns[ix++] = Column.make(BasicType.make(column), name, column.name);
+                columns[ix++] = Column.make(BasicType.make(ci), name, ci.name, ci.isHidden());
             }
         }
 
