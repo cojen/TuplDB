@@ -159,6 +159,7 @@ public sealed class BinaryOpExpr extends Expr permits FilterExpr {
             return this;
         }
         // Convert the sources to avoid calculation errors.
+        // FIXME: Perform a conversion if the new type isn't numerical or is narrowing.
         return new BinaryOpExpr(startPos(), endPos(),
                                 type, mOp, mLeft.asType(type), mRight.asType(type));
     }

@@ -87,13 +87,17 @@ public abstract sealed class Expr
     }
 
     /**
-     * Apply a boolean not operation. FIXME: Support integer not too.
+     * Apply a boolean not operation.
      */
     public final Expr not() {
         return not(mStartPos);
     }
 
     public Expr not(int startPos) {
+        if (type().isInteger()) {
+            return NotExpr.make(startPos, mEndPos, this);
+        }
+
         return BinaryOpExpr.make
             (startPos, mEndPos,
              Token.T_EQ, asType(BasicType.BOOLEAN), ConstantExpr.make(startPos, mEndPos, false));

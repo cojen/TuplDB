@@ -25,7 +25,7 @@ import java.util.function.Consumer;
  * @author Brian S. O'Neill
  */
 abstract sealed class WrappedExpr extends Expr
-    permits AssignExpr, ConversionExpr, ProjExpr
+    permits AssignExpr, ConversionExpr, NotExpr, ProjExpr
 {
     protected final Expr mExpr;
 
