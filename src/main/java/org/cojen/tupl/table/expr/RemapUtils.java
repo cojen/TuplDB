@@ -22,9 +22,10 @@ package org.cojen.tupl.table.expr;
  *
  * @author Brian S. O'Neill
  */
-final class RemapUtils {
+// Must be public.
+public final class RemapUtils {
     /**
-     * Called by generated SelectMappedNode remap code for an 'and' filter.
+     * Called by generated MappedQueryExpr remap code for an 'and' filter.
      *
      * @param left Boolean or RuntimeException
      * @param right Boolean or RuntimeException
@@ -53,7 +54,7 @@ final class RemapUtils {
     }
 
     /**
-     * Called by generated SelectMappedNode remap code for an 'or' filter.
+     * Called by generated MappedQueryExpr remap code for an 'or' filter.
      *
      * @param left Boolean or RuntimeException
      * @param right Boolean or RuntimeException
@@ -82,7 +83,7 @@ final class RemapUtils {
     }
 
     /**
-     * Called by generated SelectMappedNode remap code.
+     * Called by generated MappedQueryExpr remap code.
      *
      * @param originalEx optional
      * @param result Boolean or RuntimeException

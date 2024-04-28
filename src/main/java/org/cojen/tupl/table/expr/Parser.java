@@ -76,6 +76,9 @@ public final class Parser {
             org.cojen.tupl.Table t = p.table();
             System.out.println("table: " + t);
 
+            System.out.println("plan:");
+            System.out.println(p.scannerPlan(null));
+
             System.out.println("dump rows...");
             try (var s = t.newScanner(null)) {
                 for (Object row = s.row(); row != null; row = s.step(row)) {
@@ -90,11 +93,18 @@ public final class Parser {
 
       FIXME: Notes:
 
-      Note: Can support sub queries with this entity variant: Path Projection [ Filter ]
+      Can support sub queries with this entity variant: Path Projection [ Filter ]
 
-      Note: The Parser should have a weak cache. The existing filter Parser can go away, and
-            because the Parser has a cache, any queries which can be implemented without
-            mapping won't likely be double parsed.
+      The Parser should have a weak cache. The existing filter Parser can go away, and because
+      the Parser has a cache, any queries which can be implemented without mapping won't likely
+      be double parsed.
+
+      Define a top-level Row interface which has methods to obtain columns by name or ordinal.
+
+      Define a top-level @Name annotation which provides the "real" name for a column, which
+      doesn't need to be a valid identifier. The real names cannot be duplicated. The Row
+      interface uses the real names only. The toString method reports the real names. What
+      about queries and filters? Can they use either name? What about conflicts?
 
      */
 
@@ -179,8 +189,6 @@ public final class Parser {
         if (peek.type() != T_EOF) {
             throw new QueryException("Unexpected trailing characters", peek);
         }
-
-        System.out.println("make: " + mFrom + ", " + filter + ", " + projection);
 
         return QueryExpr.make(first.startPos(), endPos, mFrom, filter, projection);
     }

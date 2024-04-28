@@ -272,8 +272,8 @@ public final class FilterExpr extends BinaryOpExpr {
             context.refRollback(savepoint);
 
             mm.catch_(tryStart, RuntimeException.class, exVar -> {
-                    result.set(exVar);
-                });
+                result.set(exVar);
+            });
         }
 
         cont.here();

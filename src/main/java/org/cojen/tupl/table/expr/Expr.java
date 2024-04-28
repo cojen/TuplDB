@@ -225,7 +225,7 @@ public abstract sealed class Expr
     }
 
     /**
-     * Returns a cache instance by calling encodeKey.
+     * Returns a cache key instance by calling encodeKey.
      */
     protected final Object makeKey() {
         var enc = new KeyEncoder();
