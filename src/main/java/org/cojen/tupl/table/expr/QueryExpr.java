@@ -64,8 +64,6 @@ public abstract sealed class QueryExpr extends RelationExpr
             }
         }
 
-        // FIXME: Perform type checking / validation.
-
         TupleType fromType = from.type().rowType();
 
         int maxArgument = from.maxArgument();

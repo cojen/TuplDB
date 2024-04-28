@@ -263,17 +263,18 @@ final class MappedQueryExpr extends QueryExpr {
             pass.here();
         }
 
-        int numColumns = targetType.numColumns();
-
-        for (int i=0; i<numColumns; i++) {
+        int colNum = 0;
+        for (ProjExpr pe : mProjection) {
+            if (pe.hasExclude()) {
+                continue;
+            }
             Variable result;
-            ProjExpr pe = mProjection.get(i);
             if (pe.wrapped() instanceof AssignExpr ae) {
                 result = mProjectedVars.get(ae);
             } else {
                 result = pe.makeEval(context);
             }
-            targetRow.invoke(targetType.column(i).fieldName(), result);
+            targetRow.invoke(targetType.column(colNum++).fieldName(), result);
         }
 
         mm.return_(targetRow);

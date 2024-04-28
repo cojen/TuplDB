@@ -205,36 +205,59 @@ public final class Parser {
 
         Map<String, ProjExpr> map = new LinkedHashMap<>();
         Set<String> wildcards = null;
+        Set<String> excluded = null;
 
         while (true) {
             Token peek = peekToken();
             ProjExpr expr = parseProjExpr(peek);
 
-            if (expr != null) {
-                String name = expr.name();
-                if (expr.hasExclude()) {
-                    if (map.remove(name) == null) {
-                        throw new QueryException
-                            ("Excluded projection not found: " + name, expr);
-                    }
-                } else if (wildcards != null && wildcards.remove(name)) {
-                    map.put(name, expr);
-                } else if (map.putIfAbsent(name, expr) != null) {
-                    throw new QueryException("Duplicate projection: " + name, expr);
+            addProjection: if (expr == null) {
+                if (wildcards != null) {
+                    throw new QueryException("Wildcard can be specified at most once", peek);
                 }
-            } else if (wildcards != null) {
-                throw new QueryException("Wildcard can be specified at most once", peek);
-            } else {
+
                 final Set<String> fwildcards = wildcards = new HashSet<String>();
                 final int startPos = first.startPos();
                 final TupleType rowType = rowType();
+
                 for (int i=0; i<rowType.numColumns(); i++) {
                     Column c = rowType.column(i);
                     map.computeIfAbsent(c.name(), n -> {
                         fwildcards.add(n);
-                        return ProjExpr.make(startPos, startPos,
-                                             ColumnExpr.make(startPos, startPos, rowType, c), 0);
+                        return ProjExpr.make
+                            (startPos, startPos,
+                             ColumnExpr.make(startPos, startPos, rowType, c), 0);
                     });
+                }
+            } else {
+                String name = expr.name();
+
+                if (expr.hasExclude()) {
+                    if (excluded == null) {
+                        excluded = new HashSet<>();
+                    }
+                    if (!excluded.add(name)) {
+                        throw new QueryException("Projection is already excluded: " + name, expr);
+                    }
+
+                    if (!(expr.wrapped() instanceof AssignExpr)) {
+                        if (mLocalVars != null && mLocalVars.containsKey(name)) {
+                            ProjExpr existing = map.get(name);
+                            if (existing != null) {
+                                map.put(name, existing.withExclude());
+                            }
+                        } else if (map.remove(name) == null) {
+                            throw new QueryException
+                                ("Excluded projection not found: " + name, expr);
+                        }
+                        break addProjection;
+                    }
+                }
+
+                if (wildcards != null && wildcards.remove(name)) {
+                    map.put(name, expr);
+                } else if (map.putIfAbsent(name, expr) != null) {
+                    throw new QueryException("Duplicate projection: " + name, expr);
                 }
             }
 

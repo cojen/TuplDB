@@ -39,7 +39,8 @@ import org.cojen.tupl.table.RowUtils;
  */
 public final class TupleType extends Type {
     /**
-     * Makes a type which has a generated row type class.
+     * Makes a type which has a generated row type class. Columns aren't defined for
+     * projections which are excluded.
      *
      * @throws IllegalArgumentException if any names are duplicated
      */
@@ -47,6 +48,9 @@ public final class TupleType extends Type {
         var types = new ArrayList<Object>(projection.size());
 
         for (ProjExpr pe : projection) {
+            if (pe.hasExclude()) {
+                continue;
+            }
             Type type = pe.type();
             if (pe.isNullable()) {
                 type = type.nullable();

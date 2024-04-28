@@ -73,6 +73,14 @@ public final class ProjExpr extends WrappedExpr implements Named {
         return (mFlags & F_NULL_LOW) != 0;
     }
 
+    public ProjExpr withExclude() {
+        int flags = mFlags;
+        if ((flags & F_EXCLUDE) != 0) {
+            return this;
+        }
+        return new ProjExpr(startPos(), endPos(), mExpr, flags | F_EXCLUDE);
+    }
+
     /**
      * Is only applicable when orderBy returns true.
      *
