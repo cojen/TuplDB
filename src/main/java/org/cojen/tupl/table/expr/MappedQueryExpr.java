@@ -35,6 +35,7 @@ import org.cojen.tupl.diag.QueryPlan;
 import org.cojen.tupl.table.MappedTable;
 import org.cojen.tupl.table.RowGen;
 import org.cojen.tupl.table.RowUtils;
+import org.cojen.tupl.table.WeakCache;
 
 import org.cojen.tupl.table.filter.QuerySpec;
 import org.cojen.tupl.table.filter.RowFilter;
@@ -84,12 +85,23 @@ final class MappedQueryExpr extends QueryExpr {
         return null;
     }
 
+    private static final WeakCache<Object, MapperFactory, MappedQueryExpr> cCache;
+
+    static {
+        cCache = new WeakCache<>() {
+            @Override
+            public MapperFactory newValue(Object key, MappedQueryExpr expr) {
+                return expr.makeMapper();
+            }
+        };
+    }
+
     @Override
     @SuppressWarnings("unchecked")
     protected TableProvider doMakeTableProvider() {
         TableProvider source = mFrom.makeTableProvider();
 
-        MapperFactory factory = CodeCache.obtain(makeKey(), this::makeMapper);
+        MapperFactory factory = cCache.obtain(makeKey(), this);
 
         Class targetClass = type().rowType().clazz();
 
