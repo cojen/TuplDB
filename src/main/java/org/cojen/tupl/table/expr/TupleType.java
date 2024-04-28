@@ -28,9 +28,17 @@ import java.util.Map;
 
 import org.cojen.tupl.table.ColumnInfo;
 import org.cojen.tupl.table.ColumnSet;
+import org.cojen.tupl.table.IdentityTable;
+import org.cojen.tupl.table.RowGen;
 import org.cojen.tupl.table.RowInfo;
-import org.cojen.tupl.table.RowTypeMaker;
 import org.cojen.tupl.table.RowUtils;
+import org.cojen.tupl.table.Unpersisted;
+import org.cojen.tupl.table.WeakCache;
+
+import org.cojen.maker.ClassMaker;
+import org.cojen.maker.MethodMaker;
+
+import org.cojen.tupl.Nullable;
 
 /**
  * 
@@ -39,38 +47,59 @@ import org.cojen.tupl.table.RowUtils;
  */
 public final class TupleType extends Type {
     /**
-     * Makes a type which has a generated row type class. Columns aren't defined for
-     * projections which are excluded.
+     * Makes a type which has a generated row type class. Columns aren't defined for excluded
+     * projections.
      *
      * @throws IllegalArgumentException if any names are duplicated
      */
     public static TupleType make(List<ProjExpr> projection) {
-        var types = new ArrayList<Object>(projection.size());
+        var columns = new ArrayList<Column>(projection.size());
+
+        // Maps field names to usage count.
+        var fieldMap = new HashMap<String, Integer>();
 
         for (ProjExpr pe : projection) {
             if (pe.hasExclude()) {
                 continue;
             }
-            Type type = pe.type();
-            if (pe.isNullable()) {
-                type = type.nullable();
+
+            String name = pe.name();
+
+            String fieldName = name.strip();
+
+            if (fieldName.isEmpty()) {
+                fieldName = "_";
+            } else {
+                // Replace reserved field and method characters with underscore.
+                fieldName = fieldName.replaceAll("\\.|\\;|\\[|\\/|\\<|\\>", "_");
             }
-            types.add(type.clazz());
+
+            // Ensure that all field names are unique, replacing them if necessary.
+            while (true) {
+                Integer count = fieldMap.putIfAbsent(fieldName, 1);
+                if (count == null) {
+                    break;
+                }
+                count++;
+                fieldMap.put(fieldName, count);
+                if (fieldName.endsWith("_")) {
+                    fieldName += count;
+                } else {
+                    fieldName = fieldName + "_" + count;
+                }
+            }
+
+            columns.add(Column.make(pe.type(), name, fieldName, false));
         }
 
-        RowTypeMaker.Result makerResult = RowTypeMaker.find(null, types);
+        // Temporarily use the IdentityTable.Row class.
+        TupleType tt = new TupleType(IdentityTable.Row.class, columns.toArray(Column[]::new));
 
-        var projectionMap = new LinkedHashMap<String, String>(projection.size() * 2);
-
-        Iterator<ProjExpr> it = projection.iterator();
-
-        for (String fieldName : makerResult.allNames()) {
-            projectionMap.put(fieldName, it.next().name());
+        if (tt.numColumns() != 0) {
+            tt = tt.withRowType(cCache.obtain(tt.makeKey(), tt));
         }
 
-        assert !it.hasNext();
-
-        return make(makerResult.rowType(), projectionMap);
+        return tt;
     }
 
     /**
@@ -117,6 +146,17 @@ public final class TupleType extends Type {
             throw new AssertionError();
         }
 
+        return new TupleType(rowType, columns);
+    }
+
+    private final Column[] mColumns;
+    private final Map<String, Integer> mColumnMap;
+
+    private TupleType(Class clazz, Column[] columns) {
+        this(clazz, TYPE_REFERENCE, columns, makeColumnMap(columns));
+    }
+
+    private static Map<String, Integer> makeColumnMap(Column[] columns) {
         Map<String, Integer> columnMap = new HashMap<>(columns.length * 2);
 
         for (int i=0; i<columns.length; i++) {
@@ -126,14 +166,7 @@ public final class TupleType extends Type {
             }
         }
 
-        return new TupleType(rowType, columns, columnMap);
-    }
-
-    private final Column[] mColumns;
-    private final Map<String, Integer> mColumnMap;
-
-    private TupleType(Class clazz, Column[] columns, Map<String, Integer> columnMap) {
-        this(clazz, TYPE_REFERENCE, columns, columnMap);
+        return columnMap;
     }
 
     private TupleType(Class clazz, int typeCode, Column[] columns, Map<String, Integer> columnMap) {
@@ -146,6 +179,13 @@ public final class TupleType extends Type {
     public TupleType nullable() {
         return isNullable() ? this
             : new TupleType(clazz(), TYPE_REFERENCE | TYPE_NULLABLE, mColumns, mColumnMap);
+    }
+
+    private TupleType withRowType(Class<?> clazz) {
+        if (clazz() == clazz) {
+            return this;
+        }
+        return new TupleType(clazz, typeCode, mColumns, mColumnMap);
     }
 
     private static final byte K_TYPE = KeyEncoder.allocType();
@@ -303,5 +343,36 @@ public final class TupleType extends Type {
             }
         }
         return true;
+    }
+
+    private static final WeakCache<Object, Class<?>, TupleType> cCache;
+
+    static {
+        cCache = new WeakCache<>() {
+            @Override
+            public Class<?> newValue(Object key, TupleType tt) {
+                return tt.makeRowTypeClass();
+            }
+        };
+    }
+    private Class<?> makeRowTypeClass() {
+        ClassMaker cm = RowGen.beginClassMakerForRowType(TupleType.class.getPackageName(), "Type");
+        cm.sourceFile(getClass().getSimpleName()).addAnnotation(Unpersisted.class, true);
+
+        for (Column c : mColumns) {
+            Type type = c.type();
+            Class<?> clazz = type.clazz();
+            String name = c.fieldName();
+
+            MethodMaker mm = cm.addMethod(clazz, name).public_().abstract_();
+
+            if (c.type().isNullable()) {
+                mm.addAnnotation(Nullable.class, true);
+            }
+
+            cm.addMethod(null, name, clazz).public_().abstract_();
+        }
+
+        return cm.finish();
     }
 }

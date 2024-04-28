@@ -17,6 +17,8 @@
 
 package org.cojen.tupl.table.expr;
 
+import org.cojen.tupl.core.TupleKey;
+
 import org.cojen.tupl.table.ColumnInfo;
 import org.cojen.tupl.table.ConvertUtils;
 
@@ -48,6 +50,15 @@ public abstract sealed class Type extends ColumnInfo
      * Returns a Type instance which is nullable.
      */
     public abstract Type nullable();
+
+    /**
+     * Returns a cache key instance by calling encodeKey.
+     */
+    protected final TupleKey makeKey() {
+        var enc = new KeyEncoder();
+        encodeKey(enc);
+        return enc.finish();
+    }
 
     /**
      * @see Expr#encodeKey

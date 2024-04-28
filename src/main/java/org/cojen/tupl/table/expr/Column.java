@@ -43,7 +43,7 @@ public sealed class Column implements Named {
     private Column(Type type, String name, String fieldName) {
         mType = type;
         mName = name;
-        mFieldName = name;
+        mFieldName = fieldName;
     }
 
     public Type type() {

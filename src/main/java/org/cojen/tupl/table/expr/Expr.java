@@ -22,6 +22,8 @@ import java.util.Map;
 
 import java.util.function.Consumer;
 
+import org.cojen.tupl.core.TupleKey;
+
 import org.cojen.tupl.table.RowInfo;
 
 import org.cojen.tupl.table.filter.OpaqueFilter;
@@ -231,7 +233,7 @@ public abstract sealed class Expr
     /**
      * Returns a cache key instance by calling encodeKey.
      */
-    protected final Object makeKey() {
+    protected final TupleKey makeKey() {
         var enc = new KeyEncoder();
         encodeKey(enc);
         return enc.finish();

@@ -141,7 +141,7 @@ final class KeyEncoder {
 
     void encodeUnsignedVarInt(int n) {
         ensureCapacity(Utils.calcUnsignedVarIntLength(n));
-        Utils.encodeUnsignedVarInt(mBuffer, mSize, n);
+        mSize = Utils.encodeUnsignedVarInt(mBuffer, mSize, n);
     }
 
     // encode varint length, followed by bytes
@@ -238,7 +238,7 @@ final class KeyEncoder {
     /**
      * Returns a cache key instance.
      */
-    Object finish() {
+    TupleKey finish() {
         byte[] bytes = mBuffer;
         if (mSize < bytes.length) {
             bytes = Arrays.copyOf(mBuffer, mSize);
