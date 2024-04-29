@@ -28,6 +28,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import org.cojen.tupl.Table;
+
 import static org.cojen.tupl.table.expr.Token.*;
 
 /**
@@ -41,14 +43,12 @@ public final class Parser {
     */
     @SuppressWarnings("unchecked")
     public static void main(String[] args) throws Exception {
-        RelationExpr from = null;
-        org.cojen.tupl.Table<tupl.schema.sakila.customer> table;
+        Table<tupl.schema.sakila.customer> table = null;
 
         if (true) {
             var db = org.cojen.tupl.Database.open(new org.cojen.tupl.DatabaseConfig());
 
             table = db.openTable(tupl.schema.sakila.customer.class);
-            from = TableExpr.make(-1, -1, table);
 
             var row = table.newRow();
             row.customer_id(1);
@@ -64,7 +64,7 @@ public final class Parser {
             table.insert(null, row);
         }
 
-        RelationExpr expr = new Parser(from, args[0]).parseQueryExpr();
+        RelationExpr expr = Parser.parse(table, args[0]);
         System.out.println(expr.getClass());
         System.out.println(expr);
         System.out.println("querySpec: " + expr.querySpec(table));
@@ -73,11 +73,11 @@ public final class Parser {
         System.out.println("provider: " + p + ", " + p.argumentCount());
 
         if (p.argumentCount() == 0) {
-            org.cojen.tupl.Table t = p.table();
+            Table t = p.table();
             System.out.println("table: " + t);
 
             System.out.println("plan:");
-            System.out.println(p.scannerPlan(null));
+            System.out.println(t.queryAll().scannerPlan(null));
 
             System.out.println("dump rows...");
             try (var s = t.newScanner(null)) {
@@ -108,6 +108,26 @@ public final class Parser {
 
      */
 
+    public static RelationExpr parse(String query) throws QueryException {
+        return parse((RelationExpr) null, query);
+    }
+
+    public static RelationExpr parse(Table<?> from, String query) throws QueryException {
+        return parse(TableExpr.make(-1, -1, from), query);
+    }
+
+    /**
+     * @param from can be null if not selecting from any table at all
+     */
+    public static RelationExpr parse(RelationExpr from, String query) throws QueryException {
+        try {
+            return new Parser(from, query).parseQueryExpr();
+        } catch (IOException e) {
+            // Not expected.
+            throw new QueryException(e);
+        }
+    }
+
     private final RelationExpr mFrom;
     private final Tokenizer mTokenizer;
 
@@ -134,7 +154,7 @@ public final class Parser {
     /**
      * @param from can be null if not selecting from any table at all
      */
-    Parser(RelationExpr from, Tokenizer tokenizer) {
+    private Parser(RelationExpr from, Tokenizer tokenizer) {
         if (from == null) {
             from = TableExpr.identity();
         }

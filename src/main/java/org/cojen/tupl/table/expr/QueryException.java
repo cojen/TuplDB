@@ -25,6 +25,18 @@ package org.cojen.tupl.table.expr;
 public class QueryException extends RuntimeException {
     private final int mStartPos, mEndPos;
 
+    QueryException(Throwable cause) {
+        super(cause);
+        mStartPos = -1;
+        mEndPos = -1;
+    }
+
+    QueryException(String message, Throwable cause) {
+        super(message, cause);
+        mStartPos = -1;
+        mEndPos = -1;
+    }
+
     QueryException(String message, int pos) {
         this(message, pos, pos + 1);
     }
@@ -59,9 +71,15 @@ public class QueryException extends RuntimeException {
 
     @Override
     public String getMessage() {
+        String message = super.getMessage();
+
+        if (mStartPos < 0) {
+            return message;
+        }
+
         // FIXME: Add methods to augment the message with source code context.
 
-        var b = new StringBuilder().append(super.getMessage()).append(" @");
+        var b = new StringBuilder().append(message).append(" @");
 
         if (mStartPos + 1 < mEndPos) {
             b.append('[').append(mStartPos).append("..").append(mEndPos).append(')');
