@@ -55,13 +55,12 @@ public final class TupleType extends Type {
      * @throws IllegalArgumentException if any names are duplicated
      */
     public static TupleType make(List<ProjExpr> projection) {
-        var columns = new ArrayList<Column>(projection.size());
-
-        // Maps field names to usage count.
-        var fieldMap = new HashMap<String, Integer>();
-
         // Matches characters which cannot appear in field and method names.
         final Pattern p = Pattern.compile("\\.|\\;|\\[|\\/|\\<|\\>");
+
+        // Initially maps column names which don't need to be renamed to a usage count of 1,
+        // and maps columns which need to be renamed to the tentative field name.
+        var fieldMap = new HashMap<String, Object>();
 
         for (ProjExpr pe : projection) {
             if (pe.hasExclude()) {
@@ -69,7 +68,6 @@ public final class TupleType extends Type {
             }
 
             String name = pe.name();
-
             String fieldName = name.strip();
 
             if (fieldName.isEmpty()) {
@@ -78,18 +76,39 @@ public final class TupleType extends Type {
                 fieldName = p.matcher(fieldName).replaceAll("_");
             }
 
-            // Ensure that all field names are unique, replacing them if necessary.
-            while (true) {
-                Integer count = fieldMap.putIfAbsent(fieldName, 1);
-                if (count == null) {
-                    break;
-                }
-                count++;
-                fieldMap.put(fieldName, count);
-                if (fieldName.endsWith("_")) {
-                    fieldName += count;
-                } else {
-                    fieldName = fieldName + "_" + count;
+            fieldMap.put(name, fieldName.equals(name) ? 1 : fieldName);
+        }
+
+        var columns = new ArrayList<Column>(projection.size());
+
+        for (ProjExpr pe : projection) {
+            if (pe.hasExclude()) {
+                continue;
+            }
+
+            String name = pe.name();
+            Object field = fieldMap.get(name);
+            String fieldName;
+
+            if (field instanceof Integer) {
+                fieldName = name;
+            } else {
+                fieldName = (String) field;
+
+                // Select the actual field name while ensuring that all field names are unique,
+                // renaming them again if necessary.
+                while (true) {
+                    var count = (Integer) fieldMap.putIfAbsent(fieldName, 1);
+                    if (count == null) {
+                        break;
+                    }
+                    count++;
+                    fieldMap.put(fieldName, count);
+                    if (fieldName.endsWith("_")) {
+                        fieldName += count;
+                    } else {
+                        fieldName = fieldName + "_" + count;
+                    }
                 }
             }
 
