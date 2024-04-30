@@ -41,6 +41,7 @@ import org.cojen.maker.ClassMaker;
 import org.cojen.maker.MethodMaker;
 
 import org.cojen.tupl.Nullable;
+import org.cojen.tupl.PrimaryKey;
 
 /**
  * 
@@ -83,7 +84,7 @@ public final class TupleType extends Type {
                 switch (fieldName) {
                     case "hashCode", "equals", "toString", "clone", "getClass", "wait" -> {
                         rename = true;
-                        fieldName = fieldName + "_";
+                        fieldName += "_";
                     }
                 }
             }
@@ -395,10 +396,14 @@ public final class TupleType extends Type {
         ClassMaker cm = RowGen.beginClassMakerForRowType(TupleType.class.getPackageName(), "Type");
         cm.sourceFile(getClass().getSimpleName()).addAnnotation(Unpersisted.class, true);
 
-        for (Column c : mColumns) {
+        var names = new String[mColumns.length];
+
+        for (int i=0; i<names.length; i++) {
+            Column c = mColumns[i];
             Type type = c.type();
             Class<?> clazz = type.clazz();
             String name = c.fieldName();
+            names[i] = name;
 
             MethodMaker mm = cm.addMethod(clazz, name).public_().abstract_();
 
@@ -408,6 +413,9 @@ public final class TupleType extends Type {
 
             cm.addMethod(null, name, clazz).public_().abstract_();
         }
+
+        // All columns must be in the primary key to preserve the numerical sequence.
+        cm.addAnnotation(PrimaryKey.class, true).put("value", names);
 
         return cm.finish();
     }
