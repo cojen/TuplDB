@@ -76,7 +76,19 @@ public final class TupleType extends Type {
                 fieldName = p.matcher(fieldName).replaceAll("_");
             }
 
-            fieldMap.put(name, fieldName.equals(name) ? 1 : fieldName);
+            boolean rename = !fieldName.equals(name);
+
+            if (!rename) {
+                // Rename if there's a conflict with an inherited method name.
+                switch (fieldName) {
+                    case "hashCode", "equals", "toString", "clone", "getClass", "wait" -> {
+                        rename = true;
+                        fieldName = fieldName + "_";
+                    }
+                }
+            }
+
+            fieldMap.put(name, rename ? fieldName : 1);
         }
 
         var columns = new ArrayList<Column>(projection.size());
@@ -378,6 +390,7 @@ public final class TupleType extends Type {
             }
         };
     }
+
     private Class<?> makeRowTypeClass() {
         ClassMaker cm = RowGen.beginClassMakerForRowType(TupleType.class.getPackageName(), "Type");
         cm.sourceFile(getClass().getSimpleName()).addAnnotation(Unpersisted.class, true);
