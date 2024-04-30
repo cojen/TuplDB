@@ -32,4 +32,9 @@ public class NoSuchRowException extends DatabaseException {
     public NoSuchRowException(String message) {
         super(message);
     }
+
+    @Override
+    public boolean isRecoverable() {
+        return true;
+    }
 }
