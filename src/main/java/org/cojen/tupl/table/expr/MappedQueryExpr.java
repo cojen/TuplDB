@@ -286,7 +286,7 @@ final class MappedQueryExpr extends QueryExpr {
             } else {
                 result = pe.makeEval(context);
             }
-            targetRow.invoke(targetType.column(colNum++).fieldName(), result);
+            targetRow.invoke(targetType.column(colNum++).name(), result);
         }
 
         mm.return_(targetRow);
@@ -351,7 +351,7 @@ final class MappedQueryExpr extends QueryExpr {
 
         for (int i=0; i<numColumns; i++) {
             Column column = targetType.column(i);
-            targetRow.invoke(column.fieldName(), mProjection.get(i).makeEval(context));
+            targetRow.invoke(column.name(), mProjection.get(i).makeEval(context));
         }
 
         mm.return_(targetRow);
@@ -391,7 +391,7 @@ final class MappedQueryExpr extends QueryExpr {
             if (i > 0) {
                 toConcat[i++] = ", ";
             }
-            toConcat[i++] = column.fieldName();
+            toConcat[i++] = column.name();
         }
 
         mm.return_(mm.concat(toConcat));
@@ -411,8 +411,8 @@ final class MappedQueryExpr extends QueryExpr {
                 continue;
             }
 
-            String sourceName = MappedTable.escape(source.column().fieldName());
-            String methodName = targetType.column(i).fieldName() + "_to_" + sourceName;
+            String sourceName = MappedTable.escape(source.column().name());
+            String methodName = targetType.column(i).name() + "_to_" + sourceName;
             MethodMaker mm = cm.addMethod(columnType, methodName, columnType).public_().static_();
             mm.addAnnotation(Untransformed.class, true);
             mm.return_(mm.param(0));

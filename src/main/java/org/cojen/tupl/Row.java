@@ -63,8 +63,7 @@ public interface Row {
 
     /**
      * Returns the method name for the given 1-based column number. The method name can differ
-     * from the column name if it needed to be renamed to something legal, or if an explicit
-     * name override was specified.
+     * from the column name if it needed to be renamed to something legal
      *
      * @param number 1-based column number
      * @return column method name
@@ -76,8 +75,7 @@ public interface Row {
 
     /**
      * Returns the method name for the given column name. The method name can differ from the
-     * column name if it needed to be renamed to something legal, or if an explicit name
-     * override was specified.
+     * column name if it needed to be renamed to something legal.
      *
      * @param name column name
      * @return column method name

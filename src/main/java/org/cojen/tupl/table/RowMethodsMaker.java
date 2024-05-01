@@ -25,6 +25,9 @@ import java.lang.invoke.MethodType;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 
+import java.util.HashMap;
+import java.util.Map;
+
 import java.util.function.Consumer;
 
 import org.cojen.maker.Bootstrap;
@@ -45,9 +48,110 @@ import static org.cojen.tupl.table.ColumnInfo.*;
  * @author Brian S. O'Neill
  */
 public final class RowMethodsMaker {
+    /**
+     * Given an arbitrary column name, returns a valid method name by possibly introducing
+     * escape characters.
+     */
+    public static String escape(String name) {
+        for (int i=0; i<name.length(); i++) {
+            char c = name.charAt(i);
+            char e = escape(c);
+            if (e != '\0') {
+                var b = new StringBuilder(name.length() + 1);
+                b.append(name, 0, i).append('\\').append(e);
+                i++;
+                for (; i<name.length(); i++) {
+                    c = name.charAt(i);
+                    e = escape(c);
+                    if (e == '\0') {
+                        b.append(c);
+                    } else {
+                        b.append('\\').append(e);
+                    }
+                }
+                return b.toString();
+            }
+        }
+
+        // Also need to handle conflicts with inherited method names, and the empty string.
+
+        switch (name) {
+            case "hashCode", "equals", "toString", "clone", "getClass", "wait", "columnCount", "":
+                name += '\\';
+        }
+
+        return name;
+    }
+
+    /**
+     * @return 0 if no need to escape
+     */
+    private static char escape(char c) {
+        return switch (c) {
+            case '\\' -> '\\';
+            case '.'  -> '_';
+            case ';'  -> ':';
+            case '['  -> '(';
+            case '/'  -> '-';
+            case '<'  -> '{';
+            case '>'  -> '}';
+            default   -> '\0';
+        };
+    }
+
+    /**
+     * Converts an escaped string back to its original form.
+     */
+    public static String unescape(String name) {
+        int length = name.length();
+
+        for (int i=0; i<length; i++) {
+            char c = name.charAt(i);
+            if (c == '\\') {
+                i++;
+                if (i >= length) {
+                    return name.substring(0, length - 1);
+                }
+                var b = new StringBuilder(name.length() - 1);
+                b.append(name, 0, i - 1).append(unescape(name.charAt(i)));
+                i++;
+                for (; i<name.length(); i++) {
+                    c = name.charAt(i);
+                    if (c != '\\') {
+                        b.append(c);
+                    } else {
+                        i++;
+                        if (i >= length) {
+                            break;
+                        }
+                        b.append(unescape(name.charAt(i)));
+                    }
+                }
+                return b.toString();
+            }
+        }
+
+        return name;
+    }
+
+    private static char unescape(char c) {
+        return switch (c) {
+            case '\\' -> '\\';
+            case '_'  -> '.';
+            case ':'  -> ';';
+            case '('  -> '[';
+            case '-'  -> '/';
+            case '{'  -> '<';
+            case '}'  -> '>';
+            default   -> c;
+        };
+    }
+
     private final ClassMaker mClassMaker;
     private final Class<?> mRowType;
     private final ColumnInfo[] mColumns;
+    private final Map<String, Integer> mUnescapedMap; // maps unescaped names to column indexes
+    private final Map<String, String> mToUnescaped; // maps escaped names to unescaped names
 
     RowMethodsMaker(ClassMaker cm, Class<?> rowType, RowGen rowGen) {
         mClassMaker = cm;
@@ -67,6 +171,25 @@ public final class RowMethodsMaker {
         assert i == columns.length;
 
         mColumns = columns;
+
+        Map<String, Integer> unescapedMap = Map.of();
+        Map<String, String> toUnescaped = Map.of();
+
+        for (i=0; i<columns.length; i++) {
+            String name = columns[i].name;
+            String unescaped = unescape(name);
+            if (!unescaped.equals(name)) {
+                if (unescapedMap.isEmpty()) {
+                    unescapedMap = new HashMap<>();
+                    toUnescaped = new HashMap<>();
+                }
+                unescapedMap.put(unescaped, i);
+                toUnescaped.put(name, unescaped);
+            }
+        }
+
+        mUnescapedMap = unescapedMap;
+        mToUnescaped = toUnescaped;
     }
 
     private RowMethodsMaker(ClassMaker cm, Class<?> rowType) {
@@ -117,21 +240,37 @@ public final class RowMethodsMaker {
     }
 
     private void addColumnNumber(String name) {
+        // Accepts escaped and unescaped forms.
+
         MethodMaker mm = mClassMaker.addMethod(int.class, name, String.class).public_();
 
-        var cases = new String[mColumns.length];
+        var cases = new String[mColumns.length + mUnescapedMap.size()];
         var labels = new Label[cases.length];
 
-        for (int i=0; i<cases.length; i++) {
-            cases[i] = mColumns[i].name;
-            labels[i] = mm.label();
+        {
+            int i = 0;
+
+            for (; i<mColumns.length; i++) {
+                cases[i] = mColumns[i].name;
+                labels[i] = mm.label();
+            }
+
+            if (!mUnescapedMap.isEmpty()) {
+                for (var entry : mUnescapedMap.entrySet()) {
+                    cases[i] = entry.getKey();
+                    labels[i] = labels[entry.getValue()];
+                    i++;
+                }
+            }
+
+            assert i == cases.length;
         }
 
         Label notFound = mm.label();
 
         mm.param(0).switch_(notFound, cases, labels);
 
-        for (int i=0; i<cases.length; i++) {
+        for (int i=0; i<mColumns.length; i++) {
             labels[i].here();
             mm.return_(i + 1);
         }
@@ -170,11 +309,25 @@ public final class RowMethodsMaker {
 
     private void addColumnName() {
         MethodMaker mm = mClassMaker.addMethod(String.class, "columnName", int.class).public_();
-        numSwitch(mm, ci -> mm.return_(ci.name));
+
+        numSwitch(mm, ci -> {
+            String name = ci.name;
+            String unescaped = mToUnescaped.get(name);
+            if (unescaped == null) {
+                unescaped = name;
+            }
+            mm.return_(unescaped);
+        });
     }
 
     private void addColumnMethodName() {
-        // FIXME: Only if @Name annotation is used anywhere and it actually differs.
+        if (mUnescapedMap.isEmpty()) {
+            // Rely on the default implementation.
+        } else {
+            MethodMaker mm = mClassMaker.addMethod
+                (String.class, "columnMethodName", int.class).public_();
+            numSwitch(mm, ci -> mm.return_(ci.name));
+        }
     }
 
     private void addColumnType() {

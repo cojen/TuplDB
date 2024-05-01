@@ -99,14 +99,14 @@ public abstract sealed class QueryExpr extends RelationExpr
                     pureProjection = null;
                     break pure;
                 }
-                if (pureProjection.putIfAbsent(c.fieldName(), pe.name()) != null) {
+                if (pureProjection.putIfAbsent(c.name(), pe.name()) != null) {
                     // Column is projected more than once.
                     pureProjection = null;
                     break pure;
                 }
             }
 
-            if (fromType.matchesFields(pureProjection.keySet())) {
+            if (fromType.matchesNames(pureProjection.keySet())) {
                 // All columns are projected, in the natural order, with no renames.
                 projection = null;
                 pureProjection = null;

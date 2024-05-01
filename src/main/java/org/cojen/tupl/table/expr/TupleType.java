@@ -26,13 +26,12 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-import java.util.regex.Pattern;
-
 import org.cojen.tupl.table.ColumnInfo;
 import org.cojen.tupl.table.ColumnSet;
 import org.cojen.tupl.table.IdentityTable;
 import org.cojen.tupl.table.RowGen;
 import org.cojen.tupl.table.RowInfo;
+import org.cojen.tupl.table.RowMethodsMaker;
 import org.cojen.tupl.table.RowUtils;
 import org.cojen.tupl.table.Unpersisted;
 import org.cojen.tupl.table.WeakCache;
@@ -57,78 +56,13 @@ public final class TupleType extends Type {
      * @throws IllegalArgumentException if any names are duplicated
      */
     public static TupleType make(List<ProjExpr> projection) {
-        // Matches characters which cannot appear in field and method names.
-        final Pattern p = Pattern.compile("\\.|\\;|\\[|\\/|\\<|\\>");
-
-        // Initially maps column names which don't need to be renamed to a usage count of 1,
-        // and maps columns which need to be renamed to the tentative field name.
-        var fieldMap = new HashMap<String, Object>();
-
-        for (ProjExpr pe : projection) {
-            if (pe.hasExclude()) {
-                continue;
-            }
-
-            String name = pe.name();
-            String fieldName = name.strip();
-
-            if (fieldName.isEmpty()) {
-                fieldName = "_";
-            } else {
-                fieldName = p.matcher(fieldName).replaceAll("_");
-            }
-
-            boolean rename = !fieldName.equals(name);
-
-            if (!rename) {
-                // Rename if there's a conflict with an inherited method name.
-                switch (fieldName) {
-                    case "hashCode", "equals", "toString", "clone", "getClass", "wait",
-                        "columnCount" ->
-                    {
-                        rename = true;
-                        fieldName += "_";
-                    }
-                }
-            }
-
-            fieldMap.put(name, rename ? fieldName : 1);
-        }
-
         var columns = new ArrayList<Column>(projection.size());
 
         for (ProjExpr pe : projection) {
-            if (pe.hasExclude()) {
-                continue;
+            if (!pe.hasExclude()) {
+                String name = RowMethodsMaker.escape(pe.name());
+                columns.add(Column.make(pe.type(), name, false));
             }
-
-            String name = pe.name();
-            Object field = fieldMap.get(name);
-            String fieldName;
-
-            if (field instanceof Integer) {
-                fieldName = name;
-            } else {
-                fieldName = (String) field;
-
-                // Select the actual field name while ensuring that all field names are unique,
-                // renaming them again if necessary.
-                while (true) {
-                    var count = (Integer) fieldMap.putIfAbsent(fieldName, 1);
-                    if (count == null) {
-                        break;
-                    }
-                    count++;
-                    fieldMap.put(fieldName, count);
-                    if (fieldName.endsWith("_")) {
-                        fieldName += count;
-                    } else {
-                        fieldName = fieldName + "_" + count;
-                    }
-                }
-            }
-
-            columns.add(Column.make(pe.type(), name, fieldName, false));
         }
 
         // Temporarily use the IdentityTable.Row class.
@@ -144,7 +78,7 @@ public final class TupleType extends Type {
     /**
      * Makes a type which uses the given row type class.
 
-     * @param projection maps row field column names to target names; can pass null to project
+     * @param projection maps row column names to target names; can pass null to project
      * all columns without renaming them
      * @throws QueryException if projection refers to a non-existent column or if any
      * target column names are duplicated
@@ -163,11 +97,11 @@ public final class TupleType extends Type {
 
             for (ColumnInfo ci : keys.values()) {
                 String name = ci.name;
-                columns[ix++] = Column.make(BasicType.make(ci), name, name, ci.isHidden());
+                columns[ix++] = Column.make(BasicType.make(ci), name, ci.isHidden());
             }
             for (ColumnInfo ci : values.values()) {
                 String name = ci.name;
-                columns[ix++] = Column.make(BasicType.make(ci), name, name, ci.isHidden());
+                columns[ix++] = Column.make(BasicType.make(ci), name, ci.isHidden());
             }
         } else {
             columns = new Column[projection.size()];
@@ -177,7 +111,7 @@ public final class TupleType extends Type {
                 if (ci == null) {
                     throw new IllegalArgumentException("Unknown column: " + name);
                 }
-                columns[ix++] = Column.make(BasicType.make(ci), name, ci.name, ci.isHidden());
+                columns[ix++] = Column.make(BasicType.make(ci), name, ci.isHidden());
             }
         }
 
@@ -267,15 +201,7 @@ public final class TupleType extends Type {
                 b.append(", ");
             }
             Column column = column(i);
-            b.append(column.type()).append(' ');
-            String name = column.name();
-            String fieldName = column.fieldName();
-            if (name.equals(fieldName)) {
-                b.append(name);
-            } else {
-                RowUtils.appendQuotedString(b, name);
-                b.append('=').append(fieldName);
-            }
+            b.append(column.type()).append(' ').append(column.name());
         }
 
         b.append('}');
@@ -335,7 +261,7 @@ public final class TupleType extends Type {
             if (column.type() instanceof TupleType tt) {
                 Column sub = tt.tryFindColumn(name.substring(dotIx + 1));
                 if (sub != null) {
-                    return sub.withName(name, column.fieldName() + '.' + sub.fieldName());
+                    return sub.withName(name);
                 }
             }
         }
@@ -365,18 +291,18 @@ public final class TupleType extends Type {
     }
 
     /**
-     * Returns true if the given projection exactly matches the fields of tuple's type class,
-     * in the same order. If null is passed in, this implies a full projection, and so true is
+     * Returns true if the given projection exactly matches the names of tuple's type class, in
+     * the same order. If null is passed in, this implies a full projection, and so true is
      * returned in this case too.
      */
-    public boolean matchesFields(Collection<String> projection) {
+    public boolean matchesNames(Collection<String> projection) {
         if (projection != null) {
             if (projection.size() != numColumns()) {
                 return false;
             }
             int i = 0;
             for (String name : projection) {
-                if (!mColumns[i++].fieldName().equals(name)) {
+                if (!mColumns[i++].name().equals(name)) {
                     return false;
                 }
             }
@@ -406,7 +332,7 @@ public final class TupleType extends Type {
             Column c = mColumns[i];
             Type type = c.type();
             Class<?> clazz = type.clazz();
-            String name = c.fieldName();
+            String name = c.name();
             names[i] = name;
 
             MethodMaker mm = cm.addMethod(clazz, name).public_().abstract_();

@@ -91,22 +91,17 @@ public abstract sealed class RelationExpr extends Expr permits TableExpr, QueryE
      * Pass all of the fully qualified columns of this relation to the given consumer.
      */
     public final void fullProjection(Consumer<? super ProjExpr> consumer) {
-        fullProjection(consumer, type().rowType(), "", "");
+        fullProjection(consumer, type().rowType(), "");
     }
 
-    private void fullProjection(Consumer<? super ProjExpr> consumer, TupleType tt,
-                                String namePrefix, String fieldPrefix)
-    {
+    private void fullProjection(Consumer<? super ProjExpr> consumer, TupleType tt, String prefix) {
         int num = tt.numColumns();
         for (int i=0; i<num; i++) {
             Column column = tt.column(i);
             if (column.type() instanceof TupleType ctt) {
-                fullProjection(consumer, ctt, namePrefix + column.name() + '.',
-                               fieldPrefix + column.fieldName() + '.');
+                fullProjection(consumer, ctt, prefix + column.name() + '.');
             } else {
-                column = Column.make
-                    (column.type(), namePrefix + column.name(), fieldPrefix + column.fieldName(),
-                     column.isHidden());
+                column = Column.make(column.type(), prefix + column.name(), column.isHidden());
                 consumer.accept(ProjExpr.make(-1, -1, ColumnExpr.make(-1, -1, tt, column), 0));
             }
         }

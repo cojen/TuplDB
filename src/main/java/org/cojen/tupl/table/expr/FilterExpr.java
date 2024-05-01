@@ -130,7 +130,7 @@ public final class FilterExpr extends BinaryOpExpr {
     }
 
     private static ColumnInfo tryFindColumn(RowInfo info, ColumnExpr expr) {
-        return ColumnSet.findColumn(info.allColumns, expr.column().fieldName());
+        return ColumnSet.findColumn(info.allColumns, expr.column().name());
     }
 
     @Override

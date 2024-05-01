@@ -28,22 +28,20 @@ import java.util.List;
  */
 public sealed class Column implements Named {
     private final Type mType;
-    private final String mName, mFieldName;
+    private final String mName;
 
-    private List<String> mSubNames, mSubFieldNames;
+    private List<String> mSubNames;
 
     /**
-     * @param name visible column name (can be fully qualified)
-     * @param fieldName actual name used by the row class (can be fully qualified)
+     * @param name column name (can be fully qualified)
      */
-    public static Column make(Type type, String name, String fieldName, boolean hidden) {
-        return hidden ? new Hidden(type, name, fieldName) : new Column(type, name, fieldName);
+    public static Column make(Type type, String name, boolean hidden) {
+        return hidden ? new Hidden(type, name) : new Column(type, name);
     }
 
-    private Column(Type type, String name, String fieldName) {
+    private Column(Type type, String name) {
         mType = type;
         mName = name;
-        mFieldName = fieldName;
     }
 
     public Type type() {
@@ -59,10 +57,6 @@ public sealed class Column implements Named {
         return mName;
     }
 
-    public String fieldName() {
-        return mFieldName;
-    }
-
     /**
      * Returns the name split by '.' characters.
      *
@@ -70,37 +64,10 @@ public sealed class Column implements Named {
      */
     public List<String> subNames() {
         List<String> subNames = mSubNames;
-
         if (subNames == null) {
-            if (mName.equals(mFieldName) && mSubFieldNames != null) {
-                subNames = mSubFieldNames;
-            } else {
-                subNames = buildSubNames(mName);
-            }
-            mSubNames = subNames;
+            mSubNames = subNames = buildSubNames(mName);
         }
-
         return subNames;
-    }
-
-    /**
-     * Returns the field name split by '.' characters.
-     *
-     * @return a list whose size is at least one
-     */
-    public List<String> subFieldNames() {
-        List<String> subFieldNames = mSubFieldNames;
-
-        if (subFieldNames == null) {
-            if (mFieldName.equals(mName) && mSubNames != null) {
-                subFieldNames = mSubNames;
-            } else {
-                subFieldNames = buildSubNames(mFieldName);
-            }
-            mSubFieldNames = subFieldNames;
-        }
-
-        return subFieldNames;
     }
 
     private static List<String> buildSubNames(String name) {
@@ -126,9 +93,8 @@ public sealed class Column implements Named {
         return list;
     }
 
-    public Column withName(String name, String fieldName) {
-        return name.equals(mName) && fieldName.equals(mFieldName) ? this
-            : new Column(mType, name, fieldName);
+    public Column withName(String name) {
+        return name.equals(mName) ? this : new Column(mType, name);
     }
 
     private static final byte K_TYPE = KeyEncoder.allocType();
@@ -142,14 +108,12 @@ public sealed class Column implements Named {
     void doEncodeKey(KeyEncoder enc) {
         mType.encodeKey(enc);
         enc.encodeString(mName);
-        enc.encodeString(mFieldName);
     }
 
     @Override
     public int hashCode() {
         int hash = mType.hashCode();
         hash = hash * 31 + mName.hashCode();
-        hash = hash * 31 + mFieldName.hashCode();
         return hash;
     }
 
@@ -159,24 +123,27 @@ public sealed class Column implements Named {
             obj instanceof Column c
             && mType.equals(c.mType)
             && mName.equals(c.mName)
-            && mFieldName.equals(c.mFieldName)
             && isHidden() == c.isHidden();
     }
 
     @Override
     public String toString() {
-        return '{' + "type=" + mType + ", " + "name=" + mName + ", " +
-            "fieldName=" + mFieldName + '}';
+        return '{' + "type=" + mType + ", " + "name=" + mName + '}';
     }
 
     private static final class Hidden extends Column {
-        private Hidden(Type type, String name, String fieldName) {
-            super(type, name, fieldName);
+        private Hidden(Type type, String name) {
+            super(type, name);
         }
 
         @Override
         public boolean isHidden() {
             return true;
+        }
+
+        @Override
+        public Hidden withName(String name) {
+            return name.equals(name()) ? this : new Hidden(type(), name);
         }
 
         private static final byte K_TYPE = KeyEncoder.allocType();

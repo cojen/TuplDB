@@ -84,10 +84,21 @@ public final class Parser {
             try (var s = t.newScanner(null)) {
                 for (Object row = s.row(); row != null; row = s.step(row)) {
                     System.out.println(row);
-                    System.out.println(((org.cojen.tupl.Row) row).getString(1));
-                    System.out.println(((org.cojen.tupl.Row) row).get(1));
-                    ((org.cojen.tupl.Row) row).set("z", 123.0);
-                    System.out.println(row);
+                    var r = (org.cojen.tupl.Row) row;
+
+                    System.out.println("columnCount: " + r.columnCount());
+                    for (int i=1; i<=r.columnCount(); i++) {
+                        System.out.println("---");
+                        System.out.println("columnName: " + r.columnName(i));
+                        System.out.println("columnMethodName: " + r.columnMethodName(i));
+                        System.out.println("columnType: " + r.columnType(i));
+                        System.out.println("get: " + r.get(i));
+                        System.out.println("get by name: " + r.get(r.columnName(i)));
+                        System.out.println("get by method name: " + r.get(r.columnMethodName(i)));
+                    }
+
+                    r.set("z", 123.0);
+                    System.out.println(r);
                 }
             }
             System.out.println("...done");
@@ -103,10 +114,6 @@ public final class Parser {
       The Parser should have a weak cache. The existing filter Parser can go away, and because
       the Parser has a cache, any queries which can be implemented without mapping won't likely
       be double parsed.
-
-      Define a top-level @Name annotation which provides the "real" name for a column, which
-      doesn't need to be a valid identifier. The real names cannot be duplicated. The Row
-      interface uses the real names only.
 
      */
 

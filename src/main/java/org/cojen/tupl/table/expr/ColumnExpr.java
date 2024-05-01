@@ -54,7 +54,7 @@ public final class ColumnExpr extends Expr implements Named {
             if (subType instanceof TupleType tt) {
                 rowType = tt;
             }
-            sub = new Sub(sub, subColumn.fieldName(), nullable);
+            sub = new Sub(sub, subColumn.name(), nullable);
         }
 
         mLastSub = sub;
@@ -111,7 +111,7 @@ public final class ColumnExpr extends Expr implements Named {
     }
 
     /**
-     * Returns a column with a fully qualified field name.
+     * Returns a column with a fully qualified name.
      */
     public Column column() {
         return mColumn;
