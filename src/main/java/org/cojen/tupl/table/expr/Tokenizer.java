@@ -220,9 +220,10 @@ final class Tokenizer {
                 if (Character.isWhitespace(c)) {
                     break;
                 }
-                // Note that this is very lenient by allowing an identifer to start with any
-                // character not handled above. The parser must do additional checking.
-                return parseIdentifierOrKeyword(c);
+                if (Character.isJavaIdentifierStart(c)) {
+                    return parseIdentifierOrKeyword(c);
+                }
+                return new Token.Text(mPos, mPos + 1, Token.T_UNKNOWN, String.valueOf((char) c));
             }
 
             c = read();

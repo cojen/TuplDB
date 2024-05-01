@@ -43,11 +43,11 @@ sealed class Token {
     static final int T_FALSE = 25, T_TRUE = 26, T_NULL = 27;
 
     // Tokens which have a text value.
-    static final int T_IDENTIFIER = 28, T_STRING = 29;
+    static final int T_UNKNOWN = 28, T_IDENTIFIER = 29, T_STRING = 30;
 
     // Numerical constants.
-    static final int T_INT = 30, T_LONG = 31, T_BIGINT = 32,
-        T_FLOAT = 33, T_DOUBLE = 34, T_BIGDEC = 35;
+    static final int T_INT = 31, T_LONG = 32, T_BIGINT = 33,
+        T_FLOAT = 34, T_DOUBLE = 35, T_BIGDEC = 36;
 
     private final int mStartPos, mEndPos, mType;
 
