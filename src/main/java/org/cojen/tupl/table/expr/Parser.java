@@ -75,6 +75,7 @@ public final class Parser {
         if (p.argumentCount() == 0) {
             Table t = p.table();
             System.out.println("table: " + t);
+            System.out.println("rowType: " + t.rowType());
 
             System.out.println("plan:");
             System.out.println(t.queryAll().scannerPlan(null));
@@ -82,6 +83,10 @@ public final class Parser {
             System.out.println("dump rows...");
             try (var s = t.newScanner(null)) {
                 for (Object row = s.row(); row != null; row = s.step(row)) {
+                    System.out.println(row);
+                    System.out.println(((org.cojen.tupl.Row) row).getString(1));
+                    System.out.println(((org.cojen.tupl.Row) row).get(1));
+                    ((org.cojen.tupl.Row) row).set("z", 123.0);
                     System.out.println(row);
                 }
             }
@@ -99,12 +104,9 @@ public final class Parser {
       the Parser has a cache, any queries which can be implemented without mapping won't likely
       be double parsed.
 
-      Define a top-level Row interface which has methods to obtain columns by name or ordinal.
-
       Define a top-level @Name annotation which provides the "real" name for a column, which
       doesn't need to be a valid identifier. The real names cannot be duplicated. The Row
-      interface uses the real names only. The toString method reports the real names. What
-      about queries and filters? Can they use either name? What about conflicts?
+      interface uses the real names only.
 
      */
 

@@ -42,6 +42,7 @@ import org.cojen.maker.MethodMaker;
 
 import org.cojen.tupl.Nullable;
 import org.cojen.tupl.PrimaryKey;
+import org.cojen.tupl.Row;
 
 /**
  * 
@@ -82,7 +83,9 @@ public final class TupleType extends Type {
             if (!rename) {
                 // Rename if there's a conflict with an inherited method name.
                 switch (fieldName) {
-                    case "hashCode", "equals", "toString", "clone", "getClass", "wait" -> {
+                    case "hashCode", "equals", "toString", "clone", "getClass", "wait",
+                        "columnCount" ->
+                    {
                         rename = true;
                         fieldName += "_";
                     }
@@ -394,6 +397,7 @@ public final class TupleType extends Type {
 
     private Class<?> makeRowTypeClass() {
         ClassMaker cm = RowGen.beginClassMakerForRowType(TupleType.class.getPackageName(), "Type");
+        cm.implement(Row.class);
         cm.sourceFile(getClass().getSimpleName()).addAnnotation(Unpersisted.class, true);
 
         var names = new String[mColumns.length];
