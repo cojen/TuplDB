@@ -28,6 +28,7 @@ import java.util.Comparator;
 
 import java.util.stream.Stream;
 
+import org.cojen.tupl.ColumnConsumer;
 import org.cojen.tupl.DurabilityMode;
 import org.cojen.tupl.Query;
 import org.cojen.tupl.Scanner;
@@ -109,6 +110,11 @@ public final class IdentityTable implements Table<IdentityTable.Row>, Query<Iden
     @Override
     public boolean isSet(Row row, String name) {
         throw new IllegalArgumentException();
+    }
+
+    @Override
+    public void forEach(Row row, ColumnConsumer action) {
+        // Nothing to do.
     }
 
     @Override
