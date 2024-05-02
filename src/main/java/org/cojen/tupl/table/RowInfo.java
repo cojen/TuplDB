@@ -360,10 +360,6 @@ public class RowInfo extends ColumnSet {
                             // Inherited non-final method declared in Object.
                             continue;
                         }
-                        if (name.equals("columnCount") && Row.class.isAssignableFrom(rowType)) {
-                            // Inherited method declared in Row.
-                            continue;
-                        }
                         info = addColumn(rowType, messages, name, type);
                         if (info == null) {
                             continue;

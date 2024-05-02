@@ -86,16 +86,14 @@ public final class Parser {
                     System.out.println(row);
                     var r = (org.cojen.tupl.Row) row;
 
-                    System.out.println("columnCount: " + r.columnCount());
-                    for (int i=1; i<=r.columnCount(); i++) {
+                    t.forEach(r, (n, v) -> {
                         System.out.println("---");
-                        System.out.println("columnName: " + r.columnName(i));
-                        System.out.println("columnMethodName: " + r.columnMethodName(i));
-                        System.out.println("columnType: " + r.columnType(i));
-                        System.out.println("get: " + r.get(i));
-                        System.out.println("get by name: " + r.get(r.columnName(i)));
-                        System.out.println("get by method name: " + r.get(r.columnMethodName(i)));
-                    }
+                        System.out.println("nv: " + n + " -> " + v);
+                        System.out.println("columnMethodName: " + r.columnMethodName(n));
+                        System.out.println("columnType: " + r.columnType(n));
+                        System.out.println("get: " + r.get(n));
+                        System.out.println("get by method name: " + r.get(r.columnMethodName(n)));
+                    });
 
                     r.set("z", 123.0);
                     System.out.println(r);
