@@ -242,6 +242,7 @@ public final class IdentityTable implements Table<IdentityTable.Row>, Query<Iden
     }
 
     private static boolean findsAnything(String query) {
+        // FIXME: replace the true/false forms
         switch (query) {
         case "{}", "{*}", "()": return true;
         case "{} !()", "{*} !()", "!()": return false;
