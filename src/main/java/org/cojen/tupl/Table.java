@@ -145,6 +145,11 @@ public interface Table<R> extends Closeable {
     public boolean isSet(R row, String name);
 
     /**
+     * For the given row, performs an action for each column which is set.
+     */
+    public void forEach(R row, ColumnConsumer action);
+
+    /**
      * Returns a new scanner for all rows of this table.
      *
      * @param txn optional transaction for the scanner to use; pass null for auto-commit mode

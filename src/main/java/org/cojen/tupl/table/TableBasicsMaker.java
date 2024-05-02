@@ -30,6 +30,7 @@ import org.cojen.maker.Label;
 import org.cojen.maker.MethodMaker;
 import org.cojen.maker.Variable;
 
+import org.cojen.tupl.ColumnConsumer;
 import org.cojen.tupl.Table;
 
 /**
@@ -135,13 +136,21 @@ public class TableBasicsMaker {
             mm.return_(indy.invoke(boolean.class, "isSet", null, mm.param(0), mm.param(1)));
         }
 
+        // Add the forEach method.
+        {
+            MethodMaker mm = cm.addMethod
+                (null, "forEach", Object.class, ColumnConsumer.class).public_();
+            var indy = mm.var(TableBasicsMaker.class).indy("indyForEach", rowType);
+            indy.invoke(null, "forEach", null, mm.param(0), mm.param(1));
+        }
+
         return cm.finish();
     }
 
     public static CallSite indyIsSet(MethodHandles.Lookup lookup, String name, MethodType mt,
                                      Class<?> rowType)
     {
-        var info = RowInfo.find(rowType);
+        RowInfo rowInfo = RowInfo.find(rowType);
         Class<?> rowClass = RowMaker.find(rowType);
 
         MethodMaker mm = MethodMaker.begin(lookup, name, mt);
@@ -149,7 +158,7 @@ public class TableBasicsMaker {
         var rowVar = mm.param(0).cast(rowClass);
         var colName = mm.param(1);
 
-        Set<String> keys = info.allColumns.keySet();
+        Set<String> keys = rowInfo.allColumns.keySet();
         String[] cases = keys.toArray(String[]::new);
         var labels = new Label[cases.length];
 
@@ -161,7 +170,7 @@ public class TableBasicsMaker {
         var notFound = mm.label();
         colName.switch_(notFound, cases, labels);
 
-        RowGen rowGen = info.rowGen();
+        RowGen rowGen = rowInfo.rowGen();
         Map<String, Integer> colNums = rowGen.columnNumbers();
 
         final Variable stateVar = mm.var(int.class);
@@ -182,6 +191,43 @@ public class TableBasicsMaker {
 
         notFound.here();
         mm.new_(IllegalArgumentException.class, mm.concat("Unknown column: ", colName)).throw_();
+
+        return new ConstantCallSite(mm.finish());
+    }
+
+    public static CallSite indyForEach(MethodHandles.Lookup lookup, String name, MethodType mt,
+                                       Class<?> rowType)
+    {
+        RowInfo rowInfo = RowInfo.find(rowType);
+        RowGen rowGen = rowInfo.rowGen();
+        Class<?> rowClass = RowMaker.find(rowType);
+        Map<String, Integer> colNums = rowGen.columnNumbers();
+
+        MethodMaker mm = MethodMaker.begin(lookup, name, mt);
+
+        var rowVar = mm.param(0).cast(rowClass);
+        var consumerVar = mm.param(1);
+
+        final var stateVar = mm.var(int.class);
+        int stateNum = -1;
+
+        for (Map.Entry<String, Integer> e : colNums.entrySet()) {
+            String colName = e.getKey();
+            int colNum = e.getValue();
+
+            int sn = RowGen.stateFieldNum(colNum);
+            if (sn != stateNum) {
+                stateVar.set(rowVar.field(rowGen.stateField(colNum)));
+                stateNum = sn;
+            }
+
+            Label next = mm.label();
+            stateVar.and(RowGen.stateFieldMask(colNum)).ifEq(0, next);
+
+            consumerVar.invoke("accept", colName, rowVar.field(colName));
+
+            next.here();
+        }
 
         return new ConstantCallSite(mm.finish());
     }
