@@ -41,7 +41,8 @@ import org.cojen.tupl.table.filter.TrueFilter;
  */
 final class UnmappedQueryExpr extends QueryExpr {
     /**
-     * @param projection must only consist of wrapped ColumnExpr instances
+     * @param projection must only consist of wrapped ColumnExpr instances; can be null to
+     * project all columns
      * @see QueryExpr#make
      */
     static UnmappedQueryExpr make(int startPos, int endPos, TupleType type,

@@ -341,7 +341,7 @@ public final class Parser {
         }
 
         Token.Text ident = parseIdentifier();
-        String name = ident.mText;
+        String name = ident.text(true);
 
         Expr expr;
 
@@ -355,7 +355,7 @@ public final class Parser {
                 mLocalVars = new LinkedHashMap<>();
             }
             if (mLocalVars.putIfAbsent(name, expr.type()) != null) {
-                throw new QueryException("Duplicate assignment: " + name, expr);
+                throw new QueryException("Duplicate assignment: " + ident.mText, expr);
             }
         } else {
             Type varType;
@@ -365,7 +365,7 @@ public final class Parser {
                 TupleType rowType = rowType();
                 Column c = rowType.tryColumnFor(name);
                 if (c == null) {
-                    throw new QueryException("Unknown column or variable: " + name,
+                    throw new QueryException("Unknown column or variable: " + ident.mText,
                                              startPos, ident.endPos());
                 }
                 expr = ColumnExpr.make(startPos, ident.endPos(), rowType, c);
@@ -615,7 +615,7 @@ public final class Parser {
 
         if (mLocalVars != null && idents.size() == 1) {
             Token.Text ident = idents.get(0);
-            String name = ident.mText;
+            String name = ident.text(true);
             Type varType = mLocalVars.get(name);
             if (varType != null) {
                 return VarExpr.make(ident.startPos(), ident.endPos(), varType, name);
@@ -626,11 +626,11 @@ public final class Parser {
         int endPos = idents.get(idents.size() - 1).endPos();
 
         TupleType rowType = rowType();
-        String path = toPath(idents);
-        Column c = rowType.tryFindColumn(path);
+        Column c = rowType.tryFindColumn(toPath(idents, true));
 
         if (c == null) {
-            throw new QueryException("Unknown column or variable: " + path, startPos, endPos);
+            throw new QueryException
+                ("Unknown column or variable: " + toPath(idents, false), startPos, endPos);
         }
 
         return ColumnExpr.make(startPos, endPos, rowType, c);
@@ -657,17 +657,17 @@ public final class Parser {
         return list;
     }
 
-    private static String toPath(List<Token.Text> idents) {
+    private static String toPath(List<Token.Text> idents, boolean escaped) {
         int size = idents.size();
         if (size == 1) {
-            return idents.get(0).mText;
+            return idents.get(0).text(escaped);
         }
         var b = new StringBuilder();
         for (int i=0; i<size; i++) {
             if (i > 0) {
                 b.append('.');
             }
-            b.append(idents.get(i).mText);
+            b.append(idents.get(i).text(escaped));
         }
         return b.toString();
     }

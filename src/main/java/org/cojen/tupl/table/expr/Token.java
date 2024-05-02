@@ -20,6 +20,8 @@ package org.cojen.tupl.table.expr;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 
+import org.cojen.tupl.table.RowMethodsMaker;
+
 /**
  * 
  *
@@ -86,6 +88,13 @@ sealed class Token {
         Text(int startPos, int endPos, int type, String text) {
             super(startPos, endPos, type);
             mText = text;
+        }
+
+        /**
+         * @param escaped when true, returns the text as a valid Java field or method name.
+         */
+        String text(boolean escaped) {
+            return escaped ? RowMethodsMaker.escape(mText) : mText;
         }
     }
 

@@ -237,18 +237,17 @@ final class MappedQueryExpr extends QueryExpr {
         var argsVar = argCount == 0 ? null : mm.field("args").get();
         var context = new EvalContext(argsVar, sourceRow);
 
-
         // Eagerly evaluate AssignExprs. The result might be needed by downstream expressions,
         // the filter, or it might throw an exception. In the unlikely case that none of these
         // conditions are met, then the AssignExprs can be evaluated after filtering.
-        IdentityHashMap<AssignExpr, Variable> mProjectedVars = null;
+        IdentityHashMap<AssignExpr, Variable> projectedVars = null;
         for (ProjExpr pe : mProjection) {
             if (pe.wrapped() instanceof AssignExpr ae) {
                 Variable v = pe.makeEval(context);
-                if (mProjectedVars == null) {
-                    mProjectedVars = new IdentityHashMap<>();
+                if (projectedVars == null) {
+                    projectedVars = new IdentityHashMap<>();
                 }
-                mProjectedVars.put(ae, v);
+                projectedVars.put(ae, v);
             }
         }
 
@@ -282,7 +281,7 @@ final class MappedQueryExpr extends QueryExpr {
             }
             Variable result;
             if (pe.wrapped() instanceof AssignExpr ae) {
-                result = mProjectedVars.get(ae);
+                result = projectedVars.get(ae);
             } else {
                 result = pe.makeEval(context);
             }
@@ -349,9 +348,11 @@ final class MappedQueryExpr extends QueryExpr {
 
         int numColumns = targetType.numColumns();
 
-        for (int i=0; i<numColumns; i++) {
-            Column column = targetType.column(i);
-            targetRow.invoke(column.name(), mProjection.get(i).makeEval(context));
+        int colNum = 0;
+        for (ProjExpr pe : mProjection) {
+            if (!pe.hasExclude()) {
+                targetRow.invoke(targetType.column(colNum++).name(), pe.makeEval(context));
+            }
         }
 
         mm.return_(targetRow);
@@ -401,18 +402,20 @@ final class MappedQueryExpr extends QueryExpr {
         TupleType targetType = type().rowType();
         int numColumns = targetType.numColumns();
 
-        for (int i=0; i<numColumns; i++) {
-            if (!(mProjection.get(i).wrapped() instanceof ColumnExpr source)) {
+        int colNum = 0;
+        for (ProjExpr pe : mProjection) {
+            if (pe.hasExclude() || !(pe.wrapped() instanceof ColumnExpr source)) {
                 continue;
             }
 
-            Class columnType = targetType.column(i).type().clazz();
+            Column targetColumn = targetType.column(colNum++);
+
+            Class columnType = targetColumn.type().clazz();
             if (columnType != source.type().clazz()) {
                 continue;
             }
 
-            String sourceName = MappedTable.escape(source.column().name());
-            String methodName = targetType.column(i).name() + "_to_" + sourceName;
+            String methodName = targetColumn.name() + "_to_" + source.column().name();
             MethodMaker mm = cm.addMethod(columnType, methodName, columnType).public_().static_();
             mm.addAnnotation(Untransformed.class, true);
             mm.return_(mm.param(0));
