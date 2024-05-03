@@ -147,7 +147,7 @@ public interface Table<R> extends Closeable {
     /**
      * For the given row, performs an action for each column which is set.
      */
-    public void forEach(R row, ColumnConsumer action);
+    public void forEach(R row, ColumnConsumer<? super R> action);
 
     /**
      * Returns a new scanner for all rows of this table.

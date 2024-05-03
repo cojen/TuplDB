@@ -24,12 +24,13 @@ package org.cojen.tupl;
  * @see Table#forEach
  */
 @FunctionalInterface
-public interface ColumnConsumer {
+public interface ColumnConsumer<R> {
     /**
      * Performs this operation on the given arguments.
      *
+     * @param row the row the column belongs to
      * @param name column name
      * @param value column value
      */
-    void accept(String name, Object value);
+    void accept(R row, String name, Object value);
 }

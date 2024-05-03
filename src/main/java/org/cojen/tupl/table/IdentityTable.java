@@ -113,7 +113,7 @@ public final class IdentityTable implements Table<IdentityTable.Row>, Query<Iden
     }
 
     @Override
-    public void forEach(Row row, ColumnConsumer action) {
+    public void forEach(Row row, ColumnConsumer<? super Row> action) {
         // Nothing to do.
     }
 

@@ -113,7 +113,7 @@ final class ClientTable<R> implements Table<R> {
     }
 
     @Override
-    public void forEach(R row, ColumnConsumer action) {
+    public void forEach(R row, ColumnConsumer<? super R> action) {
         mHelper.forEach(row, action);
     }
 
