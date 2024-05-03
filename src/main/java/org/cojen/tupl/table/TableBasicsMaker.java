@@ -224,7 +224,7 @@ public class TableBasicsMaker {
             Label next = mm.label();
             stateVar.and(RowGen.stateFieldMask(colNum)).ifEq(0, next);
 
-            consumerVar.invoke("accept", colName, rowVar.field(colName));
+            consumerVar.invoke("accept", rowVar, colName, rowVar.field(colName));
 
             next.here();
         }
