@@ -17,20 +17,18 @@
 
 package org.cojen.tupl.table.expr;
 
-import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.Iterator;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.TreeMap;
 
 import org.cojen.tupl.table.ColumnInfo;
 import org.cojen.tupl.table.ColumnSet;
 import org.cojen.tupl.table.IdentityTable;
 import org.cojen.tupl.table.RowGen;
 import org.cojen.tupl.table.RowInfo;
+import org.cojen.tupl.table.RowMethodsMaker;
 import org.cojen.tupl.table.RowUtils;
 import org.cojen.tupl.table.Unpersisted;
 import org.cojen.tupl.table.WeakCache;
@@ -46,7 +44,7 @@ import org.cojen.tupl.Row;
  *
  * @author Brian S. O'Neill
  */
-public final class TupleType extends Type {
+public final class TupleType extends Type implements Iterable<Column> {
     /**
      * Makes a type which has a generated row type class. Columns aren't defined for excluded
      * projections.
@@ -54,16 +52,16 @@ public final class TupleType extends Type {
      * @throws IllegalArgumentException if any names are duplicated
      */
     public static TupleType make(List<ProjExpr> projection) {
-        var columns = new ArrayList<Column>(projection.size());
+        var columns = new TreeMap<String, Column>();
 
         for (ProjExpr pe : projection) {
             if (!pe.hasExclude()) {
-                columns.add(Column.make(pe.type(), pe.name(), false));
+                addColumn(columns, Column.make(pe.type(), pe.name(), false));
             }
         }
 
         // Temporarily use the IdentityTable.Row class.
-        TupleType tt = new TupleType(IdentityTable.Row.class, columns.toArray(Column[]::new));
+        TupleType tt = new TupleType(IdentityTable.Row.class, columns);
 
         if (tt.numColumns() != 0) {
             tt = tt.withRowType(cCache.obtain(tt.makeKey(), tt));
@@ -83,79 +81,57 @@ public final class TupleType extends Type {
     public static TupleType make(Class rowType, Map<String, String> projection) {
         RowInfo info = RowInfo.find(rowType);
 
-        Column[] columns;
-        int ix = 0;
+        var columns = new TreeMap<String, Column>();
 
         if (projection == null) {
-            Map<String, ColumnInfo> keys = info.keyColumns;
-            Map<String, ColumnInfo> values = info.valueColumns;
-
-            columns = new Column[keys.size() + values.size()];
-
-            for (ColumnInfo ci : keys.values()) {
-                String name = ci.name;
-                columns[ix++] = Column.make(BasicType.make(ci), name, ci.isHidden());
-            }
-            for (ColumnInfo ci : values.values()) {
-                String name = ci.name;
-                columns[ix++] = Column.make(BasicType.make(ci), name, ci.isHidden());
+            for (ColumnInfo ci : info.allColumns.values()) {
+                addColumn(columns, Column.make(BasicType.make(ci), ci.name, ci.isHidden()));
             }
         } else {
-            columns = new Column[projection.size()];
-
             for (String name : projection.keySet()) {
                 ColumnInfo ci = ColumnSet.findColumn(info.allColumns, name);
                 if (ci == null) {
+                    name = RowMethodsMaker.unescape(name);
                     throw new IllegalArgumentException("Unknown column: " + name);
                 }
-                columns[ix++] = Column.make(BasicType.make(ci), name, ci.isHidden());
+                addColumn(columns, Column.make(BasicType.make(ci), name, ci.isHidden()));
             }
-        }
-
-        if (ix != columns.length) {
-            throw new AssertionError();
         }
 
         return new TupleType(rowType, columns);
     }
 
-    private final Column[] mColumns;
-    private final Map<String, Integer> mColumnMap;
-
-    private TupleType(Class clazz, Column[] columns) {
-        this(clazz, TYPE_REFERENCE, columns, makeColumnMap(columns));
-    }
-
-    private static Map<String, Integer> makeColumnMap(Column[] columns) {
-        Map<String, Integer> columnMap = new HashMap<>(columns.length * 2);
-
-        for (int i=0; i<columns.length; i++) {
-            String name = columns[i].name();
-            if (columnMap.putIfAbsent(name, i) != null) {
-                throw new IllegalArgumentException("Duplicate column: " + name);
-            }
+    private static void addColumn(TreeMap<String, Column> columns, Column column) {
+        String name = column.name();
+        if (columns.putIfAbsent(name, column) != null) {
+            name = RowMethodsMaker.unescape(name);
+            throw new IllegalArgumentException("Duplicate column: " + name);
         }
-
-        return columnMap;
     }
 
-    private TupleType(Class clazz, int typeCode, Column[] columns, Map<String, Integer> columnMap) {
+    // Use an ordered map to ensure that the encodeKey method produces consistent results.
+    private final TreeMap<String, Column> mColumns;
+
+    private TupleType(Class clazz, TreeMap<String, Column> columns) {
+        this(clazz, TYPE_REFERENCE, columns);
+    }
+
+    private TupleType(Class clazz, int typeCode, TreeMap<String, Column> columns) {
         super(clazz, typeCode);
         mColumns = columns;
-        mColumnMap = columnMap;
     }
 
     @Override
     public TupleType nullable() {
         return isNullable() ? this
-            : new TupleType(clazz(), TYPE_REFERENCE | TYPE_NULLABLE, mColumns, mColumnMap);
+            : new TupleType(clazz(), TYPE_REFERENCE | TYPE_NULLABLE, mColumns);
     }
 
     private TupleType withRowType(Class<?> clazz) {
         if (clazz() == clazz) {
             return this;
         }
-        return new TupleType(clazz, typeCode, mColumns, mColumnMap);
+        return new TupleType(clazz, typeCode, mColumns);
     }
 
     private static final byte K_TYPE = KeyEncoder.allocType();
@@ -163,8 +139,8 @@ public final class TupleType extends Type {
     @Override
     protected void encodeKey(KeyEncoder enc) {
         if (enc.encode(this, K_TYPE)) {
-            enc.encodeUnsignedVarInt(mColumns.length);
-            for (Column c : mColumns) {
+            enc.encodeUnsignedVarInt(mColumns.size());
+            for (Column c : mColumns.values()) {
                 c.encodeKey(enc);
             }
         }
@@ -173,14 +149,14 @@ public final class TupleType extends Type {
     @Override
     public int hashCode() {
         int hash = clazz().hashCode();
-        hash = hash * 31 + Arrays.hashCode(mColumns);
+        hash = hash * 31 + mColumns.hashCode();
         return hash;
     }
 
     @Override
     public boolean equals(Object obj) {
         return obj == this || obj instanceof TupleType tt
-            && clazz() == tt.clazz() && Arrays.equals(mColumns, tt.mColumns);
+            && clazz() == tt.clazz() && mColumns.equals(tt.mColumns);
     }
 
     @Override
@@ -192,24 +168,24 @@ public final class TupleType extends Type {
     protected void appendTo(StringBuilder b) {
         b.append('{');
 
-        int num = numColumns();
-        for (int i=0; i<num; i++) {
+        int i = 0;
+        for (Column column : this) {
             if (i > 0) {
                 b.append(", ");
             }
-            Column column = column(i);
             b.append(column.type()).append(' ').append(column.name());
+            i++;
         }
 
         b.append('}');
     }
 
     public int numColumns() {
-        return mColumns.length;
+        return mColumns.size();
     }
 
-    public Column column(int index) {
-        return mColumns[index];
+    public Iterator<Column> iterator() {
+        return mColumns.values().iterator();
     }
 
     /**
@@ -231,9 +207,7 @@ public final class TupleType extends Type {
      * @return null if not found
      */
     public Column tryColumnFor(String name) {
-        Map<String, Integer> map = mColumnMap;
-        Integer ix = map.get(name);
-        return ix == null ? null : mColumns[ix];
+        return mColumns.get(name);
     }
 
     /**
@@ -244,17 +218,16 @@ public final class TupleType extends Type {
      * @return null if not found
      */
     public Column tryFindColumn(String name) {
-        Map<String, Integer> map = mColumnMap;
-        Integer ix = map.get(name);
+        Map<String, Column> map = mColumns;
+        Column column = map.get(name);
 
-        if (ix != null) {
-            return mColumns[ix];
+        if (column != null) {
+            return column;
         }
 
         int dotIx = name.indexOf('.');
 
-        if (dotIx >= 0 && (ix = map.get(name.substring(0, dotIx))) != null) {
-            Column column = mColumns[ix];
+        if (dotIx >= 0 && (column = map.get(name.substring(0, dotIx))) != null) {
             if (column.type() instanceof TupleType tt) {
                 Column sub = tt.tryFindColumn(name.substring(dotIx + 1));
                 if (sub != null) {
@@ -267,21 +240,21 @@ public final class TupleType extends Type {
     }
 
     /**
-     * Returns true if the given projection exactly matches the tuples columns, in the same
-     * order. If null is passed in, this implies a full projection, and so true is returned in
-     * this case too.
+     * Returns true if the given projection exactly matches the tuple's columns, in no
+     * particular order.
      */
     public boolean matches(Collection<ProjExpr> projection) {
-        if (projection != null) {
-            if (projection.size() != numColumns()) {
+        if (projection.size() != mColumns.size()) {
+            return false;
+        }
+        for (ProjExpr pe : projection) {
+            Expr e = pe.wrapped();
+            if (!(e instanceof ColumnExpr ce)) {
                 return false;
             }
-            int i = 0;
-            for (ProjExpr pe : projection) {
-                Expr e = pe.wrapped();
-                if (!(e instanceof ColumnExpr ce) || !ce.column().equals(mColumns[i])) {
-                    return false;
-                }
+            Column column = ce.column();
+            if (!column.equals(mColumns.get(column.name()))) {
+                return false;
             }
         }
         return true;
@@ -289,22 +262,10 @@ public final class TupleType extends Type {
 
     /**
      * Returns true if the given projection exactly matches the names of tuple's type class, in
-     * the same order. If null is passed in, this implies a full projection, and so true is
-     * returned in this case too.
+     * no particular order.
      */
     public boolean matchesNames(Collection<String> projection) {
-        if (projection != null) {
-            if (projection.size() != numColumns()) {
-                return false;
-            }
-            int i = 0;
-            for (String name : projection) {
-                if (!mColumns[i++].name().equals(name)) {
-                    return false;
-                }
-            }
-        }
-        return true;
+        return projection.size() == mColumns.size() && mColumns.keySet().containsAll(projection);
     }
 
     private static final WeakCache<Object, Class<?>, TupleType> cCache;
@@ -319,12 +280,11 @@ public final class TupleType extends Type {
     }
 
     private Class<?> makeRowTypeClass() {
-
         ClassMaker cm = RowGen.beginClassMakerForRowType(TupleType.class.getPackageName(), "Type");
         cm.implement(Row.class);
         cm.sourceFile(getClass().getSimpleName()).addAnnotation(Unpersisted.class, true);
 
-        for (Column c : mColumns) {
+        for (Column c : mColumns.values()) {
             Type type = c.type();
             Class<?> clazz = type.clazz();
             String name = c.name();

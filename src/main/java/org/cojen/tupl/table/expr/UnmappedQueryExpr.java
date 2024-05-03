@@ -49,8 +49,8 @@ final class UnmappedQueryExpr extends QueryExpr {
                                   RelationExpr from, RowFilter rowFilter, List<ProjExpr> projection,
                                   int maxArgument)
     {
-        if (from.type().rowType().matches(projection)) {
-            // Full projection, in the natural order, with no renames.
+        if (projection != null && from.type().rowType().matches(projection)) {
+            // Full projection, with no renames.
             projection = null;
         }
 

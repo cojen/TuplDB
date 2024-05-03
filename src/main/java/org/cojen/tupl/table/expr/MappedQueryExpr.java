@@ -54,16 +54,35 @@ import org.cojen.maker.Variable;
  * @see QueryExpr#make
  */
 final class MappedQueryExpr extends QueryExpr {
+    /**
+     * @param filter can be null if filter is TrueFilter
+     * @param projection can be null to project all columns
+     * @see QueryExpr#make
+     */
+    public static MappedQueryExpr make(int startPos, int endPos,
+                                       RelationExpr from, RowFilter rowFilter, Expr filter,
+                                       List<ProjExpr> projection, int maxArgument)
+    {
+        TupleType type;
+
+        if (projection == null) {
+            // Use the existing row type.
+            type = from.type().rowType();
+            projection = from.fullProjection();
+        } else {
+            // Use a custom row type.
+            type = TupleType.make(projection);
+        }
+
+        return new MappedQueryExpr(-1, -1, type, from, rowFilter, filter, projection, maxArgument);
+    }
+
     private final Expr mFilter;
     private final boolean mRequireRemap;
 
-    /**
-     * @param filter can be null if filter is TrueFilter
-     * @see QueryExpr#make
-     */
-    MappedQueryExpr(int startPos, int endPos, TupleType type,
-                    RelationExpr from, RowFilter rowFilter, Expr filter,
-                    List<ProjExpr> projection, int maxArgument)
+    private MappedQueryExpr(int startPos, int endPos, TupleType type,
+                            RelationExpr from, RowFilter rowFilter, Expr filter,
+                            List<ProjExpr> projection, int maxArgument)
     {
         super(startPos, endPos, type, from, rowFilter, projection, maxArgument);
         mFilter = filter;
@@ -274,7 +293,6 @@ final class MappedQueryExpr extends QueryExpr {
             pass.here();
         }
 
-        int colNum = 0;
         for (ProjExpr pe : mProjection) {
             if (pe.hasExclude()) {
                 continue;
@@ -285,7 +303,7 @@ final class MappedQueryExpr extends QueryExpr {
             } else {
                 result = pe.makeEval(context);
             }
-            targetRow.invoke(targetType.column(colNum++).name(), result);
+            targetRow.invoke(pe.name(), result);
         }
 
         mm.return_(targetRow);
@@ -348,10 +366,9 @@ final class MappedQueryExpr extends QueryExpr {
 
         int numColumns = targetType.numColumns();
 
-        int colNum = 0;
         for (ProjExpr pe : mProjection) {
             if (!pe.hasExclude()) {
-                targetRow.invoke(targetType.column(colNum++).name(), pe.makeEval(context));
+                targetRow.invoke(pe.name(), pe.makeEval(context));
             }
         }
 
@@ -402,13 +419,12 @@ final class MappedQueryExpr extends QueryExpr {
         TupleType targetType = type().rowType();
         int numColumns = targetType.numColumns();
 
-        int colNum = 0;
         for (ProjExpr pe : mProjection) {
             if (pe.hasExclude() || !(pe.wrapped() instanceof ColumnExpr source)) {
                 continue;
             }
 
-            Column targetColumn = targetType.column(colNum++);
+            Column targetColumn = targetType.columnFor(pe.name());
 
             Class columnType = targetColumn.type().clazz();
             if (columnType != source.type().clazz()) {

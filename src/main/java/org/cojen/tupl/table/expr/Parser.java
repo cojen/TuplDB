@@ -247,8 +247,7 @@ public final class Parser {
                 final int startPos = first.startPos();
                 final TupleType rowType = rowType();
 
-                for (int i=0; i<rowType.numColumns(); i++) {
-                    Column c = rowType.column(i);
+                for (Column c : rowType) {
                     String name = c.name();
                     if (!map.containsKey(name)) {
                         wildcards.add(name);

@@ -107,7 +107,7 @@ public abstract sealed class QueryExpr extends RelationExpr
             }
 
             if (fromType.matchesNames(pureProjection.keySet())) {
-                // All columns are projected, in the natural order, with no renames.
+                // All columns are projected, with no renames.
                 projection = null;
                 pureProjection = null;
             }
@@ -194,19 +194,8 @@ public abstract sealed class QueryExpr extends RelationExpr
 
         // A Mapper is required.
 
-        TupleType type;
-
-        if (projection == null) {
-            // Use the existing row type.
-            type = from.type().rowType();
-            projection = from.fullProjection();
-        } else {
-            // Use a custom row type.
-            type = TupleType.make(projection);
-        }
-
-        return new MappedQueryExpr
-            (-1, -1, type, from, mappedRowFilter, mappedFilter, projection, maxArgument);
+        return MappedQueryExpr.make
+            (-1, -1, from, mappedRowFilter, mappedFilter, projection, maxArgument);
     }
 
     private static boolean hasRepeatedNonPureFunctions(RowFilter filter) {

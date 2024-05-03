@@ -95,9 +95,7 @@ public abstract sealed class RelationExpr extends Expr permits TableExpr, QueryE
     }
 
     private void fullProjection(Consumer<? super ProjExpr> consumer, TupleType tt, String prefix) {
-        int num = tt.numColumns();
-        for (int i=0; i<num; i++) {
-            Column column = tt.column(i);
+        for (Column column : tt) {
             if (column.type() instanceof TupleType ctt) {
                 fullProjection(consumer, ctt, prefix + column.name() + '.');
             } else {
