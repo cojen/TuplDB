@@ -134,10 +134,10 @@ public abstract sealed class Expr
     public abstract boolean isNullable();
 
     /**
-     * Returns a ColumnExpr if this expression is a ColumnExpr, or if this expression applies
-     * conversion to a ColumnExpr. Null is returned otherwise.
+     * Returns a ColumnExpr if this expression just evaluates a column with no transformations.
+     * Null is returned otherwise.
      */
-    public ColumnExpr extractColumn() {
+    public ColumnExpr directColumn() {
         return null;
     }
 

@@ -59,11 +59,6 @@ abstract sealed class WrappedExpr extends Expr
     }
 
     @Override
-    public final ColumnExpr extractColumn() {
-        return mExpr.extractColumn();
-    }
-
-    @Override
     public final void gatherEvalColumns(Consumer<Column> c) {
         mExpr.gatherEvalColumns(c);
     }

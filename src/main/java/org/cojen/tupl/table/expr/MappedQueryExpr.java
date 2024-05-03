@@ -420,7 +420,8 @@ final class MappedQueryExpr extends QueryExpr {
         int numColumns = targetType.numColumns();
 
         for (ProjExpr pe : mProjection) {
-            if (pe.hasExclude() || !(pe.wrapped() instanceof ColumnExpr source)) {
+            ColumnExpr source;
+            if (pe.hasExclude() || (source = pe.directColumn()) == null) {
                 continue;
             }
 

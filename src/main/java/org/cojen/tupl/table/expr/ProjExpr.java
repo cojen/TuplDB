@@ -114,6 +114,11 @@ public final class ProjExpr extends WrappedExpr implements Named {
     }
 
     @Override
+    public ColumnExpr directColumn() {
+        return mExpr.directColumn();
+    }
+
+    @Override
     public Variable makeEval(EvalContext context) {
         return mExpr.makeEval(context);
     }

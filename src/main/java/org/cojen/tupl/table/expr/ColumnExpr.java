@@ -91,7 +91,7 @@ public final class ColumnExpr extends Expr implements Named {
     }
 
     @Override
-    public ColumnExpr extractColumn() {
+    public ColumnExpr directColumn() {
         return this;
     }
 

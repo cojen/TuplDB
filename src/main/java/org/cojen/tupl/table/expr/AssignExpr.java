@@ -59,6 +59,11 @@ public final class AssignExpr extends WrappedExpr implements Named {
     }
 
     @Override
+    public ColumnExpr directColumn() {
+        return mExpr.directColumn();
+    }
+
+    @Override
     public Variable makeEval(EvalContext context) {
         Variable dest = context.findOrDeclareLocalVar(type(), name());
         setAny(dest, mExpr.makeEval(context));
