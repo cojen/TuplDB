@@ -86,7 +86,7 @@ public final class Parser {
                     System.out.println(row);
                     var r = (org.cojen.tupl.Row) row;
 
-                    t.forEach(r, (n, v) -> {
+                    t.forEach(r, (_, n, v) -> {
                         System.out.println("---");
                         System.out.println("nv: " + n + " -> " + v);
                         System.out.println("columnMethodName: " + r.columnMethodName(n));

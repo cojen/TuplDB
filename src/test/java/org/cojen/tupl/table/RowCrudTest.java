@@ -78,7 +78,7 @@ public class RowCrudTest {
 
         assertFalse(mTable.isSet(row, "id"));
 
-        mTable.forEach(row, (n, v) -> {
+        mTable.forEach(row, (r, n, v) -> {
             fail();
         });
 
@@ -112,7 +112,8 @@ public class RowCrudTest {
 
         var found = new HashMap<String, Object>();
 
-        mTable.forEach(row, (n, v) -> {
+        mTable.forEach(row, (r, n, v) -> {
+            assertSame(row, r);
             found.put(n, v);
         });
 
@@ -164,7 +165,8 @@ public class RowCrudTest {
         row.num1(100);
         assertTrue(row.toString().endsWith("{*id=1, *num1=100, *str1=hello, *str2=null}"));
 
-        mTable.forEach(row, (n, v) -> {
+        mTable.forEach(row, (r, n, v) -> {
+            assertSame(row, r);
             found.put(n, v);
         });
 
