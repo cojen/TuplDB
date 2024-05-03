@@ -24,7 +24,7 @@ package org.cojen.tupl;
  * @see Table#forEach
  */
 @FunctionalInterface
-public interface ColumnConsumer<R> {
+public interface ColumnProcessor<R> {
     /**
      * Performs this operation on the given arguments.
      *

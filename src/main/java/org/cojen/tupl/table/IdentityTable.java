@@ -28,7 +28,7 @@ import java.util.Comparator;
 
 import java.util.stream.Stream;
 
-import org.cojen.tupl.ColumnConsumer;
+import org.cojen.tupl.ColumnProcessor;
 import org.cojen.tupl.DurabilityMode;
 import org.cojen.tupl.Query;
 import org.cojen.tupl.Scanner;
@@ -113,7 +113,7 @@ public final class IdentityTable implements Table<IdentityTable.Row>, Query<Iden
     }
 
     @Override
-    public void forEach(Row row, ColumnConsumer<? super Row> action) {
+    public void forEach(Row row, ColumnProcessor<? super Row> action) {
         // Nothing to do.
     }
 

@@ -28,7 +28,7 @@ import org.cojen.dirmi.ClosedException;
 import org.cojen.dirmi.Pipe;
 import org.cojen.dirmi.RemoteException;
 
-import org.cojen.tupl.ColumnConsumer;
+import org.cojen.tupl.ColumnProcessor;
 import org.cojen.tupl.DurabilityMode;
 import org.cojen.tupl.Query;
 import org.cojen.tupl.Scanner;
@@ -113,7 +113,7 @@ final class ClientTable<R> implements Table<R> {
     }
 
     @Override
-    public void forEach(R row, ColumnConsumer<? super R> action) {
+    public void forEach(R row, ColumnProcessor<? super R> action) {
         mHelper.forEach(row, action);
     }
 

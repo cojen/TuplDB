@@ -30,7 +30,7 @@ import org.cojen.maker.Label;
 import org.cojen.maker.MethodMaker;
 import org.cojen.maker.Variable;
 
-import org.cojen.tupl.ColumnConsumer;
+import org.cojen.tupl.ColumnProcessor;
 import org.cojen.tupl.Table;
 
 /**
@@ -139,7 +139,7 @@ public class TableBasicsMaker {
         // Add the forEach method.
         {
             MethodMaker mm = cm.addMethod
-                (null, "forEach", Object.class, ColumnConsumer.class).public_();
+                (null, "forEach", Object.class, ColumnProcessor.class).public_();
             var indy = mm.var(TableBasicsMaker.class).indy("indyForEach", rowType);
             indy.invoke(null, "forEach", null, mm.param(0), mm.param(1));
         }

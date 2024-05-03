@@ -42,7 +42,7 @@ import org.cojen.maker.ClassMaker;
 import org.cojen.maker.Label;
 import org.cojen.maker.MethodMaker;
 
-import org.cojen.tupl.ColumnConsumer;
+import org.cojen.tupl.ColumnProcessor;
 import org.cojen.tupl.NoSuchRowException;
 import org.cojen.tupl.Query;
 import org.cojen.tupl.Scanner;
@@ -248,7 +248,7 @@ public abstract sealed class ViewedTable<R> extends WrappedTable<R, R> {
     }
 
     @Override
-    public void forEach(R row, ColumnConsumer<? super R> action) {
+    public void forEach(R row, ColumnProcessor<? super R> action) {
         mSource.forEach(row, action);
     }
 
