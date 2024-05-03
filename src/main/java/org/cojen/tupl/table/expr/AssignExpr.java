@@ -19,6 +19,8 @@ package org.cojen.tupl.table.expr;
 
 import org.cojen.maker.Variable;
 
+import org.cojen.tupl.table.RowMethodsMaker;
+
 /**
  * Defines an expression which evaluates an expression, stores it to a local variable, and then
  * returns the variable.
@@ -98,6 +100,6 @@ public final class AssignExpr extends WrappedExpr implements Named {
 
     @Override
     protected void appendTo(StringBuilder b) {
-        b.append(mName).append(" = ").append(mExpr);
+        b.append(RowMethodsMaker.unescape(mName)).append(" = ").append(mExpr);
     }
 }

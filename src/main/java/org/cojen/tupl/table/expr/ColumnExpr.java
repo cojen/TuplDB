@@ -25,6 +25,8 @@ import org.cojen.maker.Label;
 import org.cojen.maker.MethodMaker;
 import org.cojen.maker.Variable;
 
+import org.cojen.tupl.table.RowMethodsMaker;
+
 /**
  * Defines an expression which reads a named column from a row.
  *
@@ -138,7 +140,7 @@ public final class ColumnExpr extends Expr implements Named {
 
     @Override
     public String toString() {
-        return mColumn.name();
+        return RowMethodsMaker.unescape(mColumn.name());
     }
 
     private static final class Sub {

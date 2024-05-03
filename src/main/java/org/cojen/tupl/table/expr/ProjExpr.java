@@ -19,6 +19,8 @@ package org.cojen.tupl.table.expr;
 
 import org.cojen.maker.Variable;
 
+import org.cojen.tupl.table.RowMethodsMaker;
+
 /**
  * Defines a projection term.
  *
@@ -166,7 +168,7 @@ public final class ProjExpr extends WrappedExpr implements Named {
         if (mExpr instanceof AssignExpr) {
             mExpr.appendTo(b);
         } else {
-            b.append(name());
+            b.append(RowMethodsMaker.unescape(name()));
         }
     }
 }

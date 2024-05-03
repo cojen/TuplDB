@@ -21,6 +21,8 @@ import java.util.function.Consumer;
 
 import org.cojen.maker.Variable;
 
+import org.cojen.tupl.table.RowMethodsMaker;
+
 /**
  * Defines an expression which reads a named local variable.
  *
@@ -107,6 +109,6 @@ public final class VarExpr extends Expr implements Named {
 
     @Override
     public String toString() {
-        return mName;
+        return RowMethodsMaker.unescape(mName);
     }
 }

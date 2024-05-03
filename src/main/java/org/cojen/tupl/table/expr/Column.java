@@ -20,6 +20,8 @@ package org.cojen.tupl.table.expr;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.cojen.tupl.table.RowMethodsMaker;
+
 /**
  * Describes the name and type of a tuple column.
  *
@@ -128,7 +130,7 @@ public sealed class Column implements Named {
 
     @Override
     public String toString() {
-        return '{' + "type=" + mType + ", " + "name=" + mName + '}';
+        return '{' + "type=" + mType + ", " + "name=" + RowMethodsMaker.unescape(mName) + '}';
     }
 
     private static final class Hidden extends Column {
