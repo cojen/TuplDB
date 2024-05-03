@@ -411,7 +411,7 @@ public class RowMaker {
         bob.invoke("append", '*');
         clean.here();
 
-        bob.invoke("append", info.name).invoke("append", '=');
+        bob.invoke("append", RowMethodsMaker.unescape(info.name)).invoke("append", '=');
         CodeUtils.appendValue(bob, info, rowObject.field(info.name));
 
         unset.here();
