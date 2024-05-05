@@ -60,13 +60,12 @@ final class UnmappedQueryExpr extends QueryExpr {
             argMap = null;
         } else {
             final var fArgMap = new LinkedHashMap<Object, Integer>();
-            final int fMaxArgument = maxArgument;
 
             rowFilter = rowFilter.constantsToArguments((ColumnToConstantFilter f) -> {
                 Object value = ((ConstantExpr) f.constant()).value();
                 Integer arg = fArgMap.get(value);
                 if (arg == null) {
-                    arg = fMaxArgument + fArgMap.size() + 1;
+                    arg = maxArgument + fArgMap.size() + 1;
                     fArgMap.put(value, arg);
                 }
                 return arg;
@@ -78,7 +77,6 @@ final class UnmappedQueryExpr extends QueryExpr {
                 argMap = null;
             } else {
                 argMap = fArgMap;
-                maxArgument += size;
             }
         }
 
@@ -155,9 +153,7 @@ final class UnmappedQueryExpr extends QueryExpr {
         if (mArgMap == null) {
             viewArgs = RowUtils.NO_ARGS;
         } else {
-            int size = mArgMap.size();
-            baseArgCount -= size;
-            viewArgs = mArgMap.keySet().toArray(new Object[size]);
+            viewArgs = mArgMap.keySet().toArray(new Object[mArgMap.size()]);
         }
 
         if (baseArgCount == 0) {
