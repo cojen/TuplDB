@@ -125,8 +125,8 @@ public abstract class BaseTableIndex<R> extends BaseTable<R> {
     }
 
     @Override
-    public QueryLauncher.Delegate<R> query(String queryStr) {
+    public QueryLauncher<R> query(String queryStr) {
         // Not cached because this method is just used by the test suite.
-        return new QueryLauncher.Delegate<>(this, queryStr);
+        return new BaseQueryLauncher<>(this, queryStr);
     }
 }
