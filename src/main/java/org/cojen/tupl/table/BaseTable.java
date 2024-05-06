@@ -88,9 +88,9 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
         @Override
         public QueryLauncher<R> newValue(String queryStr, QuerySpec query) {
             if (query != null) {
-                return new QueryLauncher.Delegate<>(BaseTable.this, query);
+                return new BaseQueryLauncher<>(BaseTable.this, query);
             }
-            var launcher = new QueryLauncher.Delegate<>(BaseTable.this, queryStr);
+            var launcher = new BaseQueryLauncher<>(BaseTable.this, queryStr);
             String canonicalStr = launcher.canonicalQueryString();
             if (canonicalStr.equals(queryStr)) {
                 return launcher;

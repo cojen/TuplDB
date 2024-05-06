@@ -191,7 +191,7 @@ public final class TableManager<R> {
      * necessary query caches, which must be run after the transaction commits. The task isn't
      * expected to be slow, and so it can run in the current thread. Running the task before
      * the transaction commits can lead to deadlock. The deadlock is caused by a combination of
-     * the transaction lock and synchronized methods in QueryLauncher.Delegate.
+     * the transaction lock and synchronized methods in BaseQueryLauncher.
      *
      * @param tableVersion non-zero current table definition version
      * @param rs used to open secondary indexes
