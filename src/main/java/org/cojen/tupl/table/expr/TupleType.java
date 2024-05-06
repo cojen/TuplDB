@@ -21,6 +21,7 @@ import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.TreeMap;
 
 import org.cojen.tupl.table.ColumnInfo;
@@ -51,12 +52,12 @@ public final class TupleType extends Type implements Iterable<Column> {
      *
      * @throws IllegalArgumentException if any names are duplicated
      */
-    public static TupleType make(List<ProjExpr> projection) {
+    public static TupleType make(Collection<ProjExpr> projection) {
         var columns = new TreeMap<String, Column>();
 
         for (ProjExpr pe : projection) {
             if (!pe.hasExclude()) {
-                addColumn(columns, Column.make(pe.type(), pe.name(), false));
+                addColumn(columns, Column.make(pe.type(), pe.name()));
             }
         }
 
@@ -72,29 +73,27 @@ public final class TupleType extends Type implements Iterable<Column> {
 
     /**
      * Makes a type which uses the given row type class.
-
-     * @param projection maps row column names to target names; can pass null to project
-     * all columns without renaming them
+     * @param projection consists of column names; can pass null to project all columns
      * @throws QueryException if projection refers to a non-existent column or if any
      * target column names are duplicated
      */
-    public static TupleType make(Class rowType, Map<String, String> projection) {
+    public static TupleType make(Class rowType, Set<String> projection) {
         RowInfo info = RowInfo.find(rowType);
 
         var columns = new TreeMap<String, Column>();
 
         if (projection == null) {
             for (ColumnInfo ci : info.allColumns.values()) {
-                addColumn(columns, Column.make(BasicType.make(ci), ci.name, ci.isHidden()));
+                addColumn(columns, Column.make(BasicType.make(ci), ci.name));
             }
         } else {
-            for (String name : projection.keySet()) {
+            for (String name : projection) {
                 ColumnInfo ci = ColumnSet.findColumn(info.allColumns, name);
                 if (ci == null) {
                     name = RowMethodsMaker.unescape(name);
                     throw new IllegalArgumentException("Unknown column: " + name);
                 }
-                addColumn(columns, Column.make(BasicType.make(ci), name, ci.isHidden()));
+                addColumn(columns, Column.make(BasicType.make(ci), name));
             }
         }
 
@@ -240,14 +239,17 @@ public final class TupleType extends Type implements Iterable<Column> {
     }
 
     /**
-     * Returns true if the given projection exactly matches the tuple's columns, in no
-     * particular order.
+     * Returns true if the given projection has no ordered columns and exactly consists of the
+     * columns of this tuple.
      */
     public boolean matches(Collection<ProjExpr> projection) {
         if (projection.size() != mColumns.size()) {
             return false;
         }
         for (ProjExpr pe : projection) {
+            if (pe.hasExclude() || pe.hasOrderBy()) {
+                return false;
+            }
             Expr e = pe.wrapped();
             if (!(e instanceof ColumnExpr ce)) {
                 return false;
@@ -258,14 +260,6 @@ public final class TupleType extends Type implements Iterable<Column> {
             }
         }
         return true;
-    }
-
-    /**
-     * Returns true if the given projection exactly matches the names of tuple's type class, in
-     * no particular order.
-     */
-    public boolean matchesNames(Collection<String> projection) {
-        return projection.size() == mColumns.size() && mColumns.keySet().containsAll(projection);
     }
 
     private static final WeakCache<Object, Class<?>, TupleType> cCache;

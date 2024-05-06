@@ -74,8 +74,8 @@ public final class TableExpr extends RelationExpr {
     }
 
     @Override
-    public TableProvider<?> makeTableProvider() {
-        return TableProvider.make(mTable);
+    public CompiledQuery<?> makeCompiledQuery() {
+        return CompiledQuery.make(mTable);
     }
 
     private static final byte K_TYPE = KeyEncoder.allocType();

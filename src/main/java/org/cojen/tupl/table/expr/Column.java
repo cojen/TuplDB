@@ -28,7 +28,7 @@ import org.cojen.tupl.table.RowMethodsMaker;
  * @author Brian S. O'Neill
  * @see TupleType
  */
-public sealed class Column implements Named {
+public final class Column implements Named {
     private final Type mType;
     private final String mName;
 
@@ -37,8 +37,8 @@ public sealed class Column implements Named {
     /**
      * @param name column name (can be fully qualified)
      */
-    public static Column make(Type type, String name, boolean hidden) {
-        return hidden ? new Hidden(type, name) : new Column(type, name);
+    public static Column make(Type type, String name) {
+        return new Column(type, name);
     }
 
     private Column(Type type, String name) {
@@ -48,10 +48,6 @@ public sealed class Column implements Named {
 
     public Type type() {
         return mType;
-    }
-
-    public boolean isHidden() {
-        return false;
     }
 
     @Override
@@ -124,37 +120,11 @@ public sealed class Column implements Named {
         return obj == this ||
             obj instanceof Column c
             && mType.equals(c.mType)
-            && mName.equals(c.mName)
-            && isHidden() == c.isHidden();
+            && mName.equals(c.mName);
     }
 
     @Override
     public String toString() {
         return '{' + "type=" + mType + ", " + "name=" + RowMethodsMaker.unescape(mName) + '}';
-    }
-
-    private static final class Hidden extends Column {
-        private Hidden(Type type, String name) {
-            super(type, name);
-        }
-
-        @Override
-        public boolean isHidden() {
-            return true;
-        }
-
-        @Override
-        public Hidden withName(String name) {
-            return name.equals(name()) ? this : new Hidden(type(), name);
-        }
-
-        private static final byte K_TYPE = KeyEncoder.allocType();
-
-        @Override
-        void encodeKey(KeyEncoder enc) {
-            if (enc.encode(this, K_TYPE)) {
-                doEncodeKey(enc);
-            }
-        }
     }
 }

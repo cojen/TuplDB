@@ -34,11 +34,25 @@ import org.cojen.tupl.table.OrderBy;
  * @see Parser#parseQuery
  */
 public record QuerySpec(Map<String, ColumnInfo> projection, OrderBy orderBy, RowFilter filter) {
+    public QuerySpec(Map<String, ColumnInfo> projection, OrderBy orderBy, RowFilter filter) {
+        if (orderBy != null && orderBy.isEmpty()) {
+            orderBy = null;
+        }
+        Objects.requireNonNull(filter);
+        this.projection = projection;
+        this.orderBy = orderBy;
+        this.filter = filter;
+    }
+
     public QuerySpec withProjection(Map<String, ColumnInfo> proj) {
         return proj.equals(projection) ? this : new QuerySpec(proj, orderBy, filter);
     }
 
     public QuerySpec withOrderBy(OrderBy ob) {
+        if (ob != null && ob.isEmpty()) {
+            ob = null;
+        }
+
         if (Objects.equals(orderBy, ob)) {
             return this;
         }
@@ -75,11 +89,10 @@ public record QuerySpec(Map<String, ColumnInfo> projection, OrderBy orderBy, Row
     }
 
     /**
-     * Returns true if effective query is "{*}".
+     * Returns true if the effective query is "{*}".
      */
     public boolean isFullScan() {
-        return projection == null && (orderBy == null || orderBy.isEmpty())
-            && filter == TrueFilter.THE;
+        return projection == null && orderBy == null && filter == TrueFilter.THE;
     }
 
     @Override

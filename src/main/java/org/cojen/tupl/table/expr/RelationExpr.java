@@ -23,9 +23,11 @@ import java.util.List;
 
 import java.util.function.Consumer;
 
+import org.cojen.tupl.Row;
 import org.cojen.tupl.Table;
 
 import org.cojen.tupl.table.filter.QuerySpec;
+import org.cojen.tupl.table.filter.TrueFilter;
 
 import org.cojen.maker.Variable;
 
@@ -99,7 +101,7 @@ public abstract sealed class RelationExpr extends Expr permits TableExpr, QueryE
             if (column.type() instanceof TupleType ctt) {
                 fullProjection(consumer, ctt, prefix + column.name() + '.');
             } else {
-                column = Column.make(column.type(), prefix + column.name(), column.isHidden());
+                column = Column.make(column.type(), prefix + column.name());
                 consumer.accept(ProjExpr.make(-1, -1, ColumnExpr.make(-1, -1, tt, column), 0));
             }
         }
@@ -112,7 +114,39 @@ public abstract sealed class RelationExpr extends Expr permits TableExpr, QueryE
     public abstract QuerySpec querySpec(Table<?> table);
 
     /**
-     * Makes a fully functional TableProvider from this expression.
+     * Makes a fully functional CompiledQuery from this expression.
      */
-    public abstract TableProvider<?> makeTableProvider();
+    public abstract CompiledQuery<?> makeCompiledQuery();
+
+    /**
+     * If possible, makes a fully functional CompiledQuery from this expression, composed of
+     * the given row type.
+     */
+    @SuppressWarnings("unchecked")
+    public <R> CompiledQuery<R> tryMakeCompiledQuery(Class<R> rowType) {
+        if (rowType.isAssignableFrom(type().rowType().clazz())) {
+            return (CompiledQuery<R>) makeCompiledQuery();
+        }
+
+        return null;
+    }
+
+    /**
+     * Makes a fully functional CompiledQuery from this expression, composed of rows which
+     * implement the Row interface.
+     */
+    @SuppressWarnings("unchecked")
+    public CompiledQuery<Row> makeRowCompiledQuery() {
+        if (Row.class.isAssignableFrom(type().rowType().clazz())) {
+            return (CompiledQuery<Row>) makeCompiledQuery();
+        }
+
+        List<ProjExpr> projection = fullProjection();
+
+        var newType = TupleType.make(projection);
+
+        return new MappedQueryExpr
+            (-1, -1, newType, this, TrueFilter.THE, null, projection, maxArgument())
+            .makeRowCompiledQuery();
+    }
 }

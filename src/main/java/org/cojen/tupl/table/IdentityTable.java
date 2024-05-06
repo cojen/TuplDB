@@ -52,7 +52,7 @@ import org.cojen.tupl.table.filter.QuerySpec;
  * @author Brian S. O'Neill
  */
 public final class IdentityTable implements Table<IdentityTable.Row>, Query<IdentityTable.Row> {
-    public interface Row extends Comparable<Row> { }
+    public interface Row extends Comparable<Row>, org.cojen.tupl.Row { }
 
     // Singleton instance.
     public static final IdentityTable THE = new IdentityTable();

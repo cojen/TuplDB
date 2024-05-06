@@ -50,7 +50,7 @@ final class UnmappedQueryExpr extends QueryExpr {
                                   int maxArgument)
     {
         if (projection != null && from.type().rowType().matches(projection)) {
-            // Full projection, with no renames.
+            // Full projection and no order-by specification.
             projection = null;
         }
 
@@ -106,7 +106,7 @@ final class UnmappedQueryExpr extends QueryExpr {
             return new QuerySpec(null, null, mRowFilter);
         }
 
-        var map = new LinkedHashMap<String, ColumnInfo>(projection.size() * 2);
+        var projMap = new LinkedHashMap<String, ColumnInfo>(projection.size() * 2);
         var orderBy = new OrderBy(projection.size() * 2);
 
         RowInfo info = RowInfo.find(table.rowType());
@@ -124,20 +124,25 @@ final class UnmappedQueryExpr extends QueryExpr {
                 throw new AssertionError();
             }
 
-            map.put(name, ci);
+            projMap.put(name, ci);
 
             if (pe.hasOrderBy()) {
                 orderBy.put(name, new OrderBy.Rule(ci, pe.applyOrderBy(ci.typeCode)));
             }
         }
 
-        return new QuerySpec(map, orderBy, mRowFilter);
+        if (projMap.size() == allColumns.size()) {
+            // Full projection.
+            projMap = null;
+        }
+
+        return new QuerySpec(projMap, orderBy, mRowFilter);
     }
 
     @Override
     @SuppressWarnings("unchecked")
-    protected TableProvider<?> doMakeTableProvider() {
-        TableProvider<?> source = mFrom.makeTableProvider();
+    public CompiledQuery<?> makeCompiledQuery() {
+        CompiledQuery<?> source = mFrom.makeCompiledQuery();
 
         if (mRowFilter == TrueFilter.THE && mProjection == null) {
             return source;
@@ -157,11 +162,11 @@ final class UnmappedQueryExpr extends QueryExpr {
         }
 
         if (baseArgCount == 0) {
-            return TableProvider.make(source.table().view(viewQuery, viewArgs));
+            return CompiledQuery.make(source.table().view(viewQuery, viewArgs));
         }
 
         if (viewArgs.length == 0) {
-            return new TableProvider.Wrapped(source, baseArgCount) {
+            return new CompiledQuery.Wrapped(source, baseArgCount) {
                 @Override
                 public Table table(Object... args) {
                     return source.table(args).view(viewQuery, args);
@@ -169,7 +174,7 @@ final class UnmappedQueryExpr extends QueryExpr {
             };
         }
 
-        return new TableProvider.Wrapped(source, baseArgCount) {
+        return new CompiledQuery.Wrapped(source, baseArgCount) {
             @Override
             public Table table(Object... args) {
                 int argCount = checkArgumentCount(args);

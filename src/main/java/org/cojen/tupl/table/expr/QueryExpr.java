@@ -17,6 +17,7 @@
 
 package org.cojen.tupl.table.expr;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -68,49 +69,31 @@ public abstract sealed class QueryExpr extends RelationExpr
 
         int maxArgument = from.maxArgument();
 
-        /*
-          Maps source column names to target names (renames). Is null when:
+        // Determine the exact projection to be applied to the "from" source.
+        final List<ProjExpr> fromProjection;
 
-          - the projection is null (all columns are projected)
-          - or the requested projection doesn't refer to a column
-          - or any source column is a path
-          - or any source column is projected more than once
-        */
-        Map<String, String> pureProjection;
-
-        pure: if (projection == null) {
-            pureProjection = null;
+        if (projection == null) {
+            fromProjection = null;
         } else {
-            for (ProjExpr expr : projection) {
-                maxArgument = Math.max(maxArgument, expr.maxArgument());
-            }
-
-            pureProjection = new LinkedHashMap<String, String>();
+            var projMap = new LinkedHashMap<String, ProjExpr>();
 
             for (ProjExpr pe : projection) {
-                if (!(pe.wrapped() instanceof ColumnExpr ce)) {
-                    // Not projecting a column.
-                    pureProjection = null;
-                    break pure;
-                }
-                Column c = ce.column();
-                if (c.subNames().size() > 1) {
-                    // Projecting a path.
-                    pureProjection = null;
-                    break pure;
-                }
-                if (pureProjection.putIfAbsent(c.name(), pe.name()) != null) {
-                    // Column is projected more than once.
-                    pureProjection = null;
-                    break pure;
+                maxArgument = Math.max(maxArgument, pe.maxArgument());
+
+                ProjExpr direct = pe.directProjColumn();
+                if (direct == null) {
+                    pe.gatherEvalColumns(c -> {
+                        projMap.computeIfAbsent(c.name(), k -> {
+                            var ce = ColumnExpr.make(-1, -1, fromType, c);
+                            return ProjExpr.make(-1, -1, ce, 0);
+                        });
+                    });
+                } else if (!pe.hasExclude()) {
+                    projMap.put(direct.name(), direct);
                 }
             }
 
-            if (fromType.matchesNames(pureProjection.keySet())) {
-                // All columns are projected, with no renames.
-                projection = null;
-                pureProjection = null;
-            }
+            fromProjection = new ArrayList<>(projMap.values());
         }
 
         // Split the filter such that the unmapped part can be pushed down. The remaining
@@ -154,48 +137,57 @@ public abstract sealed class QueryExpr extends RelationExpr
             mappedRowFilter = splitRowFilters[1];
 
             if (unmappedRowFilter == TrueFilter.THE) {
-                // Nothing will push down, so just use the original row filter.
-                mappedRowFilter = originalRowFilter;
+                // Nothing pushes down, so just use the original row filter, unless it was
+                // reduced away.
+                if (mappedRowFilter != TrueFilter.THE) {
+                    mappedRowFilter = originalRowFilter;
+                }
                 mappedFilter = filter;
             } else if (mappedRowFilter == TrueFilter.THE) {
+                // The filter pushes down entirely, so just use the original row filter.
+                unmappedRowFilter = originalRowFilter;
                 mappedFilter = null;
             } else if (mappedRowFilter == originalRowFilter) {
+                // Nothing pushes down, and the original row filter is to be used.
                 mappedFilter = filter;
             } else {
+                // The filter has been split, and a mapped filter expression must be made.
                 mappedFilter = new ToExprVisitor(columns).apply(mappedRowFilter.reduceMore());
             }
         }
 
         // Attempt to push down filtering and projection by replacing the "from" expression
         // with an UnmappedQueryExpr.
-        pushDown: {
-            List<ProjExpr> fromProjection;
-
-            if (mappedRowFilter == TrueFilter.THE && projection != null && pureProjection != null) {
-                // Can push down filtering and projection entirely; no Mapper is needed.
-                fromType = TupleType.make(fromType.clazz(), pureProjection);
-                fromProjection = projection;
-                projection = null;
-            } else if (unmappedRowFilter == TrueFilter.THE) {
-                // There's no filter and all columns need to be projected, so there's nothing
-                // to push down.
-                break pushDown;
-            } else {
-                fromProjection = null;
-            }
-
+        if (unmappedRowFilter != TrueFilter.THE || fromProjection != null) {
             from = UnmappedQueryExpr.make
                 (-1, -1, fromType, from, unmappedRowFilter, fromProjection, maxArgument);
         }
 
-        if (mappedRowFilter == TrueFilter.THE && projection == null) {
+        if (mappedRowFilter == TrueFilter.THE &&
+            (projection == null || projection.equals(fromProjection)))
+        {
             return from;
         }
 
         // A Mapper is required.
 
-        return MappedQueryExpr.make
-            (-1, -1, from, mappedRowFilter, mappedFilter, projection, maxArgument);
+        TupleType type;
+
+        if (projection == null) {
+            // Use the existing row type.
+            type = fromType;
+            projection = from.fullProjection();
+        } else {
+            // Use a custom row type.
+            type = TupleType.make(projection);
+        }
+
+        // FIXME: Pass fromProjection to MappedQueryExpr, in order for the sourceProjection
+        // method to be constructed properly. If fromType.matchesNames(fromProjection), then
+        // fromProjection is all, and so sourceProjection doesn't need to be implemented.
+
+        return new MappedQueryExpr
+            (-1, -1, type, from, mappedRowFilter, mappedFilter, projection, maxArgument);
     }
 
     private static boolean hasRepeatedNonPureFunctions(RowFilter filter) {
@@ -243,8 +235,6 @@ public abstract sealed class QueryExpr extends RelationExpr
     protected final int mMaxArgument;
 
     private String mRowFilterString;
-
-    private TableProvider<?> mTableProvider;
 
     protected QueryExpr(int startPos, int endPos, TupleType type,
                         RelationExpr from, RowFilter rowFilter, List<ProjExpr> projection,
@@ -323,16 +313,6 @@ public abstract sealed class QueryExpr extends RelationExpr
     public final String toString() {
         return defaultToString();
     }
-
-    @Override
-    public final TableProvider<?> makeTableProvider() {
-        if (mTableProvider == null) {
-            mTableProvider = doMakeTableProvider();
-        }
-        return mTableProvider;
-    }
-
-    protected abstract TableProvider<?> doMakeTableProvider();
 
     protected final String rowFilterString() {
         if (mRowFilterString == null) {

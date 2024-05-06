@@ -120,6 +120,14 @@ public final class ProjExpr extends WrappedExpr implements Named {
         return mExpr.directColumn();
     }
 
+    /**
+     * Returns the directColumn (if any) wrapped as a new ProjExpr.
+     */
+    public ProjExpr directProjColumn() {
+        ColumnExpr ce = directColumn();
+        return ce == null ? null : make(ce.startPos(), ce.endPos(), ce, mFlags);
+    }
+
     @Override
     public Variable makeEval(EvalContext context) {
         return mExpr.makeEval(context);

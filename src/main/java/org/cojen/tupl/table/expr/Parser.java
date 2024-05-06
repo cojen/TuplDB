@@ -39,71 +39,6 @@ import static org.cojen.tupl.table.expr.Token.*;
  */
 public final class Parser {
     /*
-      FIXME: testing
-    */
-    @SuppressWarnings("unchecked")
-    public static void main(String[] args) throws Exception {
-        Table<tupl.schema.sakila.customer> table = null;
-
-        if (true) {
-            var db = org.cojen.tupl.Database.open(new org.cojen.tupl.DatabaseConfig());
-
-            table = db.openTable(tupl.schema.sakila.customer.class);
-
-            var row = table.newRow();
-            row.customer_id(1);
-            row.store_id(1);
-            row.first_name("John");
-            row.last_name("Smith");
-            row.email("me@you.com");
-            row.address_id(123);
-            row.activebool(true);
-            row.create_date("2001-01-01");
-            row.last_update("2001-11-23");
-            row.active(null);
-            table.insert(null, row);
-        }
-
-        RelationExpr expr = Parser.parse(table, args[0]);
-        System.out.println(expr.getClass());
-        System.out.println(expr);
-        System.out.println("querySpec: " + expr.querySpec(table));
-
-        TableProvider<?> p = expr.makeTableProvider();
-        System.out.println("provider: " + p + ", " + p.argumentCount());
-
-        if (p.argumentCount() == 0) {
-            Table t = p.table();
-            System.out.println("table: " + t);
-            System.out.println("rowType: " + t.rowType());
-
-            System.out.println("plan:");
-            System.out.println(t.queryAll().scannerPlan(null));
-
-            System.out.println("dump rows...");
-            try (var s = t.newScanner(null)) {
-                for (Object row = s.row(); row != null; row = s.step(row)) {
-                    System.out.println(row);
-                    var r = (org.cojen.tupl.Row) row;
-
-                    t.forEach(r, (_, n, v) -> {
-                        System.out.println("---");
-                        System.out.println("nv: " + n + " -> " + v);
-                        System.out.println("columnMethodName: " + r.columnMethodName(n));
-                        System.out.println("columnType: " + r.columnType(n));
-                        System.out.println("get: " + r.get(n));
-                        System.out.println("get by method name: " + r.get(r.columnMethodName(n)));
-                    });
-
-                    r.set("z", 123.0);
-                    System.out.println(r);
-                }
-            }
-            System.out.println("...done");
-        }
-    }
-
-    /*
 
       FIXME: Notes:
 
@@ -251,11 +186,9 @@ public final class Parser {
                     String name = c.name();
                     if (!map.containsKey(name)) {
                         wildcards.add(name);
-                        if (!c.isHidden()) {
-                            map.put(name, ProjExpr.make
-                                    (startPos, startPos,
-                                     ColumnExpr.make(startPos, startPos, rowType, c), 0));
-                        }
+                        map.put(name, ProjExpr.make
+                                (startPos, startPos,
+                                 ColumnExpr.make(startPos, startPos, rowType, c), 0));
                     }
                 }
             } else {

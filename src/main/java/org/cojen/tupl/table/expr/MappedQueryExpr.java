@@ -54,35 +54,17 @@ import org.cojen.maker.Variable;
  * @see QueryExpr#make
  */
 final class MappedQueryExpr extends QueryExpr {
-    /**
-     * @param filter can be null if filter is TrueFilter
-     * @param projection can be null to project all columns
-     * @see QueryExpr#make
-     */
-    public static MappedQueryExpr make(int startPos, int endPos,
-                                       RelationExpr from, RowFilter rowFilter, Expr filter,
-                                       List<ProjExpr> projection, int maxArgument)
-    {
-        TupleType type;
-
-        if (projection == null) {
-            // Use the existing row type.
-            type = from.type().rowType();
-            projection = from.fullProjection();
-        } else {
-            // Use a custom row type.
-            type = TupleType.make(projection);
-        }
-
-        return new MappedQueryExpr(-1, -1, type, from, rowFilter, filter, projection, maxArgument);
-    }
-
     private final Expr mFilter;
     private final boolean mRequireRemap;
 
-    private MappedQueryExpr(int startPos, int endPos, TupleType type,
-                            RelationExpr from, RowFilter rowFilter, Expr filter,
-                            List<ProjExpr> projection, int maxArgument)
+    /**
+     * @param filter can be null if rowFilter is TrueFilter
+     * @param projection not null; see RelationExpr.fullProjection
+     * @see QueryExpr#make
+     */
+    MappedQueryExpr(int startPos, int endPos, TupleType type,
+                    RelationExpr from, RowFilter rowFilter, Expr filter,
+                    List<ProjExpr> projection, int maxArgument)
     {
         super(startPos, endPos, type, from, rowFilter, projection, maxArgument);
         mFilter = filter;
@@ -117,8 +99,8 @@ final class MappedQueryExpr extends QueryExpr {
 
     @Override
     @SuppressWarnings("unchecked")
-    protected TableProvider doMakeTableProvider() {
-        TableProvider source = mFrom.makeTableProvider();
+    public CompiledQuery makeCompiledQuery() {
+        CompiledQuery source = mFrom.makeCompiledQuery();
 
         MapperFactory factory = cCache.obtain(makeKey(), this);
 
@@ -127,11 +109,11 @@ final class MappedQueryExpr extends QueryExpr {
         int argCount = maxArgument();
 
         if (argCount == 0) {
-            return TableProvider.make
+            return CompiledQuery.make
                 (source.table().map(targetClass, factory.get(RowUtils.NO_ARGS)));
         }
 
-        return new TableProvider.Wrapped(source, argCount) {
+        return new CompiledQuery.Wrapped(source, argCount) {
             @Override
             public Class rowType() {
                 return targetClass;

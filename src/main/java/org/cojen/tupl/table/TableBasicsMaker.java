@@ -225,7 +225,7 @@ public class TableBasicsMaker {
             stateVar.and(RowGen.stateFieldMask(colNum)).ifEq(0, next);
 
             String realName = RowMethodsMaker.unescape(colName);
-            consumerVar.invoke("accept", realName, rowVar.field(colName));
+            consumerVar.invoke("accept", rowVar, realName, rowVar.field(colName));
 
             next.here();
         }
