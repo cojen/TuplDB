@@ -540,6 +540,9 @@ final class Tokenizer {
             case "null":
                 type = Token.T_NULL;
                 break ident;
+            case "in":
+                type = Token.T_IN;
+                break ident;
             }
 
             return new Token.Text(startPos, mPos + 1, Token.T_IDENTIFIER, str);

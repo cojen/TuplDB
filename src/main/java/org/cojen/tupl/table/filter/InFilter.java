@@ -25,7 +25,7 @@ import org.cojen.tupl.table.ColumnInfo;
  * @author Brian S O'Neill
  */
 public final class InFilter extends ColumnToArgFilter {
-    InFilter(ColumnInfo column, int arg) {
+    public InFilter(ColumnInfo column, int arg) {
         this(column, OP_IN, arg);
     }
 

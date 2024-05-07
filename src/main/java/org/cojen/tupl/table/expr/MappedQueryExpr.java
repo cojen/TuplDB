@@ -329,7 +329,7 @@ final class MappedQueryExpr extends QueryExpr {
                 continue;
             }
 
-            String methodName = targetColumn.name() + "_to_" + source.column().name();
+            String methodName = targetColumn.name() + "_to_" + source.name();
             MethodMaker mm = cm.addMethod(columnType, methodName, columnType).public_().static_();
             mm.addAnnotation(Untransformed.class, true);
             mm.return_(mm.param(0));

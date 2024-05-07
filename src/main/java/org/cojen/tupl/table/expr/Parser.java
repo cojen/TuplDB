@@ -358,7 +358,7 @@ public final class Parser {
 
     /*
      * RelExpr = AddExpr { RelOp AddExpr }
-     * RelOp   = "==" | "!=" | ">=" | "<" | "<=" | ">"
+     * RelOp   = "==" | "!=" | ">=" | "<" | "<=" | ">" | "in"
      */
     private Expr parseRelExpr() throws IOException {
         Expr expr = parseAddExpr();
@@ -372,6 +372,11 @@ public final class Parser {
                 consumePeek();
                 Expr right = parseAddExpr();
                 expr = BinaryOpExpr.make(expr.startPos(), right.endPos(), type, expr, right);
+                break;
+            case T_IN:
+                consumePeek();
+                right = parseAddExpr();
+                expr = InExpr.make(expr.startPos(), right.endPos(), expr, right);
                 break;
             case T_ASSIGN:
                 throw new QueryException("Equality operator must be specified as '=='", peek);

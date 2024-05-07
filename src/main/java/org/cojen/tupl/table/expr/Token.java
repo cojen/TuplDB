@@ -30,7 +30,7 @@ import org.cojen.tupl.table.RowMethodsMaker;
 sealed class Token {
     static final int T_EOF = -1;
 
-    // Note: BinaryOpExpr and FilterExpr depend on the values and ordering of these type code.
+    // Note: BinaryOpExpr and FilterExpr depend on the values and ordering of these type codes.
     // Also, the relational type codes must exactly match the corresponding ColumnFilter.OP
     // constants.
     static final int T_EQ = 0, T_NE = 1, T_GE = 2, T_LT = 3, T_LE = 4, T_GT = 5;
@@ -42,14 +42,14 @@ sealed class Token {
     static final int T_ASSIGN = 20, T_TILDE = 21, T_COMMA = 22, T_DOT = 23, T_ARG = 24;
 
     // Keywords.
-    static final int T_FALSE = 25, T_TRUE = 26, T_NULL = 27;
+    static final int T_FALSE = 25, T_TRUE = 26, T_NULL = 27, T_IN = 28;
 
     // Tokens which have a text value.
-    static final int T_UNKNOWN = 28, T_IDENTIFIER = 29, T_STRING = 30;
+    static final int T_UNKNOWN = 29, T_IDENTIFIER = 30, T_STRING = 31;
 
     // Numerical constants.
-    static final int T_INT = 31, T_LONG = 32, T_BIGINT = 33,
-        T_FLOAT = 34, T_DOUBLE = 35, T_BIGDEC = 36;
+    static final int T_INT = 32, T_LONG = 33, T_BIGINT = 34,
+        T_FLOAT = 35, T_DOUBLE = 36, T_BIGDEC = 37;
 
     private final int mStartPos, mEndPos, mType;
 

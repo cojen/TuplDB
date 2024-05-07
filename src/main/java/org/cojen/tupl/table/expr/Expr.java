@@ -30,6 +30,7 @@ import org.cojen.tupl.table.filter.OpaqueFilter;
 import org.cojen.tupl.table.filter.RowFilter;
 
 import org.cojen.maker.Label;
+import org.cojen.maker.MethodMaker;
 import org.cojen.maker.Variable;
 
 /**
@@ -38,7 +39,8 @@ import org.cojen.maker.Variable;
  * @author Brian S. O'Neill
  */
 public abstract sealed class Expr
-    permits BinaryOpExpr, ColumnExpr, ConstantExpr, ParamExpr, RelationExpr, VarExpr, WrappedExpr
+    permits BinaryOpExpr, ColumnExpr, ConstantExpr, InExpr,
+    ParamExpr, RelationExpr, VarExpr, WrappedExpr
 {
     private final int mStartPos, mEndPos;
 
@@ -158,6 +160,42 @@ public abstract sealed class Expr
      * already been evaluated and is updated by this method.
      */
     public abstract Variable makeEval(EvalContext context);
+
+    /**
+     * Provides an implementation of the makeEval method which calls makeFilter and returns
+     * true or false.
+     */
+    protected Variable makeEvalForFilter(EvalContext context) {
+        EvalContext.ResultRef resultRef;
+
+        if (isPureFunction()) {
+            resultRef = context.refFor(this);
+            var result = resultRef.get();
+            if (result != null) {
+                return result;
+            }
+        } else {
+            resultRef = null;
+        }
+
+        MethodMaker mm = context.methodMaker();
+
+        Label pass = mm.label();
+        Label fail = mm.label();
+
+        makeFilter(context, pass, fail);
+
+        var result = resultRef == null ? mm.var(boolean.class) : resultRef.toSet(boolean.class);
+
+        fail.here();
+        result.set(false);
+        Label cont = mm.label().goto_();
+        pass.here();
+        result.set(true);
+        cont.here();
+
+        return result;
+    }
 
     /**
      * Generates code which evaluates an expression for branching to a pass or fail label.

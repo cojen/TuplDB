@@ -130,7 +130,7 @@ public final class FilterExpr extends BinaryOpExpr {
     }
 
     private static ColumnInfo tryFindColumn(RowInfo info, ColumnExpr expr) {
-        return ColumnSet.findColumn(info.allColumns, expr.column().name());
+        return ColumnSet.findColumn(info.allColumns, expr.name());
     }
 
     @Override
@@ -140,35 +140,7 @@ public final class FilterExpr extends BinaryOpExpr {
 
     @Override
     public Variable makeEval(EvalContext context) {
-        EvalContext.ResultRef resultRef;
-
-        if (isPureFunction()) {
-            resultRef = context.refFor(this);
-            var result = resultRef.get();
-            if (result != null) {
-                return result;
-            }
-        } else {
-            resultRef = null;
-        }
-
-        MethodMaker mm = context.methodMaker();
-
-        Label pass = mm.label();
-        Label fail = mm.label();
-
-        makeFilter(context, pass, fail);
-
-        var result = resultRef == null ? mm.var(boolean.class) : resultRef.toSet(boolean.class);
-
-        fail.here();
-        result.set(false);
-        Label cont = mm.label().goto_();
-        pass.here();
-        result.set(true);
-        cont.here();
-
-        return result;
+        return makeEvalForFilter(context);
     }
 
     @Override
