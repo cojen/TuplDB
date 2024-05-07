@@ -35,6 +35,7 @@ import static org.cojen.tupl.table.ColumnInfo.*;
  *
  * @author Brian S O'Neill
  */
+// FIXME: remove
 public final class Parser extends SimpleParser {
     private final Map<String, ? extends ColumnInfo> mAllColumns;
     private final int mArgDelta;

@@ -53,6 +53,8 @@ import org.cojen.tupl.diag.EventListener;
 import org.cojen.tupl.diag.EventType;
 import org.cojen.tupl.diag.QueryPlan;
 
+import org.cojen.tupl.table.expr.RelationExpr;
+
 import org.cojen.tupl.table.filter.ComplexFilterException;
 import org.cojen.tupl.table.filter.FalseFilter;
 import org.cojen.tupl.table.filter.Parser;
@@ -84,19 +86,21 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
 
     private final MultiCache<String, ScanControllerFactory<R>, QuerySpec> mFilterFactoryCache;
 
-    class QueryCache extends SoftCache<String, QueryLauncher<R>, QuerySpec> {
+    // Short lived helper, used by QueryCache.
+    private record ParsedQuery(String queryStr, RelationExpr expr) { }
+
+    class QueryCache extends SoftCache<Object, QueryLauncher<R>, ParsedQuery> {
         @Override
-        public QueryLauncher<R> newValue(String queryStr, QuerySpec query) {
-            if (query != null) {
-                return new BaseQueryLauncher<>(BaseTable.this, query);
+        public QueryLauncher<R> newValue(Object queryOrKey, ParsedQuery pq) {
+            if (queryOrKey instanceof TupleKey) {
+                return BaseQueryLauncher.make(BaseTable.this, pq.queryStr(), pq.expr());
             }
-            var launcher = new BaseQueryLauncher<>(BaseTable.this, queryStr);
-            String canonicalStr = launcher.canonicalQueryString();
-            if (canonicalStr.equals(queryStr)) {
-                return launcher;
-            } else { 
-                return obtain(canonicalStr, launcher.canonicalQuery());
-            }
+            String queryStr = (String) queryOrKey;
+            assert pq == null;
+            RelationExpr expr = BaseQueryLauncher.parse(BaseTable.this, queryStr);
+            // Obtain the canonical instance and map to that.
+            TupleKey key = expr.makeKey();
+            return obtain(key, new ParsedQuery(queryStr, expr));
         }
     }
 

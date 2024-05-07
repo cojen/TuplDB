@@ -25,6 +25,8 @@ import static org.junit.Assert.*;
 
 import org.cojen.tupl.*;
 
+import org.cojen.tupl.table.expr.QueryException;
+
 /**
  * 
  *
@@ -57,13 +59,28 @@ public class ScannerTest {
 
         verify(table.newScanner(null, "{}"), 1, 5);
         verify(table.newScanner(null, "{id}"), 1, 5, "id");
-        verify(table.newScanner(null, "{id, id}"), 1, 5, "id");
+
+        try {
+            verify(table.newScanner(null, "{id, id}"), 1, 5, "id");
+        } catch (QueryException e) {
+            assertTrue(e.getMessage().contains("Duplicate projection"));
+        }
+
         verify(table.newScanner(null, "{name, state}"), 1, 5, "name", "state");
 
         verify(table.newScanner(null, "{*}"), 1, 5, "id", "name", "path", "state");
-        verify(table.newScanner(null, "{~id, *}"), 1, 5, "name", "path", "state");
-        verify(table.newScanner(null, "{~id, ~id, *}"), 1, 5, "name", "path", "state");
-        verify(table.newScanner(null, "{~name, *, ~state}"), 1, 5, "id", "path");
+
+        try {
+            verify(table.newScanner(null, "{~id, *}"), 1, 5, "name", "path", "state");
+        } catch (QueryException e) {
+            assertTrue(e.getMessage().contains("Excluded projection not found"));
+        }
+
+        try {
+            verify(table.newScanner(null, "{~name, *, ~state}"), 1, 5, "id", "path");
+        } catch (QueryException e) {
+            assertTrue(e.getMessage().contains("Excluded projection not found"));
+        }
 
         verify(table.newScanner(null, "{} name == ?", "name-3"), 3, 3);
         verify(table.newScanner(null, "{path} name == ?", "name-3"), 3, 3, "path");

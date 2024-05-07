@@ -251,7 +251,7 @@ public abstract sealed class Expr
     /**
      * Returns a cache key instance by calling encodeKey.
      */
-    protected final TupleKey makeKey() {
+    public final TupleKey makeKey() {
         var enc = new KeyEncoder();
         encodeKey(enc);
         return enc.finish();

@@ -138,8 +138,8 @@ public final class ProjExpr extends WrappedExpr implements Named {
     @Override
     protected void encodeKey(KeyEncoder enc) {
         if (enc.encode(this, K_TYPE)) {
-            assert mFlags < 256;
-            enc.encodeByte(mFlags);
+            assert mFlags < 65536;
+            enc.encodeShort(mFlags);
             mExpr.encodeKey(enc);
         }
     }

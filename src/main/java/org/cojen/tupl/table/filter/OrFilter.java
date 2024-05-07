@@ -93,7 +93,7 @@ public sealed class OrFilter extends GroupFilter permits FalseFilter {
     @Override
     public final void appendTo(StringBuilder b) {
         if (mSubFilters.length == 0) {
-            b.append("!()");
+            b.append("false");
         } else {
             super.appendTo(b);
         }

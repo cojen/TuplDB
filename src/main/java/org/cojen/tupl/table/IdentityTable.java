@@ -242,11 +242,11 @@ public final class IdentityTable implements Table<IdentityTable.Row>, Query<Iden
     }
 
     private static boolean findsAnything(String query) {
-        // FIXME: replace the true/false forms
         switch (query) {
-        case "{}", "{*}", "()": return true;
-        case "{} !()", "{*} !()", "!()": return false;
+        case "{}", "{*}", "true": return true;
+        case "{} false", "{*} false", "false": return false;
         }
+        // FIXME: use expr.Parser
         QuerySpec spec = new Parser(Collections.emptyMap(), query).parseQuery(null);
         return spec.filter() != FalseFilter.THE;
     }

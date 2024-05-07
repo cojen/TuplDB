@@ -29,13 +29,17 @@ import org.cojen.tupl.ClosedIndexException;
 import org.cojen.tupl.LockFailureException;
 import org.cojen.tupl.Scanner;
 import org.cojen.tupl.Updater;
+import org.cojen.tupl.Table;
+
 import org.cojen.tupl.Transaction;
 
 import org.cojen.tupl.diag.QueryPlan;
 
 import org.cojen.tupl.io.Utils;
 
-import org.cojen.tupl.table.filter.Parser;
+import org.cojen.tupl.table.expr.Parser;
+import org.cojen.tupl.table.expr.RelationExpr;
+
 import org.cojen.tupl.table.filter.QuerySpec;
 
 import static org.cojen.tupl.table.BaseTable.*;
@@ -49,6 +53,30 @@ import static org.cojen.tupl.table.BaseTable.*;
  * @author Brian S. O'Neill
  */
 final class BaseQueryLauncher<R> extends QueryLauncher<R> {
+    /**
+     * Parses a query against a table, throwing a QueryException if it fails.
+     */
+    static RelationExpr parse(Table<?> table, String queryStr) {
+        return Parser.parse(table, queryStr);
+    }
+
+    /**
+     * Makes a BaseQueryLauncher from a parsed query if it's relatively simple and can be
+     * represented by a QuerySpec, or else returns a CompiledQuery instance.
+     *
+     * @param expr the parsed query
+     */
+    @SuppressWarnings("unchecked")
+    static <R> QueryLauncher<R> make(BaseTable<R> table, String queryStr, RelationExpr expr) {
+        QuerySpec query = expr.querySpec(table);
+        if (query != null) {
+            return new BaseQueryLauncher<>(table, queryStr, query.reduce());
+        } else {
+            // FIXME: Check the rowType. If not the same, then only a derived query is allowed.
+            return (QueryLauncher<R>) expr.makeCompiledQuery();
+        }
+    }
+
     private final BaseTable<R> mTable;
     private final String mQueryStr;
 
@@ -58,11 +86,12 @@ final class BaseQueryLauncher<R> extends QueryLauncher<R> {
         mForScanner, mForScannerDoubleCheck,
         mForUpdater, mForUpdaterDoubleCheck;
 
+    // FIXME: remove this ctor
     BaseQueryLauncher(BaseTable<R> table, String queryStr) {
-        RowInfo rowInfo = RowInfo.find(table.rowType());
-        Map<String, ColumnInfo> allColumns = rowInfo.allColumns;
-        QuerySpec query = new Parser(allColumns, queryStr).parseQuery(allColumns).reduce();
+        this(table, queryStr, parse(table, queryStr).querySpec(table).reduce());
+    }
 
+    private BaseQueryLauncher(BaseTable<R> table, String queryStr, QuerySpec query) {
         mTable = table;
 
         String newString = query.toString();
@@ -73,23 +102,6 @@ final class BaseQueryLauncher<R> extends QueryLauncher<R> {
         mQueryStr = queryStr;
 
         mQueryRef = new WeakReference<>(query);
-    }
-
-    /**
-     * @param query canonical query
-     */
-    BaseQueryLauncher(BaseTable<R> table, QuerySpec query) {
-        mTable = table;
-        mQueryStr = query.toString();
-        mQueryRef = new WeakReference<>(query);
-    }
-
-    public String canonicalQueryString() {
-        return mQueryStr;
-    }
-
-    public QuerySpec canonicalQuery() {
-        return query(null);
     }
 
     @Override
@@ -229,8 +241,7 @@ final class BaseQueryLauncher<R> extends QueryLauncher<R> {
 
         if (selector == null) {
             RowInfo rowInfo = RowInfo.find(mTable.rowType());
-            selector = new IndexSelector<R>
-                (mTable, rowInfo, query(rowInfo), (type & FOR_UPDATE) != 0);
+            selector = new IndexSelector<R>(mTable, rowInfo, query(), (type & FOR_UPDATE) != 0);
         }
 
         if ((type & DOUBLE_CHECK) != 0 && selector.noJoins()) {
@@ -258,17 +269,10 @@ final class BaseQueryLauncher<R> extends QueryLauncher<R> {
         return launcher;
     }
 
-    /**
-     * @param rowInfo can be null
-     */
-    private QuerySpec query(RowInfo rowInfo) {
+    private QuerySpec query() {
         QuerySpec query = mQueryRef.get();
         if (query == null) {
-            if (rowInfo == null) {
-                rowInfo = RowInfo.find(mTable.rowType());
-            }
-            Map<String, ColumnInfo> allColumns = rowInfo.allColumns;
-            query = new Parser(allColumns, mQueryStr).parseQuery(allColumns);
+            query = parse(mTable, mQueryStr).querySpec(mTable);
             var ref = new WeakReference<>(query);
             VarHandle.storeStoreFence();
             mQueryRef = ref;
