@@ -117,8 +117,7 @@ public sealed class BinaryOpExpr extends Expr permits FilterExpr {
 
         if (op >= T_LAND && left.canThrowRuntimeException() && !right.canThrowRuntimeException()) {
             // Swap the evaluation order such that an exception is less likely to be thrown due
-            // to short-circuit logic. The implementation of hasOrderDependentException in the
-            // FilterExpr class assumes that this swap operation has been performed.
+            // to short-circuit logic.
             Expr temp = left;
             left = right;
             right = temp;
@@ -277,11 +276,6 @@ public sealed class BinaryOpExpr extends Expr permits FilterExpr {
             return mOp == T_DIV || mOp == T_REM;
         }
         return true;
-    }
-
-    @Override
-    public boolean hasOrderDependentException() {
-        return mLeft.hasOrderDependentException() || mRight.hasOrderDependentException();
     }
 
     private static final byte K_TYPE = KeyEncoder.allocType();

@@ -55,7 +55,6 @@ import org.cojen.maker.Variable;
  */
 final class MappedQueryExpr extends QueryExpr {
     private final Expr mFilter;
-    private final boolean mRequireRemap;
 
     /**
      * @param filter can be null if rowFilter is TrueFilter
@@ -68,12 +67,6 @@ final class MappedQueryExpr extends QueryExpr {
     {
         super(startPos, endPos, type, from, rowFilter, projection, maxArgument);
         mFilter = filter;
-        mRequireRemap = requireRemap(filter);
-    }
-
-    private static boolean requireRemap(Expr filter) {
-        return filter == null ? false
-            : (filter.hasOrderDependentException() && filter.isPureFunction());
     }
 
     @Override
@@ -174,10 +167,6 @@ final class MappedQueryExpr extends QueryExpr {
 
         Set<Column> evalColumns = gatherEvalColumns();
 
-        if (mRequireRemap) {
-            addRemapMethod(cm, evalColumns, argCount);
-        }
-
         addMapMethod(cm, evalColumns, argCount);
 
         addSourceProjectionMethod(cm, evalColumns);
@@ -255,23 +244,9 @@ final class MappedQueryExpr extends QueryExpr {
         if (mRowFilter != TrueFilter.THE) {
             Label pass = mm.label();
             Label fail = mm.label();
-
-            Label tryStart = null;
-            if (mRequireRemap) {
-                tryStart = mm.label().here();
-            }
-
             mFilter.makeFilter(context, pass, fail);
-
             fail.here();
             mm.return_(null);
-
-            if (mRequireRemap) {
-                mm.catch_(tryStart, RuntimeException.class, exVar -> {
-                    mm.return_(mm.invoke("remap", exVar, sourceRow, targetRow));
-                });
-            }
-
             pass.here();
         }
 
@@ -295,66 +270,6 @@ final class MappedQueryExpr extends QueryExpr {
             (Object.class, "map", Object.class, Object.class).public_().bridge();
         bridge.return_(bridge.this_().invoke(targetType.clazz(), "map",
                                              null, bridge.param(0), bridge.param(1)));
-    }
-
-    /**
-     * Defines a private variant of the map method which is only called when an exception is
-     * thrown when the map method is processing the filter. The remap method doesn't generate
-     * short circuit logic, and it can suppress an exception depending on the outcome of an
-     * 'and' or 'or' operation. If an exception shouldn't be suppressed, the original is thrown.
-     */
-    private void addRemapMethod(ClassMaker cm, Set<Column> evalColumns, int argCount) {
-        // Generated code needs access to the RemapUtils class in this package.
-        {
-            var thisModule = getClass().getModule();
-            var thatModule = cm.classLoader().getUnnamedModule();
-            thisModule.addExports("org.cojen.tupl.table.expr", thatModule);
-        }
-
-        TupleType targetType = type().rowType();
-
-        Class sourceParamType = Object.class;
-
-        if (!evalColumns.isEmpty()) {
-            sourceParamType = mFrom.type().rowType().clazz();
-        }
-
-        MethodMaker mm = cm.addMethod
-            (targetType.clazz(), "remap",
-             RuntimeException.class, sourceParamType, targetType.clazz())
-            .private_();
-
-        var originalEx = mm.param(0);
-        var sourceRow = mm.param(1);
-        var targetRow = mm.param(2);
-
-        var argsVar = argCount == 0 ? null : mm.field("args").get();
-        var context = new EvalContext(argsVar, sourceRow);
-
-        Label tryStart = mm.label().here();
-
-        var resultVar = mFilter.makeFilterEvalRemap(context);
-
-        mm.catch_(tryStart, Throwable.class, exVar -> {
-            originalEx.throw_();
-        });
-
-        Label pass = mm.label();
-
-        mm.var(RemapUtils.class).invoke("checkFinal", originalEx, resultVar).ifTrue(pass);
-        mm.return_(null);
-
-        pass.here();
-
-        int numColumns = targetType.numColumns();
-
-        for (ProjExpr pe : mProjection) {
-            if (!pe.hasExclude()) {
-                targetRow.invoke(pe.name(), pe.makeEval(context));
-            }
-        }
-
-        mm.return_(targetRow);
     }
 
     private void addSourceProjectionMethod(ClassMaker cm, Set<Column> evalColumns) {

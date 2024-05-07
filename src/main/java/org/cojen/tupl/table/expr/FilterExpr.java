@@ -221,74 +221,7 @@ public final class FilterExpr extends BinaryOpExpr {
     }
 
     @Override
-    public Variable makeFilterEvalRemap(EvalContext context) {
-        if (!hasOrderDependentException()) {
-            return super.makeFilterEvalRemap(context);
-        }
-
-        var leftVar = makeFilterEvalRemap(context, mLeft);
-        var rightVar = makeFilterEvalRemap(context, mRight);
-
-        String method = switch(mOp) {
-        case T_LAND -> "And";
-        case T_LOR -> "Or";
-        default -> throw new AssertionError();
-        };
-
-        MethodMaker mm = context.methodMaker();
-
-        return mm.var(RemapUtils.class).invoke("check" + method, leftVar, rightVar);
-    }
-
-    /**
-     * @return an assigned Object variable which references a Boolean or a RuntimeException
-     */
-    private static Variable makeFilterEvalRemap(EvalContext context, Expr expr) {
-        MethodMaker mm = context.methodMaker();
-
-        Label pass = mm.label();
-        Label fail = mm.label();
-
-        Variable result = mm.var(Object.class);
-
-        Label tryStart = null;
-        int savepoint = 0;
-
-        if (expr.canThrowRuntimeException()) {
-            tryStart = mm.label().here();
-            savepoint = context.refSavepoint();
-        }
-
-        expr.makeFilter(context, pass, fail);
-
-        fail.here();
-        result.set(false);
-        Label cont = mm.label().goto_();
-        pass.here();
-        result.set(true);
-
-        if (tryStart != null) {
-            // Rollback the refs for the expression, because it doesn't always fully execute.
-            context.refRollback(savepoint);
-
-            mm.catch_(tryStart, RuntimeException.class, exVar -> {
-                result.set(exVar);
-            });
-        }
-
-        cont.here();
-
-        return result;
-    }
-
-    @Override
     public boolean canThrowRuntimeException() {
         return mLeft.canThrowRuntimeException() || mRight.canThrowRuntimeException();
-    }
-
-    @Override
-    public boolean hasOrderDependentException() {
-        return super.hasOrderDependentException()
-            || ((mOp == T_LAND || mOp == T_LOR) && mLeft.canThrowRuntimeException());
     }
 }
