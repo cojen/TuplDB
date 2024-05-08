@@ -397,13 +397,18 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
     public final void scanWrite(Transaction txn, Pipe out) throws IOException {
         var writer = new RowWriter<R>(out);
 
-        // Pass the writer as if it's a row, but it's actually a RowConsumer.
-        Scanner<R> scanner = newScanner((R) writer, txn);
         try {
-            while (scanner.step((R) writer) != null);
-        } catch (Throwable e) {
-            Utils.closeQuietly(scanner);
-            Utils.rethrow(e);
+            // Pass the writer as if it's a row, but it's actually a RowConsumer.
+            Scanner<R> scanner = newScanner((R) writer, txn);
+            try {
+                while (scanner.step((R) writer) != null);
+            } catch (Throwable e) {
+                Utils.closeQuietly(scanner);
+                throw e;
+            }
+        } catch (RuntimeException | IOException e) {
+            writer.writeTerminalException(e);
+            return;
         }
 
         writer.writeTerminator();
@@ -418,15 +423,12 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
     {
         var writer = new RowWriter<R>(out);
 
-        QueryLauncher<R> launcher;
         try {
-            launcher = query(queryStr);
-        } catch (RuntimeException e) {
+            query(queryStr).scanWrite(txn, writer, args);
+        } catch (RuntimeException | IOException e) {
             writer.writeTerminalException(e);
             return;
         }
-
-        launcher.scanWrite(txn, writer, args);
 
         writer.writeTerminator();
     }
@@ -442,7 +444,12 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
     {
         var writer = new RowWriter<R>(out);
 
-        ((QueryLauncher) query).scanWrite(txn, writer, args);
+        try {
+            ((QueryLauncher) query).scanWrite(txn, writer, args);
+        } catch (RuntimeException | IOException e) {
+            writer.writeTerminalException(e);
+            return;
+        }
 
         writer.writeTerminator();
     }
