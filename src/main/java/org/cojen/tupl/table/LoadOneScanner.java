@@ -45,9 +45,7 @@ final class LoadOneScanner<R> implements Scanner<R>, UnsupportedCursor {
     {
         byte[] key = controller.oneKey();
         byte[] value = source.load(txn, key);
-        if (value == null) {
-            mRow = null;
-        } else {
+        if (value != null) {
             mKey = key;
             mValue = value;
             mRow = controller.evaluator().evalRow(this, LockResult.UNOWNED, row);
@@ -63,11 +61,14 @@ final class LoadOneScanner<R> implements Scanner<R>, UnsupportedCursor {
         throws IOException
     {
         byte[] key = controller.oneKey();
-        mValue = source.load(txn, key);
-        mKey = key;
-        RowEvaluator<R> evaluator = controller.evaluator();
-        consumer.beginBatch(this, evaluator);
-        mRow = (R) evaluator.evalRow(this, LockResult.UNOWNED, (R) consumer);
+        byte[] value = source.load(txn, key);
+        if (value != null) {
+            mKey = key;
+            mValue = value;
+            RowEvaluator<R> evaluator = controller.evaluator();
+            consumer.beginBatch(this, evaluator);
+            mRow = (R) evaluator.evalRow(this, LockResult.UNOWNED, (R) consumer);
+        }
         mController = controller;
     }
 

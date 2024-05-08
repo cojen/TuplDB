@@ -20,6 +20,8 @@ package org.cojen.tupl.table;
 import java.util.HashSet;
 import java.util.Set;
 
+import java.util.concurrent.TimeUnit;
+
 import org.junit.*;
 import static org.junit.Assert.*;
 
@@ -74,6 +76,70 @@ public class ScannerTest {
 
         if (table instanceof BaseTable<TestRow> btable) {
             checkSecondary(btable);
+        }
+    }
+
+    @Test
+    public void timeout() throws Exception {
+        Table<TestRow> table = mDb.openTable(TestRow.class);
+        fill(table, 1, 5);
+
+        // Lock the first row.
+        Transaction txn1 = mDb.newTransaction();
+        {
+            TestRow row = table.newRow();
+            row.id(1);
+            row.name("name-1");
+            table.load(txn1, row);
+        }
+
+        Transaction txn2 = mDb.newTransaction();
+        txn2.lockTimeout(10, TimeUnit.MILLISECONDS);
+
+        try {
+            table.newScanner(txn2);
+            fail();
+        } catch (LockTimeoutException e) {
+        }
+
+        try {
+            table.newScanner(txn2, "id == ? && name == ?", 1, "name-1");
+            fail();
+        } catch (LockTimeoutException e) {
+        }
+
+        // Lock the second row.
+        txn1.rollback();
+        {
+            TestRow row = table.newRow();
+            row.id(2);
+            row.name("name-2");
+            table.load(txn1, row);
+        }
+
+        Scanner<TestRow> s = table.newScanner(txn2);
+        assertEquals(1, s.row().id());
+
+        try {
+            s.step();
+            fail();
+        } catch (LockTimeoutException e) {
+        }
+
+        Query<TestRow> query = table.query("id == ? && name == ?");
+        assertNull(query.newScanner(txn2, 1, "xxx").row());
+
+        s = query.newScanner(txn2, 1, "name-1");
+        assertEquals(1, s.row().id());
+
+        query = table.query("id >= ?");
+        s = query.newScanner(txn2, 1);
+        assertEquals(1, s.row().id());
+
+        try {
+            s.step();
+            fail();
+        } catch (LockTimeoutException e) {
         }
     }
 

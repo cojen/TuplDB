@@ -146,6 +146,9 @@ public final class RowWriter<R> implements RowConsumer<R> {
     }
 
     public void writeTerminator() throws IOException {
+        if (!mWrittenCharacteristics) {
+            writeCharacteristics(Spliterator.SIZED, 0);
+        }
         mOut.writeByte(0);
     }
 
