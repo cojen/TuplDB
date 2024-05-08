@@ -133,7 +133,7 @@ final class ClientTable<R> implements Table<R> {
         try {
             pipe.flush();
 
-            return new RowReader<R, Pipe>(mType, pipe, row) {
+            return new RowReader<R>(mType, pipe, row) {
                 @Override
                 protected void close(Pipe pipe, boolean finished) throws IOException {
                     if (finished) {
