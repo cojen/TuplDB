@@ -64,6 +64,8 @@ public class ScannerTest {
             verify(table.newScanner(null, "{id, id}"), 1, 5, "id");
         } catch (QueryException e) {
             assertTrue(e.getMessage().contains("Duplicate projection"));
+            assertEquals(5, e.startPos());
+            assertEquals(7, e.endPos());
         }
 
         verify(table.newScanner(null, "{name, state}"), 1, 5, "name", "state");
@@ -74,12 +76,16 @@ public class ScannerTest {
             verify(table.newScanner(null, "{~id, *}"), 1, 5, "name", "path", "state");
         } catch (QueryException e) {
             assertTrue(e.getMessage().contains("Excluded projection not found"));
+            assertEquals(1, e.startPos());
+            assertEquals(4, e.endPos());
         }
 
         try {
             verify(table.newScanner(null, "{~name, *, ~state}"), 1, 5, "id", "path");
         } catch (QueryException e) {
             assertTrue(e.getMessage().contains("Excluded projection not found"));
+            assertEquals(1, e.startPos());
+            assertEquals(6, e.endPos());
         }
 
         verify(table.newScanner(null, "{} name == ?", "name-3"), 3, 3);

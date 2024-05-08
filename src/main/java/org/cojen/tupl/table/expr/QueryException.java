@@ -37,22 +37,26 @@ public class QueryException extends RuntimeException {
         mEndPos = -1;
     }
 
-    QueryException(String message, int pos) {
+    public QueryException(String message, int pos) {
         this(message, pos, pos + 1);
     }
 
-    QueryException(String message, Token token) {
+    public QueryException(String message, Token token) {
         this(message, token.startPos(), token.endPos());
     }
 
-    QueryException(String message, Expr expr) {
+    public QueryException(String message, Expr expr) {
         this(message, expr.startPos(), expr.endPos());
     }
 
-    QueryException(String message, int startPos, int endPos) {
+    public QueryException(String message, int startPos, int endPos) {
         super(message);
         mStartPos = startPos;
         mEndPos = endPos;
+    }
+
+    public final String baseMessage() {
+        return super.getMessage();
     }
 
     /**
@@ -71,7 +75,7 @@ public class QueryException extends RuntimeException {
 
     @Override
     public String getMessage() {
-        String message = super.getMessage();
+        String message = baseMessage();
 
         if (mStartPos < 0) {
             return message;
