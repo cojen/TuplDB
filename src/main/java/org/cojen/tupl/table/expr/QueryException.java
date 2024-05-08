@@ -25,13 +25,13 @@ package org.cojen.tupl.table.expr;
 public class QueryException extends RuntimeException {
     private final int mStartPos, mEndPos;
 
-    QueryException(Throwable cause) {
+    public QueryException(Throwable cause) {
         super(cause);
         mStartPos = -1;
         mEndPos = -1;
     }
 
-    QueryException(String message, Throwable cause) {
+    public QueryException(String message, Throwable cause) {
         super(message, cause);
         mStartPos = -1;
         mEndPos = -1;

@@ -17,7 +17,6 @@
 
 package org.cojen.tupl.table;
 
-import java.io.DataOutput;
 import java.io.IOException;
 
 import java.lang.invoke.MethodHandle;
@@ -30,6 +29,8 @@ import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
+
+import org.cojen.dirmi.Pipe;
 
 import org.cojen.tupl.ClosedIndexException;
 import org.cojen.tupl.Cursor;
@@ -393,7 +394,7 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
      * the output stream.
      */
     @SuppressWarnings("unchecked")
-    public final void scanWrite(Transaction txn, DataOutput out) throws IOException {
+    public final void scanWrite(Transaction txn, Pipe out) throws IOException {
         var writer = new RowWriter<R>(out);
 
         // Pass the writer as if it's a row, but it's actually a RowConsumer.
@@ -405,23 +406,29 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
             Utils.rethrow(e);
         }
 
-        // Write the scan terminator. See RowWriter.writeHeader.
-        out.writeByte(0);
+        writer.writeTerminator();
     }
 
     /**
      * Scan and write a subset of rows from this table to a remote endpoint. This method
      * doesn't flush the output stream.
      */
-    public final void scanWrite(Transaction txn, DataOutput out, String queryStr, Object... args)
+    public final void scanWrite(Transaction txn, Pipe out, String queryStr, Object... args)
         throws IOException
     {
         var writer = new RowWriter<R>(out);
 
-        query(queryStr).scanWrite(txn, writer, args);
+        QueryLauncher<R> launcher;
+        try {
+            launcher = query(queryStr);
+        } catch (RuntimeException e) {
+            writer.writeTerminalException(e);
+            return;
+        }
 
-        // Write the scan terminator. See RowWriter.writeHeader.
-        out.writeByte(0);
+        launcher.scanWrite(txn, writer, args);
+
+        writer.writeTerminator();
     }
 
     /**
@@ -430,15 +437,14 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
      *
      * @param query expected to be a Query object obtained from this BaseTable
      */
-    public final void scanWrite(Transaction txn, DataOutput out, Query<R> query, Object... args)
+    public final void scanWrite(Transaction txn, Pipe out, Query<R> query, Object... args)
         throws IOException
     {
         var writer = new RowWriter<R>(out);
 
         ((QueryLauncher) query).scanWrite(txn, writer, args);
 
-        // Write the scan terminator. See RowWriter.writeHeader.
-        out.writeByte(0);
+        writer.writeTerminator();
     }
 
     @Override
