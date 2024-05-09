@@ -46,7 +46,7 @@ public sealed class BinaryOpExpr extends Expr permits FilterExpr {
         final Expr originalLeft = left;
         final Expr originalRight = right;
 
-        final Type type = Type.commonType(left, right, op);
+        final Type type = left.type().commonType(right.type(), op);
 
         if (type == null) {
             throw fail("No common type", op, left, right);

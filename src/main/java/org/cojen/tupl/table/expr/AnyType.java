@@ -18,7 +18,8 @@
 package org.cojen.tupl.table.expr;
 
 /**
- * 
+ * Type used by ParamExpr. At runtime, the parameter might might need to be converted, which
+ * might fail.
  *
  * @author Brian S. O'Neill
  */
@@ -35,13 +36,8 @@ public final class AnyType extends Type {
     }
 
     @Override
-    public AnyType commonType(Expr expr, int op) {
-        return this;
-    }
-
-    @Override
-    public AnyType commonType(Type type, int op) {
-        return this;
+    public Type commonType(Type type, int op) {
+        return type;
     }
 
     private static final byte K_TYPE = KeyEncoder.allocType();

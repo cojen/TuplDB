@@ -85,32 +85,6 @@ public abstract sealed class Type extends ColumnInfo
     }
 
     /**
-     * Finds a common type which two expressions can be converted to without loss or abiguity.
-     *
-     * @param op defined in ColumnFilter; pass -1 if not performing a comparison operation
-     * @return null if a common type cannot be inferred or is ambiguous
-     */
-    public static Type commonType(Expr left, Expr right, int op) {
-        Type leftType = left.type();
-        Type rightType = right.type();
-        if (left.isNullable() || right.isNullable()) {
-            leftType = leftType.nullable();
-            rightType = rightType.nullable();
-        }
-        return leftType.commonType(rightType, op);
-    }
-
-    /**
-     * Finds a common type which can be converted to without loss or abiguity.
-     *
-     * @param op defined in ColumnFilter; pass -1 if not performing a comparison operation
-     * @return null if a common type cannot be inferred or is ambiguous
-     */
-    public Type commonType(Expr expr, int op) {
-        return (expr.isNullable() ? nullable() : this).commonType(expr.type(), op);
-    }
-
-    /**
      * Finds a common type which can be converted to without loss or abiguity.
      *
      * @param op defined in ColumnFilter; pass -1 if not performing a comparison operation
@@ -118,7 +92,7 @@ public abstract sealed class Type extends ColumnInfo
      */
     public Type commonType(Type type, int op) {
         if (type == AnyType.THE) {
-            return type;
+            return this;
         }
         if (type == NullType.THE) {
             return this.nullable();

@@ -35,11 +35,6 @@ public final class NullType extends Type {
     }
 
     @Override
-    public Type commonType(Expr expr, int op) {
-        return expr.type().nullable();
-    }
-
-    @Override
     public Type commonType(Type type, int op) {
         return type.nullable();
     }
