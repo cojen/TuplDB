@@ -177,6 +177,9 @@ public abstract sealed class QueryExpr extends RelationExpr
             // Use the existing row type.
             type = fromType;
             projection = from.fullProjection();
+        } else if (fromType.canRepresent(projection)) {
+            // Use the existing row type.
+            type = fromType;
         } else {
             // Use a custom row type.
             type = TupleType.make(projection);

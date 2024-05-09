@@ -262,6 +262,23 @@ public final class TupleType extends Type implements Iterable<Column> {
         return true;
     }
 
+    /**
+     * Returns true if the given projection only consists of columns which are found in this
+     * tuple.
+     */
+    public boolean canRepresent(Collection<ProjExpr> projection) {
+        if (projection.size() > mColumns.size()) {
+            return false;
+        }
+        for (ProjExpr pe : projection) {
+            Column column = mColumns.get(pe.name());
+            if (column == null || !column.type().equals(pe.type())) {
+                return false;
+            }
+        }
+        return true;
+    }
+
     private static final WeakCache<Object, Class<?>, TupleType> cCache;
 
     static {
