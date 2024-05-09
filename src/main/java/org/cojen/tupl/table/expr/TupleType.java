@@ -267,13 +267,12 @@ public final class TupleType extends Type implements Iterable<Column> {
      * tuple.
      */
     public boolean canRepresent(Collection<ProjExpr> projection) {
-        if (projection.size() > mColumns.size()) {
-            return false;
-        }
         for (ProjExpr pe : projection) {
-            Column column = mColumns.get(pe.name());
-            if (column == null || !column.type().equals(pe.type())) {
-                return false;
+            if (!pe.hasExclude()) {
+                Column column = mColumns.get(pe.name());
+                if (column == null || !column.type().equals(pe.type())) {
+                    return false;
+                }
             }
         }
         return true;
