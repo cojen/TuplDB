@@ -37,6 +37,7 @@ import org.cojen.tupl.table.WeakCache;
 import org.cojen.maker.ClassMaker;
 import org.cojen.maker.MethodMaker;
 
+import org.cojen.tupl.Hidden;
 import org.cojen.tupl.Nullable;
 import org.cojen.tupl.Row;
 
@@ -57,7 +58,9 @@ public final class TupleType extends Type implements Iterable<Column> {
 
         for (ProjExpr pe : projection) {
             if (!pe.hasExclude()) {
-                addColumn(columns, Column.make(pe.type(), pe.name()));
+                boolean hidden = (pe.wrapped() instanceof ColumnExpr ce)
+                    ? ce.column().isHidden() : false;
+                addColumn(columns, Column.make(pe.type(), pe.name(), hidden));
             }
         }
 
@@ -84,7 +87,7 @@ public final class TupleType extends Type implements Iterable<Column> {
 
         if (projection == null) {
             for (ColumnInfo ci : info.allColumns.values()) {
-                addColumn(columns, Column.make(BasicType.make(ci), ci.name));
+                addColumn(columns, Column.make(BasicType.make(ci), ci.name, ci.isHidden()));
             }
         } else {
             for (String name : projection) {
@@ -93,7 +96,7 @@ public final class TupleType extends Type implements Iterable<Column> {
                     name = RowMethodsMaker.unescape(name);
                     throw new IllegalArgumentException("Unknown column: " + name);
                 }
-                addColumn(columns, Column.make(BasicType.make(ci), name));
+                addColumn(columns, Column.make(BasicType.make(ci), name, ci.isHidden()));
             }
         }
 
@@ -303,6 +306,10 @@ public final class TupleType extends Type implements Iterable<Column> {
 
             if (c.type().isNullable()) {
                 mm.addAnnotation(Nullable.class, true);
+            }
+
+            if (c.isHidden()) {
+                mm.addAnnotation(Hidden.class, true);
             }
 
             cm.addMethod(null, name, clazz).public_().abstract_();

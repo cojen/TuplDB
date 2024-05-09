@@ -101,7 +101,7 @@ public abstract sealed class RelationExpr extends Expr permits TableExpr, QueryE
             if (column.type() instanceof TupleType ctt) {
                 fullProjection(consumer, ctt, prefix + column.name() + '.');
             } else {
-                column = Column.make(column.type(), prefix + column.name());
+                column = Column.make(column.type(), prefix + column.name(), column.isHidden());
                 consumer.accept(ProjExpr.make(-1, -1, ColumnExpr.make(-1, -1, tt, column), 0));
             }
         }

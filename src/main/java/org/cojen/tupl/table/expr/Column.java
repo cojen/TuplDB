@@ -31,19 +31,21 @@ import org.cojen.tupl.table.RowMethodsMaker;
 public final class Column implements Named {
     private final Type mType;
     private final String mName;
+    private final boolean mHidden;
 
     private List<String> mSubNames;
 
     /**
      * @param name column name (can be fully qualified)
      */
-    public static Column make(Type type, String name) {
-        return new Column(type, name);
+    public static Column make(Type type, String name, boolean hidden) {
+        return new Column(type, name, hidden);
     }
 
-    private Column(Type type, String name) {
+    private Column(Type type, String name, boolean hidden) {
         mType = type;
         mName = name;
+        mHidden = hidden;
     }
 
     public Type type() {
@@ -53,6 +55,10 @@ public final class Column implements Named {
     @Override
     public String name() {
         return mName;
+    }
+
+    public boolean isHidden() {
+        return mHidden;
     }
 
     /**
@@ -92,7 +98,7 @@ public final class Column implements Named {
     }
 
     public Column withName(String name) {
-        return name.equals(mName) ? this : new Column(mType, name);
+        return name.equals(mName) ? this : new Column(mType, name, mHidden);
     }
 
     private static final byte K_TYPE = KeyEncoder.allocType();
@@ -120,7 +126,8 @@ public final class Column implements Named {
         return obj == this ||
             obj instanceof Column c
             && mType.equals(c.mType)
-            && mName.equals(c.mName);
+            && mName.equals(c.mName)
+            && mHidden == c.mHidden;
     }
 
     @Override
