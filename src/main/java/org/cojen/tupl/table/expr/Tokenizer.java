@@ -303,6 +303,9 @@ final class Tokenizer {
                 case '\"':
                     c = '\"';
                     break;
+                case '`':
+                    c = '`';
+                    break;
                 default:
                     unread(next);
                     break;
