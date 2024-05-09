@@ -88,7 +88,9 @@ public final class InExpr extends Expr {
 
     @Override
     public RowFilter toRowFilter(RowInfo info, Map<String, ColumnExpr> columns) {
-        if (mLeft instanceof ColumnExpr ce) {
+        ColumnExpr ce;
+
+        if ((ce = mLeft.sourceColumn()) != null) {
             ColumnInfo ci = ColumnSet.findColumn(info.allColumns, ce.name());
             if (ci != null && mRight instanceof ParamExpr pe) {
                 var filter = new InFilter(ci, pe.ordinal());
