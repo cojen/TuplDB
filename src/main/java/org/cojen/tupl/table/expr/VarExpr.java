@@ -29,27 +29,28 @@ import org.cojen.tupl.table.RowMethodsMaker;
  * @author Brian S. O'Neill
  */
 public final class VarExpr extends Expr implements Named {
-    public static VarExpr make(int startPos, int endPos, Type type, String name) {
-        return new VarExpr(startPos, endPos, type, name);
+    /**
+     * @param assign the expression that created the local variable
+     */
+    public static VarExpr make(int startPos, int endPos, AssignExpr assign) {
+        return new VarExpr(startPos, endPos, assign);
     }
 
-    private final Type mType;
-    private final String mName;
+    private final AssignExpr mAssign;
 
-    private VarExpr(int startPos, int endPos, Type type, String name) {
+    private VarExpr(int startPos, int endPos, AssignExpr assign) {
         super(startPos, endPos);
-        mType = type;
-        mName = name;
+        mAssign = assign;
     }
 
     @Override
     public String name() {
-        return mName;
+        return mAssign.name();
     }
 
     @Override
     public Type type() {
-        return mType;
+        return mAssign.type();
     }
 
     @Override
@@ -69,7 +70,12 @@ public final class VarExpr extends Expr implements Named {
 
     @Override
     public boolean isNullable() {
-        return mType.isNullable();
+        return type().isNullable();
+    }
+
+    @Override
+    public ColumnExpr sourceColumn() {
+        return mAssign.sourceColumn();
     }
 
     @Override
@@ -78,7 +84,7 @@ public final class VarExpr extends Expr implements Named {
 
     @Override
     public Variable makeEval(EvalContext context) {
-        return context.findLocalVar(mName).get();
+        return context.findLocalVar(name()).get();
     }
 
     @Override
@@ -91,24 +97,22 @@ public final class VarExpr extends Expr implements Named {
     @Override
     protected void encodeKey(KeyEncoder enc) {
         if (enc.encode(this, K_TYPE)) {
-            mType.encodeKey(enc);
-            enc.encodeString(mName);
+            mAssign.encodeKey(enc);
         }
     }
 
     @Override
     public int hashCode() {
-        return mType.hashCode() * 31 + mName.hashCode();
+        return mAssign.hashCode() * 1869623477;
     }
 
     @Override
     public boolean equals(Object obj) {
-        return obj == this ||
-            obj instanceof VarExpr ve && mType.equals(ve.mType) && mName.equals(ve.mName);
+        return obj == this || obj instanceof VarExpr ve && mAssign.equals(ve.mAssign);
     }
 
     @Override
     public String toString() {
-        return RowMethodsMaker.unescape(mName);
+        return RowMethodsMaker.unescape(name());
     }
 }

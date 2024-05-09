@@ -61,8 +61,8 @@ public final class AssignExpr extends WrappedExpr implements Named {
     }
 
     @Override
-    public ColumnExpr directColumn() {
-        return mExpr.directColumn();
+    public ColumnExpr sourceColumn() {
+        return mExpr.sourceColumn();
     }
 
     @Override

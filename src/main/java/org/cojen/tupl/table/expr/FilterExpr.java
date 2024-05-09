@@ -90,38 +90,40 @@ public final class FilterExpr extends BinaryOpExpr {
         // converted to a common type. The lower filtering layer will perform any conversions
         // itself if necessary.
 
-        if (mOriginalLeft instanceof ColumnExpr left) {
-            ColumnInfo leftCol = tryFindColumn(info, left);
-            if (leftCol != null) {
-                if (mOriginalRight instanceof ColumnExpr right) {
-                    ColumnInfo rightCol = tryFindColumn(info, right);
-                    if (rightCol != null) {
-                        var filter = ColumnToColumnFilter.tryMake(leftCol, mOp, rightCol);
+        ColumnExpr leftColumn, rightColumn;
+
+        if ((leftColumn = mOriginalLeft.sourceColumn()) != null) {
+            ColumnInfo leftInfo = tryFindColumn(info, leftColumn);
+            if (leftInfo != null) {
+                if ((rightColumn = mOriginalRight.sourceColumn()) != null) {
+                    ColumnInfo rightInfo = tryFindColumn(info, rightColumn);
+                    if (rightInfo != null) {
+                        var filter = ColumnToColumnFilter.tryMake(leftInfo, mOp, rightInfo);
                         if (filter != null) {
-                            columns.putIfAbsent(leftCol.name, left);
-                            columns.putIfAbsent(rightCol.name, right);
+                            columns.putIfAbsent(leftInfo.name, leftColumn);
+                            columns.putIfAbsent(rightInfo.name, rightColumn);
                             return filter;
                         }
                     }
                 } else if (mOriginalRight instanceof ParamExpr right) {
-                    columns.putIfAbsent(leftCol.name, left);
-                    return new ColumnToArgFilter(leftCol, mOp, right.ordinal());
+                    columns.putIfAbsent(leftInfo.name, leftColumn);
+                    return new ColumnToArgFilter(leftInfo, mOp, right.ordinal());
                 } else if (mOriginalRight instanceof ConstantExpr right) {
-                    columns.putIfAbsent(leftCol.name, left);
-                    return new ColumnToConstantFilter(leftCol, mOp, right);
+                    columns.putIfAbsent(leftInfo.name, leftColumn);
+                    return new ColumnToConstantFilter(leftInfo, mOp, right);
                 }
             }
-        } else if (mOriginalRight instanceof ColumnExpr right) {
-            ColumnInfo rightCol = tryFindColumn(info, right);
-            if (rightCol != null) {
+        } else if ((rightColumn = mOriginalRight.sourceColumn()) != null) {
+            ColumnInfo rightInfo = tryFindColumn(info, rightColumn);
+            if (rightInfo != null) {
                 if (mOriginalLeft instanceof ParamExpr left) {
                     int op = ColumnFilter.reverseOperator(mOp);
-                    columns.putIfAbsent(rightCol.name, right);
-                    return new ColumnToArgFilter(rightCol, op, left.ordinal());
+                    columns.putIfAbsent(rightInfo.name, rightColumn);
+                    return new ColumnToArgFilter(rightInfo, op, left.ordinal());
                 } else if (mOriginalLeft instanceof ConstantExpr left) {
                     int op = ColumnFilter.reverseOperator(mOp);
-                    columns.putIfAbsent(rightCol.name, right);
-                    return new ColumnToConstantFilter(rightCol, op, left);
+                    columns.putIfAbsent(rightInfo.name, rightColumn);
+                    return new ColumnToConstantFilter(rightInfo, op, left);
                 }
             }
         }

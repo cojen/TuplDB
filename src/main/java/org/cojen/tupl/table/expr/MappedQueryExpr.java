@@ -318,7 +318,7 @@ final class MappedQueryExpr extends QueryExpr {
 
         for (ProjExpr pe : mProjection) {
             ColumnExpr source;
-            if (pe.hasExclude() || (source = pe.directColumn()) == null) {
+            if (pe.hasExclude() || (source = pe.sourceColumn()) == null) {
                 continue;
             }
 

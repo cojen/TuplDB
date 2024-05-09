@@ -139,7 +139,7 @@ public abstract sealed class Expr
      * Returns a ColumnExpr if this expression just evaluates a column with no transformations.
      * Null is returned otherwise.
      */
-    public ColumnExpr directColumn() {
+    public ColumnExpr sourceColumn() {
         return null;
     }
 

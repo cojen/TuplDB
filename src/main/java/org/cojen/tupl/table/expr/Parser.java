@@ -77,7 +77,7 @@ public final class Parser {
 
     private int mParamOrdinal;
 
-    private Map<String, Type> mLocalVars;
+    private Map<String, AssignExpr> mLocalVars;
 
     /**
      * @param from can be null if not selecting from any table at all
@@ -282,17 +282,18 @@ public final class Parser {
         if (type == T_ASSIGN) {
             consumePeek();
             Expr right = parseExpr();
-            expr = AssignExpr.make(startPos, right.endPos(), name, right);
+            var assign = AssignExpr.make(startPos, right.endPos(), name, right);
+            expr = assign;
             if (mLocalVars == null) {
                 mLocalVars = new LinkedHashMap<>();
             }
-            if (mLocalVars.putIfAbsent(name, expr.type()) != null) {
-                throw new QueryException("Duplicate assignment: " + ident.mText, expr);
+            if (mLocalVars.putIfAbsent(name, assign) != null) {
+                throw new QueryException("Duplicate assignment: " + ident.mText, assign);
             }
         } else {
-            Type varType;
-            if (mLocalVars != null && (varType = mLocalVars.get(name)) != null) {
-                expr = VarExpr.make(startPos, ident.endPos(), varType, name);
+            AssignExpr assign;
+            if (mLocalVars != null && (assign = mLocalVars.get(name)) != null) {
+                expr = VarExpr.make(startPos, ident.endPos(), assign);
             } else {
                 TupleType rowType = rowType();
                 Column c = rowType.tryColumnFor(name);
@@ -553,9 +554,9 @@ public final class Parser {
         if (mLocalVars != null && idents.size() == 1) {
             Token.Text ident = idents.get(0);
             String name = ident.text(true);
-            Type varType = mLocalVars.get(name);
-            if (varType != null) {
-                return VarExpr.make(ident.startPos(), ident.endPos(), varType, name);
+            AssignExpr assign = mLocalVars.get(name);
+            if (assign != null) {
+                return VarExpr.make(ident.startPos(), ident.endPos(), assign);
             }
         }
 

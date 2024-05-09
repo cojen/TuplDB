@@ -80,8 +80,9 @@ public abstract sealed class QueryExpr extends RelationExpr
             for (ProjExpr pe : projection) {
                 maxArgument = Math.max(maxArgument, pe.maxArgument());
 
-                ProjExpr direct = pe.directProjColumn();
-                if (direct == null) {
+                ProjExpr source = pe.sourceProjColumn();
+
+                if (source == null) {
                     pe.gatherEvalColumns(c -> {
                         projMap.computeIfAbsent(c.name(), k -> {
                             var ce = ColumnExpr.make(-1, -1, fromType, c);
@@ -89,7 +90,7 @@ public abstract sealed class QueryExpr extends RelationExpr
                         });
                     });
                 } else if (!pe.hasExclude()) {
-                    projMap.put(direct.name(), direct);
+                    projMap.put(source.name(), source);
                 }
             }
 
@@ -187,7 +188,9 @@ public abstract sealed class QueryExpr extends RelationExpr
 
         // FIXME: Pass fromProjection to MappedQueryExpr, in order for the sourceProjection
         // method to be constructed properly. If fromType.matchesNames(fromProjection), then
-        // fromProjection is all, and so sourceProjection doesn't need to be implemented.
+        // fromProjection is all, and so sourceProjection doesn't need to be implemented. Note
+        // that sourceProjection might also need to consider columns used just for filtering
+        // and aren't projected.
 
         return new MappedQueryExpr
             (-1, -1, type, from, mappedRowFilter, mappedFilter, projection, maxArgument);
