@@ -577,14 +577,14 @@ public interface Table<R> extends Closeable {
      * for operations against rows which are restricted by the query, and closing the table has
      * no effect.
      */
-    public default Table<R> view(String query, Object... args) {
+    public default Table<R> view(String query, Object... args) throws IOException {
         return ViewedTable.view(this, query, args);
     }
 
     /**
      * @hidden
      */
-    public default Table<R> view(String query) {
+    public default Table<R> view(String query) throws IOException {
         return view(query, NO_ARGS);
     }
 
@@ -595,7 +595,7 @@ public interface Table<R> extends Closeable {
      *
      * @throws NullPointerException if any parameter is null
      */
-    public default <T> Table<T> map(Class<T> targetType, Mapper<R, T> mapper) {
+    public default <T> Table<T> map(Class<T> targetType, Mapper<R, T> mapper) throws IOException {
         return MappedTable.map(this, targetType, mapper);
     }
 
@@ -609,7 +609,9 @@ public interface Table<R> extends Closeable {
      * @throws NullPointerException if any parameter is null
      * @throws IllegalArgumentException if target primary key is malformed
      */
-    public default <T> Table<T> aggregate(Class<T> targetType, Aggregator.Factory<R, T> factory) {
+    public default <T> Table<T> aggregate(Class<T> targetType, Aggregator.Factory<R, T> factory)
+        throws IOException
+    {
         return AggregatedTable.aggregate(this, targetType, factory);
     }
 
@@ -629,6 +631,7 @@ public interface Table<R> extends Closeable {
      */
     public default <T> Table<T> group(String groupBy, String orderBy,
                                       Class<T> targetType, Grouper.Factory<R, T> factory)
+        throws IOException
     {
         return GroupedTable.group(this, groupBy, orderBy, targetType, factory);
     }
@@ -671,7 +674,9 @@ public interface Table<R> extends Closeable {
      * malformed, or if there are any table matching issues
      * @see Database#openJoinTable
      */
-    public static <J> Table<J> join(Class<J> joinType, String spec, Table<?>... tables) {
+    public static <J> Table<J> join(Class<J> joinType, String spec, Table<?>... tables)
+        throws IOException
+    {
         return JoinTableMaker.join(joinType, spec, tables);
     }
 

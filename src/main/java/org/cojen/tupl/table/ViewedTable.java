@@ -292,7 +292,7 @@ public abstract sealed class ViewedTable<R> extends WrappedTable<R, R> {
     }
 
     @Override
-    public final Table<R> view(String query, Object... args) {
+    public final Table<R> view(String query, Object... args) throws IOException {
         return mSource.view(fuseQuery(query), fuseArguments(args));
     }
 
