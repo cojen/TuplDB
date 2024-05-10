@@ -136,6 +136,20 @@ public abstract sealed class Expr
     public abstract boolean isNullable();
 
     /**
+     * Returns true if this expression evaluates to a constant value of zero.
+     */
+    public boolean isZero() {
+        return false;
+    }
+
+    /**
+     * Returns true if this expression evaluates to a constant value of one.
+     */
+    public boolean isOne() {
+        return false;
+    }
+
+    /**
      * Returns a ColumnExpr if this expression just evaluates a column with no transformations.
      * Null is returned otherwise.
      */

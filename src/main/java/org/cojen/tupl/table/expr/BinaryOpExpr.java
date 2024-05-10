@@ -89,6 +89,13 @@ public sealed class BinaryOpExpr extends Expr permits FilterExpr {
 
         if (T_AND <= op && op <= T_REM) {
             // Arithmetic operator.
+
+            Expr reduced = tryReduce(op, left, right);
+
+            if (reduced != null) {
+                return reduced;
+            }
+
             return new BinaryOpExpr(startPos, endPos, type, op, left, right);
         }
 
@@ -124,6 +131,53 @@ public sealed class BinaryOpExpr extends Expr permits FilterExpr {
         }
 
         return new FilterExpr(startPos, endPos, op, originalLeft, originalRight, left, right);
+    }
+
+    /**
+     * Performs basic constant folding reduction. The left and right expressions must have a
+     * common type.
+     */
+    private static Expr tryReduce(int op, Expr left, Expr right) {
+        switch (op) {
+
+        case T_AND:
+            if (left.isZero()) {
+                return left;
+            } else if (right.isZero()) {
+                return right;
+            }
+            break;
+
+        case T_OR: case T_PLUS: case T_MINUS:
+            if (left.isZero()) {
+                return right;
+            } else if (right.isZero()) {
+                return left;
+            }
+            break;
+
+        case T_STAR:
+            if (left.isZero() || right.isOne()) {
+                return left;
+            } else if (right.isZero() || left.isOne()) {
+                return right;
+            }
+            break;
+
+        case T_DIV:
+            if (right.isOne()) {
+                return left;
+            }
+            break;
+
+        case T_REM:
+            if (right.isOne()) {
+                // Make a zero constant.
+                return ConstantExpr.make(left.startPos(), right.startPos(), 0).asType(left.type());
+            }
+        }
+
+        return null;
     }
 
     private static QueryException fail(String message, int op, Expr left, Expr right) {

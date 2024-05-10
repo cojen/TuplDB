@@ -227,6 +227,44 @@ public final class ConstantExpr extends Expr {
     }
 
     @Override
+    public boolean isZero() {
+        Object value = mValue;
+
+        if (value != null) {
+            return switch (mType.typeCode()) {
+                case TYPE_BIG_INTEGER -> BigInteger.ZERO.equals(value);
+                case TYPE_BIG_DECIMAL -> BigDecimal.ZERO.equals(value);
+                case TYPE_INT -> 0 == (Integer) value;
+                case TYPE_LONG -> 0L == (Long) value;
+                case TYPE_FLOAT -> 0.0f == (Float) value;
+                case TYPE_DOUBLE -> 0.0d == (Double) value;
+                default -> false;
+            };
+        }
+
+        return false;
+    }
+
+    @Override
+    public boolean isOne() {
+        Object value = mValue;
+
+        if (value != null) {
+            return switch (mType.typeCode()) {
+                case TYPE_BIG_INTEGER -> BigInteger.ONE.equals(value);
+                case TYPE_BIG_DECIMAL -> BigDecimal.ONE.equals(value);
+                case TYPE_INT -> 1 == (Integer) value;
+                case TYPE_LONG -> 1L == (Long) value;
+                case TYPE_FLOAT -> 1.0f == (Float) value;
+                case TYPE_DOUBLE -> 1.0d == (Double) value;
+                default -> false;
+            };
+        }
+
+        return false;
+    }
+
+    @Override
     public void gatherEvalColumns(Consumer<Column> c) {
     }
 
