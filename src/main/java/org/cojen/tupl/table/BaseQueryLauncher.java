@@ -72,8 +72,7 @@ final class BaseQueryLauncher<R> extends QueryLauncher<R> {
         if (query != null) {
             return new BaseQueryLauncher<>(table, queryStr, query.reduce());
         } else {
-            // FIXME: Check the rowType. If not the same, then only a derived query is allowed.
-            return (QueryLauncher<R>) expr.makeCompiledQuery();
+            return expr.makeCompiledQuery(table.rowType());
         }
     }
 

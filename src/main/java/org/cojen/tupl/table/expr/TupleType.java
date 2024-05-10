@@ -167,7 +167,7 @@ public final class TupleType extends Type implements Iterable<Column> {
     }
 
     @Override
-    protected void appendTo(StringBuilder b) {
+    protected void appendTo(StringBuilder b, boolean simple) {
         b.append('{');
 
         int i = 0;
@@ -175,7 +175,8 @@ public final class TupleType extends Type implements Iterable<Column> {
             if (i > 0) {
                 b.append(", ");
             }
-            b.append(column.type()).append(' ').append(column.name());
+            column.type().appendTo(b, simple);
+            b.append(' ').append(column.name());
             i++;
         }
 

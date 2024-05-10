@@ -74,13 +74,16 @@ public abstract sealed class Type extends ColumnInfo
     @Override
     public abstract String toString();
 
-    protected void appendTo(StringBuilder b) {
+    /**
+     * @param simple when true, omit full class names
+     */
+    protected void appendTo(StringBuilder b, boolean simple) {
         b.append(toString());
     }
 
     protected final String defaultToString() {
         var b = new StringBuilder();
-        appendTo(b);
+        appendTo(b, false);
         return b.toString();
     }
 

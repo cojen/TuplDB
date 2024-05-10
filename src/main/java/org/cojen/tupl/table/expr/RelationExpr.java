@@ -26,6 +26,8 @@ import java.util.function.Consumer;
 import org.cojen.tupl.Row;
 import org.cojen.tupl.Table;
 
+import org.cojen.tupl.table.RowMethodsMaker;
+
 import org.cojen.tupl.table.filter.QuerySpec;
 import org.cojen.tupl.table.filter.TrueFilter;
 
@@ -121,14 +123,45 @@ public abstract sealed class RelationExpr extends Expr permits TableExpr, QueryE
     /**
      * If possible, makes a fully functional CompiledQuery from this expression, composed of
      * the given row type.
+     *
+     * @throws QueryException if the query contains columns not available to the given row type
      */
     @SuppressWarnings("unchecked")
-    public <R> CompiledQuery<R> tryMakeCompiledQuery(Class<R> rowType) {
-        if (rowType.isAssignableFrom(type().rowType().clazz())) {
+    public <R> CompiledQuery<R> makeCompiledQuery(Class<R> rowTypeClass) throws QueryException {
+        TupleType thisRowType = type().rowType();
+
+        if (rowTypeClass.isAssignableFrom(thisRowType.clazz())) {
             return (CompiledQuery<R>) makeCompiledQuery();
         }
 
-        return null;
+        TupleType otherRowType = TupleType.make(rowTypeClass, null);
+
+        var b = new StringBuilder().append("Query contains new or mismatched columns: ");
+        final int originalLength = b.length();
+
+        for (Column c : thisRowType) {
+            String name = c.name();
+            Column otherColumn = otherRowType.tryColumnFor(name);
+            if (otherColumn == null || !c.type().equals(otherColumn.type())) {
+                if (b.length() != originalLength) {
+                    b.append(", ");
+                }
+                c.type().appendTo(b, true);
+                b.append(' ').append(RowMethodsMaker.unescape(name));
+                if (otherColumn != null) {
+                    b.append(" != ");
+                    otherColumn.type().appendTo(b, true);
+                    b.append(' ').append(RowMethodsMaker.unescape(name));
+                }
+            }
+        }
+
+        if (b.length() == originalLength) {
+            // Shouldn't happen. See TupleType.canRepresent.
+            b.append('?');
+        }
+
+        throw new QueryException(b.toString());
     }
 
     /**

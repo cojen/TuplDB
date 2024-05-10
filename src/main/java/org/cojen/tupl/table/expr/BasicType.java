@@ -91,8 +91,9 @@ public final class BasicType extends Type {
     }
 
     @Override
-    protected void appendTo(StringBuilder b) {
-        String str = clazz().getCanonicalName();
+    protected void appendTo(StringBuilder b, boolean simple) {
+        Class<?> clazz = clazz();
+        String str = simple ? clazz.getSimpleName() : clazz.getCanonicalName();
         if (isUnsigned() && this != BOOLEAN) {
             b.append("unsigned ");
         }

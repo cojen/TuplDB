@@ -230,6 +230,8 @@ final class MappedQueryExpr extends QueryExpr {
         // Eagerly evaluate AssignExprs. The result might be needed by downstream expressions,
         // the filter, or it might throw an exception. In the unlikely case that none of these
         // conditions are met, then the AssignExprs can be evaluated after filtering.
+        // FIXME: This is too eager -- not checking canThrowRuntimeException, and not checking
+        // downstream expressions.
         IdentityHashMap<AssignExpr, Variable> projectedVars = null;
         for (ProjExpr pe : mProjection) {
             if (pe.wrapped() instanceof AssignExpr ae) {

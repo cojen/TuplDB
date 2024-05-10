@@ -81,9 +81,9 @@ public final class RelationType extends Type {
     }
 
     @Override
-    protected void appendTo(StringBuilder b) {
+    protected void appendTo(StringBuilder b, boolean simple) {
         b.append('(');
-        mRowType.appendTo(b);
+        mRowType.appendTo(b, simple);
         b.append(", cardinality=").append(mCardinality).append(')');
     }
 }
