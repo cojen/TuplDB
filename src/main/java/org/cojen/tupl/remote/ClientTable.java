@@ -31,6 +31,7 @@ import org.cojen.dirmi.RemoteException;
 import org.cojen.tupl.ColumnProcessor;
 import org.cojen.tupl.DurabilityMode;
 import org.cojen.tupl.Query;
+import org.cojen.tupl.Row;
 import org.cojen.tupl.Scanner;
 import org.cojen.tupl.Table;
 import org.cojen.tupl.Transaction;
@@ -285,6 +286,12 @@ final class ClientTable<R> implements Table<R> {
     @Override
     public boolean tryDelete(Transaction txn, R row) throws IOException {
         return mHelper.tryDelete(row, proxy().tryDelete(mDb.remoteTransaction(txn), null));
+    }
+
+    @Override
+    public Table<Row> derive(String query, Object... args) throws IOException {
+        // FIXME: Should derive on the server side.
+        throw null;
     }
 
     private RemoteTableProxy proxy() throws IOException {

@@ -17,6 +17,8 @@
 
 package org.cojen.tupl.table.expr;
 
+import java.io.IOException;
+
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -141,7 +143,7 @@ final class UnmappedQueryExpr extends QueryExpr {
 
     @Override
     @SuppressWarnings("unchecked")
-    public CompiledQuery<?> makeCompiledQuery() {
+    public CompiledQuery<?> makeCompiledQuery() throws IOException {
         CompiledQuery<?> source = mFrom.makeCompiledQuery();
 
         if (mRowFilter == TrueFilter.THE && mProjection == null) {
@@ -168,7 +170,7 @@ final class UnmappedQueryExpr extends QueryExpr {
         if (viewArgs.length == 0) {
             return new CompiledQuery.Wrapped(source, baseArgCount) {
                 @Override
-                public Table table(Object... args) {
+                public Table table(Object... args) throws IOException {
                     return source.table(args).view(viewQuery, args);
                 }
             };
@@ -176,7 +178,7 @@ final class UnmappedQueryExpr extends QueryExpr {
 
         return new CompiledQuery.Wrapped(source, baseArgCount) {
             @Override
-            public Table table(Object... args) {
+            public Table table(Object... args) throws IOException {
                 int argCount = checkArgumentCount(args);
                 var fullArgs = new Object[argCount + viewArgs.length];
                 System.arraycopy(args, 0, fullArgs, 0, argCount);

@@ -49,12 +49,12 @@ public abstract class CompiledQuery<R> extends QueryLauncher<R> {
      *
      * @throws IllegalArgumentException if not enough arguments are given
      */
-    public abstract Table<R> table(Object... args);
+    public abstract Table<R> table(Object... args) throws IOException;
 
     /**
      * @hidden
      */
-    public Table<R> table() {
+    public Table<R> table() throws IOException {
         return table(RowUtils.NO_ARGS);
     }
 
@@ -73,7 +73,11 @@ public abstract class CompiledQuery<R> extends QueryLauncher<R> {
 
     @Override
     public Stream<R> newStream(Transaction txn, Object... args) {
-        return table(args).newStream(txn);
+        try {
+            return table(args).newStream(txn);
+        } catch (IOException e) {
+            throw RowUtils.rethrow(e);
+        }
     }
 
     @Override

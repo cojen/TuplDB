@@ -67,7 +67,9 @@ final class BaseQueryLauncher<R> extends QueryLauncher<R> {
      * @param expr the parsed query
      */
     @SuppressWarnings("unchecked")
-    static <R> QueryLauncher<R> make(BaseTable<R> table, String queryStr, RelationExpr expr) {
+    static <R> QueryLauncher<R> make(BaseTable<R> table, String queryStr, RelationExpr expr)
+        throws IOException
+    {
         QuerySpec query = expr.querySpec(table);
         if (query != null) {
             return new BaseQueryLauncher<>(table, queryStr, query.reduce());

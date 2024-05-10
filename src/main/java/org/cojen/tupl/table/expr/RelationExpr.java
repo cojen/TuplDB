@@ -17,6 +17,8 @@
 
 package org.cojen.tupl.table.expr;
 
+import java.io.IOException;
+
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -118,7 +120,7 @@ public abstract sealed class RelationExpr extends Expr permits TableExpr, QueryE
     /**
      * Makes a fully functional CompiledQuery from this expression.
      */
-    public abstract CompiledQuery<?> makeCompiledQuery();
+    public abstract CompiledQuery<?> makeCompiledQuery() throws IOException;
 
     /**
      * If possible, makes a fully functional CompiledQuery from this expression, composed of
@@ -127,7 +129,9 @@ public abstract sealed class RelationExpr extends Expr permits TableExpr, QueryE
      * @throws QueryException if the query contains columns not available to the given row type
      */
     @SuppressWarnings("unchecked")
-    public <R> CompiledQuery<R> makeCompiledQuery(Class<R> rowTypeClass) throws QueryException {
+    public <R> CompiledQuery<R> makeCompiledQuery(Class<R> rowTypeClass)
+        throws IOException, QueryException
+    {
         TupleType thisRowType = type().rowType();
 
         if (rowTypeClass.isAssignableFrom(thisRowType.clazz())) {
@@ -169,7 +173,7 @@ public abstract sealed class RelationExpr extends Expr permits TableExpr, QueryE
      * implement the Row interface.
      */
     @SuppressWarnings("unchecked")
-    public CompiledQuery<Row> makeRowCompiledQuery() {
+    public CompiledQuery<Row> makeCompiledRowQuery() throws IOException {
         if (Row.class.isAssignableFrom(type().rowType().clazz())) {
             return (CompiledQuery<Row>) makeCompiledQuery();
         }
@@ -180,6 +184,6 @@ public abstract sealed class RelationExpr extends Expr permits TableExpr, QueryE
 
         return new MappedQueryExpr
             (-1, -1, newType, this, TrueFilter.THE, null, projection, maxArgument())
-            .makeRowCompiledQuery();
+            .makeCompiledRowQuery();
     }
 }

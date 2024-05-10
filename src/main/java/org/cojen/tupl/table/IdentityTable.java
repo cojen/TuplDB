@@ -40,6 +40,8 @@ import org.cojen.tupl.Updater;
 
 import org.cojen.tupl.diag.QueryPlan;
 
+import org.cojen.tupl.table.expr.CompiledQueryCache;
+
 import org.cojen.tupl.table.filter.FalseFilter;
 import org.cojen.tupl.table.filter.Parser;
 import org.cojen.tupl.table.filter.QuerySpec;
@@ -68,6 +70,8 @@ public final class IdentityTable implements Table<Row>, Query<Row> {
             throw RowUtils.rethrow(e);
         }
     }
+
+    private final CompiledQueryCache mDerivedCache = new CompiledQueryCache();
 
     private IdentityTable() {
     }
@@ -174,6 +178,11 @@ public final class IdentityTable implements Table<Row>, Query<Row> {
     @Override
     public Table<Row> view(String query, Object... args) {
         return findsAnything(query) ? this : ViewedTable.view(this, query, args);
+    }
+
+    @Override
+    public Table<Row> derive(String query, Object... args) throws IOException {
+        return mDerivedCache.obtain(query, this).table(args);
     }
 
     @Override

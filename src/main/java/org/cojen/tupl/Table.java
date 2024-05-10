@@ -572,23 +572,6 @@ public interface Table<R> extends Closeable {
     }
 
     /**
-     * Returns a view backed by this table, whose rows and natural ordering are defined by the
-     * given query. The returned table instance will throw a {@link ViewConstraintException}
-     * for operations against rows which are restricted by the query, and closing the table has
-     * no effect.
-     */
-    public default Table<R> view(String query, Object... args) throws IOException {
-        return ViewedTable.view(this, query, args);
-    }
-
-    /**
-     * @hidden
-     */
-    public default Table<R> view(String query) throws IOException {
-        return view(query, NO_ARGS);
-    }
-
-    /**
      * Returns a view backed by this table, whose rows have been mapped to target rows. The
      * returned table instance will throw a {@link ViewConstraintException} for operations
      * against rows not supported by the mapper, and closing the table has no effect.
@@ -678,6 +661,41 @@ public interface Table<R> extends Closeable {
         throws IOException
     {
         return JoinTableMaker.join(joinType, spec, tables);
+    }
+
+    /**
+     * Returns a view backed by this table, whose rows and natural ordering are defined by the
+     * given query. The returned table instance will throw a {@link ViewConstraintException}
+     * for operations against rows which are restricted by the query, and closing the table has
+     * no effect.
+     *
+     * @see #derive
+     */
+    public default Table<R> view(String query, Object... args) throws IOException {
+        return ViewedTable.view(this, query, args);
+    }
+
+    /**
+     * @hidden
+     */
+    public default Table<R> view(String query) throws IOException {
+        return view(query, NO_ARGS);
+    }
+
+    /**
+     * Returns a view backed by this table, specified by a fully-featured query expression. The
+     * returned table instance will throw a {@link ViewConstraintException} for operations
+     * against rows which are restricted by the query, and closing the table has no effect.
+     *
+     * @see #view
+     */
+    public Table<Row> derive(String query, Object... args) throws IOException;
+
+    /**
+     * @hidden
+     */
+    public default Table<Row> derive(String query) throws IOException {
+        return derive(query, NO_ARGS);
     }
 
     /**

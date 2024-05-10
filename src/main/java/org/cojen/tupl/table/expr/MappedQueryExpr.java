@@ -17,6 +17,8 @@
 
 package org.cojen.tupl.table.expr;
 
+import java.io.IOException;
+
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
@@ -92,7 +94,7 @@ final class MappedQueryExpr extends QueryExpr {
 
     @Override
     @SuppressWarnings("unchecked")
-    public CompiledQuery makeCompiledQuery() {
+    public CompiledQuery makeCompiledQuery() throws IOException {
         CompiledQuery source = mFrom.makeCompiledQuery();
 
         MapperFactory factory = cCache.obtain(makeKey(), this);
@@ -114,7 +116,7 @@ final class MappedQueryExpr extends QueryExpr {
 
             @Override
             @SuppressWarnings("unchecked")
-            public Table table(Object... args) {
+            public Table table(Object... args) throws IOException {
                 checkArgumentCount(args);
                 return source.table(args).map(targetClass, factory.get(args));
             }

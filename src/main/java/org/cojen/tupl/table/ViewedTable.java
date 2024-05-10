@@ -45,6 +45,7 @@ import org.cojen.maker.MethodMaker;
 import org.cojen.tupl.ColumnProcessor;
 import org.cojen.tupl.NoSuchRowException;
 import org.cojen.tupl.Query;
+import org.cojen.tupl.Row;
 import org.cojen.tupl.Scanner;
 import org.cojen.tupl.Table;
 import org.cojen.tupl.Transaction;
@@ -294,6 +295,11 @@ public abstract sealed class ViewedTable<R> extends WrappedTable<R, R> {
     @Override
     public final Table<R> view(String query, Object... args) throws IOException {
         return mSource.view(fuseQuery(query), fuseArguments(args));
+    }
+
+    @Override
+    public final Table<Row> derive(String query, Object... args) throws IOException {
+        return mSource.derive(fuseQuery(query), fuseArguments(args));
     }
 
     @Override

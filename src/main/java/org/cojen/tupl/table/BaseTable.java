@@ -41,6 +41,7 @@ import org.cojen.tupl.Index;
 import org.cojen.tupl.LockMode;
 import org.cojen.tupl.LockResult;
 import org.cojen.tupl.Query;
+import org.cojen.tupl.Row;
 import org.cojen.tupl.Scanner;
 import org.cojen.tupl.Updater;
 import org.cojen.tupl.Table;
@@ -54,6 +55,7 @@ import org.cojen.tupl.diag.EventListener;
 import org.cojen.tupl.diag.EventType;
 import org.cojen.tupl.diag.QueryPlan;
 
+import org.cojen.tupl.table.expr.CompiledQueryCache;
 import org.cojen.tupl.table.expr.RelationExpr;
 
 import org.cojen.tupl.table.filter.ComplexFilterException;
@@ -94,7 +96,11 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
         @Override
         public QueryLauncher<R> newValue(Object queryOrKey, ParsedQuery pq) {
             if (queryOrKey instanceof TupleKey) {
-                return BaseQueryLauncher.make(BaseTable.this, pq.queryStr(), pq.expr());
+                try {
+                    return BaseQueryLauncher.make(BaseTable.this, pq.queryStr(), pq.expr());
+                } catch (IOException e) {
+                    throw Utils.rethrow(e);
+                }
             }
             String queryStr = (String) queryOrKey;
             assert pq == null;
@@ -106,6 +112,8 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
     }
 
     private final QueryCache mQueryCache;
+
+    private final CompiledQueryCache mDerivedCache = new CompiledQueryCache();
 
     private Trigger<R> mTrigger;
     private static final VarHandle cTriggerHandle;
@@ -375,8 +383,13 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
     }
 
     @Override
-    public QueryLauncher<R> query(String queryStr) {
+    public QueryLauncher<R> query(String queryStr) throws IOException {
         return mQueryCache.obtain(queryStr, null);
+    }
+
+    @Override
+    public final Table<Row> derive(String query, Object... args) throws IOException {
+        return mDerivedCache.obtain(query, this).table(args);
     }
 
     @Override
