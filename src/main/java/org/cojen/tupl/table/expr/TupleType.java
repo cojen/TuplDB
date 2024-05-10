@@ -26,7 +26,6 @@ import java.util.TreeMap;
 
 import org.cojen.tupl.table.ColumnInfo;
 import org.cojen.tupl.table.ColumnSet;
-import org.cojen.tupl.table.IdentityTable;
 import org.cojen.tupl.table.RowGen;
 import org.cojen.tupl.table.RowInfo;
 import org.cojen.tupl.table.RowMethodsMaker;
@@ -64,8 +63,8 @@ public final class TupleType extends Type implements Iterable<Column> {
             }
         }
 
-        // Temporarily use the IdentityTable.Row class.
-        TupleType tt = new TupleType(IdentityTable.Row.class, columns);
+        // Temporarily use the generic Row class.
+        TupleType tt = new TupleType(Row.class, columns);
 
         if (tt.numColumns() != 0) {
             tt = tt.withRowType(cCache.obtain(tt.makeKey(), tt));
@@ -76,6 +75,7 @@ public final class TupleType extends Type implements Iterable<Column> {
 
     /**
      * Makes a type which uses the given row type class.
+     *
      * @param projection consists of column names; can pass null to project all columns
      * @throws QueryException if projection refers to a non-existent column or if any
      * target column names are duplicated
