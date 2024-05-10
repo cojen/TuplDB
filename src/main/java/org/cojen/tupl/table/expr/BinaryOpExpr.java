@@ -148,10 +148,16 @@ public sealed class BinaryOpExpr extends Expr permits FilterExpr {
             }
             break;
 
-        case T_OR: case T_PLUS: case T_MINUS:
+        case T_OR: case T_PLUS:
             if (left.isZero()) {
                 return right;
             } else if (right.isZero()) {
+                return left;
+            }
+            break;
+
+        case T_MINUS:
+            if (right.isZero()) {
                 return left;
             }
             break;
