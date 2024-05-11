@@ -1056,7 +1056,7 @@ public class Converter {
             name = info.unboxedType().arrayType().getSimpleName();
         }
 
-        if (info.isUnsigned()) {
+        if (info.isUnsignedInteger()) {
             return "unsigned " + name;
         } else {
             return name;
