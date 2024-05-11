@@ -161,7 +161,7 @@ public abstract sealed class QueryExpr extends RelationExpr
         // with an UnmappedQueryExpr.
         if (unmappedRowFilter != TrueFilter.THE || fromProjection != null) {
             from = UnmappedQueryExpr.make
-                (-1, -1, fromType, from, unmappedRowFilter, fromProjection, maxArgument);
+                (-1, -1, from, unmappedRowFilter, fromProjection, maxArgument);
         }
 
         if (mappedRowFilter == TrueFilter.THE &&

@@ -78,7 +78,7 @@ public abstract sealed class RelationExpr extends Expr permits TableExpr, QueryE
     }
 
     /**
-     * Returns all of this relation's full qualified columns in a new array.
+     * Returns all of this relation's fully qualified columns in a new array.
      */
     public final List<ProjExpr> fullProjection() {
         var columns = new ArrayList<ProjExpr>(type().rowType().numColumns());

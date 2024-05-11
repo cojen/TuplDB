@@ -63,7 +63,7 @@ public final class TupleType extends Type implements Iterable<Column> {
             }
         }
 
-        // Temporarily use the generic Row class.
+        // Temporarily use the generic Row class, but keep it if there's no columns.
         TupleType tt = new TupleType(Row.class, columns);
 
         if (tt.numColumns() != 0) {
@@ -264,6 +264,35 @@ public final class TupleType extends Type implements Iterable<Column> {
             }
         }
         return true;
+    }
+
+    /**
+     * Returns a TupleType subset consisting of the given projected columns.
+     *
+     * @throws IllegalArgumentException if projection refers to columns not in this TupleType
+     */
+    public TupleType project(Collection<ProjExpr> projection) {
+        if (projection.size() == mColumns.size()) {
+            for (ProjExpr pe : projection) {
+                if (!mColumns.containsKey(pe.name())) {
+                    throw new IllegalArgumentException();
+                }
+            }
+            return this;
+        }
+
+        var columns = new TreeMap<String, Column>();
+
+        for (ProjExpr pe : projection) {
+            String name = pe.name();
+            Column column = mColumns.get(name);
+            if (column == null) {
+                throw new IllegalArgumentException();
+            }
+            columns.put(name, column);
+        }
+        
+        return new TupleType(clazz(), typeCode(), columns);
     }
 
     /**

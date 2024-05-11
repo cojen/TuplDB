@@ -47,13 +47,19 @@ final class UnmappedQueryExpr extends QueryExpr {
      * project all columns
      * @see QueryExpr#make
      */
-    static UnmappedQueryExpr make(int startPos, int endPos, TupleType type,
+    static UnmappedQueryExpr make(int startPos, int endPos,
                                   RelationExpr from, RowFilter rowFilter, List<ProjExpr> projection,
                                   int maxArgument)
     {
-        if (projection != null && from.type().rowType().matches(projection)) {
-            // Full projection and no order-by specification.
-            projection = null;
+        TupleType type = from.type().rowType();
+
+        if (projection != null) {
+            if (type.matches(projection)) {
+                // Full projection and no order-by specification.
+                projection = null;
+            } else {
+                type = type.project(projection);
+            }
         }
 
         Map<Object, Integer> argMap;
