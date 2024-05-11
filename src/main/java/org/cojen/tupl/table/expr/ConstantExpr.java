@@ -128,7 +128,7 @@ public final class ConstantExpr extends Expr {
         }
 
         if (mValue == null) {
-            return new ConstantExpr(startPos(), endPos(), type, null);
+            return new ConstantExpr(startPos(), endPos(), type.nullable(), null);
         }
 
         try {
@@ -188,7 +188,9 @@ public final class ConstantExpr extends Expr {
 
     @Override
     public Expr not(int startPos) {
-        if (mValue instanceof Boolean bool) {
+        if (mValue == null) {
+            return withStartPos(startPos);
+        } else if (mValue instanceof Boolean bool) {
             return make(startPos, endPos(), !bool);
         } else {
             return super.not(startPos);
@@ -197,7 +199,7 @@ public final class ConstantExpr extends Expr {
 
     @Override
     public boolean supportsLogicalNot() {
-        return mValue instanceof Boolean;
+        return mValue == null || mValue instanceof Boolean;
     }
 
     private ConstantExpr withStartPos(int startPos) {

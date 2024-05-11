@@ -34,22 +34,23 @@ sealed class Token {
     // Also, the relational type codes must exactly match the corresponding ColumnFilter.OP
     // constants.
     static final int T_EQ = 0, T_NE = 1, T_GE = 2, T_LT = 3, T_LE = 4, T_GT = 5;
-    static final int T_LAND = 6, T_LOR = 7, T_AND = 8, T_OR = 9, T_NOT = 10;
-    static final int T_PLUS = 11, T_MINUS = 12, T_STAR = 13, T_DIV = 14, T_REM = 15;
+    static final int T_LAND = 6, T_LOR = 7;
+    static final int T_AND = 8, T_OR = 9, T_XOR = 10, T_NOT = 11;
+    static final int T_PLUS = 12, T_MINUS = 13, T_STAR = 14, T_DIV = 15, T_REM = 16;
 
-    static final int T_LPAREN = 16, T_RPAREN = 17, T_LBRACE = 18, T_RBRACE = 19;
+    static final int T_LPAREN = 17, T_RPAREN = 18, T_LBRACE = 19, T_RBRACE = 20;
 
-    static final int T_ASSIGN = 20, T_TILDE = 21, T_COMMA = 22, T_DOT = 23, T_ARG = 24;
+    static final int T_ASSIGN = 21, T_TILDE = 22, T_COMMA = 23, T_DOT = 24, T_ARG = 25;
 
     // Keywords.
-    static final int T_FALSE = 25, T_TRUE = 26, T_NULL = 27, T_IN = 28;
+    static final int T_FALSE = 26, T_TRUE = 27, T_NULL = 28, T_IN = 29;
 
     // Tokens which have a text value.
-    static final int T_UNKNOWN = 29, T_IDENTIFIER = 30, T_STRING = 31;
+    static final int T_UNKNOWN = 30, T_IDENTIFIER = 31, T_STRING = 32;
 
     // Numerical constants.
-    static final int T_INT = 32, T_LONG = 33, T_BIGINT = 34,
-        T_FLOAT = 35, T_DOUBLE = 36, T_BIGDEC = 37;
+    static final int T_INT = 33, T_LONG = 34, T_BIGINT = 35,
+        T_FLOAT = 36, T_DOUBLE = 37, T_BIGDEC = 38;
 
     private final int mStartPos, mEndPos, mType;
 

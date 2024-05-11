@@ -102,9 +102,15 @@ public abstract sealed class Expr
             return NotExpr.make(startPos, mEndPos, this);
         }
 
+        Type boolType = BasicType.BOOLEAN;
+
+        if (isNullable()) {
+            boolType = boolType.nullable();
+        }
+
         return BinaryOpExpr.make
             (startPos, mEndPos,
-             Token.T_EQ, asType(BasicType.BOOLEAN), ConstantExpr.make(startPos, mEndPos, false));
+             Token.T_XOR, asType(boolType), ConstantExpr.make(startPos, mEndPos, true));
     }
 
     /**

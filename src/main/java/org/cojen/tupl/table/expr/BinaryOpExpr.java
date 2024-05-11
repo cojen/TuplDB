@@ -56,9 +56,9 @@ public sealed class BinaryOpExpr extends Expr permits FilterExpr {
             if (type != BasicType.BOOLEAN) {
                 throw fail("Boolean operation not allowed", op, left, right);
             }
-        } else if (T_AND <= op && op <= T_OR) {
-            if (type == BasicType.BOOLEAN) {
-                if (left.isPureFunction() && right.isPureFunction()) {
+        } else if (T_AND <= op && op <= T_XOR) {
+            if (type.isBoolean()) {
+                if (op != T_XOR && left.isPureFunction() && right.isPureFunction()) {
                     // Switch to logical operation which can short-circuit.
                     op -= 2;
                 }
@@ -70,12 +70,13 @@ public sealed class BinaryOpExpr extends Expr permits FilterExpr {
         left = left.asType(type);
         right = right.asType(type);
 
-        if (type == BasicType.BOOLEAN && (op == T_EQ || op == T_NE)
+        if (type.isBoolean() && (op == T_EQ || op == T_NE || op == T_XOR)
             && left.isPureFunction() && right.isPureFunction()
             && left.supportsLogicalNot() && right.supportsLogicalNot())
         {
-            // Transform some forms into xor.
-            if (op == T_NE) {
+            // Transform into expanded xor form.
+
+            if (op == T_NE || op == T_XOR) {
                 // a != b -->   a ^ b  --> (!a && b) || (a && !b)
                 return make(startPos, endPos, T_LOR,
                             make(startPos, endPos, T_LAND, left.not(), right),
@@ -159,7 +160,7 @@ public sealed class BinaryOpExpr extends Expr permits FilterExpr {
             }
             break;
 
-        case T_OR: case T_PLUS:
+        case T_OR: case T_XOR: case T_PLUS:
             if (left.isZero()) {
                 return right;
             } else if (right.isZero()) {
@@ -317,6 +318,7 @@ public sealed class BinaryOpExpr extends Expr permits FilterExpr {
         int op = mOp;
 
         Variable resulVar = switch (mType.plainTypeCode()) {
+            case TYPE_BOOLEAN -> Arithmetic.Bool.eval(op, leftVar, rightVar);
             case TYPE_UBYTE -> Arithmetic.UByte.eval(op, leftVar, rightVar);
             case TYPE_USHORT -> Arithmetic.UShort.eval(op, leftVar, rightVar);
             case TYPE_UINT -> Arithmetic.UInteger.eval(op, leftVar, rightVar);
@@ -423,6 +425,7 @@ public sealed class BinaryOpExpr extends Expr permits FilterExpr {
 
             case T_AND -> "&";
             case T_OR  -> "|";
+            case T_XOR  -> "^";
 
             case T_PLUS  -> "+";
             case T_MINUS -> "-";

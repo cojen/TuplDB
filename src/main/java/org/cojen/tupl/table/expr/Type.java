@@ -52,6 +52,13 @@ public abstract sealed class Type extends ColumnInfo
     public abstract Type nullable();
 
     /**
+     * Returns true if this type represents a boolean.
+     */
+    public boolean isBoolean() {
+        return false;
+    }
+
+    /**
      * Returns a cache key instance by calling encodeKey.
      */
     protected final TupleKey makeKey() {

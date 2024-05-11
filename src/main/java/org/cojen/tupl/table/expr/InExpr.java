@@ -64,7 +64,7 @@ public final class InExpr extends Expr {
 
     @Override
     public Expr asType(Type type) {
-        if (type == BasicType.BOOLEAN) {
+        if (type.isBoolean()) {
             return this;
         }
         throw new QueryException("Cannot convert " + BasicType.BOOLEAN + " to " + type,

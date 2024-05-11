@@ -37,6 +37,20 @@ import java.lang.Long;
  * @author Brian S. O'Neill
  */
 final class Arithmetic {
+    public static final class Bool {
+        static Variable eval(int op, Variable left, Variable right) {
+            switch (op) {
+            case T_AND:
+                return left.and(right);
+            case T_OR:
+                return left.or(right);
+            case T_XOR:
+                return left.xor(right);
+            };
+            return null;
+        }        
+    }
+
     public static final class UByte {
         static Variable eval(int op, Variable left, Variable right) {
             final String method;
@@ -60,6 +74,8 @@ final class Arithmetic {
                 return left.and(right);
             case T_OR:
                 return left.or(right);
+            case T_XOR:
+                return left.xor(right);
             default:
                 return null;
             };
@@ -121,6 +137,8 @@ final class Arithmetic {
                 return left.and(right);
             case T_OR:
                 return left.or(right);
+            case T_XOR:
+                return left.xor(right);
             default:
                 return null;
             };
@@ -182,6 +200,8 @@ final class Arithmetic {
                 return left.and(right);
             case T_OR:
                 return left.or(right);
+            case T_XOR:
+                return left.xor(right);
             default:
                 return null;
             };
@@ -252,6 +272,8 @@ final class Arithmetic {
                 return left.and(right);
             case T_OR:
                 return left.or(right);
+            case T_XOR:
+                return left.xor(right);
             default:
                 return null;
             };
@@ -324,6 +346,8 @@ final class Arithmetic {
                 return left.and(right);
             case T_OR:
                 return left.or(right);
+            case T_XOR:
+                return left.xor(right);
             default:
                 return null;
             };
@@ -387,6 +411,8 @@ final class Arithmetic {
                 return left.and(right);
             case T_OR:
                 return left.or(right);
+            case T_XOR:
+                return left.xor(right);
             default:
                 return null;
             };
@@ -450,6 +476,8 @@ final class Arithmetic {
                 return left.and(right);
             case T_OR:
                 return left.or(right);
+            case T_XOR:
+                return left.xor(right);
             default:
                 return null;
             };
@@ -502,6 +530,9 @@ final class Arithmetic {
             case T_OR:
                 method = "or";
                 break;
+            case T_XOR:
+                method = "xor";
+                break;
             default:
                 return null;
             };
@@ -513,7 +544,7 @@ final class Arithmetic {
     public static final class BigDecimal {
         static Variable eval(int op, Variable left, Variable right) {
             return switch (op) {
-                case T_AND, T_OR -> null;
+            case T_AND, T_OR, T_XOR -> null;
                 default -> Big.eval(op, left, right);
             };
         }

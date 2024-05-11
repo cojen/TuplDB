@@ -36,7 +36,7 @@ public final class ConversionExpr extends WrappedExpr {
             return expr;
         }
 
-        if (type == BasicType.BOOLEAN) {
+        if (expr.type().isBoolean() != expr.type().isBoolean()) {
             throw new QueryException("Cannot convert " + expr.type() + " to " + type, expr);
         }
 

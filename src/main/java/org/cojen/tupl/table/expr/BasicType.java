@@ -61,6 +61,11 @@ public final class BasicType extends Type {
         return make(clazz, typeCode | TYPE_NULLABLE);
     }
 
+    @Override
+    public boolean isBoolean() {
+        return this == BOOLEAN || clazz() == Boolean.class;
+    }
+
     private static final byte K_TYPE = KeyEncoder.allocType();
 
     @Override

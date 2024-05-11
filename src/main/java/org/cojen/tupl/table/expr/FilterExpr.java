@@ -58,7 +58,7 @@ public final class FilterExpr extends BinaryOpExpr {
 
     @Override
     public FilterExpr asType(Type type) {
-        if (type == BasicType.BOOLEAN || type.clazz() == Boolean.class) {
+        if (type.isBoolean()) {
             return this;
         }
         throw new QueryException("Cannot convert " + mType + " to " + type,
