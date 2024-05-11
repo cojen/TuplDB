@@ -108,10 +108,13 @@ public sealed class BinaryOpExpr extends Expr permits FilterExpr {
             if (left.equals(right)) {
                 value = true;
             } else {
-                if (!(left instanceof ConstantExpr && right instanceof ConstantExpr)) {
+                if ((left instanceof ConstantExpr && right instanceof ConstantExpr) ||
+                    falseNullComparison(originalLeft, originalRight))
+                {
+                    value = false;
+                } else {
                     break constant;
                 }
-                value = false;
             }
             
             switch (op) {
@@ -132,6 +135,13 @@ public sealed class BinaryOpExpr extends Expr permits FilterExpr {
         }
 
         return new FilterExpr(startPos, endPos, op, originalLeft, originalRight, left, right);
+    }
+
+    /**
+     * @return true if either side is comparing to null and is guaranteed to return false
+     */
+    private static boolean falseNullComparison(Expr left, Expr right) {
+        return left.isNull() && !right.isNullable() || right.isNull() && !left.isNullable();
     }
 
     /**

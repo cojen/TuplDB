@@ -145,6 +145,13 @@ public abstract sealed class Expr
     /**
      * Returns true if this expression evaluates to a constant value of zero.
      */
+    public boolean isNull() {
+        return false;
+    }
+
+    /**
+     * Returns true if this expression evaluates to a constant value of zero.
+     */
     public boolean isZero() {
         return false;
     }

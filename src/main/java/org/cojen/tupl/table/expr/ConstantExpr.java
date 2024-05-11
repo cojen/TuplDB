@@ -230,6 +230,11 @@ public final class ConstantExpr extends Expr {
     }
 
     @Override
+    public boolean isNull() {
+        return mValue == null;
+    }
+
+    @Override
     public boolean isZero() {
         Object value = mValue;
 
