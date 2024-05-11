@@ -116,6 +116,11 @@ public final class ProjExpr extends WrappedExpr implements Named {
     }
 
     @Override
+    public boolean supportsLogicalNot() {
+        return mExpr.supportsLogicalNot();
+    }
+
+    @Override
     public ColumnExpr sourceColumn() {
         return mExpr.sourceColumn();
     }

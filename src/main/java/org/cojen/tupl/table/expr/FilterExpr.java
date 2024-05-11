@@ -58,7 +58,7 @@ public final class FilterExpr extends BinaryOpExpr {
 
     @Override
     public FilterExpr asType(Type type) {
-        if (mType.equals(type)) {
+        if (type == BasicType.BOOLEAN || type.clazz() == Boolean.class) {
             return this;
         }
         throw new QueryException("Cannot convert " + mType + " to " + type,
@@ -75,6 +75,19 @@ public final class FilterExpr extends BinaryOpExpr {
             return make(startPos, endPos(), op ^ 1, mOriginalLeft.not(), mOriginalRight.not());
         } else {
             throw new AssertionError();
+        }
+    }
+
+    @Override
+    public boolean supportsLogicalNot() {
+        int op = mOp;
+        if (op < T_LAND) {
+            return true;
+        } else if (op <= T_LOR) {
+            // Would apply De Morgan's law.
+            return mOriginalRight.supportsLogicalNot() && mOriginalRight.supportsLogicalNot();
+        } else {
+            return false;
         }
     }
 

@@ -77,6 +77,11 @@ public final class InExpr extends Expr {
     }
 
     @Override
+    public boolean supportsLogicalNot() {
+        return true;
+    }
+
+    @Override
     public int maxArgument() {
         return Math.max(mLeft.maxArgument(), mRight.maxArgument());
     }

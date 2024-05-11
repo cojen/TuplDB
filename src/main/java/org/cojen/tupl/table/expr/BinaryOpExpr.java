@@ -71,7 +71,8 @@ public sealed class BinaryOpExpr extends Expr permits FilterExpr {
         right = right.asType(type);
 
         if (type == BasicType.BOOLEAN && (op == T_EQ || op == T_NE)
-            && left.isPureFunction() && right.isPureFunction())
+            && left.isPureFunction() && right.isPureFunction()
+            && left.supportsLogicalNot() && right.supportsLogicalNot())
         {
             // Transform some forms into xor.
             if (op == T_NE) {

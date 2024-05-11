@@ -108,6 +108,13 @@ public abstract sealed class Expr
     }
 
     /**
+     * Returns true if calling the not method doesn't introduce new terms.
+     */
+    public boolean supportsLogicalNot() {
+        return false;
+    }
+
+    /**
      * Returns the highest query argument needed by this expression, which is zero if none are
      * needed.
      */

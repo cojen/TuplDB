@@ -84,7 +84,7 @@ public final class BasicType extends Type {
     @Override
     public String toString() {
         String str = clazz().getCanonicalName();
-        if (isUnsigned() && this != BOOLEAN) {
+        if (isUnsignedInteger()) {
             str = "unsigned " + str;
         }
         return str;
@@ -92,11 +92,10 @@ public final class BasicType extends Type {
 
     @Override
     protected void appendTo(StringBuilder b, boolean simple) {
-        Class<?> clazz = clazz();
-        String str = simple ? clazz.getSimpleName() : clazz.getCanonicalName();
-        if (isUnsigned() && this != BOOLEAN) {
+        if (isUnsignedInteger()) {
             b.append("unsigned ");
         }
-        b.append(str);
+        Class<?> clazz = clazz();
+        b.append(simple ? clazz.getSimpleName() : clazz.getCanonicalName());
     }
 }

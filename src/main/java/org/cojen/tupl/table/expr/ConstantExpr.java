@@ -188,18 +188,21 @@ public final class ConstantExpr extends Expr {
 
     @Override
     public Expr not(int startPos) {
-        if (mValue == null) {
-            return withStartPos(startPos);
-        } else if (mValue instanceof Boolean bool) {
+        if (mValue instanceof Boolean bool) {
             return make(startPos, endPos(), !bool);
         } else {
             return super.not(startPos);
         }
     }
 
+    @Override
+    public boolean supportsLogicalNot() {
+        return mValue instanceof Boolean;
+    }
+
     private ConstantExpr withStartPos(int startPos) {
         return startPos == startPos() ? this : new ConstantExpr(startPos, endPos(), mType, mValue); 
-   }
+    }
 
     @Override
     public int maxArgument() {
