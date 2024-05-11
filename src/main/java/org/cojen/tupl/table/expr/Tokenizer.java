@@ -145,6 +145,10 @@ final class Tokenizer {
                 }
                 break loop;
 
+            case '^':
+                type = Token.T_XOR;
+                break loop;
+
             case '&':
                 next = read();
                 if (next == '&') {

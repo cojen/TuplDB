@@ -309,24 +309,23 @@ public final class Parser {
     }
 
     /*
-     * Expr = OrExpr
+     * Expr = LogicalOrExpr
      */
     private Expr parseExpr() throws IOException {
-        return parseOrExpr();
+        return parseLogicalOrExpr();
     }
 
     /*
-     * OrExpr = AndExpr { OrOp AndExpr }
-     * OrOp   = "|" | "||"
+     * LogicalOrExpr = LogicalAndExpr { "||" LogicalAndExpr }
      */
-    private Expr parseOrExpr() throws IOException {
-        Expr expr = parseAndExpr();
+    private Expr parseLogicalOrExpr() throws IOException {
+        Expr expr = parseLogicalAndExpr();
 
         while (true) {
             int type = peekTokenType();
-            if (type == T_OR || type == T_LOR) {
+            if (type == T_LOR) {
                 consumePeek();
-                Expr right = parseAndExpr();
+                Expr right = parseLogicalAndExpr();
                 expr = BinaryOpExpr.make(expr.startPos(), right.endPos(), type, expr, right);
             } else {
                 break;
@@ -337,17 +336,16 @@ public final class Parser {
     }
 
     /*
-     * AndExpr = RelExpr { AndOp RelExpr }
-     * AndOp   = "&" | "&&"
+     * LogicalAndExpr = BitwiseOrExpr { "&&" BitwiseOrExpr }
      */
-    private Expr parseAndExpr() throws IOException {
-        Expr expr = parseRelExpr();
+    private Expr parseLogicalAndExpr() throws IOException {
+        Expr expr = parseBitwiseOrExpr();
 
         while (true) {
             int type = peekTokenType();
-            if (type == T_AND || type == T_LAND) {
+            if (type == T_LAND) {
                 consumePeek();
-                Expr right = parseRelExpr();
+                Expr right = parseBitwiseOrExpr();
                 expr = BinaryOpExpr.make(expr.startPos(), right.endPos(), type, expr, right);
             } else {
                 break;
@@ -358,8 +356,93 @@ public final class Parser {
     }
 
     /*
+     * BitwiseOrExpr = BitwiseXorExpr { "|" BitwiseXorExpr }
+     */
+    private Expr parseBitwiseOrExpr() throws IOException {
+        Expr expr = parseBitwiseXorExpr();
+
+        while (true) {
+            int type = peekTokenType();
+            if (type == T_OR) {
+                consumePeek();
+                Expr right = parseBitwiseXorExpr();
+                expr = BinaryOpExpr.make(expr.startPos(), right.endPos(), type, expr, right);
+            } else {
+                break;
+            }
+        }
+
+        return expr;
+    }
+
+    /*
+     * BitwiseXorExpr = BitwiseAndExpr { "^" BitwiseAndExpr }
+     */
+    private Expr parseBitwiseXorExpr() throws IOException {
+        Expr expr = parseBitwiseAndExpr();
+
+        while (true) {
+            int type = peekTokenType();
+            if (type == T_XOR) {
+                consumePeek();
+                Expr right = parseBitwiseAndExpr();
+                expr = BinaryOpExpr.make(expr.startPos(), right.endPos(), type, expr, right);
+            } else {
+                break;
+            }
+        }
+
+        return expr;
+    }
+
+    /*
+     * BitwiseAndExpr = EqualityExpr { "&" EqualityExpr }
+     */
+    private Expr parseBitwiseAndExpr() throws IOException {
+        Expr expr = parseEqualityExpr();
+
+        while (true) {
+            int type = peekTokenType();
+            if (type == T_AND) {
+                consumePeek();
+                Expr right = parseEqualityExpr();
+                expr = BinaryOpExpr.make(expr.startPos(), right.endPos(), type, expr, right);
+            } else {
+                break;
+            }
+        }
+
+        return expr;
+    }
+
+    /*
+     * EqualityExpr = RelExpr { EqualityOp RelExpr }
+     * EqualityOp   = "==" | "!="
+     */
+    private Expr parseEqualityExpr() throws IOException {
+        Expr expr = parseRelExpr();
+
+        loop: while (true) {
+            Token peek = peekToken();
+            int type = peek.type();
+            switch (type) {
+            default: break loop;
+            case T_EQ: case T_NE:
+                consumePeek();
+                Expr right = parseRelExpr();
+                expr = BinaryOpExpr.make(expr.startPos(), right.endPos(), type, expr, right);
+                break;
+            case T_ASSIGN:
+                throw new QueryException("Equality operator must be specified as '=='", peek);
+            }
+        }
+
+        return expr;
+    }
+
+    /*
      * RelExpr = AddExpr { RelOp AddExpr }
-     * RelOp   = "==" | "!=" | ">=" | "<" | "<=" | ">" | "in"
+     * RelOp   = ">=" | "<" | "<=" | ">" | "in"
      */
     private Expr parseRelExpr() throws IOException {
         Expr expr = parseAddExpr();
@@ -369,7 +452,7 @@ public final class Parser {
             int type = peek.type();
             switch (type) {
             default: break loop;
-            case T_EQ: case T_NE: case T_GE: case T_LT: case T_LE: case T_GT:
+            case T_GE: case T_LT: case T_LE: case T_GT:
                 consumePeek();
                 Expr right = parseAddExpr();
                 expr = BinaryOpExpr.make(expr.startPos(), right.endPos(), type, expr, right);
@@ -379,8 +462,6 @@ public final class Parser {
                 right = parseAddExpr();
                 expr = InExpr.make(expr.startPos(), right.endPos(), expr, right);
                 break;
-            case T_ASSIGN:
-                throw new QueryException("Equality operator must be specified as '=='", peek);
             }
         }
 
