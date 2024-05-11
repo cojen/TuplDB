@@ -109,8 +109,9 @@ public sealed class BinaryOpExpr extends Expr permits FilterExpr {
             if (left.equals(right)) {
                 value = true;
             } else {
-                if ((left instanceof ConstantExpr && right instanceof ConstantExpr) ||
-                    falseNullComparison(originalLeft, originalRight))
+                if ((op == T_EQ || op == T_NE) &&
+                    ((left instanceof ConstantExpr && right instanceof ConstantExpr) ||
+                     falseNullComparison(originalLeft, originalRight)))
                 {
                     value = false;
                 } else {
