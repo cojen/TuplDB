@@ -63,7 +63,7 @@ final class MappedQueryExpr extends QueryExpr {
      * @param projection not null; see RelationExpr.fullProjection
      * @see QueryExpr#make
      */
-    MappedQueryExpr(int startPos, int endPos, TupleType type,
+    MappedQueryExpr(int startPos, int endPos, RelationType type,
                     RelationExpr from, RowFilter rowFilter, Expr filter,
                     List<ProjExpr> projection, int maxArgument)
     {
@@ -78,6 +78,8 @@ final class MappedQueryExpr extends QueryExpr {
 
     @Override
     public QuerySpec querySpec(Table<?> table) {
+        // MappedQueryExpr is never expected to be representable by a QuerySpec. If it can,
+        // then it should probably be an UnmappedQueryExpr instead.
         return null;
     }
 
@@ -99,7 +101,7 @@ final class MappedQueryExpr extends QueryExpr {
 
         MapperFactory factory = cCache.obtain(makeKey(), this);
 
-        Class targetClass = type().rowType().clazz();
+        Class targetClass = rowTypeClass();
 
         int argCount = maxArgument();
 
@@ -131,7 +133,7 @@ final class MappedQueryExpr extends QueryExpr {
     }
 
     private MapperFactory makeMapper() {
-        Class<?> targetClass = type().rowType().clazz();
+        Class<?> targetClass = rowTypeClass();
 
         ClassMaker cm = RowGen.beginClassMaker
             (MappedQueryExpr.class, targetClass, targetClass.getName(), null, "mapper")
@@ -211,7 +213,7 @@ final class MappedQueryExpr extends QueryExpr {
     }
 
     private void addMapMethod(ClassMaker cm, Set<Column> evalColumns, int argCount) {
-        TupleType targetType = type().rowType();
+        TupleType targetType = rowType();
 
         MethodMaker mm = cm.addMethod
             (targetType.clazz(), "map", Object.class, Object.class).public_();
@@ -221,7 +223,7 @@ final class MappedQueryExpr extends QueryExpr {
             // No need to cast the sourceRow because it won't be used.
             sourceRow = mm.param(0);
         } else {
-            sourceRow = mm.param(0).cast(mFrom.type().rowType().clazz());
+            sourceRow = mm.param(0).cast(mFrom.rowTypeClass());
         }
 
         var targetRow = mm.param(1).cast(targetType.clazz());
@@ -280,7 +282,7 @@ final class MappedQueryExpr extends QueryExpr {
         int numColumns = evalColumns.size();
 
         // FIXME: might be a join; flatten to get the max
-        int maxColumns = mFrom.type().rowType().numColumns();
+        int maxColumns = mFrom.rowType().numColumns();
 
         if (numColumns == maxColumns) {
             // The default implementation indicates that all source columns are projected.
@@ -317,7 +319,7 @@ final class MappedQueryExpr extends QueryExpr {
     }
 
     private void addInverseMappingFunctions(ClassMaker cm) {
-        TupleType targetType = type().rowType();
+        TupleType targetType = rowType();
         int numColumns = targetType.numColumns();
 
         for (ProjExpr pe : mProjection) {

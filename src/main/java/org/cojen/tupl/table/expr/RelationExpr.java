@@ -77,11 +77,19 @@ public abstract sealed class RelationExpr extends Expr permits TableExpr, QueryE
         throw null;
     }
 
+    public final TupleType rowType() {
+        return type().rowType();
+    }
+
+    public final Class<?> rowTypeClass() {
+        return type().rowType().clazz();
+    }
+
     /**
      * Returns all of this relation's fully qualified columns in a new array.
      */
     public final List<ProjExpr> fullProjection() {
-        var columns = new ArrayList<ProjExpr>(type().rowType().numColumns());
+        var columns = new ArrayList<ProjExpr>(rowType().numColumns());
         fullProjection(columns);
         return columns;
     }
@@ -97,7 +105,7 @@ public abstract sealed class RelationExpr extends Expr permits TableExpr, QueryE
      * Pass all of the fully qualified columns of this relation to the given consumer.
      */
     public final void fullProjection(Consumer<? super ProjExpr> consumer) {
-        fullProjection(consumer, type().rowType(), "");
+        fullProjection(consumer, rowType(), "");
     }
 
     private void fullProjection(Consumer<? super ProjExpr> consumer, TupleType tt, String prefix) {
@@ -126,13 +134,13 @@ public abstract sealed class RelationExpr extends Expr permits TableExpr, QueryE
      * If possible, makes a fully functional CompiledQuery from this expression, composed of
      * the given row type.
      *
-     * @throws QueryException if the query contains columns not available to the given row type
+     * @throws QueryException if the query derives columns not available to the given row type
      */
     @SuppressWarnings("unchecked")
-    public <R> CompiledQuery<R> makeCompiledQuery(Class<R> rowTypeClass)
+    public final <R> CompiledQuery<R> makeCompiledQuery(Class<R> rowTypeClass)
         throws IOException, QueryException
     {
-        TupleType thisRowType = type().rowType();
+        TupleType thisRowType = rowType();
 
         if (rowTypeClass.isAssignableFrom(thisRowType.clazz())) {
             return (CompiledQuery<R>) makeCompiledQuery();
@@ -140,7 +148,7 @@ public abstract sealed class RelationExpr extends Expr permits TableExpr, QueryE
 
         TupleType otherRowType = TupleType.make(rowTypeClass, null);
 
-        var b = new StringBuilder().append("Query contains new or mismatched columns: ");
+        var b = new StringBuilder().append("Query derives new or mismatched columns: ");
         final int originalLength = b.length();
 
         for (Column c : thisRowType) {
@@ -173,14 +181,14 @@ public abstract sealed class RelationExpr extends Expr permits TableExpr, QueryE
      * implement the Row interface.
      */
     @SuppressWarnings("unchecked")
-    public CompiledQuery<Row> makeCompiledRowQuery() throws IOException {
-        if (Row.class.isAssignableFrom(type().rowType().clazz())) {
+    public final CompiledQuery<Row> makeCompiledRowQuery() throws IOException {
+        if (Row.class.isAssignableFrom(rowTypeClass())) {
             return (CompiledQuery<Row>) makeCompiledQuery();
         }
 
         List<ProjExpr> projection = fullProjection();
 
-        var newType = TupleType.make(projection);
+        var newType = RelationType.make(TupleType.make(projection), type().cardinality());
 
         return new MappedQueryExpr
             (-1, -1, newType, this, TrueFilter.THE, null, projection, maxArgument())

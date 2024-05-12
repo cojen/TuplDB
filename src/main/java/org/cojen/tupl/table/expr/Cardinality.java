@@ -17,6 +17,10 @@
 
 package org.cojen.tupl.table.expr;
 
+import org.cojen.tupl.table.filter.FalseFilter;
+import org.cojen.tupl.table.filter.RowFilter;
+import org.cojen.tupl.table.filter.TrueFilter;
+
 /**
  * Defines the number of rows expected to be found in a relation.
  *
@@ -47,5 +51,34 @@ public enum Cardinality {
             return OPTIONAL;
         }
         return MANY;
+    }
+
+    /**
+     * Returns an adjusted cardinality, when combined with a filter result.
+     */
+    public Cardinality filter(Expr filter) {
+        if (filter instanceof ConstantExpr ce) {
+            Object value = ce.value();
+            if (value == Boolean.FALSE) {
+                return ZERO;
+            } else if (value == Boolean.TRUE) {
+                return this;
+            }
+        }
+
+        return multiply(OPTIONAL);
+    }
+
+    /**
+     * Returns an adjusted cardinality, when combined with a filter result.
+     */
+    public Cardinality filter(RowFilter filter) {
+        if (filter == TrueFilter.THE) {
+            return this;
+        } else if (filter == FalseFilter.THE) {
+            return ZERO;
+        } else {
+            return multiply(OPTIONAL);
+        }
     }
 }

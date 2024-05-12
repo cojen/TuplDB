@@ -46,6 +46,10 @@ public final class RelationType extends Type {
         return mCardinality;
     }
 
+    public RelationType withCardinality(Cardinality c) {
+        return c == mCardinality ? this : new RelationType(mRowType, c);
+    }
+
     @Override
     public RelationType nullable() {
         return isNullable() ? this : new RelationType(mRowType.nullable(), mCardinality);

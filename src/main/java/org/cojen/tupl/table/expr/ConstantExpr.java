@@ -297,6 +297,7 @@ public final class ConstantExpr extends Expr {
         if (mValue instanceof Boolean b) {
             context.methodMaker().goto_(b ? pass : fail);
         } else {
+            // FIXME: If mValue is null, then what?
             throw new IllegalStateException();
         }
     }

@@ -180,7 +180,7 @@ public final class Parser {
 
                 wildcards = new HashSet<String>();
                 final int startPos = first.startPos();
-                final TupleType rowType = rowType();
+                final TupleType rowType = mFrom.rowType();
 
                 for (Column c : rowType) {
                     String name = c.name();
@@ -295,7 +295,7 @@ public final class Parser {
             if (mLocalVars != null && (assign = mLocalVars.get(name)) != null) {
                 expr = VarExpr.make(startPos, ident.endPos(), assign);
             } else {
-                TupleType rowType = rowType();
+                TupleType rowType = mFrom.rowType();
                 Column c = rowType.tryColumnFor(name);
                 if (c == null) {
                     throw new QueryException("Unknown column or variable: " + ident.mText,
@@ -644,7 +644,7 @@ public final class Parser {
         int startPos = idents.get(0).startPos();
         int endPos = idents.get(idents.size() - 1).endPos();
 
-        TupleType rowType = rowType();
+        TupleType rowType = mFrom.rowType();
         Column c = rowType.tryFindColumn(toPath(idents, true));
 
         if (c == null) {
@@ -761,9 +761,5 @@ public final class Parser {
             throw new AssertionError();
         }
         mNextToken = t;
-    }
-
-    private TupleType rowType() {
-        return mFrom.type().rowType();
     }
 }

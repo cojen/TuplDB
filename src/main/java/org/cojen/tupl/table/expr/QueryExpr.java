@@ -65,7 +65,7 @@ public abstract sealed class QueryExpr extends RelationExpr
             }
         }
 
-        TupleType fromType = from.type().rowType();
+        TupleType fromType = from.rowType();
 
         int maxArgument = from.maxArgument();
 
@@ -172,19 +172,22 @@ public abstract sealed class QueryExpr extends RelationExpr
 
         // A Mapper is required.
 
-        TupleType type;
+        TupleType rowType;
 
         if (projection == null) {
             // Use the existing row type.
-            type = fromType;
+            rowType = fromType;
             projection = from.fullProjection();
         } else if (fromType.canRepresent(projection)) {
             // Use the existing row type.
-            type = fromType;
+            rowType = fromType;
         } else {
             // Use a custom row type.
-            type = TupleType.make(projection);
+            rowType = TupleType.make(projection);
         }
+
+        RelationType type = RelationType.make
+            (rowType, from.type().cardinality().filter(mappedRowFilter));
 
         // FIXME: Pass fromProjection to MappedQueryExpr, in order for the sourceProjection
         // method to be constructed properly. If fromType.matchesNames(fromProjection), then
@@ -241,14 +244,6 @@ public abstract sealed class QueryExpr extends RelationExpr
     protected final int mMaxArgument;
 
     private String mRowFilterString;
-
-    protected QueryExpr(int startPos, int endPos, TupleType type,
-                        RelationExpr from, RowFilter rowFilter, List<ProjExpr> projection,
-                        int maxArgument)
-    {
-        this(startPos, endPos, RelationType.make(type, from.type().cardinality()),
-             from, rowFilter, projection, maxArgument);
-    }
 
     protected QueryExpr(int startPos, int endPos, RelationType type,
                         RelationExpr from, RowFilter rowFilter, List<ProjExpr> projection,

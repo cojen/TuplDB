@@ -31,6 +31,7 @@ import org.cojen.tupl.table.RowInfo;
 import org.cojen.tupl.table.RowUtils;
 
 import org.cojen.tupl.table.filter.ColumnToConstantFilter;
+import org.cojen.tupl.table.filter.FalseFilter;
 import org.cojen.tupl.table.filter.QuerySpec;
 import org.cojen.tupl.table.filter.RowFilter;
 import org.cojen.tupl.table.filter.TrueFilter;
@@ -51,20 +52,21 @@ final class UnmappedQueryExpr extends QueryExpr {
                                   RelationExpr from, RowFilter rowFilter, List<ProjExpr> projection,
                                   int maxArgument)
     {
-        TupleType type = from.type().rowType();
+        RelationType type = from.type();
+        TupleType rowType = type.rowType();
 
         if (projection != null) {
-            if (type.matches(projection)) {
+            if (rowType.matches(projection)) {
                 // Full projection and no order-by specification.
                 projection = null;
             } else {
-                type = type.project(projection);
+                rowType = rowType.project(projection);
             }
         }
 
         Map<Object, Integer> argMap;
 
-        if (rowFilter == TrueFilter.THE) {
+        if (rowFilter == TrueFilter.THE || rowFilter == FalseFilter.THE) {
             argMap = null;
         } else {
             final var fArgMap = new LinkedHashMap<Object, Integer>();
@@ -88,13 +90,15 @@ final class UnmappedQueryExpr extends QueryExpr {
             }
         }
 
+        type = type.withCardinality(type.cardinality().filter(rowFilter));
+
         return new UnmappedQueryExpr
             (startPos, endPos, type, from, rowFilter, projection, maxArgument, argMap);
     }
 
     private final Map<Object, Integer> mArgMap;
 
-    private UnmappedQueryExpr(int startPos, int endPos, TupleType type,
+    private UnmappedQueryExpr(int startPos, int endPos, RelationType type,
                               RelationExpr from, RowFilter filter, List<ProjExpr> projection,
                               int maxArgument, Map<Object, Integer> argMap)
     {

@@ -58,7 +58,7 @@ public class ParserTest {
         pf("a!?&", "Unexpected trailing");
         pf("a==?)", "Unexpected trailing");
         pf("a i?)", "Unexpected trailing");
-        pf("a^?)", "Unexpected trailing");
+        pf("a^?)", "Bitwise operation not allowed");
         pf("a?)", "Unexpected trailing");
         pf("c\u1f600?)", "Unexpected trailing");
         pf("!", "Identifier expected");

@@ -86,7 +86,7 @@ public final class TableExpr extends RelationExpr {
             // Note that the Table instance isn't encoded, only the row type it acts upon. This
             // is because generated code doesn't maintain static references to Tables, and thus
             // Table instances doesn't affect what the code looks like.
-            enc.encodeClass(mTable.rowType());
+            enc.encodeClass(rowTypeClass());
         }
     }
 
@@ -108,6 +108,6 @@ public final class TableExpr extends RelationExpr {
     @Override
     protected void appendTo(StringBuilder b) {
         // FIXME: Need to revise the syntax for the "from" portion. Pipeline syntax?
-        b.append(mTable.rowType().getName()).append(' ').append("{*}");
+        b.append(rowTypeClass().getName()).append(' ').append("{*}");
     }
 }
