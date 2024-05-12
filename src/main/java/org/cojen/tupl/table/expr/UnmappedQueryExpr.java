@@ -177,8 +177,10 @@ final class UnmappedQueryExpr extends QueryExpr {
             return CompiledQuery.make(source.table().view(viewQuery, viewArgs));
         }
 
+        Cardinality cardinality = type().cardinality();
+
         if (viewArgs.length == 0) {
-            return new CompiledQuery.Wrapped(source, baseArgCount) {
+            return new CompiledQuery.Wrapped(source, cardinality, baseArgCount) {
                 @Override
                 public Table table(Object... args) throws IOException {
                     return source.table(args).view(viewQuery, args);
@@ -186,7 +188,7 @@ final class UnmappedQueryExpr extends QueryExpr {
             };
         }
 
-        return new CompiledQuery.Wrapped(source, baseArgCount) {
+        return new CompiledQuery.Wrapped(source, cardinality, baseArgCount) {
             @Override
             public Table table(Object... args) throws IOException {
                 int argCount = checkArgumentCount(args);

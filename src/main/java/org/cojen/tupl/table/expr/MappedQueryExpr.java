@@ -110,7 +110,7 @@ final class MappedQueryExpr extends QueryExpr {
                 (source.table().map(targetClass, factory.get(RowUtils.NO_ARGS)));
         }
 
-        return new CompiledQuery.Wrapped(source, argCount) {
+        return new CompiledQuery.Wrapped(source, type().cardinality(), argCount) {
             @Override
             public Class rowType() {
                 return targetClass;
