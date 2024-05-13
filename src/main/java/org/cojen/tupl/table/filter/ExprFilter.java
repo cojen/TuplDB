@@ -108,6 +108,8 @@ public final class ExprFilter extends TermFilter {
 
     @Override
     public void appendTo(StringBuilder b) {
+        b.append('(');
         mExpr.appendTo(b);
+        b.append(')');
     }
 }
