@@ -193,7 +193,7 @@ public final class InExpr extends Expr {
     }
 
     @Override
-    protected void appendTo(StringBuilder b) {
+    public void appendTo(StringBuilder b) {
         if (mNot) {
             b.append('!').append('(');
         }

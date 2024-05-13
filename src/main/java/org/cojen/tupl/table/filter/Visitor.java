@@ -49,7 +49,7 @@ public interface Visitor {
         throw new UnsupportedOperationException();
     }
 
-    public default void visit(OpaqueFilter filter) {
+    public default void visit(ExprFilter filter) {
         throw new UnsupportedOperationException();
     }
 }

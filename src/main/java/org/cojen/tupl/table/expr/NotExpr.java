@@ -79,7 +79,7 @@ final class NotExpr extends WrappedExpr {
     }
 
     @Override
-    protected void appendTo(StringBuilder b) {
+    public void appendTo(StringBuilder b) {
         b.append('!').append('(');
         mExpr.appendTo(b);
         b.append(')');

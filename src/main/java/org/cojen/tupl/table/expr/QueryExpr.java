@@ -32,7 +32,7 @@ import org.cojen.tupl.table.filter.ColumnToArgFilter;
 import org.cojen.tupl.table.filter.ColumnToColumnFilter;
 import org.cojen.tupl.table.filter.ColumnToConstantFilter;
 import org.cojen.tupl.table.filter.ComplexFilterException;
-import org.cojen.tupl.table.filter.OpaqueFilter;
+import org.cojen.tupl.table.filter.ExprFilter;
 import org.cojen.tupl.table.filter.RowFilter;
 import org.cojen.tupl.table.filter.TrueFilter;
 import org.cojen.tupl.table.filter.Visitor;
@@ -99,7 +99,7 @@ public abstract sealed class QueryExpr extends RelationExpr
 
         // Split the filter such that the unmapped part can be pushed down. The remaining
         // mapped part must be handled by a Mapper. The unmapped part is guaranteed to have no
-        // OpaqueFilters. If it did, UnmappedQueryExpr would produce a broken query string.
+        // ExprFilters. If it did, UnmappedQueryExpr would produce a broken query string.
         RowFilter unmappedRowFilter, mappedRowFilter;
         Expr mappedFilter;
 
@@ -220,8 +220,8 @@ public abstract sealed class QueryExpr extends RelationExpr
             }
 
             @Override
-            public void visit(OpaqueFilter filter) {
-                var expr = (Expr) filter.attachment();
+            public void visit(ExprFilter filter) {
+                var expr = filter.expression();
                 if (!expr.isPureFunction()) {
                     if (nonPure == null) {
                         nonPure = new HashSet<>();
@@ -275,9 +275,9 @@ public abstract sealed class QueryExpr extends RelationExpr
             }
         }
 
-        // Note that mRowFilter isn't checked. The filter used by the UnmappedQueryExpr subclass
-        // never has OpaqueFilters, and so it's always pure. The MappedQueryExpr subclass
-        // overrides this method and checks the filter expression too.
+        // Note that mRowFilter isn't checked. The filter used by the UnmappedQueryExpr
+        // subclass never has ExprFilters, and so it's always pure. The MappedQueryExpr
+        // subclass overrides this method and checks the filter expression too.
 
         return true;
     }
@@ -356,8 +356,9 @@ public abstract sealed class QueryExpr extends RelationExpr
     }
 
     @Override
-    protected final void appendTo(StringBuilder b) {
-        // FIXME: Need to revise the syntax for the "from" portion. Pipeline syntax?
+    public final void appendTo(StringBuilder b) {
+        // FIXME: Need to revise the syntax for the "from" portion. Pipeline syntax? It must
+        // always be parseable, so perhaps no table at all for now?
         b.append('(');
         mFrom.appendTo(b);
         b.append(')').append(' ');

@@ -27,8 +27,8 @@ import org.cojen.tupl.table.filter.ColumnFilter;
 import org.cojen.tupl.table.filter.ColumnToArgFilter;
 import org.cojen.tupl.table.filter.ColumnToColumnFilter;
 import org.cojen.tupl.table.filter.ColumnToConstantFilter;
+import org.cojen.tupl.table.filter.ExprFilter;
 import org.cojen.tupl.table.filter.GroupFilter;
-import org.cojen.tupl.table.filter.OpaqueFilter;
 import org.cojen.tupl.table.filter.OrFilter;
 import org.cojen.tupl.table.filter.RowFilter;
 import org.cojen.tupl.table.filter.Visitor;
@@ -109,8 +109,8 @@ final class ToExprVisitor implements Visitor {
     }
 
     @Override
-    public void visit(OpaqueFilter filter) {
-        mCurrent = (Expr) filter.attachment();
+    public void visit(ExprFilter filter) {
+        mCurrent = filter.expression();
     }
 }
 

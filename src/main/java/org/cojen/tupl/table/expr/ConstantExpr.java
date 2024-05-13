@@ -381,7 +381,7 @@ public final class ConstantExpr extends Expr {
     }
 
     @Override
-    protected void appendTo(StringBuilder b) {
+    public void appendTo(StringBuilder b) {
         if (mValue instanceof String s) {
             RowUtils.appendQuotedString(b, s);
         } else {

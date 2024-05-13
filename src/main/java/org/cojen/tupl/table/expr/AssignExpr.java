@@ -104,7 +104,7 @@ public final class AssignExpr extends WrappedExpr implements Named {
     }
 
     @Override
-    protected void appendTo(StringBuilder b) {
+    public void appendTo(StringBuilder b) {
         b.append(RowMethodsMaker.unescape(mName)).append(" = ").append(mExpr);
     }
 }

@@ -22,7 +22,7 @@ package org.cojen.tupl.table.filter;
  *
  * @author Brian S. O'Neill
  */
-public abstract sealed class TermFilter extends RowFilter permits ColumnFilter, OpaqueFilter {
+public abstract sealed class TermFilter extends RowFilter permits ColumnFilter, ExprFilter {
     TermFilter(int hash) {
         super(hash);
     }

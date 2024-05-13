@@ -26,7 +26,7 @@ import org.cojen.tupl.core.TupleKey;
 
 import org.cojen.tupl.table.RowInfo;
 
-import org.cojen.tupl.table.filter.OpaqueFilter;
+import org.cojen.tupl.table.filter.ExprFilter;
 import org.cojen.tupl.table.filter.RowFilter;
 
 import org.cojen.maker.Label;
@@ -134,13 +134,12 @@ public abstract sealed class Expr
 
     /**
      * Performs a best effort conversion of this expression into a RowFilter. Any expressions
-     * which cannot be converted are represented by OpaqueFilters which have the expression
-     * attached.
+     * which cannot be converted are represented by ExprFilters which refer to the expression.
      *
      * @param columns all converted columns are put into this map
      */
     public RowFilter toRowFilter(RowInfo info, Map<String, ColumnExpr> columns) {
-        return new OpaqueFilter(false, this);
+        return new ExprFilter(this);
     }
 
     /**
@@ -328,7 +327,7 @@ public abstract sealed class Expr
     @Override
     public abstract String toString();
 
-    protected void appendTo(StringBuilder b) {
+    public void appendTo(StringBuilder b) {
         b.append(toString());
     }
 

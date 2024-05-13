@@ -17,40 +17,28 @@
 
 package org.cojen.tupl.table.filter;
 
-import java.util.Objects;
-
 import java.util.function.Function;
 import java.util.function.IntUnaryOperator;
 import java.util.function.Predicate;
 import java.util.function.ToIntFunction;
 
+import org.cojen.tupl.table.expr.Expr;
+
 /**
- * Defines a filter term which cannot be deeply analyzed.
+ * Defines a filter term which references an expression that cannot be deeply analyzed.
  *
  * @author Brian S. O'Neill
  */
-public final class OpaqueFilter extends TermFilter {
-    private final boolean mNot;
-    private final Object mAttachment;
+public final class ExprFilter extends TermFilter {
+    private final Expr mExpr;
 
-    public OpaqueFilter(boolean not, Object attachment) {
-        // Note that the hashCode ignores the "not" state. If it was incorporated, then the
-        // matchHashCode method would need to exclude it.
-        this(Objects.hashCode(attachment), not, attachment);
+    public ExprFilter(Expr expr) {
+        super(expr.hashCode());
+        mExpr = expr;
     }
 
-    private OpaqueFilter(int hash, boolean not, Object attachment) {
-        super(hash);
-        mNot = not;
-        mAttachment = attachment;
-    }
-
-    public boolean isNot() {
-        return mNot;
-    }
-
-    public Object attachment() {
-        return mAttachment;
+    public Expr expression() {
+        return mExpr;
     }
 
     @Override
@@ -60,7 +48,7 @@ public final class OpaqueFilter extends TermFilter {
 
     @Override
     protected int maxArgument(int max) {
-        return 0;
+        return Math.max(max, mExpr.maxArgument());
     }
 
     @Override
@@ -70,15 +58,7 @@ public final class OpaqueFilter extends TermFilter {
 
     @Override
     public int isMatch(RowFilter filter) {
-        if (filter == this) {
-            return 1; // equal
-        }
-        if (filter instanceof OpaqueFilter other) {
-            if (Objects.equals(mAttachment, other.mAttachment)) {
-                return mNot == other.mNot ? 1 : -1;
-            }
-        }
-        return 0; // doesn't match
+        return equals(filter) ? 1 : 0;
     }
 
     @Override
@@ -88,7 +68,7 @@ public final class OpaqueFilter extends TermFilter {
 
     @Override
     public RowFilter not() {
-        return new OpaqueFilter(hashCode(), !mNot, this);
+        return new ExprFilter(mExpr.not());
     }
 
     @Override
@@ -123,15 +103,11 @@ public final class OpaqueFilter extends TermFilter {
 
     @Override
     public final boolean equals(Object obj) {
-        return obj == this || obj instanceof OpaqueFilter other
-            && Objects.equals(mAttachment, other.mAttachment);
+        return obj == this || obj instanceof ExprFilter other && mExpr.equals(other.mExpr);
     }
 
     @Override
     public void appendTo(StringBuilder b) {
-        if (mNot) {
-            b.append('!');
-        }
-        b.append('[').append(mAttachment).append(']');
+        mExpr.appendTo(b);
     }
 }

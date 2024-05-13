@@ -141,7 +141,7 @@ public final class ParamExpr extends Expr {
     }
 
     @Override
-    protected void appendTo(StringBuilder b) {
+    public void appendTo(StringBuilder b) {
         b.append('?').append(mOrdinal);
     }
 }

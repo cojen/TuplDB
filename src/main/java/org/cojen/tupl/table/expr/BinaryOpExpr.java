@@ -387,7 +387,7 @@ public sealed class BinaryOpExpr extends Expr permits FilterExpr {
     }
 
     @Override
-    protected final void appendTo(StringBuilder b) {
+    public final void appendTo(StringBuilder b) {
         append(b, mLeft);
         b.append(' ').append(opString()).append(' ');
         append(b, mRight);

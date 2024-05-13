@@ -166,7 +166,7 @@ public final class ProjExpr extends WrappedExpr implements Named {
     }
 
     @Override
-    protected void appendTo(StringBuilder b) {
+    public void appendTo(StringBuilder b) {
         if (hasExclude()) {
             b.append('~');
         }

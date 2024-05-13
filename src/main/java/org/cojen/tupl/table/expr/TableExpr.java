@@ -106,8 +106,9 @@ public final class TableExpr extends RelationExpr {
     }
 
     @Override
-    protected void appendTo(StringBuilder b) {
-        // FIXME: Need to revise the syntax for the "from" portion. Pipeline syntax?
+    public void appendTo(StringBuilder b) {
+        // FIXME: Need to revise the syntax for the "from" portion. Pipeline syntax? It must
+        // always be parseable, so perhaps no table at all for now?
         b.append(rowTypeClass().getName()).append(' ').append("{*}");
     }
 }

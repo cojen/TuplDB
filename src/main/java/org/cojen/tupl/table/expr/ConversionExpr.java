@@ -96,7 +96,7 @@ public final class ConversionExpr extends WrappedExpr {
     }
 
     @Override
-    protected void appendTo(StringBuilder b) {
+    public void appendTo(StringBuilder b) {
         b.append('(');
         mType.appendTo(b, false);
         b.append(')').append('(');
