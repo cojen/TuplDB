@@ -21,7 +21,8 @@ import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
 
-import org.cojen.tupl.table.filter.Parser;
+import org.cojen.tupl.table.expr.Parser;
+
 import org.cojen.tupl.table.filter.QuerySpec;
 
 /**
@@ -61,8 +62,7 @@ public final class QueryFactoryCache extends SoftCache<String, MethodHandle, Obj
     @Override
     protected MethodHandle newValue(String queryStr, Object helperObj) {
         if (helperObj instanceof Helper helper) {
-            RowInfo rowInfo = RowInfo.find(helper.rowType());
-            QuerySpec query = new Parser(rowInfo.allColumns, queryStr).parseQuery(null);
+            QuerySpec query = Parser.parseQuerySpec(helper.rowType(), queryStr);
             String canonicalStr = query.toString();
             if (canonicalStr.equals(queryStr)) {
                 return helper.makeQueryFactory(query);

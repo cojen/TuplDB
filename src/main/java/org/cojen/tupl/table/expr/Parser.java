@@ -207,7 +207,7 @@ public final class Parser {
         }
 
         Map<String, ProjExpr> map = new LinkedHashMap<>();
-        Set<String> wildcards = null;
+        Map<String, Column> wildcards = null;
         Set<String> excluded = null;
 
         while (true) {
@@ -219,17 +219,12 @@ public final class Parser {
                     throw new QueryException("Wildcard can be specified at most once", peek);
                 }
 
-                wildcards = new HashSet<String>();
-                final int startPos = first.startPos();
-                final TupleType rowType = mFrom.rowType();
+                wildcards = new LinkedHashMap<>();
 
-                for (Column c : rowType) {
+                for (Column c : mFrom.rowType()) {
                     String name = c.name();
                     if (!map.containsKey(name)) {
-                        wildcards.add(name);
-                        map.put(name, ProjExpr.make
-                                (startPos, startPos,
-                                 ColumnExpr.make(startPos, startPos, rowType, c), 0));
+                        wildcards.put(name, c);
                     }
                 }
             } else {
@@ -250,7 +245,7 @@ public final class Parser {
                                 map.put(name, existing.withExclude());
                             }
                         } else if (map.remove(name) == null) {
-                            if (wildcards == null || !wildcards.remove(name)) {
+                            if (wildcards == null || wildcards.remove(name) == null) {
                                 throw new QueryException
                                     ("Excluded projection not found: " + name, expr);
                             }
@@ -259,7 +254,7 @@ public final class Parser {
                     }
                 }
 
-                if (wildcards != null && wildcards.remove(name)) {
+                if (wildcards != null && wildcards.remove(name) != null) {
                     map.put(name, expr);
                 } else if (map.putIfAbsent(name, expr) != null) {
                     throw new QueryException("Duplicate projection: " + name, expr);
@@ -271,6 +266,20 @@ public final class Parser {
             } else {
                 break;
             }
+        }
+
+        if (wildcards != null) {
+            // Project all the remaining wildcard columns at the end, preserving the ordering
+            // of columns which were explicitly specified.
+
+            final int pos = first.startPos();
+            final TupleType rowType = mFrom.rowType();
+
+            wildcards.forEach((String name, Column c) -> {
+                map.computeIfAbsent(name, n -> {
+                    return ProjExpr.make(pos, pos, ColumnExpr.make(pos, pos, rowType, c), 0);
+                });
+            });
         }
 
         return map;

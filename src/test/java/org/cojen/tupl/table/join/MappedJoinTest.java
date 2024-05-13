@@ -135,7 +135,7 @@ public class MappedJoinTest {
             "{deptId=33, deptName=Engineering, empCountry=Australia, empName=Heisenberg}",
         };
 
-        eval(flat, plan, results, "{~empId, *} deptName == ?", "Engineering");
+        eval(flat, plan, results, "{*, ~empId} deptName == ?", "Engineering");
     }
 
     @SuppressWarnings("unchecked")
