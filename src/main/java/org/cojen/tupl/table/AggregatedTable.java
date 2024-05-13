@@ -42,8 +42,9 @@ import org.cojen.tupl.Transaction;
 
 import org.cojen.tupl.diag.QueryPlan;
 
+import org.cojen.tupl.table.expr.Parser;
+
 import org.cojen.tupl.table.filter.ComplexFilterException;
-import org.cojen.tupl.table.filter.Parser;
 import org.cojen.tupl.table.filter.QuerySpec;
 import org.cojen.tupl.table.filter.RowFilter;
 import org.cojen.tupl.table.filter.TrueFilter;
@@ -351,7 +352,7 @@ public abstract class AggregatedTable<S, T> extends WrappedTable<S, T>
             if (proj == null) {
                 sourceQuery = new QuerySpec(null, null, TrueFilter.THE);
             } else {
-                sourceQuery = new Parser(sourceInfo.allColumns, '{' + proj + '}').parseQuery(null);
+                sourceQuery = Parser.parseQuerySpec(sourceType, '{' + proj + '}');
             }
         }
 

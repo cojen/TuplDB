@@ -36,11 +36,12 @@ import org.cojen.maker.Variable;
 import org.cojen.tupl.Table;
 import org.cojen.tupl.Untransformed;
 
+import org.cojen.tupl.table.expr.Parser;
+
 import org.cojen.tupl.table.filter.ColumnFilter;
 import org.cojen.tupl.table.filter.ColumnToArgFilter;
 import org.cojen.tupl.table.filter.ColumnToColumnFilter;
 import org.cojen.tupl.table.filter.ComplexFilterException;
-import org.cojen.tupl.table.filter.Parser;
 import org.cojen.tupl.table.filter.QuerySpec;
 import org.cojen.tupl.table.filter.RowFilter;
 import org.cojen.tupl.table.filter.TrueFilter;
@@ -191,8 +192,8 @@ public abstract class AbstractMappedTable<S, T> extends WrappedTable<S, T> {
             if (sourceProjection == null) {
                 sourceQuery = new QuerySpec(null, null, sourceFilter);
             } else {
-                sourceQuery = new Parser(sourceInfo.allColumns, '{' + sourceProjection + '}')
-                    .parseQuery(null).withFilter(sourceFilter);
+                sourceQuery = Parser.parseQuerySpec
+                    (mSource.rowType(), '{' + sourceProjection + '}').withFilter(sourceFilter);
             }
 
             mSortPlan = analyzeSort(finder, targetQuery);

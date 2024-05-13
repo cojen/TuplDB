@@ -52,8 +52,9 @@ import org.cojen.tupl.table.RowUtils;
 import org.cojen.tupl.table.RowWriter;
 import org.cojen.tupl.table.WeakCache;
 
+import org.cojen.tupl.table.expr.Parser;
+
 import org.cojen.tupl.table.filter.FalseFilter;
-import org.cojen.tupl.table.filter.Parser;
 import org.cojen.tupl.table.filter.QuerySpec;
 import org.cojen.tupl.table.filter.RowFilter;
 import org.cojen.tupl.table.filter.TrueFilter;
@@ -127,7 +128,7 @@ final class JoinQueryLauncherMaker {
         mTableSpec = table.joinSpec();
         mJoinType = table.rowType();
         mJoinInfo = RowInfo.find(mJoinType);
-        mQuery = new Parser(mJoinInfo.allColumns, queryStr).parseQuery(null);
+        mQuery = Parser.parseQuerySpec(mJoinType, queryStr);
     }
 
     private String canonicalQuery() {
