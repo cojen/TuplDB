@@ -56,10 +56,11 @@ import org.cojen.tupl.core.TupleKey;
 
 import org.cojen.tupl.diag.QueryPlan;
 
+import org.cojen.tupl.table.expr.Parser;
+
 import org.cojen.tupl.table.filter.ColumnFilter;
 import org.cojen.tupl.table.filter.ColumnToArgFilter;
 import org.cojen.tupl.table.filter.ColumnToColumnFilter;
-import org.cojen.tupl.table.filter.Parser;
 import org.cojen.tupl.table.filter.QuerySpec;
 import org.cojen.tupl.table.filter.RowFilter;
 import org.cojen.tupl.table.filter.TrueFilter;
@@ -83,10 +84,8 @@ public abstract sealed class ViewedTable<R> extends WrappedTable<R, R> {
                 var rowType = (Class<?>) key.get(0);
                 String queryStr = key.getString(1);
 
-                RowInfo rowInfo = RowInfo.find(rowType);
-
                 if (query == null) {
-                    query = new Parser(rowInfo.allColumns, queryStr).parseQuery(null);
+                    query = Parser.parseQuerySpec(rowType, queryStr);
                     String canonical = query.toString();
                     if (!canonical.equals(queryStr)) {
                         return obtain(TupleKey.make.with(rowType, canonical), query);
@@ -350,7 +349,7 @@ public abstract sealed class ViewedTable<R> extends WrappedTable<R, R> {
         QuerySpec query = mQueryRef.get();
 
         if (query == null) {
-            query = new Parser(RowInfo.find(rowType()).allColumns, mQueryStr).parseQuery(null);
+            query = Parser.parseQuerySpec(rowType(), mQueryStr);
             mQueryRef = new SoftReference<>(query);
         }
 
@@ -385,26 +384,27 @@ public abstract sealed class ViewedTable<R> extends WrappedTable<R, R> {
 
     private QuerySpec doFuseQuery(String queryStr) {
         QuerySpec thisQuery = querySpec();
-        Map<String, ? extends ColumnInfo> allColumns = thisQuery.projection();
 
-        if (allColumns == null) {
-            allColumns = RowInfo.find(rowType()).allColumns;
+        Set<String> availSet;
+        {
+            Map<String, ColumnInfo> availMap = thisQuery.projection();
+            availSet = availMap == null ? null : availMap.keySet();
         }
 
-        QuerySpec query = new Parser(allColumns, queryStr, mMaxArg).parseQuery(null);
+        QuerySpec otherQuery = Parser.parseQuerySpec(mMaxArg, rowType(), availSet, queryStr);
 
-        Map<String, ColumnInfo> projection = query.projection();
+        Map<String, ColumnInfo> projection = otherQuery.projection();
 
         if (projection == null) {
             projection = thisQuery.projection();
         }
 
-        OrderBy orderBy = query.orderBy();
+        OrderBy orderBy = otherQuery.orderBy();
         if (orderBy == null && thisQuery.orderBy() != null) {
             orderBy = thisQuery.orderBy().truncate(projection);
         }
 
-        RowFilter filter = thisQuery.filter().and(query.filter());
+        RowFilter filter = thisQuery.filter().and(otherQuery.filter());
 
         return new QuerySpec(projection, orderBy, filter);
     }

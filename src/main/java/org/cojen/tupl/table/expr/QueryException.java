@@ -22,7 +22,7 @@ package org.cojen.tupl.table.expr;
  *
  * @author Brian S. O'Neill
  */
-public class QueryException extends RuntimeException {
+public class QueryException extends IllegalArgumentException {
     private final int mStartPos, mEndPos;
 
     public QueryException(String message) {

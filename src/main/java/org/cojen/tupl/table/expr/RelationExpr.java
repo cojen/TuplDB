@@ -121,9 +121,24 @@ public abstract sealed class RelationExpr extends Expr permits TableExpr, QueryE
 
     /**
      * Returns a QuerySpec if this RelationExpr can be represented by one, against the given
-     * table. Returns null otherwise.
+     * row type. A QueryException is thrown otherwise.
      */
-    public abstract QuerySpec querySpec(Table<?> table);
+    public abstract QuerySpec querySpec(Class<?> rowType) throws QueryException;
+
+    /**
+     * Intended to be used by querySpec implementations.
+     */
+    protected final void checkRowType(Class<?> rowType) throws QueryException {
+        if (rowType != rowTypeClass()) {
+            throw new QueryException("Mismatched row type");
+        }
+    }
+
+    /**
+     * Returns a QuerySpec if this RelationExpr can be represented by one, against the given
+     * row type. Returns null otherwise.
+     */
+    public abstract QuerySpec tryQuerySpec(Class<?> rowType);
 
     /**
      * Makes a fully functional CompiledQuery from this expression.

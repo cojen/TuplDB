@@ -39,8 +39,6 @@ import org.cojen.tupl.table.RowWriter;
 public abstract class CompiledQuery<R> extends QueryLauncher<R> {
     public abstract Class<R> rowType();
 
-    public abstract Cardinality cardinality();
-
     /**
      * Returns the minimum amount of arguments which must be passed to the {@link #table}
      * method.
@@ -130,11 +128,6 @@ public abstract class CompiledQuery<R> extends QueryLauncher<R> {
             }
 
             @Override
-            public Cardinality cardinality() {
-                return table == IdentityTable.THE ? Cardinality.ONE : Cardinality.MANY;
-            }
-
-            @Override
             public final int argumentCount() {
                 return 0;
             }
@@ -153,23 +146,16 @@ public abstract class CompiledQuery<R> extends QueryLauncher<R> {
 
     public static abstract class Wrapped<R> extends CompiledQuery<R> {
         protected final CompiledQuery<R> source;
-        protected final Cardinality cardinality;
         protected final int argCount;
 
-        protected Wrapped(CompiledQuery<R> source, Cardinality cardinality, int argCount) {
+        protected Wrapped(CompiledQuery<R> source, int argCount) {
             this.source = source;
-            this.cardinality = cardinality;
             this.argCount = argCount;
         }
 
         @Override
         public Class<R> rowType() {
             return source.rowType();
-        }
-
-        @Override
-        public final Cardinality cardinality() {
-            return cardinality;
         }
 
         @Override

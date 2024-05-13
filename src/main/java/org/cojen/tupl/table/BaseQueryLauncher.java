@@ -70,7 +70,7 @@ final class BaseQueryLauncher<R> extends QueryLauncher<R> {
     static <R> QueryLauncher<R> make(BaseTable<R> table, String queryStr, RelationExpr expr)
         throws IOException
     {
-        QuerySpec query = expr.querySpec(table);
+        QuerySpec query = expr.tryQuerySpec(table.rowType());
         if (query != null) {
             return new BaseQueryLauncher<>(table, queryStr, query.reduce());
         } else {
@@ -89,7 +89,7 @@ final class BaseQueryLauncher<R> extends QueryLauncher<R> {
 
     // FIXME: remove this ctor
     BaseQueryLauncher(BaseTable<R> table, String queryStr) {
-        this(table, queryStr, parse(table, queryStr).querySpec(table).reduce());
+        this(table, queryStr, parse(table, queryStr).querySpec(table.rowType()).reduce());
     }
 
     private BaseQueryLauncher(BaseTable<R> table, String queryStr, QuerySpec query) {
@@ -273,7 +273,7 @@ final class BaseQueryLauncher<R> extends QueryLauncher<R> {
     private QuerySpec query() {
         QuerySpec query = mQueryRef.get();
         if (query == null) {
-            query = parse(mTable, mQueryStr).querySpec(mTable);
+            query = parse(mTable, mQueryStr).querySpec(mTable.rowType());
             var ref = new WeakReference<>(query);
             VarHandle.storeStoreFence();
             mQueryRef = ref;

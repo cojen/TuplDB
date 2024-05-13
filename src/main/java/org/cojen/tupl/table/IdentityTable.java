@@ -40,10 +40,11 @@ import org.cojen.tupl.Updater;
 
 import org.cojen.tupl.diag.QueryPlan;
 
+import org.cojen.tupl.table.expr.Cardinality;
 import org.cojen.tupl.table.expr.CompiledQueryCache;
+import org.cojen.tupl.table.expr.Parser;
 
 import org.cojen.tupl.table.filter.FalseFilter;
-import org.cojen.tupl.table.filter.Parser;
 import org.cojen.tupl.table.filter.QuerySpec;
 
 /**
@@ -250,13 +251,8 @@ public final class IdentityTable implements Table<Row>, Query<Row> {
     }
 
     private static boolean findsAnything(String query) {
-        switch (query) {
-        case "{}", "{*}", "true": return true;
-        case "{} false", "{*} false", "false": return false;
-        }
-        // FIXME: use expr.Parser
-        QuerySpec spec = new Parser(Collections.emptyMap(), query).parseQuery(null);
-        return spec.filter() != FalseFilter.THE;
+        // FIXME: The Parser needs to have a cache.
+        return Parser.parse(query).type().cardinality() != Cardinality.ZERO;
     }
 
     private static final class ScanOne implements Scanner<Row> {

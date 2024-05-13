@@ -92,7 +92,7 @@ public class ParserTest {
         String filterStr = "a == ? && (a == ? && a < ?1) && !((a == ? || a < ?1) || a != ?)";
         RelationExpr expr = Parser.parse(mTable, filterStr);
         assertEquals("a == ?1 && a == ?2 && a < ?1 && a != ?3 && a >= ?1 && a == ?4",
-                     expr.querySpec(mTable).toString());
+                     expr.querySpec(mTable.rowType()).toString());
     }
 
     @Test
@@ -123,7 +123,7 @@ public class ParserTest {
 
     private void passQuery(String queryStr, String expect) throws Exception {
         RelationExpr expr = Parser.parse(mTable, queryStr);
-        assertEquals(expect, expr.querySpec(mTable).toString());
+        assertEquals(expect, expr.querySpec(mTable.rowType()).toString());
     }
 
     @PrimaryKey("a")

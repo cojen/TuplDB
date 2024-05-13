@@ -204,6 +204,13 @@ public final class OrderBy extends LinkedHashMap<String, OrderBy.Rule> {
             }
             b.append(column.name);
         }
+
+        @Override
+        public String toString() {
+            var b = new StringBuilder();
+            appendTo(b);
+            return b.toString();
+        }
     }
 
     private static OrderBy parseSpec(Map<String, ? extends ColumnInfo> columns, String spec) {

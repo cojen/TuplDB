@@ -107,11 +107,29 @@ final class UnmappedQueryExpr extends QueryExpr {
     }
 
     @Override
-    public QuerySpec querySpec(Table<?> table) {
-        if (!(mFrom instanceof TableExpr te) || te.table() != table || mArgMap != null) {
-            return null;
+    public QuerySpec querySpec(Class<?> rowType) {
+        checkRowType(rowType);
+
+        if (!(mFrom instanceof TableExpr)) {
+            throw new QueryException("Query has an intermediate transform step");
         }
 
+        if (mArgMap != null) {
+            throw new QueryException("Query has literals");
+        }
+
+        return doQuerySpec(rowType);
+    }
+
+    @Override
+    public QuerySpec tryQuerySpec(Class<?> rowType) {
+        if (mFrom.rowTypeClass() == rowType && mFrom instanceof TableExpr && mArgMap == null) {
+            return doQuerySpec(rowType);
+        }
+        return null;
+    }
+
+    private QuerySpec doQuerySpec(Class<?> rowType) {
         List<ProjExpr> projection = mProjection;
 
         if (projection == null) {
@@ -121,7 +139,7 @@ final class UnmappedQueryExpr extends QueryExpr {
         var projMap = new LinkedHashMap<String, ColumnInfo>(projection.size() * 2);
         var orderBy = new OrderBy(projection.size() * 2);
 
-        RowInfo info = RowInfo.find(table.rowType());
+        RowInfo info = RowInfo.find(rowType);
         Map<String, ColumnInfo> allColumns = info.allColumns;
 
         for (ProjExpr pe : projection) {
@@ -177,10 +195,8 @@ final class UnmappedQueryExpr extends QueryExpr {
             return CompiledQuery.make(source.table().view(viewQuery, viewArgs));
         }
 
-        Cardinality cardinality = type().cardinality();
-
         if (viewArgs.length == 0) {
-            return new CompiledQuery.Wrapped(source, cardinality, baseArgCount) {
+            return new CompiledQuery.Wrapped(source, baseArgCount) {
                 @Override
                 public Table table(Object... args) throws IOException {
                     return source.table(args).view(viewQuery, args);
@@ -188,7 +204,7 @@ final class UnmappedQueryExpr extends QueryExpr {
             };
         }
 
-        return new CompiledQuery.Wrapped(source, cardinality, baseArgCount) {
+        return new CompiledQuery.Wrapped(source, baseArgCount) {
             @Override
             public Table table(Object... args) throws IOException {
                 int argCount = checkArgumentCount(args);

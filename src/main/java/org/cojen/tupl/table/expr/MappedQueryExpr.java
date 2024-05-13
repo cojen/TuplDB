@@ -77,9 +77,16 @@ final class MappedQueryExpr extends QueryExpr {
     }
 
     @Override
-    public QuerySpec querySpec(Table<?> table) {
+    public QuerySpec querySpec(Class<?> rowType) {
+        checkRowType(rowType);
         // MappedQueryExpr is never expected to be representable by a QuerySpec. If it can,
         // then it should probably be an UnmappedQueryExpr instead.
+        throw new QueryException("Query derives custom transforms and filters");
+    }
+
+    @Override
+    public QuerySpec tryQuerySpec(Class<?> rowType) {
+        // See comment in querySpec method.
         return null;
     }
 
@@ -110,7 +117,7 @@ final class MappedQueryExpr extends QueryExpr {
                 (source.table().map(targetClass, factory.get(RowUtils.NO_ARGS)));
         }
 
-        return new CompiledQuery.Wrapped(source, type().cardinality(), argCount) {
+        return new CompiledQuery.Wrapped(source, argCount) {
             @Override
             public Class rowType() {
                 return targetClass;
@@ -352,7 +359,7 @@ final class MappedQueryExpr extends QueryExpr {
             return;
         }
         MethodMaker mm = cm.addMethod(QueryPlan.class, "plan", QueryPlan.Mapper.class).public_();
-        mm.return_(mm.new_(QueryPlan.Filter.class, rowFilterString(), mm.param(0)));
+        mm.return_(mm.new_(QueryPlan.Filter.class, mRowFilter.toString(), mm.param(0)));
     }
 
     protected void addCheckMethods(ClassMaker cm) {

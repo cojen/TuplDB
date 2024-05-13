@@ -30,6 +30,8 @@ import java.util.Set;
 
 import org.cojen.tupl.Table;
 
+import org.cojen.tupl.table.filter.QuerySpec;
+
 import static org.cojen.tupl.table.expr.Token.*;
 
 /**
@@ -63,13 +65,48 @@ public final class Parser {
      */
     public static RelationExpr parse(RelationExpr from, String query) throws QueryException {
         try {
-            return new Parser(from, query).parseQueryExpr();
+            return new Parser(0, from, query).parseQueryExpr();
         } catch (IOException e) {
             // Not expected.
             throw new QueryException(e);
         }
     }
 
+    /**
+     * Parse a RelationExpr which cannot produce CompiledQuery instances. Attempting to do so
+     * causes an IllegalStateException to be thrown.
+     */
+    public static RelationExpr parse(Class<?> rowType, String query) throws QueryException {
+        return parse(TableExpr.make(-1, -1, rowType), query);
+    }
+
+    /**
+     * Attempt to parse a query into a QuerySpec, throwing a QueryException if not possible.
+     */
+    public static QuerySpec parseQuerySpec(Class<?> rowType, String query) throws QueryException {
+        return parse(rowType, query).querySpec(rowType);
+    }
+
+    /**
+     * Attempt to parse a query into a QuerySpec, throwing a QueryException if not possible.
+     *
+     * @param paramDelta amount to add to each parameter number after being parsed
+     * @param availableColumns can pass null if all columns are available
+     */
+    public static QuerySpec parseQuerySpec(int paramDelta, Class<?> rowType,
+                                           Set<String> availableColumns, String query)
+        throws QueryException
+    {
+        RelationExpr from = TableExpr.make(-1, -1, rowType, availableColumns);
+        try {
+            return new Parser(paramDelta, from, query).parseQueryExpr().querySpec(rowType);
+        } catch (IOException e) {
+            // Not expected.
+            throw new QueryException(e);
+        }
+    }
+
+    private final int mParamDelta;
     private final RelationExpr mFrom;
     private final Tokenizer mTokenizer;
 
@@ -80,23 +117,27 @@ public final class Parser {
     private Map<String, AssignExpr> mLocalVars;
 
     /**
+     * @param paramDelta amount to add to each parameter number after being parsed
      * @param from can be null if not selecting from any table at all
      */
-    public Parser(RelationExpr from, String source) {
-        this(from, new Tokenizer(source));
+    public Parser(int paramDelta, RelationExpr from, String source) {
+        this(paramDelta, from, new Tokenizer(source));
     }
 
     /**
+     * @param paramDelta amount to add to each parameter number after being parsed
      * @param from can be null if not selecting from any table at all
      */
-    public Parser(RelationExpr from, Reader in) {
-        this(from, new Tokenizer(in));
+    public Parser(int paramDelta, RelationExpr from, Reader in) {
+        this(paramDelta, from, new Tokenizer(in));
     }
 
     /**
+     * @param paramDelta amount to add to each parameter number after being parsed
      * @param from can be null if not selecting from any table at all
      */
-    private Parser(RelationExpr from, Tokenizer tokenizer) {
+    private Parser(int paramDelta, RelationExpr from, Tokenizer tokenizer) {
+        mParamDelta = paramDelta;
         if (from == null) {
             from = TableExpr.identity();
         }
@@ -602,7 +643,7 @@ public final class Parser {
                     // from being allocated later on.
                     throw new QueryException("Argument number is too large", next);
                 }
-                return ParamExpr.make(t.startPos(), next.endPos(), ordinal);
+                return ParamExpr.make(t.startPos(), next.endPos(), ordinal + mParamDelta);
             } else {
                 switch (next.type()) {
                 case T_ARG:
@@ -613,7 +654,7 @@ public final class Parser {
                     throw new QueryException("Malformed argument number", next);
                 }
                 pushbackToken(next);
-                return ParamExpr.make(t.startPos(), t.endPos(), ++mParamOrdinal);
+                return ParamExpr.make(t.startPos(), t.endPos(), ++mParamOrdinal + mParamDelta);
             }
         }
 

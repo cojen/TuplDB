@@ -17,6 +17,8 @@
 
 package org.cojen.tupl.table.expr;
 
+import java.util.Set;
+
 import org.cojen.tupl.Table;
 
 import org.cojen.tupl.table.IdentityTable;
@@ -47,15 +49,39 @@ public final class TableExpr extends RelationExpr {
         return new TableExpr(startPos, endPos, type, table);
     }
 
+    /**
+     * By making a TableExpr against just a row type, calling the makeCompiledQuery method
+     * throws an IllegalStateException.
+     *
+     * @param startPos source code start position, zero-based, inclusive; is -1 if not applicable
+     * @param endPos source code end position, zero-based, exclusive; is -1 if not applicable
+     */
+    public static TableExpr make(int startPos, int endPos, Class<?> rowType) {
+        var type = RelationType.make(TupleType.make(rowType, null), Cardinality.MANY);
+        return new TableExpr(startPos, endPos, type, null);
+    }
+
+    /**
+     * By making a TableExpr against just a row type, calling the makeCompiledQuery method
+     * throws an IllegalStateException.
+     *
+     * @param startPos source code start position, zero-based, inclusive; is -1 if not applicable
+     * @param endPos source code end position, zero-based, exclusive; is -1 if not applicable
+     * @param projection consists of column names; can pass null to project all columns
+     */
+    public static TableExpr make(int startPos, int endPos,
+                                 Class<?> rowType, Set<String> projection)
+    {
+        var type = RelationType.make(TupleType.make(rowType, projection), Cardinality.MANY);
+        return new TableExpr(startPos, endPos, type, null);
+    }
+
+ 
     private final Table<?> mTable;
 
     private TableExpr(int startPos, int endPos, RelationType type, Table table) {
         super(startPos, endPos, type);
         mTable = table;
-    }
-
-    public Table table() {
-        return mTable;
     }
 
     @Override
@@ -65,16 +91,25 @@ public final class TableExpr extends RelationExpr {
 
     @Override
     public boolean isPureFunction() {
-        return mTable instanceof IdentityTable;
+        return mTable != null && mTable instanceof IdentityTable;
     }
 
     @Override
-    public QuerySpec querySpec(Table<?> table) {
-        return table == mTable ? new QuerySpec(null, null, TrueFilter.THE) : null;
+    public QuerySpec querySpec(Class<?> rowType) {
+        checkRowType(rowType);
+        return new QuerySpec(null, null, TrueFilter.THE);
+    }
+
+    @Override
+    public QuerySpec tryQuerySpec(Class<?> rowType) {
+        return rowType == rowTypeClass() ? new QuerySpec(null, null, TrueFilter.THE) : null;
     }
 
     @Override
     public CompiledQuery<?> makeCompiledQuery() {
+        if (mTable == null) {
+            throw new IllegalStateException();
+        }
         return CompiledQuery.make(mTable);
     }
 
@@ -92,12 +127,12 @@ public final class TableExpr extends RelationExpr {
 
     @Override
     public int hashCode() {
-        return mTable.hashCode();
+        return type().hashCode();
     }
 
     @Override
     public boolean equals(Object obj) {
-        return obj == this || obj instanceof TableExpr te && mTable == te.mTable;
+        return obj == this || obj instanceof TableExpr te && type().equals(te.type());
     }
 
     @Override

@@ -243,8 +243,6 @@ public abstract sealed class QueryExpr extends RelationExpr
     protected final List<ProjExpr> mProjection;
     protected final int mMaxArgument;
 
-    private String mRowFilterString;
-
     protected QueryExpr(int startPos, int endPos, RelationType type,
                         RelationExpr from, RowFilter rowFilter, List<ProjExpr> projection,
                         int maxArgument)
@@ -288,7 +286,7 @@ public abstract sealed class QueryExpr extends RelationExpr
     protected final void encodeKey(KeyEncoder enc) {
         if (enc.encode(this, K_TYPE)) {
             mFrom.encodeKey(enc);
-            enc.encodeString(rowFilterString());
+            enc.encodeString(mRowFilter.toString());
             enc.encodeExprs(mProjection);
         }
     }
@@ -315,12 +313,6 @@ public abstract sealed class QueryExpr extends RelationExpr
         return defaultToString();
     }
 
-    protected final String rowFilterString() {
-        if (mRowFilterString == null) {
-            mRowFilterString = mRowFilter.toString();
-        }
-        return mRowFilterString;
-    }
 
     protected final String rowQueryString() {
         var b = new StringBuilder();
@@ -350,7 +342,8 @@ public abstract sealed class QueryExpr extends RelationExpr
             b.append('}');
 
             if (mRowFilter != TrueFilter.THE) {
-                b.append(' ').append(rowFilterString());
+                b.append(' ');
+                mRowFilter.appendTo(b);
             }
         }
     }

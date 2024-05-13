@@ -768,10 +768,11 @@ public class ViewedTest {
         var view = mTable.view("{id, name} id >= ?", 3);
 
         try {
-            view = view.view("{id, name, num}, id <= ?", 5);
+            view = view.view("{id, name, num} id <= ?", 5);
             fail();
         } catch (IllegalArgumentException e) {
-            assertTrue(e.getMessage().contains("Unknown column: num"));
+            assertTrue(e.getMessage().contains("Unknown column"));
+            assertTrue(e.getMessage().contains("num"));
         }
 
         view = view.view("{-id, *} id <= ?", 5);
@@ -791,7 +792,8 @@ public class ViewedTest {
             view.newScanner(null, "num != ?", 1);
             fail();
         } catch (IllegalArgumentException e) {
-            assertTrue(e.getMessage().contains("Unknown column: num"));
+            assertTrue(e.getMessage().contains("Unknown column"));
+            assertTrue(e.getMessage().contains("num"));
         }
 
         try (var scanner = view.newScanner(null, "name != ?", "name-4")) {
