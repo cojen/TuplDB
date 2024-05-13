@@ -24,7 +24,6 @@ import java.util.function.Predicate;
 import org.cojen.tupl.core.TupleKey;
 
 import org.cojen.tupl.table.filter.FalseFilter;
-import org.cojen.tupl.table.filter.Parser;
 import org.cojen.tupl.table.filter.RowFilter;
 import org.cojen.tupl.table.filter.TrueFilter;
 
@@ -44,14 +43,14 @@ public final class PlainPredicateMaker {
             public MethodHandle newValue(TupleKey key, RowFilter filter) {
                 var rowType = (Class<?>) key.get(0);
                 String query = key.getString(1);
-                RowInfo info = RowInfo.find(rowType);
                 if (filter == null) {
-                    filter = new Parser(info.allColumns, query).parseQuery(null).filter();
+                    filter = BaseTable.parseFilter(rowType, query);
                 }
                 String filterStr = filter.toString();
                 if (filterStr.equals(query)
                     || filter == TrueFilter.THE || filter == FalseFilter.THE)
                 {
+                    RowInfo info = RowInfo.find(rowType);
                     var maker = new RowPredicateMaker(rowType, info.rowGen(), filter, filterStr);
                     return maker.finishPlain();
                 } else {

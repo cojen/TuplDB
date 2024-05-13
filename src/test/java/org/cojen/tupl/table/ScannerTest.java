@@ -171,44 +171,63 @@ public class ScannerTest {
 
         verify(ix.newScanner(null, "{}"), 1, 5);
         verify(ix.newScanner(null, "{id}"), 1, 5, "id");
-        verify(ix.newScanner(null, "{id, id}"), 1, 5, "id");
+
+        try {
+            ix.newScanner(null, "{id, id}");
+            fail();
+        } catch (IllegalArgumentException e) {
+            assertTrue(e.getMessage().contains("Duplicate projection"));
+        }
+
         verify(ix.newScanner(null, "{name, state}"), 1, 5, "name", "state");
 
         verify(ix.newScanner(null, "{*}"), 1, 5, "id", "name", "path", "state");
-        verify(ix.newScanner(null, "{~id, *}"), 1, 5, "name", "path", "state");
-        verify(ix.newScanner(null, "{*, ~id, ~id}"), 1, 5, "name", "path", "state");
-        verify(ix.newScanner(null, "{~name, ~state, *, *}"), 1, 5, "id", "path");
+
+        try {
+            ix.newScanner(null, "{~id, *}");
+            fail();
+        } catch (IllegalArgumentException e) {
+            assertTrue(e.getMessage().contains("projection not found"));
+        }
+
+        try {
+            ix.newScanner(null, "{*, ~id, ~id}");
+            fail();
+        } catch (IllegalArgumentException e) {
+            assertTrue(e.getMessage().contains("already excluded"));
+        }
+
+        verify(ix.newScanner(null, "{*, ~id}"), 1, 5, "name", "path", "state");
+
+        verify(ix.newScanner(null, "{*, ~name, ~state}"), 1, 5, "id", "path");
 
         verify(ix.newScanner(null, "{} name == ?", "name-3"), 3, 3);
         verify(ix.newScanner(null, "{path} name == ?", "name-3"), 3, 3, "path");
         verify(ix.newScanner(null, "{name} id == ?", 3), 3, 3, "name");
         verify(ix.newScanner(null, "{name} id > ?", 3), 4, 5, "name");
-        verify(ix.newScanner
-               (null, "{~path, ~state, *} name == ?", "name-3"), 3, 3, "id", "name");
+        verify(ix.newScanner(null, "{*, ~path, ~state} name == ?", "name-3"), 3, 3, "id", "name");
 
         var ix2 = ix.viewUnjoined();
 
         verify(ix2.newScanner(null, "{}"), 1, 5);
         verify(ix2.newScanner(null, "{id}"), 1, 5, "id");
-        verify(ix2.newScanner(null, "{id, id}"), 1, 5, "id");
         verify(ix2.newScanner(null, "{name, state}"), 1, 5, "name", "state");
 
         verify(ix2.newScanner(null, "{*}"), 1, 5, "id", "name", "state");
-        verify(ix2.newScanner(null, "{~id, *}"), 1, 5, "name", "state");
-        verify(ix2.newScanner(null, "{~id, ~id, *}"), 1, 5, "name", "state");
-        verify(ix2.newScanner(null, "{~name, ~state, *, id}"), 1, 5, "id");
+        verify(ix2.newScanner(null, "{*, ~id}"), 1, 5, "name", "state");
+        verify(ix2.newScanner(null, "{*, ~name, ~state, id}"), 1, 5, "id");
 
         verify(ix2.newScanner(null, "{} name == ?", "name-3"), 3, 3);
         try {
             ix2.newScanner(null, "{path} name == ?", "name-3");
             fail();
         } catch (IllegalArgumentException e) {
-            assertTrue(e.getMessage().contains("unavailable for selection: path"));
+            assertTrue(e.getMessage().contains("Unknown column"));
+            assertTrue(e.getMessage().contains("path"));
         }
         verify(ix2.newScanner(null, "{name} id == ?", 3), 3, 3, "name");
         verify(ix2.newScanner(null, "{name} id > ?", 3), 4, 5, "name");
-        verify(ix2.newScanner
-               (null, "{~path, ~state, *} name == ?", "name-3"), 3, 3, "id", "name");
+        verify(ix2.newScanner(null, "{*, ~state} name == ?", "name-3"), 3, 3, "id", "name");
     }
 
     private static void verify(Scanner<TestRow> s, int start, int end, String... expect)

@@ -29,6 +29,7 @@ import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 
 import org.cojen.dirmi.Pipe;
 
@@ -56,11 +57,11 @@ import org.cojen.tupl.diag.EventType;
 import org.cojen.tupl.diag.QueryPlan;
 
 import org.cojen.tupl.table.expr.CompiledQueryCache;
+import org.cojen.tupl.table.expr.Parser;
 import org.cojen.tupl.table.expr.RelationExpr;
 
 import org.cojen.tupl.table.filter.ComplexFilterException;
 import org.cojen.tupl.table.filter.FalseFilter;
-import org.cojen.tupl.table.filter.Parser;
 import org.cojen.tupl.table.filter.QuerySpec;
 import org.cojen.tupl.table.filter.RowFilter;
 import org.cojen.tupl.table.filter.TrueFilter;
@@ -620,8 +621,6 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
     {
         Class<?> rowType = rowType();
         RowInfo rowInfo = RowInfo.find(rowType);
-        Map<String, ColumnInfo> allColumns = rowInfo.allColumns;
-        Map<String, ColumnInfo> availableColumns = allColumns;
 
         RowGen primaryRowGen = null;
         if (joinedPrimaryTableClass() != null) {
@@ -629,16 +628,18 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
             primaryRowGen = rowInfo.rowGen();
         }
 
+        Set<String> availableColumns = null;
+
         byte[] secondaryDesc = secondaryDescriptor();
         if (secondaryDesc != null) {
             rowInfo = RowStore.secondaryRowInfo(rowInfo, secondaryDesc);
             if (joinedPrimaryTableClass() == null) {
-                availableColumns = rowInfo.allColumns;
+                availableColumns = rowInfo.allColumns.keySet();
             }
         }
 
         if (query == null) {
-            query = new Parser(allColumns, queryStr).parseQuery(availableColumns).reduce();
+            query = Parser.parseQuerySpec(0, rowType, availableColumns, queryStr).reduce();
         }
 
         RowFilter rf = query.filter();
@@ -1662,8 +1663,6 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
     }
 
     static RowFilter parseFilter(Class<?> rowType, String queryStr) {
-        var parser = new Parser(RowInfo.find(rowType).allColumns, queryStr);
-        parser.skipProjection();
-        return parser.parseFilter();
+        return Parser.parseQuerySpec(rowType, queryStr).filter();
     }
 }
