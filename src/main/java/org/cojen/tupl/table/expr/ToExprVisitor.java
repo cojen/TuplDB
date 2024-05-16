@@ -34,7 +34,7 @@ import org.cojen.tupl.table.filter.RowFilter;
 import org.cojen.tupl.table.filter.Visitor;
 
 /**
- * Converts a RowFilter into a Expr, but without any source position information.
+ * Converts a RowFilter into an Expr, but without any source position information.
  *
  * @author Brian S. O'Neill
  */

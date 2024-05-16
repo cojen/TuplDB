@@ -27,7 +27,9 @@ import org.cojen.tupl.PrimaryKey;
 import org.cojen.tupl.table.ColumnInfo;
 import org.cojen.tupl.table.RowInfo;
 
-import org.cojen.tupl.table.filter.Parser;
+import org.cojen.tupl.table.expr.Parser;
+import org.cojen.tupl.table.expr.RelationExpr;
+
 import org.cojen.tupl.table.filter.QuerySpec;
 
 /**
@@ -40,13 +42,6 @@ public class JoinParserTest {
         org.junit.runner.JUnitCore.main(JoinParserTest.class.getName());
     }
 
-    private Map<String, ColumnInfo> mColumnMap;
-
-    @Before
-    public void setup() {
-        mColumnMap = RowInfo.find(JoinABC.class).allColumns;
-    }
-
     @Test
     public void basic() throws Exception {
         pass("rowC.cValue == ?1");
@@ -57,27 +52,20 @@ public class JoinParserTest {
         pass("{*} rowC.cValue == ?1", "rowC.cValue == ?1");
         pass("{joinAB.rowA.aValue} rowC.cValue == ?1");
 
-        pass("{rowC.cValue, *} rowC.cValue == ?1", "rowC.cValue == ?1");
-        pass("{~joinAB.rowA.aValue, *} rowC.cValue == ?1",
-             "{joinAB.rowA.id, joinAB.rowB.bValue, joinAB.rowB.id, rowC.cValue, rowC.id} " + 
-             "rowC.cValue == ?1");
+        pass("{rowC.cValue, *} rowC.cValue == ?1", "{rowC.cValue, joinAB, rowC} rowC.cValue == ?1");
+        pass("{*, ~joinAB} rowC.cValue == ?1", "{rowC} rowC.cValue == ?1");
 
-        pass("{~joinAB.rowA, *} rowC.cValue == ?1", 
-             "{joinAB.rowB.bValue, joinAB.rowB.id, rowC.cValue, rowC.id} rowC.cValue == ?1");
-        pass("{~joinAB, *} rowC.cValue == ?1", "{rowC.cValue, rowC.id} rowC.cValue == ?1");
-
-        pass("{~joinAB.rowA.*, *} rowC.cValue == ?1", 
-             "{joinAB.rowB.bValue, joinAB.rowB.id, rowC.cValue, rowC.id} rowC.cValue == ?1");
-        pass("{~joinAB.*, *} rowC.cValue == ?1", "{rowC.cValue, rowC.id} rowC.cValue == ?1");
-
-        pass("{joinAB.rowA.*} rowC.cValue == ?1", "{joinAB.rowA} rowC.cValue == ?1");
+        pass("{joinAB.rowA.*} rowC.cValue == ?1",
+             "{joinAB.rowA.aValue, joinAB.rowA.id} rowC.cValue == ?1");
     }
 
     @Test
     public void failures() throws Exception {
-        pf("* == ?", "disallowed here");
-        pf("rowC.cValue.* == ?", "disallowed here");
-        pf("{joinAB.rowA.id.*} rowC.cValue == ?1", "disallowed for scalar column");
+        parseFail("* == ?", "Wildcard disallowed");
+        parseFail("rowC.cValue.* == ?", "disallowed");
+        parseFail("{joinAB.rowA.id.*} rowC.cValue == ?1", "disallowed for scalar column");
+        parseFail("{~joinAB, *} rowC.cValue == ?1", "projection not found");
+        parseFail("{~joinAB.rowA.*}", "Cannot exclude by wildcard");
     }
 
     private void pass(String filterStr) throws Exception {
@@ -85,14 +73,14 @@ public class JoinParserTest {
     }
 
     private void pass(String filterStr, String expect) throws Exception {
-        QuerySpec q = new Parser(mColumnMap, filterStr).parseQuery(null);
-        assertEquals(expect, q.toString());
+        RelationExpr expr = Parser.parse(JoinABC.class, filterStr);
+        QuerySpec spec = expr.querySpec();
+        assertEquals(expect, spec.toString());
     }
 
-    // pf: parse failure
-    private void pf(String filterStr, String message) {
+    private void parseFail(String filterStr, String message) {
         try {
-            new Parser(mColumnMap, filterStr).parseQuery(null);
+            Parser.parse(JoinABC.class, filterStr);
             fail();
         } catch (IllegalArgumentException e) {
             assertTrue(e.getMessage(), e.getMessage().contains(message));

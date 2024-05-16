@@ -20,7 +20,6 @@ package org.cojen.tupl.table.expr;
 import java.util.Map;
 
 import org.cojen.tupl.table.ColumnInfo;
-import org.cojen.tupl.table.ColumnSet;
 import org.cojen.tupl.table.CompareUtils;
 import org.cojen.tupl.table.RowInfo;
 
@@ -33,7 +32,6 @@ import org.cojen.tupl.table.filter.RowFilter;
 import static org.cojen.tupl.table.expr.Token.*;
 
 import org.cojen.maker.Label;
-import org.cojen.maker.MethodMaker;
 import org.cojen.maker.Variable;
 
 /**
@@ -106,10 +104,10 @@ public final class FilterExpr extends BinaryOpExpr {
         ColumnExpr leftColumn, rightColumn;
 
         if ((leftColumn = mOriginalLeft.sourceColumn()) != null) {
-            ColumnInfo leftInfo = tryFindColumn(info, leftColumn);
+            ColumnInfo leftInfo = leftColumn.tryFindColumn(info);
             if (leftInfo != null) {
                 if ((rightColumn = mOriginalRight.sourceColumn()) != null) {
-                    ColumnInfo rightInfo = tryFindColumn(info, rightColumn);
+                    ColumnInfo rightInfo = rightColumn.tryFindColumn(info);
                     if (rightInfo != null) {
                         var filter = ColumnToColumnFilter.tryMake(leftInfo, mOp, rightInfo);
                         if (filter != null) {
@@ -127,7 +125,7 @@ public final class FilterExpr extends BinaryOpExpr {
                 }
             }
         } else if ((rightColumn = mOriginalRight.sourceColumn()) != null) {
-            ColumnInfo rightInfo = tryFindColumn(info, rightColumn);
+            ColumnInfo rightInfo = rightColumn.tryFindColumn(info);
             if (rightInfo != null) {
                 if (mOriginalLeft instanceof ParamExpr left) {
                     int op = ColumnFilter.reverseOperator(mOp);
@@ -142,10 +140,6 @@ public final class FilterExpr extends BinaryOpExpr {
         }
 
         return super.toRowFilter(info, columns);
-    }
-
-    private static ColumnInfo tryFindColumn(RowInfo info, ColumnExpr expr) {
-        return ColumnSet.findColumn(info.allColumns, expr.name());
     }
 
     @Override

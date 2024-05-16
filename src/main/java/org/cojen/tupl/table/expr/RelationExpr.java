@@ -26,7 +26,6 @@ import java.util.List;
 import java.util.function.Consumer;
 
 import org.cojen.tupl.Row;
-import org.cojen.tupl.Table;
 
 import org.cojen.tupl.table.RowMethodsMaker;
 
@@ -86,7 +85,7 @@ public abstract sealed class RelationExpr extends Expr permits TableExpr, QueryE
     }
 
     /**
-     * Returns all of this relation's fully qualified columns in a new array.
+     * Returns all of this relation's columns in a new array.
      */
     public final List<ProjExpr> fullProjection() {
         var columns = new ArrayList<ProjExpr>(rowType().numColumns());
@@ -95,43 +94,40 @@ public abstract sealed class RelationExpr extends Expr permits TableExpr, QueryE
     }
 
     /**
-     * Put all of the fully qualified columns of this relation into the given list.
+     * Put all of the columns of this relation into the given list.
      */
     public final void fullProjection(Collection<? super ProjExpr> columns) {
         fullProjection(columns::add);
     }
 
     /**
-     * Pass all of the fully qualified columns of this relation to the given consumer.
+     * Pass all of the columns of this relation to the given consumer.
      */
     public final void fullProjection(Consumer<? super ProjExpr> consumer) {
-        fullProjection(consumer, rowType(), "");
+        fullProjection(consumer, rowType());
     }
 
-    private void fullProjection(Consumer<? super ProjExpr> consumer, TupleType tt, String prefix) {
+    private void fullProjection(Consumer<? super ProjExpr> consumer, TupleType tt) {
         for (Column column : tt) {
-            if (column.type() instanceof TupleType ctt) {
-                fullProjection(consumer, ctt, prefix + column.name() + '.');
-            } else {
-                column = Column.make(column.type(), prefix + column.name(), column.isHidden());
-                consumer.accept(ProjExpr.make(-1, -1, ColumnExpr.make(-1, -1, tt, column), 0));
-            }
+            consumer.accept(ProjExpr.make(-1, -1, ColumnExpr.make(-1, -1, tt, column), 0));
         }
     }
+
+    /**
+     * Returns a QuerySpec if this RelationExpr can be represented by one, against this
+     * relation's row type. A QueryException is thrown otherwise.
+     */
+    public abstract QuerySpec querySpec() throws QueryException;
 
     /**
      * Returns a QuerySpec if this RelationExpr can be represented by one, against the given
      * row type. A QueryException is thrown otherwise.
      */
-    public abstract QuerySpec querySpec(Class<?> rowType) throws QueryException;
-
-    /**
-     * Intended to be used by querySpec implementations.
-     */
-    protected final void checkRowType(Class<?> rowType) throws QueryException {
+    public final QuerySpec querySpec(Class<?> rowType) throws QueryException {
         if (rowType != rowTypeClass()) {
             throw new QueryException("Mismatched row type");
         }
+        return querySpec();
     }
 
     /**
@@ -168,7 +164,7 @@ public abstract sealed class RelationExpr extends Expr permits TableExpr, QueryE
 
         for (Column c : thisRowType) {
             String name = c.name();
-            Column otherColumn = otherRowType.tryColumnFor(name);
+            Column otherColumn = otherRowType.tryFindColumn(name);
             if (otherColumn == null || !c.type().equals(otherColumn.type())) {
                 if (b.length() != originalLength) {
                     b.append(", ");

@@ -17,9 +17,6 @@
 
 package org.cojen.tupl.table.expr;
 
-import java.util.ArrayList;
-import java.util.List;
-
 import org.cojen.tupl.table.RowMethodsMaker;
 
 /**
@@ -33,10 +30,8 @@ public final class Column implements Named {
     private final String mName;
     private final boolean mHidden;
 
-    private List<String> mSubNames;
-
     /**
-     * @param name column name (can be fully qualified)
+     * @param name column name
      */
     public static Column make(Type type, String name, boolean hidden) {
         return new Column(type, name, hidden);
@@ -59,42 +54,6 @@ public final class Column implements Named {
 
     public boolean isHidden() {
         return mHidden;
-    }
-
-    /**
-     * Returns the name split by '.' characters.
-     *
-     * @return a list whose size is at least one
-     */
-    public List<String> subNames() {
-        List<String> subNames = mSubNames;
-        if (subNames == null) {
-            mSubNames = subNames = buildSubNames(mName);
-        }
-        return subNames;
-    }
-
-    private static List<String> buildSubNames(String name) {
-        int ix2 = name.indexOf('.');
-
-        if (ix2 < 0) {
-            return List.of(name);
-        }
-
-        int ix1 = 0;
-        var list = new ArrayList<String>(2);
-
-        while (true) {
-            list.add(name.substring(ix1, ix2));
-            ix1 = ix2 + 1;
-            ix2 = name.indexOf('.', ix1);
-            if (ix2 < 0) {
-                list.add(name.substring(ix1));
-                break;
-            }
-        }
-
-        return list;
     }
 
     public Column withName(String name) {

@@ -25,9 +25,6 @@ import java.util.Map;
 
 import org.cojen.tupl.Table;
 
-import org.cojen.tupl.table.ColumnInfo;
-import org.cojen.tupl.table.OrderBy;
-import org.cojen.tupl.table.RowInfo;
 import org.cojen.tupl.table.RowUtils;
 
 import org.cojen.tupl.table.filter.ColumnToConstantFilter;
@@ -53,15 +50,10 @@ final class UnmappedQueryExpr extends QueryExpr {
                                   int maxArgument)
     {
         RelationType type = from.type();
-        TupleType rowType = type.rowType();
 
-        if (projection != null) {
-            if (rowType.matches(projection)) {
-                // Full projection and no order-by specification.
-                projection = null;
-            } else {
-                rowType = rowType.project(projection);
-            }
+        if (projection != null && type.rowType().matches(projection)) {
+            // Full projection and no order-by specification.
+            projection = null;
         }
 
         Map<Object, Integer> argMap;
@@ -107,66 +99,22 @@ final class UnmappedQueryExpr extends QueryExpr {
     }
 
     @Override
-    public QuerySpec querySpec(Class<?> rowType) {
-        checkRowType(rowType);
-
+    public QuerySpec querySpec() {
         if (!(mFrom instanceof TableExpr)) {
             throw new QueryException("Query has an intermediate transform step");
         }
-
         if (mArgMap != null) {
             throw new QueryException("Query has literals");
         }
-
-        return doQuerySpec(rowType);
+        return super.querySpec(false);
     }
 
     @Override
     public QuerySpec tryQuerySpec(Class<?> rowType) {
         if (mFrom.rowTypeClass() == rowType && mFrom instanceof TableExpr && mArgMap == null) {
-            return doQuerySpec(rowType);
+            return super.querySpec(false);
         }
         return null;
-    }
-
-    private QuerySpec doQuerySpec(Class<?> rowType) {
-        List<ProjExpr> projection = mProjection;
-
-        if (projection == null) {
-            return new QuerySpec(null, null, mRowFilter);
-        }
-
-        var projMap = new LinkedHashMap<String, ColumnInfo>(projection.size() * 2);
-        var orderBy = new OrderBy(projection.size() * 2);
-
-        RowInfo info = RowInfo.find(rowType);
-        Map<String, ColumnInfo> allColumns = info.allColumns;
-
-        for (ProjExpr pe : projection) {
-            if (pe.hasExclude()) {
-                continue;
-            }
-
-            String name = pe.name();
-            ColumnInfo ci = allColumns.get(name);
-
-            if (ci == null) {
-                throw new AssertionError();
-            }
-
-            projMap.put(name, ci);
-
-            if (pe.hasOrderBy()) {
-                orderBy.put(name, new OrderBy.Rule(ci, pe.applyOrderBy(ci.typeCode)));
-            }
-        }
-
-        if (projMap.size() == allColumns.size()) {
-            // Full projection.
-            projMap = null;
-        }
-
-        return new QuerySpec(projMap, orderBy, mRowFilter);
     }
 
     @Override

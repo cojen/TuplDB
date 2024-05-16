@@ -95,8 +95,7 @@ public final class TableExpr extends RelationExpr {
     }
 
     @Override
-    public QuerySpec querySpec(Class<?> rowType) {
-        checkRowType(rowType);
+    public QuerySpec querySpec() {
         return new QuerySpec(null, null, TrueFilter.THE);
     }
 

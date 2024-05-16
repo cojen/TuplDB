@@ -17,6 +17,8 @@
 
 package org.cojen.tupl.table.expr;
 
+import java.util.Collection;
+
 import org.cojen.tupl.Table;
 
 /**
@@ -48,6 +50,15 @@ public final class RelationType extends Type {
 
     public RelationType withCardinality(Cardinality c) {
         return c == mCardinality ? this : new RelationType(mRowType, c);
+    }
+
+    /**
+     * @param projExprs if null, is treated as full projection
+     * @throws IllegalArgumentException if projExprs refers to columns not in the row type
+     */
+    public RelationType withProjection(Collection<ProjExpr> projExprs) {
+        TupleType rowType = mRowType.withProjection(projExprs);
+        return rowType.equals(mRowType) ? this : new RelationType(rowType, mCardinality);
     }
 
     @Override

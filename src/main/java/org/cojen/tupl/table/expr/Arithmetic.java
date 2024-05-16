@@ -46,7 +46,7 @@ final class Arithmetic {
                 return left.or(right);
             case T_XOR:
                 return left.xor(right);
-            };
+            }
             return null;
         }        
     }
@@ -78,7 +78,7 @@ final class Arithmetic {
                 return left.xor(right);
             default:
                 return null;
-            };
+            }
 
             var uleft = left.cast(int.class).and(0xff);
             var uright = right.cast(int.class).and(0xff);
@@ -141,7 +141,7 @@ final class Arithmetic {
                 return left.xor(right);
             default:
                 return null;
-            };
+            }
 
             var uleft = left.cast(int.class).and(0xffff);
             var uright = right.cast(int.class).and(0xffff);
@@ -204,7 +204,7 @@ final class Arithmetic {
                 return left.xor(right);
             default:
                 return null;
-            };
+            }
 
             MethodMaker mm = left.methodMaker();
             var ivar = mm.var(Integer.class);
@@ -276,7 +276,7 @@ final class Arithmetic {
                 return left.xor(right);
             default:
                 return null;
-            };
+            }
 
             return left.methodMaker().var(ULong.class).invoke(method, left, right);
         }
@@ -350,7 +350,7 @@ final class Arithmetic {
                 return left.xor(right);
             default:
                 return null;
-            };
+            }
 
             return left.methodMaker().var(Byte.class).invoke(method, left, right);
         }
@@ -415,7 +415,7 @@ final class Arithmetic {
                 return left.xor(right);
             default:
                 return null;
-            };
+            }
 
             return left.methodMaker().var(Short.class).invoke(method, left, right);
         }
@@ -480,7 +480,7 @@ final class Arithmetic {
                 return left.xor(right);
             default:
                 return null;
-            };
+            }
 
             return left.methodMaker().var(Math.class).invoke(method, left, right);
         }
@@ -499,7 +499,7 @@ final class Arithmetic {
                 return left.div(right);
             case T_REM:
                 return left.rem(right);
-            };
+            }
             return null;
         }
     }
@@ -535,7 +535,7 @@ final class Arithmetic {
                 break;
             default:
                 return null;
-            };
+            }
 
             return left.invoke(method, right);
         }

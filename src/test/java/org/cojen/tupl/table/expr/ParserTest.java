@@ -49,36 +49,35 @@ public class ParserTest {
 
     @Test
     public void failures() throws Exception {
-        pf("", "Identifier expected");
-        pf("a", "Cannot convert double to boolean");
-        pf("q", "Unknown column or variable: q");
-        pf("a>?|", "Identifier expected");
-        pf("a>?&", "Identifier expected");
-        pf("a=?&", "Equality operator");
-        pf("a!?&", "Unexpected trailing");
-        pf("a==?)", "Unexpected trailing");
-        pf("a i?)", "Unexpected trailing");
-        pf("a^?)", "Bitwise operation not allowed");
-        pf("a?)", "Unexpected trailing");
-        pf("c\u1f600?)", "Unexpected trailing");
-        pf("!", "Identifier expected");
-        pf("!x", "Unknown column or variable: x");
-        pf("(a==)", "Identifier expected");
-        pf("a<c\u1f600", "No common type");
-        pf("!(a\u2003== ?", "Right paren");
-        pf("a inx", "Unexpected trailing");
-        pf("a<=?a", "Malformed argument number");
-        pf("a<=?999999999999999999999999999999999999", "Malformed argument number");
-        pf("{~a, -a}", "Excluded projection not found");
-        pf("{~*}", "Identifier expected");
-        pf("{~!a}", "Identifier expected");
-        pf("{~a}", "Excluded projection not found");
-        pf("a<=?0", "at least one");
-        pf("()!)", "Identifier expected");
+        parseFail("", "Identifier expected");
+        parseFail("a", "Cannot convert double to boolean");
+        parseFail("q", "Unknown column or variable: q");
+        parseFail("a>?|", "Identifier expected");
+        parseFail("a>?&", "Identifier expected");
+        parseFail("a=?&", "Equality operator");
+        parseFail("a!?&", "Unexpected trailing");
+        parseFail("a==?)", "Unexpected trailing");
+        parseFail("a i?)", "Unexpected trailing");
+        parseFail("a^?)", "Bitwise operation not allowed");
+        parseFail("a?)", "Unexpected trailing");
+        parseFail("c\u1f600?)", "Unexpected trailing");
+        parseFail("!", "Identifier expected");
+        parseFail("!x", "Unknown column or variable: x");
+        parseFail("(a==)", "Identifier expected");
+        parseFail("a<c\u1f600", "No common type");
+        parseFail("!(a\u2003== ?", "Right paren");
+        parseFail("a inx", "Unexpected trailing");
+        parseFail("a<=?a", "Malformed argument number");
+        parseFail("a<=?999999999999999999999999999999999999", "Malformed argument number");
+        parseFail("{~a, -a}", "Excluded projection not found");
+        parseFail("{~*}", "Wildcard disallowed");
+        parseFail("{~!a}", "Identifier expected");
+        parseFail("{~a}", "Excluded projection not found");
+        parseFail("a<=?0", "at least one");
+        parseFail("()!)", "Identifier expected");
     }
 
-    // pf: parse failure
-    private void pf(String queryStr, String message) {
+    private void parseFail(String queryStr, String message) {
         try {
             Parser.parse(mTable, queryStr);
             fail();

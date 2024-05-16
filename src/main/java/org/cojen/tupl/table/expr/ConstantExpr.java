@@ -323,7 +323,7 @@ public final class ConstantExpr extends Expr {
     private static final byte K_TYPE = KeyEncoder.allocType();
 
     @Override
-    protected final void encodeKey(KeyEncoder enc) {
+    protected void encodeKey(KeyEncoder enc) {
         if (!enc.encode(this, K_TYPE)) {
             return;
         }
@@ -385,7 +385,7 @@ public final class ConstantExpr extends Expr {
         if (mValue instanceof String s) {
             RowUtils.appendQuotedString(b, s);
         } else {
-            b.append(String.valueOf(mValue));
+            b.append(mValue);
         }
     }
 }

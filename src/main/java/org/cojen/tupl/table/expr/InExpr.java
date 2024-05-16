@@ -22,7 +22,6 @@ import java.util.Map;
 import java.util.function.Consumer;
 
 import org.cojen.tupl.table.ColumnInfo;
-import org.cojen.tupl.table.ColumnSet;
 import org.cojen.tupl.table.CompareUtils;
 import org.cojen.tupl.table.RowInfo;
 
@@ -96,7 +95,7 @@ public final class InExpr extends Expr {
         ColumnExpr ce;
 
         if ((ce = mLeft.sourceColumn()) != null) {
-            ColumnInfo ci = ColumnSet.findColumn(info.allColumns, ce.name());
+            ColumnInfo ci = ce.tryFindColumn(info);
             if (ci != null && mRight instanceof ParamExpr pe) {
                 var filter = new InFilter(ci, pe.ordinal());
                 if (mNot) {
@@ -184,7 +183,7 @@ public final class InExpr extends Expr {
         return obj == this ||
             obj instanceof InExpr ie
             && mLeft.equals(ie.mLeft) && mRight.equals(ie.mRight)
-            && ie.mNot == ie.mNot;
+            && mNot == ie.mNot;
     }
 
     @Override

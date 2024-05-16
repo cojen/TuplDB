@@ -22,10 +22,11 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 
+import org.cojen.tupl.table.ColumnInfo;
+import org.cojen.tupl.table.OrderBy;
 import org.cojen.tupl.table.RowInfo;
 
 import org.cojen.tupl.table.filter.ColumnToArgFilter;
@@ -33,6 +34,7 @@ import org.cojen.tupl.table.filter.ColumnToColumnFilter;
 import org.cojen.tupl.table.filter.ColumnToConstantFilter;
 import org.cojen.tupl.table.filter.ComplexFilterException;
 import org.cojen.tupl.table.filter.ExprFilter;
+import org.cojen.tupl.table.filter.QuerySpec;
 import org.cojen.tupl.table.filter.RowFilter;
 import org.cojen.tupl.table.filter.TrueFilter;
 import org.cojen.tupl.table.filter.Visitor;
@@ -48,7 +50,7 @@ public abstract sealed class QueryExpr extends RelationExpr
     /**
      * @param from can be null if not selecting from any table at all
      * @param filter can be null if not filtered, or else filter type must be boolean or be
-     * convertable to boolean
+     * convertible to boolean
      * @param projection can be null to project all columns
      */
     public static RelationExpr make(int startPos, int endPos,
@@ -80,7 +82,7 @@ public abstract sealed class QueryExpr extends RelationExpr
             for (ProjExpr pe : projection) {
                 maxArgument = Math.max(maxArgument, pe.maxArgument());
 
-                ProjExpr source = pe.sourceProjColumn();
+                ColumnExpr source = pe.sourceColumn();
 
                 if (source == null) {
                     pe.gatherEvalColumns(c -> {
@@ -90,7 +92,9 @@ public abstract sealed class QueryExpr extends RelationExpr
                         });
                     });
                 } else if (!pe.hasExclude()) {
-                    projMap.put(source.name(), source);
+                    var ce = ColumnExpr.make(-1, -1, fromType, source.firstColumn());
+                    ProjExpr fromPe = ProjExpr.make(-1, -1, ce, pe.flags());
+                    projMap.put(fromPe.name(), fromPe);
                 }
             }
 
@@ -247,7 +251,7 @@ public abstract sealed class QueryExpr extends RelationExpr
                         RelationExpr from, RowFilter rowFilter, List<ProjExpr> projection,
                         int maxArgument)
     {
-        super(startPos, endPos, type);
+        super(startPos, endPos, type.withProjection(projection));
         mFrom = from;
         mRowFilter = rowFilter;
         mProjection = projection;
@@ -278,6 +282,53 @@ public abstract sealed class QueryExpr extends RelationExpr
         // subclass overrides this method and checks the filter expression too.
 
         return true;
+    }
+
+    /**
+     * @param strict when true return null when projecting anything other than a plain column;
+     * when false, those projections are dropped
+     */
+    protected final QuerySpec querySpec(boolean strict) {
+        List<ProjExpr> projection = mProjection;
+
+        if (projection == null) {
+            return new QuerySpec(null, null, mRowFilter);
+        }
+
+        var projMap = new LinkedHashMap<String, ColumnInfo>(projection.size() * 2);
+        var orderBy = new OrderBy(projection.size() * 2);
+        boolean hasPaths = false;
+
+        RowInfo info = RowInfo.find(mFrom.rowTypeClass());
+
+        for (ProjExpr pe : projection) {
+            if (pe.hasExclude()) {
+                continue;
+            }
+
+            ColumnInfo ci;
+            if (!(pe.wrapped() instanceof ColumnExpr ce) || (ci = ce.tryFindColumn(info)) == null) {
+                if (strict) {
+                    return null;
+                }
+                continue;
+            }
+
+            hasPaths |= ce.isPath();
+
+            projMap.put(ci.name, ci);
+
+            if (pe.hasOrderBy()) {
+                orderBy.put(ci.name, new OrderBy.Rule(ci, pe.applyOrderBy(ci.typeCode)));
+            }
+        }
+
+        if (!hasPaths && projMap.size() == info.allColumns.size()) {
+            // Full projection.
+            projMap = null;
+        }
+
+        return new QuerySpec(projMap, orderBy, mRowFilter);
     }
 
     private static final byte K_TYPE = KeyEncoder.allocType();

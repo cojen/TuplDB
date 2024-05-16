@@ -177,14 +177,16 @@ public abstract sealed class Expr
     }
 
     /**
-     * Add to the given collection all the columns that makeEval will directly use.
+     * Add to the given collection all the columns that makeEval will directly use. Only the
+     * first column in a path is selected.
      */
-    public void gatherEvalColumns(Collection<Column> c) {
+    public final void gatherEvalColumns(Collection<Column> c) {
         gatherEvalColumns(c::add);
     }
 
     /**
-     * Pass to the given consumer all the columns that makeEval will directly use.
+     * Pass to the given consumer all the columns that makeEval will directly use. Only the
+     * first column in a path is selected.
      */
     public abstract void gatherEvalColumns(Consumer<Column> c);
 

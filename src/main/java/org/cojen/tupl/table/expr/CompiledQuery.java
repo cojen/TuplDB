@@ -28,7 +28,6 @@ import org.cojen.tupl.Updater;
 
 import org.cojen.tupl.diag.QueryPlan;
 
-import org.cojen.tupl.table.IdentityTable;
 import org.cojen.tupl.table.QueryLauncher;
 import org.cojen.tupl.table.RowUtils;
 import org.cojen.tupl.table.RowWriter;
@@ -123,17 +122,17 @@ public abstract class CompiledQuery<R> extends QueryLauncher<R> {
     public static <R> CompiledQuery<R> make(Table<R> table) {
         return new CompiledQuery<R>() {
             @Override
-            public final Class<R> rowType() {
+            public Class<R> rowType() {
                 return table.rowType();
             }
 
             @Override
-            public final int argumentCount() {
+            public int argumentCount() {
                 return 0;
             }
 
             @Override
-            public final Table<R> table(Object... args) {
+            public Table<R> table(Object... args) {
                 return table;
             }
 

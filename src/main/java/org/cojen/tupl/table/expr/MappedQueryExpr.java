@@ -34,7 +34,6 @@ import org.cojen.tupl.Untransformed;
 
 import org.cojen.tupl.diag.QueryPlan;
 
-import org.cojen.tupl.table.MappedTable;
 import org.cojen.tupl.table.RowGen;
 import org.cojen.tupl.table.RowUtils;
 import org.cojen.tupl.table.WeakCache;
@@ -77,17 +76,32 @@ final class MappedQueryExpr extends QueryExpr {
     }
 
     @Override
-    public QuerySpec querySpec(Class<?> rowType) {
-        checkRowType(rowType);
-        // MappedQueryExpr is never expected to be representable by a QuerySpec. If it can,
-        // then it should probably be an UnmappedQueryExpr instead.
-        throw new QueryException("Query derives custom transforms and filters");
+    public QuerySpec querySpec() {
+        if (mRowFilter != TrueFilter.THE) {
+            throw new QueryException("Query performs custom filtering");
+        }
+        QuerySpec fromSpec = mFrom.querySpec();
+        QuerySpec thisSpec = querySpec(true);
+        if (thisSpec == null) {
+            throw new QueryException("Query derives new columns");
+        }
+        return thisSpec.withFilter(fromSpec.filter());
     }
 
     @Override
     public QuerySpec tryQuerySpec(Class<?> rowType) {
-        // See comment in querySpec method.
-        return null;
+        if (mFrom.rowTypeClass() != rowType || mRowFilter != TrueFilter.THE) { 
+            return null;
+        }
+        QuerySpec fromSpec = mFrom.tryQuerySpec(rowType);
+        if (fromSpec == null) {
+            return null;
+        }
+        QuerySpec thisSpec = querySpec(true);
+        if (thisSpec == null) {
+            return null;
+        }
+        return thisSpec.withFilter(fromSpec.filter());
     }
 
     private static final WeakCache<Object, MapperFactory, MappedQueryExpr> cCache;
@@ -205,6 +219,7 @@ final class MappedQueryExpr extends QueryExpr {
         }
     }
 
+    // FIXME: Perhaps only need to check if any exist and just and a return boolean?
     private Set<Column> gatherEvalColumns() {
         var evalColumns = new HashSet<Column>();
 
@@ -335,7 +350,7 @@ final class MappedQueryExpr extends QueryExpr {
                 continue;
             }
 
-            Column targetColumn = targetType.columnFor(pe.name());
+            Column targetColumn = targetType.findColumn(pe.name());
 
             Class columnType = targetColumn.type().clazz();
             if (columnType != source.type().clazz()) {

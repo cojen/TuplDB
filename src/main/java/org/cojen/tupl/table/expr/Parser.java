@@ -32,6 +32,8 @@ import org.cojen.tupl.Table;
 
 import org.cojen.tupl.table.filter.QuerySpec;
 
+import static org.cojen.tupl.table.RowMethodsMaker.unescape;
+
 import static org.cojen.tupl.table.expr.Token.*;
 
 /**
@@ -147,7 +149,7 @@ public final class Parser {
 
     public RelationExpr parseQueryExpr() throws IOException, QueryException {
         try {
-            return parseQueryExpr(true);
+            return doParseQueryExpr();
         } catch (QueryException e) {
             // FIXME: Refine exceptions to include the source position and context. Also prune
             // a deep stack trace?
@@ -161,7 +163,7 @@ public final class Parser {
      * Filter     = Expr
      * Projection = "{" ProjExprs "}"
      */
-    private RelationExpr parseQueryExpr(boolean expectEof) throws IOException {
+    private RelationExpr doParseQueryExpr() throws IOException {
         final Token first = peekToken();
 
         final Expr filter;
@@ -207,26 +209,21 @@ public final class Parser {
         }
 
         Map<String, ProjExpr> map = new LinkedHashMap<>();
-        Map<String, Column> wildcards = null;
+        Map<String, ColumnExpr> wildcards = null;
         Set<String> excluded = null;
 
         while (true) {
-            Token peek = peekToken();
-            ProjExpr expr = parseProjExpr(peek);
+            ProjExpr expr = parseProjExpr();
 
-            addProjection: if (expr == null) {
-                if (wildcards != null) {
-                    throw new QueryException("Wildcard can be specified at most once", peek);
+            ColumnExpr wildcard;
+            addProjection: if ((wildcard = expr.isWildcard()) != null) {
+                if (expr.hasExclude()) {
+                    throw new QueryException("Cannot exclude by wildcard", expr);
                 }
-
-                wildcards = new LinkedHashMap<>();
-
-                for (Column c : mFrom.rowType()) {
-                    String name = c.name();
-                    if (!map.containsKey(name)) {
-                        wildcards.put(name, c);
-                    }
+                if (wildcards == null) {
+                    wildcards = new LinkedHashMap<>();
                 }
+                wildcard.expandWildcard(wildcards);
             } else {
                 String name = expr.name();
 
@@ -247,7 +244,7 @@ public final class Parser {
                         } else if (map.remove(name) == null) {
                             if (wildcards == null || wildcards.remove(name) == null) {
                                 throw new QueryException
-                                    ("Excluded projection not found: " + name, expr);
+                                    ("Excluded projection not found: " + unescape(name), expr);
                             }
                         }
                         break addProjection;
@@ -257,7 +254,7 @@ public final class Parser {
                 if (wildcards != null && wildcards.remove(name) != null) {
                     map.put(name, expr);
                 } else if (map.putIfAbsent(name, expr) != null) {
-                    throw new QueryException("Duplicate projection: " + name, expr);
+                    throw new QueryException("Duplicate projection: " + unescape(name), expr);
                 }
             }
 
@@ -273,12 +270,9 @@ public final class Parser {
             // of columns which were explicitly specified.
 
             final int pos = first.startPos();
-            final TupleType rowType = mFrom.rowType();
 
-            wildcards.forEach((String name, Column c) -> {
-                map.computeIfAbsent(name, n -> {
-                    return ProjExpr.make(pos, pos, ColumnExpr.make(pos, pos, rowType, c), 0);
-                });
+            wildcards.forEach((String name, ColumnExpr ce) -> {
+                map.computeIfAbsent(name, n -> ProjExpr.make(pos, pos, ce, 0));
             });
         }
 
@@ -287,18 +281,19 @@ public final class Parser {
 
     /*
      * ProjExpr = [ ProjOp ] Identifier [ "=" Expr ]
+     *          | [ ProjOp ] Path
      *          | "*"
      * ProjOp   = [ "~" ] [ ( "+" | "-" ) [ "!" ] ]
-     *
-     * @return null if wildcard
      */
-    private ProjExpr parseProjExpr(final Token first) throws IOException {
+    private ProjExpr parseProjExpr() throws IOException {
+        final Token first = peekToken();
         final int startPos = first.startPos();
         int type = first.type();
 
         if (type == T_STAR) { // wildcard
             consumePeek();
-            return null;
+            return ProjExpr.make(startPos, startPos,
+                                 ColumnExpr.make(startPos, startPos, mFrom.rowType(), null), 0);
         }
 
         int flags = 0;
@@ -322,16 +317,22 @@ public final class Parser {
             }
         }
 
-        Token.Text ident = parseIdentifier();
-        String name = ident.text(true);
+        List<Token> path = parsePath();
 
-        Expr expr;
+        final Expr expr;
 
-        type = peekTokenType();
+        Token peek = peekToken();
+        type = peek.type();
 
         if (type == T_ASSIGN) {
+            if (path.size() != 1) {
+                throw new QueryException("Cannot assign to a path: " + toPath(path, false),
+                                         startPos, peek.endPos());
+            }
             consumePeek();
             Expr right = parseExpr();
+            Token.Text ident = asIdentifier(path.get(0));
+            String name = ident.text(true);
             var assign = AssignExpr.make(startPos, right.endPos(), name, right);
             expr = assign;
             if (mLocalVars == null) {
@@ -340,23 +341,25 @@ public final class Parser {
             if (mLocalVars.putIfAbsent(name, assign) != null) {
                 throw new QueryException("Duplicate assignment: " + ident.mText, assign);
             }
-        } else {
-            AssignExpr assign;
-            if (mLocalVars != null && (assign = mLocalVars.get(name)) != null) {
-                expr = VarExpr.make(startPos, ident.endPos(), assign);
-            } else {
-                TupleType rowType = mFrom.rowType();
-                Column c = rowType.tryColumnFor(name);
-                if (c == null) {
-                    throw new QueryException("Unknown column or variable: " + ident.mText,
-                                             startPos, ident.endPos());
+        } else access: {
+            if (mLocalVars != null && path.size() == 1) {
+                Token.Text ident = asIdentifier(path.get(0));
+                String name = ident.text(true);
+                AssignExpr assign = mLocalVars.get(name);
+                if (assign != null) {
+                    expr = VarExpr.make(startPos, ident.endPos(), assign);
+                    break access;
                 }
-                expr = ColumnExpr.make(startPos, ident.endPos(), rowType, c);
             }
+
+            expr = resolveColumn(path, true);
+
         }
 
         return ProjExpr.make(startPos, expr.endPos(), expr, flags);
     }
+
+    // FIXME: Use peeks to skip ahead to parseExpr, reducing stack depth.
 
     /*
      * Expr = LogicalOrExpr
@@ -669,7 +672,7 @@ public final class Parser {
 
         pushbackToken(t);
 
-        List<Token.Text> idents = parsePath();
+        List<Token> path = parsePath();
 
         if (peekTokenType() == T_LPAREN) {
             consumePeek();
@@ -678,12 +681,12 @@ public final class Parser {
             if (next.type() != T_RPAREN) {
                 throw new QueryException("Right paren expected", next);
             }
-            // FIXME: CallExpr; need function search
-            throw new RuntimeException("CallExpr: " + idents + ", " + params);
+            // FIXME: CallExpr; need function search; exclude wildcards
+            throw new RuntimeException("CallExpr: " + path + ", " + params);
         }
 
-        if (mLocalVars != null && idents.size() == 1) {
-            Token.Text ident = idents.get(0);
+        if (mLocalVars != null && path.size() == 1) {
+            Token.Text ident = asIdentifier(path.get(0));
             String name = ident.text(true);
             AssignExpr assign = mLocalVars.get(name);
             if (assign != null) {
@@ -691,62 +694,117 @@ public final class Parser {
             }
         }
 
-        int startPos = idents.get(0).startPos();
-        int endPos = idents.get(idents.size() - 1).endPos();
+        return resolveColumn(path, false);
+    }
 
+    private ColumnExpr resolveColumn(List<Token> path, boolean allowWildcards) {
         TupleType rowType = mFrom.rowType();
-        Column c = rowType.tryFindColumn(toPath(idents, true));
+        Token.Text ident = asIdentifier(path.get(0));
+        Column c = rowType.tryFindColumn(ident.text(true));
 
         if (c == null) {
-            throw new QueryException
-                ("Unknown column or variable: " + toPath(idents, false), startPos, endPos);
+            throw unknown("Unknown column or variable: ", ident);
         }
 
-        return ColumnExpr.make(startPos, endPos, rowType, c);
+        ColumnExpr ce = ColumnExpr.make(ident.startPos(), ident.endPos(), rowType, c);
+
+        for (int i=1; i<path.size(); i++) {
+            Token element = path.get(i);
+            if (!(element instanceof Token.Text) && allowWildcards) {
+                // Make a wildcard ColumnExpr.
+                int startPos = element.startPos();
+                int endPos = element.endPos();
+                if (ce.type() instanceof TupleType) {
+                    ce = ColumnExpr.make(startPos, endPos, ce, null);
+                } else {
+                    throw new QueryException
+                        ("Wildcard disallowed for scalar column", startPos, endPos);
+                }
+            } else {
+                ident = asIdentifier(path.get(i));
+                Type type = ce.type();
+                if (!(type instanceof TupleType te) ||
+                    (c = te.tryFindColumn(ident.text(true))) == null)
+                {
+                    throw unknown("Unknown sub column: ", ident);
+                }
+                ce = ColumnExpr.make(ident.startPos(), ident.endPos(), ce, c);
+            }
+        }
+
+        return ce;
+    }
+
+    private static QueryException unknown(String message, Token.Text ident) {
+        return new QueryException(message + ident.text(false), ident);
     }
 
     /*
-     * Path = Identifier { "." Identifier }
+     * Path = Identifier { "." Identifier } [ "." | "*" ]
      */
-    private List<Token.Text> parsePath() throws IOException {
-        Token.Text first = parseIdentifier();
+    private List<Token> parsePath() throws IOException {
+        Token first = nextToken();
+
+        if (first.type() != T_IDENTIFIER) {
+            String msg = first.type() == T_STAR ? "Wildcard disallowed" : "Identifier expected";
+            throw new QueryException(msg, first);
+        }
 
         if (peekTokenType() != T_DOT) {
             return List.of(first);
         }
 
-        var list = new ArrayList<Token.Text>();
+        var list = new ArrayList<Token>();
         list.add(first);
 
         while (peekTokenType() == T_DOT) {
             consumePeek();
-            list.add(parseIdentifier());
+
+            Token t = nextToken();
+            if (t.type() == T_IDENTIFIER) {
+                list.add(t);
+            } else if (t.type() == T_STAR) {
+                list.add(t);
+                break;
+            } else {
+                throw new QueryException("Identifier or wildcard expected", t);
+            }
         }
 
         return list;
     }
 
-    private static String toPath(List<Token.Text> idents, boolean escaped) {
-        int size = idents.size();
+    /**
+     * @param token expected to be Token.Text or wildcard
+     * @throws QueryException if not Token.Text
+     */
+    private static Token.Text asIdentifier(Token token) {
+        if (token instanceof Token.Text text) {
+            return text;
+        }
+        throw new QueryException("Wildcard disallowed", token);
+    }
+
+    private static String toPath(List<Token> path, boolean escaped) {
+        int size = path.size();
         if (size == 1) {
-            return idents.get(0).text(escaped);
+            return toPathText(path.get(0), escaped);
         }
         var b = new StringBuilder();
         for (int i=0; i<size; i++) {
             if (i > 0) {
                 b.append('.');
             }
-            b.append(idents.get(i).text(escaped));
+            b.append(toPathText(path.get(i), escaped));
         }
         return b.toString();
     }
 
-    private Token.Text parseIdentifier() throws IOException {
-        Token t = nextToken();
-        if (t.type() != T_IDENTIFIER) {
-            throw new QueryException("Identifier expected", t);
-        }
-        return (Token.Text) t;
+    /**
+     * @param token expected to be Token.Text or wildcard
+     */
+    private static String toPathText(Token token, boolean escaped) {
+        return token instanceof Token.Text text ? text.text(escaped) : "*";
     }
 
     /*
@@ -800,10 +858,6 @@ public final class Parser {
             return t;
         }
         return mTokenizer.next();
-    }
-
-    private int nextTokenType() throws IOException {
-        return nextToken().type();
     }
 
     private void pushbackToken(Token t) {

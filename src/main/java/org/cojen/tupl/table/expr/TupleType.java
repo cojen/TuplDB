@@ -19,17 +19,17 @@ package org.cojen.tupl.table.expr;
 
 import java.util.Collection;
 import java.util.Iterator;
-import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
+import java.util.SortedSet;
 import java.util.TreeMap;
+import java.util.TreeSet;
 
 import org.cojen.tupl.table.ColumnInfo;
-import org.cojen.tupl.table.ColumnSet;
 import org.cojen.tupl.table.RowGen;
 import org.cojen.tupl.table.RowInfo;
 import org.cojen.tupl.table.RowMethodsMaker;
-import org.cojen.tupl.table.RowUtils;
 import org.cojen.tupl.table.Unpersisted;
 import org.cojen.tupl.table.WeakCache;
 
@@ -50,90 +50,76 @@ public final class TupleType extends Type implements Iterable<Column> {
      * Makes a type which has a generated row type class. Columns aren't defined for excluded
      * projections.
      *
-     * @throws IllegalArgumentException if any names are duplicated
+     * @throws QueryException if any names are duplicated
      */
-    public static TupleType make(Collection<ProjExpr> projection) {
+    public static TupleType make(Collection<ProjExpr> projExprs) {
         var columns = new TreeMap<String, Column>();
 
-        for (ProjExpr pe : projection) {
+        var enc = new KeyEncoder();
+
+        for (ProjExpr pe : projExprs) {
             if (!pe.hasExclude()) {
-                boolean hidden = (pe.wrapped() instanceof ColumnExpr ce)
-                    ? ce.column().isHidden() : false;
-                addColumn(columns, Column.make(pe.type(), pe.name(), hidden));
+                boolean hidden = pe.wrapped() instanceof ColumnExpr ce && ce.isHidden();
+                Column column = Column.make(pe.type(), pe.name(), hidden);
+                addColumn(columns, column);
+                column.encodeKey(enc);
             }
         }
 
-        // Temporarily use the generic Row class, but keep it if there's no columns.
-        TupleType tt = new TupleType(Row.class, columns);
+        Class rowType = cGeneratedCache.obtain(enc.finish(), columns);
 
-        if (tt.numColumns() != 0) {
-            tt = tt.withRowType(cCache.obtain(tt.makeKey(), tt));
-        }
-
-        return tt;
+        return new TupleType(rowType, TYPE_REFERENCE, null, columns);
     }
 
     /**
      * Makes a type which uses the given row type class.
      *
      * @param projection consists of column names; can pass null to project all columns
-     * @throws QueryException if projection refers to a non-existent column or if any
-     * target column names are duplicated
+     * @throws QueryException if projection refers to a non-existent column
      */
     public static TupleType make(Class rowType, Set<String> projection) {
-        RowInfo info = RowInfo.find(rowType);
+        // Validate the rowType definition.
+        RowInfo.find(rowType);
 
-        var columns = new TreeMap<String, Column>();
+        SortedSet<String> sortedProjection;
 
         if (projection == null) {
-            for (ColumnInfo ci : info.allColumns.values()) {
-                addColumn(columns, Column.make(BasicType.make(ci), ci.name, ci.isHidden()));
-            }
+            sortedProjection = null;
+        } else if (projection instanceof SortedSet<String> ss) {
+            sortedProjection = ss;
         } else {
-            for (String name : projection) {
-                ColumnInfo ci = ColumnSet.findColumn(info.allColumns, name);
-                if (ci == null) {
-                    name = RowMethodsMaker.unescape(name);
-                    throw new IllegalArgumentException("Unknown column: " + name);
-                }
-                addColumn(columns, Column.make(BasicType.make(ci), name, ci.isHidden()));
-            }
+            sortedProjection = new TreeSet<>(projection);
         }
 
-        return new TupleType(rowType, columns);
+        return new TupleType(rowType, TYPE_REFERENCE, sortedProjection, null);
     }
 
-    private static void addColumn(TreeMap<String, Column> columns, Column column) {
-        String name = column.name();
-        if (columns.putIfAbsent(name, column) != null) {
-            name = RowMethodsMaker.unescape(name);
-            throw new IllegalArgumentException("Duplicate column: " + name);
-        }
-    }
+    private final SortedSet<String> mProjection;
 
-    // Use an ordered map to ensure that the encodeKey method produces consistent results.
-    private final TreeMap<String, Column> mColumns;
+    private Map<String, Column> mColumns;
 
-    private TupleType(Class clazz, TreeMap<String, Column> columns) {
-        this(clazz, TYPE_REFERENCE, columns);
-    }
-
-    private TupleType(Class clazz, int typeCode, TreeMap<String, Column> columns) {
-        super(clazz, typeCode);
+    private TupleType(Class rowType, int typeCode,
+                      SortedSet<String> projection, Map<String, Column> columns)
+    {
+        super(rowType, typeCode);
+        mProjection = projection;
         mColumns = columns;
+    }
+
+    private TupleType(TupleType tt, int typeCode) {
+        super(tt.clazz(), typeCode);
+        mProjection = tt.mProjection;
+        mColumns = tt.mColumns;
+    }
+
+    private TupleType(ColumnInfo ci) {
+        super(ci.type, ci.typeCode);
+        mProjection = null;
     }
 
     @Override
     public TupleType nullable() {
-        return isNullable() ? this
-            : new TupleType(clazz(), TYPE_REFERENCE | TYPE_NULLABLE, mColumns);
-    }
-
-    private TupleType withRowType(Class<?> clazz) {
-        if (clazz() == clazz) {
-            return this;
-        }
-        return new TupleType(clazz, typeCode, mColumns);
+        return isNullable() ? this : new TupleType(this, TYPE_REFERENCE | TYPE_NULLABLE);
     }
 
     private static final byte K_TYPE = KeyEncoder.allocType();
@@ -141,24 +127,29 @@ public final class TupleType extends Type implements Iterable<Column> {
     @Override
     protected void encodeKey(KeyEncoder enc) {
         if (enc.encode(this, K_TYPE)) {
-            enc.encodeUnsignedVarInt(mColumns.size());
-            for (Column c : mColumns.values()) {
-                c.encodeKey(enc);
+            enc.encodeReference(clazz());
+            enc.encodeInt(typeCode());
+            if (mProjection == null) {
+                enc.encodeByte(0);
+            } else {
+                enc.encodeUnsignedVarInt(mProjection.size() + 1);
+                for (String s : mProjection) {
+                    enc.encodeString(s);
+                }
             }
         }
     }
 
     @Override
     public int hashCode() {
-        int hash = clazz().hashCode();
-        hash = hash * 31 + mColumns.hashCode();
-        return hash;
+        return clazz().hashCode() * 31 + Objects.hashCode(mProjection);
     }
 
     @Override
     public boolean equals(Object obj) {
         return obj == this || obj instanceof TupleType tt
-            && clazz() == tt.clazz() && mColumns.equals(tt.mColumns);
+            && clazz() == tt.clazz() && typeCode() == tt.typeCode()
+            && Objects.equals(mProjection, tt.mProjection);
     }
 
     @Override
@@ -184,22 +175,22 @@ public final class TupleType extends Type implements Iterable<Column> {
     }
 
     public int numColumns() {
-        return mColumns.size();
+        return columns().size();
     }
 
     public Iterator<Column> iterator() {
-        return mColumns.values().iterator();
+        return columns().values().iterator();
     }
 
     /**
      * Returns the column which has the given name.
      *
-     * @throws IllegalArgumentException if not found
+     * @throws QueryException if not found
      */
-    public Column columnFor(String name) {
-        Column c = tryColumnFor(name);
+    public Column findColumn(String name) {
+        Column c = tryFindColumn(name);
         if (c == null) {
-            throw new IllegalArgumentException("Unknown column: " + name);
+            throw new QueryException("Unknown column: " + name);
         }
         return c;
     }
@@ -209,37 +200,8 @@ public final class TupleType extends Type implements Iterable<Column> {
      *
      * @return null if not found
      */
-    public Column tryColumnFor(String name) {
-        return mColumns.get(name);
-    }
-
-    /**
-     * Find a column which matches the given name. The name of the returned column is fully
-     * qualified, which means that for joins, it has dotted names.
-     *
-     * @param name qualified or unqualified column name to find
-     * @return null if not found
-     */
     public Column tryFindColumn(String name) {
-        Map<String, Column> map = mColumns;
-        Column column = map.get(name);
-
-        if (column != null) {
-            return column;
-        }
-
-        int dotIx = name.indexOf('.');
-
-        if (dotIx >= 0 && (column = map.get(name.substring(0, dotIx))) != null) {
-            if (column.type() instanceof TupleType tt) {
-                Column sub = tt.tryFindColumn(name.substring(dotIx + 1));
-                if (sub != null) {
-                    return sub.withName(name);
-                }
-            }
-        }
-
-        return null;
+        return columns().get(name);
     }
 
     /**
@@ -247,7 +209,8 @@ public final class TupleType extends Type implements Iterable<Column> {
      * columns of this tuple.
      */
     public boolean matches(Collection<ProjExpr> projection) {
-        if (projection.size() != mColumns.size()) {
+        Map<String, Column> columns = columns();
+        if (projection.size() != columns.size()) {
             return false;
         }
         for (ProjExpr pe : projection) {
@@ -258,8 +221,8 @@ public final class TupleType extends Type implements Iterable<Column> {
             if (!(e instanceof ColumnExpr ce)) {
                 return false;
             }
-            Column column = ce.column();
-            if (!column.equals(mColumns.get(column.name()))) {
+            Column column = ce.firstColumn();
+            if (!column.equals(columns.get(column.name()))) {
                 return false;
             }
         }
@@ -269,65 +232,139 @@ public final class TupleType extends Type implements Iterable<Column> {
     /**
      * Returns a TupleType subset consisting of the given projected columns.
      *
-     * @throws IllegalArgumentException if projection refers to columns not in this TupleType
+     * @param projExprs if null, is treated as full projection
+     * @throws IllegalArgumentException if projExprs refers to columns not in this TupleType
      */
-    public TupleType project(Collection<ProjExpr> projection) {
-        if (projection.size() == mColumns.size()) {
-            for (ProjExpr pe : projection) {
-                if (!mColumns.containsKey(pe.name())) {
-                    throw new IllegalArgumentException();
-                }
-            }
+    public TupleType withProjection(Collection<ProjExpr> projExprs) {
+        if (projExprs == null) {
             return this;
         }
 
-        var columns = new TreeMap<String, Column>();
+        Map<String, Column> columns = columns();
 
-        for (ProjExpr pe : projection) {
-            String name = pe.name();
-            Column column = mColumns.get(name);
-            if (column == null) {
-                throw new IllegalArgumentException();
+        var projColumns = new TreeMap<String, Column>();
+
+        for (ProjExpr pe : projExprs) {
+            if (!pe.hasExclude()) {
+                String name;
+                if (!(pe.wrapped() instanceof ColumnExpr ce)) {
+                    name = pe.name();
+                } else {
+                    Column first = ce.firstColumn();
+                    if (first == null) {
+                        throw new IllegalArgumentException();
+                    }
+                    name = first.name();
+                }
+
+                Column column = columns.get(name);
+                if (column == null) {
+                    throw new IllegalArgumentException();
+                }
+
+                projColumns.put(name, column);
             }
-            columns.put(name, column);
         }
-        
-        return new TupleType(clazz(), typeCode(), columns);
+
+        if (projColumns.equals(columns)) {
+            return this;
+        }
+
+        return new TupleType(clazz(), typeCode(), projColumns.navigableKeySet(), projColumns);
     }
 
     /**
      * Returns true if the given projection only consists of columns which are found in this
      * tuple.
      */
-    public boolean canRepresent(Collection<ProjExpr> projection) {
-        for (ProjExpr pe : projection) {
-            if (!pe.hasExclude()) {
-                Column column = mColumns.get(pe.name());
-                if (column == null || !column.type().equals(pe.type())) {
-                    return false;
-                }
+    public boolean canRepresent(Collection<ProjExpr> projExprs) {
+        Map<String, Column> columns = columns();
+        for (ProjExpr pe : projExprs) {
+            if (!pe.hasExclude() && !pe.matches(columns)) {
+                return false;
             }
         }
         return true;
     }
 
-    private static final WeakCache<Object, Class<?>, TupleType> cCache;
+    private Map<String, Column> columns() {
+        Map<String, Column> columns = mColumns;
+        if (columns == null) {
+            mColumns = columns = buildColumns();
+        }
+        return columns;
+    }
+
+    private Map<String, Column> buildColumns() {
+        if (mProjection != null && mProjection.isEmpty()) {
+            return Map.of();
+        }
+
+        RowInfo info = RowInfo.find(clazz());
+
+        var columns = new TreeMap<String, Column>();
+
+        if (mProjection == null) {
+            for (ColumnInfo ci : info.allColumns.values()) {
+                addColumn(columns, ci);
+            }
+        } else {
+            for (String name : mProjection) {
+                ColumnInfo ci = info.allColumns.get(name);
+                if (ci == null) {
+                    name = RowMethodsMaker.unescape(name);
+                    throw new QueryException("Unknown column: " + name);
+                }
+                addColumn(columns, ci);
+            }
+        }
+
+        return columns;
+    }
+
+    private static void addColumn(Map<String, Column> columns, ColumnInfo ci) {
+        Type type = isTupleType(ci) ? new TupleType(ci) : BasicType.make(ci);
+        addColumn(columns, Column.make(type, ci.name, ci.isHidden()));
+    }
+
+    private static void addColumn(Map<String, Column> columns, Column column) {
+        String name = column.name();
+        if (columns.putIfAbsent(name, column) != null) {
+            name = RowMethodsMaker.unescape(name);
+            throw new QueryException("Duplicate column: " + name);
+        }
+    }
+
+    private static boolean isTupleType(ColumnInfo ci) {
+        if (ci.isScalarType()) {
+            return false;
+        }
+        try {
+            RowInfo.find(ci.type);
+        } catch (IllegalArgumentException e) {
+            return false;
+        }
+        return true;
+    }
+
+    private static final WeakCache<Object, Class<?>, Map<String, Column>> cGeneratedCache;
 
     static {
-        cCache = new WeakCache<>() {
+        cGeneratedCache = new WeakCache<>() {
             @Override
-            public Class<?> newValue(Object key, TupleType tt) {
-                return tt.makeRowTypeClass();
+            public Class<?> newValue(Object key, Map<String, Column> columns) {
+                return makeRowTypeClass(columns);
             }
         };
     }
 
-    private Class<?> makeRowTypeClass() {
+    private static Class<?> makeRowTypeClass(Map<String, Column> columns) {
         ClassMaker cm = RowGen.beginClassMakerForRowType(TupleType.class.getPackageName(), "Type");
         cm.implement(Row.class);
-        cm.sourceFile(getClass().getSimpleName()).addAnnotation(Unpersisted.class, true);
+        cm.sourceFile(TupleType.class.getSimpleName());
+        cm.addAnnotation(Unpersisted.class, true);
 
-        for (Column c : mColumns.values()) {
+        for (Column c : columns.values()) {
             Type type = c.type();
             Class<?> clazz = type.clazz();
             String name = c.name();

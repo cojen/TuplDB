@@ -17,6 +17,8 @@
 
 package org.cojen.tupl.table.expr;
 
+import java.util.Map;
+
 import org.cojen.maker.Variable;
 
 import org.cojen.tupl.table.RowMethodsMaker;
@@ -51,6 +53,10 @@ public final class ProjExpr extends WrappedExpr implements Named {
     private ProjExpr(int startPos, int endPos, Expr expr, int flags) {
         super(startPos, endPos, expr);
         mFlags = flags;
+    }
+
+    public int flags() {
+        return mFlags;
     }
 
     public boolean hasExclude() {
@@ -126,11 +132,23 @@ public final class ProjExpr extends WrappedExpr implements Named {
     }
 
     /**
-     * Returns the sourceColumn (if any) wrapped as a new ProjExpr.
+     * Returns the wrapped expression if it's a wildcard.
      */
-    public ProjExpr sourceProjColumn() {
-        ColumnExpr ce = sourceColumn();
-        return ce == null ? null : make(ce.startPos(), ce.endPos(), ce, mFlags);
+    public ColumnExpr isWildcard() {
+        return mExpr instanceof ColumnExpr ce && ce.isWildcard() ? ce : null;
+    }
+
+    /**
+     * Returns true if the projection matches a path starting from the given tuple columns.
+     * The names and types of each path element is examined, and they must match exactly.
+     */
+    public boolean matches(Map<String, Column> columns) {
+        if (mExpr instanceof ColumnExpr ce) {
+            return ce.matches(columns);
+        } else {
+            Column column = columns.get(name());
+            return column != null && column.type().equals(type());
+        }
     }
 
     @Override
