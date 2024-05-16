@@ -69,6 +69,12 @@ public final class ConversionExpr extends WrappedExpr {
         return dstVar;
     }
 
+    @Override
+    public boolean canThrowRuntimeException() {
+        // The convertExact call can fail at runtime.
+        return true;
+    }
+
     private static final byte K_TYPE = KeyEncoder.allocType();
 
     @Override

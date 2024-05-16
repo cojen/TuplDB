@@ -52,7 +52,8 @@ public final class InExpr extends Expr {
     private InExpr(int startPos, int endPos, Expr left, Expr right, boolean not) {
         super(startPos, endPos);
         mLeft = left;
-        mRight = right;
+        // FIXME: Perhaps 'in' operator should only work against a set?
+        mRight = right.asType(BasicType.make(Object[].class, Type.TYPE_REFERENCE));
         mNot = not;
     }
 
@@ -135,16 +136,11 @@ public final class InExpr extends Expr {
             }
         }
 
-        Expr left = mLeft.asType(BasicType.make(Object.class, Type.TYPE_REFERENCE));
-
-        // FIXME: Perhaps 'in' operator should only work against a set?
-        Expr right = mRight.asType(BasicType.make(Object[].class, Type.TYPE_REFERENCE));
-
         int op = mNot ? ColumnFilter.OP_NOT_IN : ColumnFilter.OP_IN;
 
         CompareUtils.compare(context.methodMaker(),
-                             left.type(), left.makeEval(context),
-                             right.type(), right.makeEval(context),
+                             mLeft.type(), mLeft.makeEval(context),
+                             mRight.type(), mRight.makeEval(context),
                              op, pass, fail);
     }
 

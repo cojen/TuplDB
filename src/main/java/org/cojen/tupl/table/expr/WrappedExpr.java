@@ -64,7 +64,7 @@ abstract sealed class WrappedExpr extends Expr
     }
 
     @Override
-    public final boolean canThrowRuntimeException() {
+    public boolean canThrowRuntimeException() {
         return mExpr.canThrowRuntimeException();
     }
 }
