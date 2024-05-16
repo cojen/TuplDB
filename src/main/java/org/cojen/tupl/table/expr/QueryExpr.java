@@ -142,14 +142,16 @@ public abstract sealed class QueryExpr extends RelationExpr
             mappedRowFilter = splitRowFilters[1];
 
             if (unmappedRowFilter == TrueFilter.THE) {
-                // Nothing pushes down, so just use the original row filter, unless it was
-                // reduced away.
-                if (mappedRowFilter != TrueFilter.THE) {
+                if (mappedRowFilter == TrueFilter.THE) {
+                    // The filter pushes down entirely; just use the original row filter.
+                    unmappedRowFilter = originalRowFilter;
+                } else {
+                    // Nothing pushes down; just use the original row filter.
                     mappedRowFilter = originalRowFilter;
                 }
                 mappedFilter = filter;
             } else if (mappedRowFilter == TrueFilter.THE) {
-                // The filter pushes down entirely, so just use the original row filter.
+                // The filter pushes down entirely; just use the original row filter.
                 unmappedRowFilter = originalRowFilter;
                 mappedFilter = null;
             } else if (mappedRowFilter == originalRowFilter) {

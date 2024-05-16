@@ -18,6 +18,7 @@
 package org.cojen.tupl.table.filter;
 
 import java.util.HashMap;
+import java.util.Map;
 
 import org.junit.*;
 import static org.junit.Assert.*;
@@ -62,7 +63,7 @@ public class ReductionTest {
             for (String relOp1 : relOps) {
                 for (String relOp2 : relOps) {
                     String filterStr = "a" + relOp1 + "?1" + op + "a" + relOp2 + "?1";
-                    RowFilter filter = new Parser(colMap, filterStr).parseFilter();
+                    RowFilter filter = parse(colMap, filterStr);
                     RowFilter reduced = filter.reduce();
 
                     assertNotEquals(filter, reduced);
@@ -169,7 +170,7 @@ public class ReductionTest {
         // the reduction along.
 
         String filterStr = "((a > ?2 && a > ?3) || (a > ?4)) && (a > ?2 && a > ?3)";
-        RowFilter filter = new Parser(newColMap(), filterStr).parseFilter().reduce();
+        RowFilter filter = parse(newColMap(), filterStr).reduce();
 
         assertEquals(5, filter.numTerms());
         assertFalse(filter.isDnf());
@@ -211,7 +212,7 @@ public class ReductionTest {
         var colMap = newColMap("a", "b", "c");
 
         for (int i=0; i<cases.length; i+=2) {
-            RowFilter filter = new Parser(colMap, cases[i]).parseFilter();
+            RowFilter filter = parse(colMap, cases[i]);
             RowFilter dnf = filter.dnf();
             assertEquals(cases[i + 1], dnf.toString());
         }
@@ -276,5 +277,9 @@ public class ReductionTest {
         filter.accept(visitor);
 
         return visitor.result;
+    }
+
+    static RowFilter parse(Map<String, ColumnInfo> colMap, String filter) {
+        return RowFilterTest.parse(colMap, filter);
     }
 }

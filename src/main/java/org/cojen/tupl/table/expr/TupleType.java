@@ -17,6 +17,7 @@
 
 package org.cojen.tupl.table.expr;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.Map;
@@ -64,6 +65,28 @@ public final class TupleType extends Type implements Iterable<Column> {
                 addColumn(columns, column);
                 column.encodeKey(enc);
             }
+        }
+
+        Class rowType = cGeneratedCache.obtain(enc.finish(), columns);
+
+        return new TupleType(rowType, TYPE_REFERENCE, null, columns);
+    }
+
+    /**
+     * Makes a type which has a generated row type class. Columns aren't defined for excluded
+     * projections.
+     *
+     * @throws QueryException if any names are duplicated
+     */
+    public static TupleType makeForColumns(Collection<ColumnInfo> columnList) {
+        var columns = new TreeMap<String, Column>();
+
+        var enc = new KeyEncoder();
+
+        for (ColumnInfo ci : columnList) {
+            Column column = toColumn(ci);
+            addColumn(columns, column);
+            column.encodeKey(enc);
         }
 
         Class rowType = cGeneratedCache.obtain(enc.finish(), columns);
@@ -322,9 +345,13 @@ public final class TupleType extends Type implements Iterable<Column> {
         return columns;
     }
 
-    private static void addColumn(Map<String, Column> columns, ColumnInfo ci) {
+    private static Column toColumn(ColumnInfo ci) {
         Type type = isTupleType(ci) ? new TupleType(ci) : BasicType.make(ci);
-        addColumn(columns, Column.make(type, ci.name, ci.isHidden()));
+        return Column.make(type, ci.name, ci.isHidden());
+    }
+
+    private static void addColumn(Map<String, Column> columns, ColumnInfo ci) {
+        addColumn(columns, toColumn(ci));
     }
 
     private static void addColumn(Map<String, Column> columns, Column column) {
