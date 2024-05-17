@@ -19,6 +19,7 @@ package org.cojen.tupl.table.expr;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Objects;
@@ -228,14 +229,14 @@ public final class TupleType extends Type implements Iterable<Column> {
     }
 
     /**
-     * Returns true if the given projection has no ordered columns and exactly consists of the
-     * columns of this tuple.
+     * Returns true if the given projection only consists of unordered columns, and refers to
+     * each column of this tuple, and no more. Only the first column in a path is considered.
      */
-    public boolean matches(Collection<ProjExpr> projection) {
+    public boolean isFullProjection(Collection<ProjExpr> projection) {
         Map<String, Column> columns = columns();
-        if (projection.size() != columns.size()) {
-            return false;
-        }
+
+        var accessed = new HashSet<String>();
+
         for (ProjExpr pe : projection) {
             if (pe.hasExclude() || pe.hasOrderBy()) {
                 return false;
@@ -245,11 +246,14 @@ public final class TupleType extends Type implements Iterable<Column> {
                 return false;
             }
             Column column = ce.firstColumn();
-            if (!column.equals(columns.get(column.name()))) {
+            String name = column.name();
+            if (!column.equals(columns.get(name))) {
                 return false;
             }
+            accessed.add(name);
         }
-        return true;
+
+        return accessed.size() == columns.size();
     }
 
     /**

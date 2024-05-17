@@ -41,19 +41,25 @@ import org.cojen.tupl.table.filter.TrueFilter;
  */
 final class UnmappedQueryExpr extends QueryExpr {
     /**
+     * Returns an UnmappedQueryExpr if necessary. If nothing is filtered, or if all columns are
+     * projected, then the original from expression is returned.
+     *
      * @param projection must only consist of wrapped ColumnExpr instances; can be null to
      * project all columns
      * @see QueryExpr#make
      */
-    static UnmappedQueryExpr make(int startPos, int endPos,
-                                  RelationExpr from, RowFilter rowFilter, List<ProjExpr> projection,
-                                  int maxArgument)
+    static RelationExpr make(int startPos, int endPos,
+                             RelationExpr from, RowFilter rowFilter, List<ProjExpr> projection,
+                             int maxArgument)
     {
         RelationType type = from.type();
 
-        if (projection != null && type.rowType().matches(projection)) {
-            // Full projection and no order-by specification.
+        if (projection != null && type.rowType().isFullProjection(projection)) {
             projection = null;
+        }
+
+        if (rowFilter == TrueFilter.THE && projection == null) {
+            return from;
         }
 
         Map<Object, Integer> argMap;

@@ -191,6 +191,28 @@ public abstract sealed class Expr
     public abstract void gatherEvalColumns(Consumer<Column> c);
 
     /**
+     * For each gathered column, define a ProjExpr which references it. Only the first column
+     * in a path is selected. Existing map entries aren't replaced.
+     *
+     * @param projMap maps column names to ProjExpr instances with the same name
+     * @param flags see ProjExpr
+     * @param observer is called for each ProjExpr which which is put into the map
+     */
+    public void gatherEvalColumns(TupleType fromType, Map<String, ProjExpr> projMap, int flags,
+                                  Consumer<ProjExpr> observer)
+    {
+        gatherEvalColumns(c -> {
+            projMap.computeIfAbsent(c.name(), k -> {
+                ProjExpr pe = ProjExpr.make(fromType, c, flags);
+                if (observer != null) {
+                    observer.accept(pe);
+                }
+                return pe;
+            });
+        });
+     }
+
+    /**
      * Generates code which evaluates the expression. The context tracks expressions which have
      * already been evaluated and is updated by this method.
      */

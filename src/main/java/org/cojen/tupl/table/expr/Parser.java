@@ -247,7 +247,9 @@ public final class Parser {
                                     ("Excluded projection not found: " + unescape(name), expr);
                             }
                         }
-                        break addProjection;
+                        if (!expr.hasOrderBy()) {
+                            break addProjection;
+                        }
                     }
                 }
 

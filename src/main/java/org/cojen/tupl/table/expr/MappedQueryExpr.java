@@ -194,8 +194,6 @@ final class MappedQueryExpr extends QueryExpr {
 
         addMapMethod(cm, evalColumns, argCount);
 
-        addSourceProjectionMethod(cm, evalColumns);
-
         addInverseMappingFunctions(cm);
 
         addToStringMethod(cm);
@@ -219,7 +217,6 @@ final class MappedQueryExpr extends QueryExpr {
         }
     }
 
-    // FIXME: Perhaps only need to check if any exist and just and a return boolean?
     private Set<Column> gatherEvalColumns() {
         var evalColumns = new HashSet<Column>();
 
@@ -298,46 +295,6 @@ final class MappedQueryExpr extends QueryExpr {
             (Object.class, "map", Object.class, Object.class).public_().bridge();
         bridge.return_(bridge.this_().invoke(targetType.clazz(), "map",
                                              null, bridge.param(0), bridge.param(1)));
-    }
-
-    private void addSourceProjectionMethod(ClassMaker cm, Set<Column> evalColumns) {
-        int numColumns = evalColumns.size();
-
-        // FIXME: might be a join; flatten to get the max
-        int maxColumns = mFrom.rowType().numColumns();
-
-        if (numColumns == maxColumns) {
-            // The default implementation indicates that all source columns are projected.
-            // FIXME: Depends on the actual paths.
-            return;
-        }
-
-        if (numColumns > maxColumns) {
-            // FIXME
-            //throw new AssertionError();
-        }
-
-        MethodMaker mm = cm.addMethod(String.class, "sourceProjection").public_();
-
-        if (numColumns == 0) {
-            mm.return_("");
-            return;
-        }
-
-        // The sourceProjection string isn't used as a cache key, so it can just be constructed
-        // as needed rather than stashing a reference to a big string instance.
-
-        Object[] toConcat = new String[numColumns + numColumns - 1];
-
-        int i = 0;
-        for (Column column : evalColumns) {
-            if (i > 0) {
-                toConcat[i++] = ", ";
-            }
-            toConcat[i++] = column.name();
-        }
-
-        mm.return_(mm.concat(toConcat));
     }
 
     private void addInverseMappingFunctions(ClassMaker cm) {

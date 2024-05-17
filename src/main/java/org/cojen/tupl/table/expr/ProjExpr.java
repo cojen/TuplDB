@@ -45,6 +45,13 @@ public final class ProjExpr extends WrappedExpr implements Named {
         return new ProjExpr(startPos, endPos, expr, flags);
     }
 
+    /**
+     * @param column must be available in the given fromType
+     */
+    public static ProjExpr make(TupleType fromType, Column column, int flags) {
+        return make(-1, -1, ColumnExpr.make(-1, -1, fromType, column), flags);
+    }
+
     private final int mFlags;
 
     /**

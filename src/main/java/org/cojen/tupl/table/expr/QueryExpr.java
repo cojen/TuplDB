@@ -67,38 +67,39 @@ public abstract sealed class QueryExpr extends RelationExpr
             }
         }
 
-        TupleType fromType = from.rowType();
+        final TupleType fromType = from.rowType();
 
         int maxArgument = from.maxArgument();
 
-        // Determine the exact projection to be applied to the "from" source.
-        final List<ProjExpr> fromProjection;
+        // Determine the exact projection to be applied to the "from" source. Each ProjExpr
+        // wraps a simple ColumnExpr -- that is, they don't have any paths. If these
+        // collections are null, then all of the "from" columns are to be projected.
+        final LinkedHashMap<String, ProjExpr> fromProjMap;
+        final ArrayList<ProjExpr> fromProjection;
 
         if (projection == null) {
+            fromProjMap = null;
             fromProjection = null;
         } else {
-            var projMap = new LinkedHashMap<String, ProjExpr>();
+            fromProjMap = new LinkedHashMap<String, ProjExpr>();
 
             for (ProjExpr pe : projection) {
                 maxArgument = Math.max(maxArgument, pe.maxArgument());
 
-                ColumnExpr source = pe.sourceColumn();
-
-                if (source == null) {
-                    pe.gatherEvalColumns(c -> {
-                        projMap.computeIfAbsent(c.name(), k -> {
-                            var ce = ColumnExpr.make(-1, -1, fromType, c);
-                            return ProjExpr.make(-1, -1, ce, 0);
-                        });
-                    });
-                } else if (!pe.hasExclude()) {
-                    var ce = ColumnExpr.make(-1, -1, fromType, source.firstColumn());
-                    ProjExpr fromPe = ProjExpr.make(-1, -1, ce, pe.flags());
-                    projMap.put(fromPe.name(), fromPe);
+                int flags = pe.flags();
+                if ((flags & ProjExpr.F_ORDER_BY) != 0) {
+                    // Force the projection to be included, because it might be required by a
+                    // sort operation.
+                    // FIXME: If necessary, remove it later, by obtaining a view.
+                    flags &= ~ProjExpr.F_EXCLUDE;
+                } else if ((flags & ProjExpr.F_EXCLUDE) != 0) {
+                    continue;
                 }
+
+                pe.gatherEvalColumns(fromType, fromProjMap, flags, null);
             }
 
-            fromProjection = new ArrayList<>(projMap.values());
+            fromProjection = new ArrayList<>(fromProjMap.values());
         }
 
         // Split the filter such that the unmapped part can be pushed down. The remaining
@@ -163,16 +164,30 @@ public abstract sealed class QueryExpr extends RelationExpr
             }
         }
 
-        // Attempt to push down filtering and projection by replacing the "from" expression
-        // with an UnmappedQueryExpr.
-        if (unmappedRowFilter != TrueFilter.THE || fromProjection != null) {
-            from = UnmappedQueryExpr.make
-                (-1, -1, from, unmappedRowFilter, fromProjection, maxArgument);
+        boolean needsMapper = mappedRowFilter != TrueFilter.THE ||
+            (projection != null && !projection.equals(fromProjection));
+
+        if (needsMapper && fromProjMap != null) {
+            // Additional columns might need to be projected by the "from" source.
+
+            if (mappedFilter != null) {
+                mappedFilter.gatherEvalColumns(fromType, fromProjMap, 0, fromProjection::add);
+            }
+
+            // Projected columns which were initially excluded must be projected too.
+            for (ProjExpr pe : projection) {
+                if (pe.hasExclude()) {
+                    int flags = pe.flags() & ~ProjExpr.F_EXCLUDE;
+                    pe.gatherEvalColumns(fromType, fromProjMap, flags, fromProjection::add);
+                }
+            }
         }
 
-        if (mappedRowFilter == TrueFilter.THE &&
-            (projection == null || projection.equals(fromProjection)))
-        {
+        // Attempt to push down filtering and projection by replacing the "from" expression
+        // with an UnmappedQueryExpr. This might still be the original "from" expression.
+        from = UnmappedQueryExpr.make(-1, -1, from, unmappedRowFilter, fromProjection, maxArgument);
+
+        if (!needsMapper) {
             return from;
         }
 
@@ -195,11 +210,9 @@ public abstract sealed class QueryExpr extends RelationExpr
         RelationType type = RelationType.make
             (rowType, from.type().cardinality().filter(mappedRowFilter));
 
-        // FIXME: Pass fromProjection to MappedQueryExpr, in order for the sourceProjection
-        // method to be constructed properly. If fromType.matchesNames(fromProjection), then
-        // fromProjection is all, and so sourceProjection doesn't need to be implemented. Note
-        // that sourceProjection might also need to consider columns used just for filtering
-        // and aren't projected.
+        // FIXME: If any sorting is performed against new columns, then a sort step must be
+        // performed, by obtaining a view. Don't apply any order-by against the source, since
+        // it might be redundant.
 
         return new MappedQueryExpr
             (-1, -1, type, from, mappedRowFilter, mappedFilter, projection, maxArgument);
@@ -388,7 +401,7 @@ public abstract sealed class QueryExpr extends RelationExpr
                 if (i > 0) {
                     b.append(", ");
                 }
-                b.append(pe);
+                pe.appendTo(b);
                 i++;
             }
 
