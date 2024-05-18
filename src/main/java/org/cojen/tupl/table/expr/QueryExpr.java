@@ -87,6 +87,7 @@ public abstract sealed class QueryExpr extends RelationExpr
                 maxArgument = Math.max(maxArgument, pe.maxArgument());
 
                 int flags = pe.flags();
+
                 if ((flags & ProjExpr.F_ORDER_BY) != 0) {
                     // Force the projection to be included, because it might be required by a
                     // sort operation.

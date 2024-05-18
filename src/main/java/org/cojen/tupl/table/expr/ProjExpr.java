@@ -19,6 +19,8 @@ package org.cojen.tupl.table.expr;
 
 import java.util.Map;
 
+import java.util.function.Consumer;
+
 import org.cojen.maker.Variable;
 
 import org.cojen.tupl.table.RowMethodsMaker;
@@ -143,6 +145,20 @@ public final class ProjExpr extends WrappedExpr implements Named {
     @Override
     public ColumnExpr sourceColumn() {
         return mExpr.sourceColumn();
+    }
+
+    @Override
+    public void gatherEvalColumns(TupleType fromType, Map<String, ProjExpr> projMap, int flags,
+                                  Consumer<ProjExpr> observer)
+    {
+        if (sourceColumn() == null) {
+            // Because this projection doesn't map directly to a source column, there's no
+            // point in ordering by the columns which feed into it. A later sort operation is
+            // required to apply the necessary ordering.
+            flags &= ~F_ORDER_BY;
+        }
+
+        super.gatherEvalColumns(fromType, projMap, flags, observer);
     }
 
     /**
