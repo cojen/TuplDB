@@ -384,7 +384,7 @@ public final class TupleType extends Type implements Iterable<Column> {
         cGeneratedCache = new WeakCache<>() {
             @Override
             public Class<?> newValue(Object key, Map<String, Column> columns) {
-                return makeRowTypeClass(columns);
+                return columns.isEmpty() ? Row.class : makeRowTypeClass(columns);
             }
         };
     }
