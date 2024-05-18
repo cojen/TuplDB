@@ -60,7 +60,7 @@ public final class TupleType extends Type implements Iterable<Column> {
         var enc = new KeyEncoder();
 
         for (ProjExpr pe : projExprs) {
-            if (!pe.hasExclude()) {
+            if (!pe.shouldExclude()) {
                 boolean hidden = pe.wrapped() instanceof ColumnExpr ce && ce.isHidden();
                 Column column = Column.make(pe.type(), pe.name(), hidden);
                 addColumn(columns, column);
@@ -238,7 +238,7 @@ public final class TupleType extends Type implements Iterable<Column> {
         var accessed = new HashSet<String>();
 
         for (ProjExpr pe : projection) {
-            if (pe.hasExclude() || pe.hasOrderBy()) {
+            if (pe.flags() != 0) {
                 return false;
             }
             Expr e = pe.wrapped();
@@ -272,7 +272,7 @@ public final class TupleType extends Type implements Iterable<Column> {
         var projColumns = new TreeMap<String, Column>();
 
         for (ProjExpr pe : projExprs) {
-            if (!pe.hasExclude()) {
+            if (!pe.shouldExclude()) {
                 String name;
                 if (!(pe.wrapped() instanceof ColumnExpr ce)) {
                     name = pe.name();
@@ -307,7 +307,7 @@ public final class TupleType extends Type implements Iterable<Column> {
     public boolean canRepresent(Collection<ProjExpr> projExprs) {
         Map<String, Column> columns = columns();
         for (ProjExpr pe : projExprs) {
-            if (!pe.hasExclude() && !pe.matches(columns)) {
+            if (!pe.shouldExclude() && !pe.matches(columns)) {
                 return false;
             }
         }

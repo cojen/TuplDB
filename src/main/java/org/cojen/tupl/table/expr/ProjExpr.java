@@ -66,6 +66,13 @@ public final class ProjExpr extends WrappedExpr implements Named {
         return mFlags;
     }
 
+    /**
+     * Returns true if the exclude flag is set and the order-by flag isn't set.
+     */
+    public boolean shouldExclude() {
+        return (mFlags & (F_EXCLUDE | F_ORDER_BY)) == F_EXCLUDE;
+    }
+
     public boolean hasExclude() {
         return (mFlags & F_EXCLUDE) != 0;
     }

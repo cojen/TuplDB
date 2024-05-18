@@ -317,7 +317,7 @@ public abstract sealed class QueryExpr extends RelationExpr
         RowInfo info = RowInfo.find(mFrom.rowTypeClass());
 
         for (ProjExpr pe : projection) {
-            if (pe.hasExclude()) {
+            if (pe.shouldExclude()) {
                 continue;
             }
 

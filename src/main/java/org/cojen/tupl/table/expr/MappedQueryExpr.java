@@ -276,7 +276,7 @@ final class MappedQueryExpr extends QueryExpr {
         }
 
         for (ProjExpr pe : mProjection) {
-            if (pe.hasExclude()) {
+            if (pe.shouldExclude()) {
                 continue;
             }
             Variable result;
@@ -303,7 +303,7 @@ final class MappedQueryExpr extends QueryExpr {
 
         for (ProjExpr pe : mProjection) {
             ColumnExpr source;
-            if (pe.hasExclude() || (source = pe.sourceColumn()) == null) {
+            if (pe.shouldExclude() || (source = pe.sourceColumn()) == null) {
                 continue;
             }
 
