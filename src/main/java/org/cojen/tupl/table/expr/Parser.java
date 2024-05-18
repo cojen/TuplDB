@@ -236,27 +236,41 @@ public final class Parser {
                     }
 
                     if (!(expr.wrapped() instanceof AssignExpr)) {
-                        if (mLocalVars != null && mLocalVars.containsKey(name)) {
-                            ProjExpr existing = map.get(name);
-                            if (existing != null) {
-                                map.put(name, existing.withExclude());
+                        ProjExpr existing = map.get(name);
+
+                        if (existing != null) {
+                            if (existing.hasOrderBy() ||
+                                (mLocalVars != null && mLocalVars.containsKey(name)))
+                            {
+                                // Don't remove the projection if it has an order-by flag or if
+                                // it's a local variable. Instead, just set the exclude flag.
+                                // Note that if the exclude specified a different order-by, it
+                                // can be safely ignored because it would have no effect.
+                                expr = existing.withExclude();
+                                map.put(name, expr);
+                            } else {
+                                map.remove(name);
                             }
-                        } else if (map.remove(name) == null) {
-                            if (wildcards == null || wildcards.remove(name) == null) {
-                                throw new QueryException
-                                    ("Excluded projection not found: " + unescape(name), expr);
-                            }
+
+                            break addProjection;
                         }
+
+                        if (wildcards == null || wildcards.remove(name) == null) {
+                            throw new QueryException
+                                ("Excluded projection not found: " + unescape(name), expr);
+                        }
+
                         if (!expr.hasOrderBy()) {
+                            // Don't exclude the projection if it has an order-by flag.
                             break addProjection;
                         }
                     }
                 }
 
-                if (wildcards != null && wildcards.remove(name) != null) {
-                    map.put(name, expr);
-                } else if (map.putIfAbsent(name, expr) != null) {
-                    throw new QueryException("Duplicate projection: " + unescape(name), expr);
+                if (map.putIfAbsent(name, expr) != null) {
+                    if (wildcards == null || wildcards.remove(name) == null) {
+                        throw new QueryException("Duplicate projection: " + unescape(name), expr);
+                    }
                 }
             }
 
