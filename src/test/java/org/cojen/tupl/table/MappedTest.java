@@ -270,7 +270,7 @@ public class MappedTest {
     public void withInverse() throws Exception {
         // Swap the str and num columns.
         Table<TestRow> mapped = mTable.map(TestRow.class, new Swapper());
-        
+
         assertTrue(mapped.isEmpty());
 
         TestRow row = mTable.newRow();
@@ -477,8 +477,9 @@ public class MappedTest {
             assertNull(scanner.step(row));
         }
 
-        plan = (QueryPlan.Mapper) mapped.query("{-id}").scannerPlan(null);
-        assertTrue(((QueryPlan.FullScan) plan.source).reverse);
+        // This is because the Swapper doesn't override the performsFiltering method. The map
+        // method can filter out results if a NumberFormatException is caught.
+        assertTrue(mapped.query("{-id}").scannerPlan(null) instanceof QueryPlan.Sort);
 
         try (var scanner = mapped.newScanner(null, "{-id, *}")) {
             row = scanner.row();
@@ -721,6 +722,11 @@ public class MappedTest {
             target.string(source.str());
             target.number(source.num());
             return target;
+        }
+
+        @Override
+        public boolean performsFiltering() {
+            return false;
         }
 
         @Override

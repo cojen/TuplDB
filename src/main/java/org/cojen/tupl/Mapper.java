@@ -37,10 +37,6 @@ import org.cojen.tupl.diag.QueryPlan;
  * @see Table#map Table.map
  */
 public interface Mapper<R, T> {
-    // TODO: Define a method which indicates whether or not the map method performs any
-    // filtering, which is true by default. When false, it can help query sorting. In
-    // particular, partial sorting.
-
     /**
      * Maps source rows to target rows.
      *
@@ -49,6 +45,15 @@ public interface Mapper<R, T> {
      * @return null if filtered out
      */
     T map(R source, T target) throws IOException;
+
+    /**
+     * Returns true if the map method can filter out rows, which is true by default. If the map
+     * method never performs filtering, then false should be returned to allow sort operations
+     * to be pushed to the source table whenever possible.
+     */
+    default boolean performsFiltering() {
+        return true;
+    }
 
     /**
      * Checks if the given source row can be stored into the source table. By default, a {@code
