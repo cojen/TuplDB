@@ -803,7 +803,9 @@ public abstract class MappedTable<S, T> extends AbstractMappedTable<S, T>
             sourceOrder.put(sourceColumn.name, new OrderBy.Rule(sourceColumn, rule.type()));
         }
 
-        if (sourceOrder != null && sourceOrder.size() >= targetOrder.size()) {
+        if (!mMapper.performsFiltering()
+            && sourceOrder != null && sourceOrder.size() >= targetOrder.size())
+        {
             // Can push the entire sort operation to the source.
             plan.sourceOrder = sourceOrder;
             return plan;
