@@ -56,18 +56,21 @@ import org.cojen.maker.Variable;
  */
 final class MappedQueryExpr extends QueryExpr {
     private final Expr mFilter;
+    private final String mOrderBy;
 
     /**
      * @param filter can be null if rowFilter is TrueFilter
      * @param projection not null; see RelationExpr.fullProjection
+     * @param orderBy optional view ordering to apply after calling map
      * @see QueryExpr#make
      */
     MappedQueryExpr(int startPos, int endPos, RelationType type,
                     RelationExpr from, RowFilter rowFilter, Expr filter,
-                    List<ProjExpr> projection, int maxArgument)
+                    List<ProjExpr> projection, int maxArgument, String orderBy)
     {
         super(startPos, endPos, type, from, rowFilter, projection, maxArgument);
         mFilter = filter;
+        mOrderBy = orderBy;
     }
 
     @Override
@@ -127,23 +130,57 @@ final class MappedQueryExpr extends QueryExpr {
         int argCount = maxArgument();
 
         if (argCount == 0) {
-            return CompiledQuery.make
-                (source.table().map(targetClass, factory.get(RowUtils.NO_ARGS)));
+            Table table = source.table().map(targetClass, factory.get(RowUtils.NO_ARGS));
+            if (mOrderBy != null) {
+                table = table.view(mOrderBy);
+            }
+            return CompiledQuery.make(table);
         }
 
-        return new CompiledQuery.Wrapped(source, argCount) {
-            @Override
-            public Class rowType() {
-                return targetClass;
-            }
+        if (mOrderBy == null) {
+            return new NoView(source, argCount, targetClass, factory);
+        }
 
-            @Override
-            @SuppressWarnings("unchecked")
-            public Table table(Object... args) throws IOException {
-                checkArgumentCount(args);
-                return source.table(args).map(targetClass, factory.get(args));
-            }
-        };
+        return new WithView(source, argCount, targetClass, factory, mOrderBy);
+    }
+
+    @SuppressWarnings("unchecked")
+    private static sealed class NoView extends CompiledQuery.Wrapped {
+        private final Class mTargetClass;
+        private final MapperFactory mFactory;
+
+        NoView(CompiledQuery source, int argCount, Class targetClass, MapperFactory factory) {
+            super(source, argCount);
+            mTargetClass = targetClass;
+            mFactory = factory;
+        }
+
+        @Override
+        public Class rowType() {
+            return mTargetClass;
+        }
+
+        @Override
+        public Table table(Object... args) throws IOException {
+            checkArgumentCount(args);
+            return source.table(args).map(mTargetClass, mFactory.get(args));
+        }
+    }
+
+    private static final class WithView extends NoView {
+        private final String mViewStr;
+
+        WithView(CompiledQuery source, int argCount, Class targetClass, MapperFactory factory,
+                 String viewStr)
+        {
+            super(source, argCount, targetClass, factory);
+            mViewStr = viewStr;
+        }
+
+        @Override
+        public Table table(Object... args) throws IOException {
+            return super.table(args).view(mViewStr);
+        }
     }
 
     public static interface MapperFactory {
@@ -193,6 +230,10 @@ final class MappedQueryExpr extends QueryExpr {
         Set<Column> evalColumns = gatherEvalColumns();
 
         addMapMethod(cm, evalColumns, argCount);
+
+        if (mRowFilter == TrueFilter.THE) {
+            cm.addMethod(boolean.class, "performsFiltering").public_().override().return_(false);
+        }
 
         addInverseMappingFunctions(cm);
 

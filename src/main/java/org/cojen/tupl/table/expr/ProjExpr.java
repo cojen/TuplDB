@@ -105,6 +105,14 @@ public final class ProjExpr extends WrappedExpr implements Named {
         return new ProjExpr(startPos(), endPos(), mExpr, flags | F_EXCLUDE);
     }
 
+    public ProjExpr withNoOrderBy() {
+        int flags = mFlags & ~(F_ORDER_BY | F_DESCENDING | F_NULL_LOW);
+        if (flags == mFlags) {
+            return this;
+        }
+        return new ProjExpr(startPos(), endPos(), mExpr, flags);
+    }
+
     /**
      * Is only applicable when orderBy returns true.
      *
@@ -215,6 +223,10 @@ public final class ProjExpr extends WrappedExpr implements Named {
 
     @Override
     public void appendTo(StringBuilder b) {
+        appendTo(b, false);
+    }
+
+    void appendTo(StringBuilder b, boolean nameOnly) {
         if (hasExclude()) {
             b.append('~');
         }
@@ -226,10 +238,10 @@ public final class ProjExpr extends WrappedExpr implements Named {
             }
         }
 
-        if (mExpr instanceof AssignExpr) {
-            mExpr.appendTo(b);
-        } else {
+        if (nameOnly || !(mExpr instanceof AssignExpr)) {
             b.append(RowMethodsMaker.unescape(name()));
+        } else {
+            mExpr.appendTo(b);
         }
     }
 }

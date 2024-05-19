@@ -168,6 +168,8 @@ public abstract sealed class QueryExpr extends RelationExpr
         boolean needsMapper = mappedRowFilter != TrueFilter.THE ||
             (projection != null && !projection.equals(fromProjection));
 
+        String mappedOrderBy = null;
+
         if (needsMapper && fromProjMap != null) {
             // Additional columns might need to be projected by the "from" source.
 
@@ -175,12 +177,46 @@ public abstract sealed class QueryExpr extends RelationExpr
                 mappedFilter.gatherEvalColumns(fromType, fromProjMap, 0, fromProjection::add);
             }
 
-            // Projected columns which were initially excluded must be projected too.
+            // Projected columns which were initially excluded must be projected too. Also
+            // determine if any columns are ordered, for possibly performing sorting at the
+            // mapper layer.
+
+            boolean hasOrderBy = false;
+            boolean orderByDerived = false;
+
             for (ProjExpr pe : projection) {
                 if (pe.hasExclude()) {
                     int flags = pe.flags() & ~ProjExpr.F_EXCLUDE;
                     pe.gatherEvalColumns(fromType, fromProjMap, flags, fromProjection::add);
                 }
+
+                if (pe.hasOrderBy()) {
+                    hasOrderBy = true;
+                    if (pe.sourceColumn() == null) {
+                        orderByDerived = true;
+                    }
+                }
+            }
+
+            if (orderByDerived || (hasOrderBy && mappedRowFilter != TrueFilter.THE)) {
+                // Strip away order-by flags in the "from" projection and build an order-by
+                // expression for the mapper layer to use.
+
+                for (int i=0; i<fromProjection.size(); i++) {
+                    ProjExpr pe = fromProjection.get(i);
+                    fromProjection.set(i, pe.withNoOrderBy());
+                }
+
+                var b = new StringBuilder().append('{').append('*');
+
+                for (ProjExpr pe : projection) {
+                    if (pe.hasOrderBy()) {
+                        b.append(", ");
+                        pe.appendTo(b, true);
+                    }
+                }
+
+                mappedOrderBy = b.append('}').toString();
             }
         }
 
@@ -211,12 +247,9 @@ public abstract sealed class QueryExpr extends RelationExpr
         RelationType type = RelationType.make
             (rowType, from.type().cardinality().filter(mappedRowFilter));
 
-        // FIXME: If any sorting is performed against new columns, then a sort step must be
-        // performed, by obtaining a view. Don't apply any order-by against the source, since
-        // it might be redundant.
-
         return new MappedQueryExpr
-            (-1, -1, type, from, mappedRowFilter, mappedFilter, projection, maxArgument);
+            (-1, -1, type, from, mappedRowFilter, mappedFilter, projection, maxArgument,
+             mappedOrderBy);
     }
 
     private static boolean hasRepeatedNonPureFunctions(RowFilter filter) {
