@@ -762,6 +762,9 @@ public abstract class MappedTable<S, T> extends AbstractMappedTable<S, T>
             mm.return_(planVar);
         }
 
+        cm.addMethod(int.class, "argumentCount").public_()
+            .return_(targetQuery.filter().maxArgument());
+
         // Keep a reference to the MethodHandle instance, to prevent it from being garbage
         // collected as long as the generated query class still exists.
         cm.addField(Object.class, "handle").private_().static_();
@@ -911,10 +914,17 @@ public abstract class MappedTable<S, T> extends AbstractMappedTable<S, T>
             this.squery = null;
         }
 
+        @Override
+        public final Class<T> rowType() {
+            return table.rowType();
+        }
+
+        @Override
         public final QueryPlan scannerPlan(Transaction txn, Object... args) throws IOException {
             return plan(false, txn, args);
         }
 
+        @Override
         public final QueryPlan updaterPlan(Transaction txn, Object... args) throws IOException {
             return plan(true, txn, args);
         }

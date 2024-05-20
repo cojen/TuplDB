@@ -382,6 +382,9 @@ public abstract class GroupedTable<S, T> extends AbstractMappedTable<S, T>
             mm.return_(planVar);
         }
 
+        cm.addMethod(int.class, "argumentCount").public_()
+            .return_(targetQuery.filter().maxArgument());
+
         // Keep a reference to the MethodHandle instance, to prevent it from being garbage
         // collected as long as the generated query class still exists.
         cm.addField(Object.class, "handle").private_().static_();
@@ -477,6 +480,11 @@ public abstract class GroupedTable<S, T> extends AbstractMappedTable<S, T>
         protected BaseQuery(GroupedTable<S, T> table, String queryStr) throws IOException {
             this.table = table;
             this.squery = table.mSource.query(queryStr);
+        }
+
+        @Override
+        public final Class<T> rowType() {
+            return table.rowType();
         }
     }
 

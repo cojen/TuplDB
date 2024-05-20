@@ -139,15 +139,18 @@ public class MappedJoinTest {
     }
 
     @SuppressWarnings("unchecked")
-    private void eval(Table join, String plan, String[] results, String query, Object... args)
+    private void eval(Table join, String plan, String[] results, String queryStr, Object... args)
         throws Exception 
     {
-        String actualPlan = join.query(query).scannerPlan(null, args).toString();
+        Query query = join.query(queryStr);
+        assertEquals(join.rowType(), query.rowType());
+        assertEquals(args.length, query.argumentCount());
+        String actualPlan = query.scannerPlan(null, args).toString();
         assertEquals(plan, actualPlan);
 
         int resultNum = 0;
 
-        try (var scanner = join.newScanner(null, query, args)) {
+        try (var scanner = join.newScanner(null, queryStr, args)) {
             for (var row = scanner.row(); row != null; row = scanner.step(row)) {
                 String result = results[resultNum++];
                 String actualResult = row.toString();

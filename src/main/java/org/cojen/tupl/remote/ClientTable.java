@@ -202,8 +202,8 @@ final class ClientTable<R> implements Table<R> {
         // the server needs to be able to release the objects when memory is low. It will need
         // to use a SoftReference and some way of disposing the remote object in a way that
         // preserves restorability.
-        mRemote.query(query);
-        return new ClientQuery<>(this, query);
+        int argCount = mRemote.query(query);
+        return new ClientQuery<>(this, query, argCount);
     }
 
     @Override

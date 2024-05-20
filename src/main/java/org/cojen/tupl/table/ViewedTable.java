@@ -307,6 +307,16 @@ public abstract sealed class ViewedTable<R> extends WrappedTable<R, R> {
 
         return new Query<R>() {
             @Override
+            public Class<R> rowType() {
+                return ViewedTable.this.rowType();
+            }
+
+            @Override
+            public int argumentCount() {
+                return mMaxArg + query.argumentCount();
+            }
+
+            @Override
             public Scanner<R> newScanner(R row, Transaction txn, Object... args)
                 throws IOException
             {

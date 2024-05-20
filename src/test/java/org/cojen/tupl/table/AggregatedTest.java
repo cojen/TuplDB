@@ -233,7 +233,10 @@ public class AggregatedTest {
 
         String query = "{avgNum, +count}";
 
-        plan = aggregated.query(query).scannerPlan(null);
+        Query<TestRowAgg> q = aggregated.query(query);
+        assertEquals(TestRowAgg.class, q.rowType());
+        assertEquals(0, q.argumentCount());
+        plan = q.scannerPlan(null);
         assertEquals("""
 - aggregate: org.cojen.tupl.table.AggregatedTest$TestRowAgg
   operation: Aggregator1
@@ -362,7 +365,11 @@ public class AggregatedTest {
 
         String query = "name >= ? && name < ?";
 
-        plan = aggregated.query(query).scannerPlan(null);
+        Query<TestRowAggByName> q = aggregated.query(query);
+        assertEquals(TestRowAggByName.class, q.rowType());
+        assertEquals(2, q.argumentCount());
+
+        plan = q.scannerPlan(null);
         assertEquals("""
 - aggregate: org.cojen.tupl.table.AggregatedTest$TestRowAggByName
   operation: Aggregator1

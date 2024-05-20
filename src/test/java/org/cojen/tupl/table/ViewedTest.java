@@ -137,7 +137,10 @@ public class ViewedTest {
                      """,
                      plan.toString());
 
-        plan = view.query("name == ?").scannerPlan(null);
+        Query<TestRow> query = view.query("name == ?");
+        assertEquals(TestRow.class, query.rowType());
+        assertEquals(1, query.argumentCount());
+        plan = query.scannerPlan(null);
         assertEquals("""
 - sort: -id
   - primary join: org.cojen.tupl.table.ViewedTest$TestRow
@@ -148,7 +151,9 @@ public class ViewedTest {
                      """,
                      plan.toString());
 
-        plan = view.query("{id, name} name == ?").scannerPlan(null);
+        query = view.query("{id, name} name == ?");
+        assertEquals(1, query.argumentCount());
+        plan = query.scannerPlan(null);
         assertEquals("""
 - sort: -id
   - range scan over secondary index: org.cojen.tupl.table.ViewedTest$TestRow

@@ -36,14 +36,6 @@ import org.cojen.tupl.table.RowWriter;
  * @author Brian S. O'Neill
  */
 public abstract class CompiledQuery<R> extends QueryLauncher<R> {
-    public abstract Class<R> rowType();
-
-    /**
-     * Returns the minimum amount of arguments which must be passed to the {@link #table}
-     * method.
-     */
-    public abstract int argumentCount();
-
     /**
      * Returns the query as a fully functional table.
      *

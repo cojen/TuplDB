@@ -592,6 +592,16 @@ public abstract class AggregatedTable<S, T> extends WrappedTable<S, T>
             this.table = table;
             this.squery = table.mSource.query(queryStr);
         }
+
+        @Override
+        public final Class<T> rowType() {
+            return table.rowType();
+        }
+
+        @Override
+        public final int argumentCount() {
+            return squery.argumentCount();
+        }
     }
 
     /**

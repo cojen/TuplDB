@@ -45,6 +45,11 @@ final class EmptyScanController extends SingleScanController implements ScanCont
     }
 
     @Override
+    public int argumentCount() {
+        return 0;
+    }
+
+    @Override
     public QueryPlan plan(Object... args) {
         return new QueryPlan.Empty();
     }

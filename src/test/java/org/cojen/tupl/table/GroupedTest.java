@@ -344,7 +344,10 @@ public class GroupedTest {
             }
         }
 
-        plan = grouped.query("count == ?").scannerPlan(null, 1);
+        Query<TestRowGroup> query = grouped.query("count == ?");
+        assertEquals(TestRowGroup.class, query.rowType());
+        assertEquals(1, query.argumentCount());
+        plan = query.scannerPlan(null, 1);
         assertEquals("""
 - filter: count == ?1
   - group: org.cojen.tupl.table.GroupedTest$TestRowGroup

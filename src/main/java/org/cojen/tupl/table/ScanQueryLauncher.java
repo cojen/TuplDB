@@ -41,6 +41,16 @@ class ScanQueryLauncher<R> extends QueryLauncher<R> {
     }
 
     @Override
+    public Class<R> rowType() {
+        return mTable.rowType();
+    }
+
+    @Override
+    public int argumentCount() {
+        return mFactory.argumentCount();
+    }
+
+    @Override
     public Scanner<R> newScanner(R row, Transaction txn, Object... args) throws IOException {
         return mTable.newScanner(row, txn, mFactory.scanController(args));
     }

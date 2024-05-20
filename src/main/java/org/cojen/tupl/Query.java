@@ -31,12 +31,22 @@ import static org.cojen.tupl.table.RowUtils.NO_ARGS;
 
 /**
  * Represents a sharable object which performs a query against a table. Queries might require
- * additional arguments to be supplied, as required by the query expression.
+ * additional arguments to be supplied, as required by the original query expression.
  *
  * @author Brian S. O'Neill
  * @see Table#query
  */
 public interface Query<R> {
+    /**
+     * Returns the interface which defines the rows of this query.
+     */
+    Class<R> rowType();
+
+    /**
+     * Returns the minimum amount of arguments needed by this query.
+     */
+    int argumentCount();
+
     /**
      * Returns a new scanner for all the rows of this query.
      *
