@@ -79,6 +79,11 @@ public final class IdentityTable implements Table<IdentityTable.Row>, Query<Iden
     }
 
     @Override
+    public int argumentCount() {
+        return 0;
+    }
+
+    @Override
     public Row newRow() {
         try {
             return (Row) NEW_ROW.invokeExact();
@@ -134,7 +139,7 @@ public final class IdentityTable implements Table<IdentityTable.Row>, Query<Iden
 
     @Override
     public Query<Row> query(String query) {
-        return findsAnything(query) ? this : EmptyQuery.the();
+        return findsAnything(query) ? this : new EmptyQuery<>(Row.class);
     }
 
     @Override

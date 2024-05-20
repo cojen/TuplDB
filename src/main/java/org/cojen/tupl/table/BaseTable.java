@@ -548,6 +548,11 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
     public final ScanControllerFactory<R> reverse() {
         return new ScanControllerFactory<R>() {
             @Override
+            public int argumentCount() {
+                return 0;
+            }
+
+            @Override
             public QueryPlan plan(Object... args) {
                 return planReverse(args);
             }

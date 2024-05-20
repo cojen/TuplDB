@@ -132,9 +132,9 @@ final class ServerTable<R> implements RemoteTable {
     }
 
     @Override
-    public void query(String query) throws IOException {
+    public int query(String query) throws IOException {
         // This just validates the query.
-        mTable.query(query);
+        return mTable.query(query).argumentCount();
     }
 
     @Override

@@ -127,6 +127,7 @@ public class ScannerTest {
         }
 
         Query<TestRow> query = table.query("id == ? && name == ?");
+        assertEquals(2, query.argumentCount());
         assertNull(query.newScanner(txn2, 1, "xxx").row());
 
         s = query.newScanner(txn2, 1, "name-1");

@@ -864,15 +864,19 @@ public class BasicJoinTest {
     }
 
     @SuppressWarnings("unchecked")
-    private void eval(String plan, String[] results, String query, Object... args)
+    private void eval(String plan, String[] results, String queryStr, Object... args)
         throws Exception 
     {
-        String actualPlan = mJoin.query(query).scannerPlan(null, args).toString();
+        Query query = mJoin.query(queryStr);
+        assertEquals(mJoin.rowType(), query.rowType());
+        assertEquals(args.length, query.argumentCount());
+
+        String actualPlan = query.scannerPlan(null, args).toString();
         assertEquals(plan, actualPlan);
 
         int resultNum = 0;
 
-        try (var scanner = mJoin.newScanner(null, query, args)) {
+        try (var scanner = mJoin.newScanner(null, queryStr, args)) {
             for (var row = scanner.row(); row != null; row = scanner.step(row)) {
                 String result = results[resultNum++];
                 String actualResult = row.toString();

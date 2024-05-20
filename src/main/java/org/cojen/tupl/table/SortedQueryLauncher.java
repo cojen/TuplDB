@@ -91,6 +91,16 @@ final class SortedQueryLauncher<R> extends QueryLauncher<R> {
     }
 
     @Override
+    public Class<R> rowType() {
+        return mTable.rowType();
+    }
+
+    @Override
+    public int argumentCount() {
+        return mSource.argumentCount();
+    }
+
+    @Override
     public Scanner<R> newScanner(R row, Transaction txn, Object... args) throws IOException {
         return RowSorter.sort(this, txn, args);
     }

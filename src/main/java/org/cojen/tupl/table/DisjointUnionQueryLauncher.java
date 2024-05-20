@@ -44,6 +44,20 @@ public final class DisjointUnionQueryLauncher<R> extends QueryLauncher<R> {
     }
 
     @Override
+    public Class<R> rowType() {
+        return mLaunchers[0].rowType();
+    }
+
+    @Override
+    public int argumentCount() {
+        int max = 0;
+        for (QueryLauncher launcher : mLaunchers) {
+            max = Math.max(max, launcher.argumentCount());
+        }
+        return max;
+    }
+
+    @Override
     public Scanner<R> newScanner(R row, Transaction txn, Object... args) throws IOException {
         return new ConcatScanner<R>(row) {
             private int mWhich;

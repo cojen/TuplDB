@@ -42,6 +42,15 @@ final class RangeUnionScanControllerFactory<R> implements ScanControllerFactory<
     }
 
     @Override
+    public int argumentCount() {
+        int max = 0;
+        for (ScanControllerFactory<R> range : mRanges) {
+            max = Math.max(max, range.argumentCount());
+        }
+        return max;
+    }
+
+    @Override
     public QueryPlan plan(Object... args) {
         var plans = new QueryPlan[mRanges.length];
         for (int i=0; i<plans.length; i++) {

@@ -431,7 +431,10 @@ public class MappedTest {
             assertNull(scanner.step(row));
         }
 
-        var plan = (QueryPlan.Mapper) mapped.query("num == ? && str == ?").scannerPlan(null);
+        Query<TestRow> query = mapped.query("num == ? && str == ?");
+        assertEquals(TestRow.class, query.rowType());
+        assertEquals(2, query.argumentCount());
+        var plan = (QueryPlan.Mapper) query.scannerPlan(null);
         var sub1 = (QueryPlan.Filter) plan.source;
         assertEquals("num == ?4", sub1.expression);
         var sub2 = (QueryPlan.PrimaryJoin) sub1.source;
@@ -650,7 +653,10 @@ public class MappedTest {
             assertNull(scanner.step());
         }
 
-        var plan = (QueryPlan.Mapper) mapped.query("string > ? && number != ?").scannerPlan(null);
+        Query<Renamed> q = mapped.query("string > ? && number != ?");
+        assertEquals(Renamed.class, q.rowType());
+        assertEquals(2, q.argumentCount());
+        var plan = (QueryPlan.Mapper) q.scannerPlan(null);
         var sub1 = (QueryPlan.Filter) plan.source;
         assertEquals("str > ?3 && num != ?4", sub1.expression);
 

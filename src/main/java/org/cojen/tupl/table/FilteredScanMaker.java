@@ -322,6 +322,24 @@ public class FilteredScanMaker<R> {
             mm.return_(mm.new_(mFilterMaker, mm.this_()));
         }
 
+        {
+            // Specified by ScanControllerFactory.
+            MethodMaker mm = mFilterMaker.addMethod(int.class, "argumentCount").public_();
+
+            int max = mLowBound == null ? 0 : mLowBound.maxArgument();
+            if (mHighBound != null) {
+                max = Math.max(max, mHighBound.maxArgument());
+            }
+            if (mFilter != null) {
+                max = Math.max(max, mFilter.maxArgument());
+            }
+            if (mJoinFilter != null) {
+                max = Math.max(max, mJoinFilter.maxArgument());
+            }
+
+            mm.return_(max);
+        }
+
         if (loadsOne) {
             // Override the methods specified by ScanController and implemented by
             // SingleScanController. Return the same value plus SIZED.

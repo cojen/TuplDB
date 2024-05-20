@@ -93,6 +93,20 @@ final class BaseQueryLauncher<R> extends QueryLauncher<R> {
     }
 
     @Override
+    public Class<R> rowType() {
+        return mTable.rowType();
+    }
+
+    @Override
+    public int argumentCount() {
+        try {
+            return forScanner().argumentCount();
+        } catch (IOException e) {
+            return query(null).filter().maxArgument();
+        }
+    }
+
+    @Override
     public Scanner<R> newScanner(R row, Transaction txn, Object... args) throws IOException {
         try {
             return forScanner(txn).newScanner(row, txn, args);

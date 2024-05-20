@@ -76,7 +76,8 @@ final class JoinQueryLauncherMaker {
                 if (queryStr.equals(canonical)) {
                     return maker.finish();
                 } else {
-                    return obtain(TupleKey.make.with(key.get(0), key.getString(1), canonical), table);
+                    return obtain
+                        (TupleKey.make.with(key.get(0), key.getString(1), canonical), table);
                 }
             }
         };
@@ -154,6 +155,11 @@ final class JoinQueryLauncherMaker {
 
         mSources = spec.copySources();
         addScannerPlanMethod();
+
+        mClassMaker.addMethod(Class.class, "rowType").public_().return_(mJoinType);
+
+        mClassMaker.addMethod(int.class, "argumentCount").public_()
+            .return_(mQuery.filter().maxArgument());
 
         return mClassMaker.finish();
     }
