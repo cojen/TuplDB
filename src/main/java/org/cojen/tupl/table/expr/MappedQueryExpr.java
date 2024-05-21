@@ -107,6 +107,15 @@ final class MappedQueryExpr extends QueryExpr {
         return thisSpec.withFilter(fromSpec.filter());
     }
 
+    private static final byte K_TYPE = KeyEncoder.allocType();
+
+    @Override
+    protected final void encodeKey(KeyEncoder enc) {
+        if (enc.encode(this, K_TYPE)) {
+            super.doEncodeKey(enc);
+        }
+    }
+
     private static final WeakCache<Object, MapperFactory, MappedQueryExpr> cCache;
 
     static {

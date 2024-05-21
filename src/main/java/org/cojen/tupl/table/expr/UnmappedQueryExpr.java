@@ -123,6 +123,15 @@ final class UnmappedQueryExpr extends QueryExpr {
         return null;
     }
 
+    private static final byte K_TYPE = KeyEncoder.allocType();
+
+    @Override
+    protected final void encodeKey(KeyEncoder enc) {
+        if (enc.encode(this, K_TYPE)) {
+            super.doEncodeKey(enc);
+        }
+    }
+
     @Override
     @SuppressWarnings("unchecked")
     public CompiledQuery<?> makeCompiledQuery() throws IOException {

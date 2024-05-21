@@ -380,15 +380,10 @@ public abstract sealed class QueryExpr extends RelationExpr
         return new QuerySpec(projMap, orderBy, mRowFilter);
     }
 
-    private static final byte K_TYPE = KeyEncoder.allocType();
-
-    @Override
-    protected final void encodeKey(KeyEncoder enc) {
-        if (enc.encode(this, K_TYPE)) {
-            mFrom.encodeKey(enc);
-            enc.encodeString(mRowFilter.toString());
-            enc.encodeExprs(mProjection);
-        }
+    protected final void doEncodeKey(KeyEncoder enc) {
+        mFrom.encodeKey(enc);
+        enc.encodeString(mRowFilter.toString());
+        enc.encodeExprs(mProjection);
     }
 
     @Override
