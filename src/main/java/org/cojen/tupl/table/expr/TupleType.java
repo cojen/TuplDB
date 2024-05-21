@@ -230,7 +230,7 @@ public final class TupleType extends Type implements Iterable<Column> {
 
     /**
      * Returns true if the given projection only consists of unordered columns, and refers to
-     * each column of this tuple, and no more. Only the first column in a path is considered.
+     * each column of this tuple, and no more. Wildcards aren't supported.
      */
     public boolean isFullProjection(Collection<ProjExpr> projection) {
         Map<String, Column> columns = columns();
@@ -238,11 +238,7 @@ public final class TupleType extends Type implements Iterable<Column> {
         var accessed = new HashSet<String>();
 
         for (ProjExpr pe : projection) {
-            if (pe.flags() != 0) {
-                return false;
-            }
-            Expr e = pe.wrapped();
-            if (!(e instanceof ColumnExpr ce)) {
+            if (pe.flags() != 0 || !(pe.wrapped() instanceof ColumnExpr ce) || ce.isPath()) {
                 return false;
             }
             Column column = ce.firstColumn();

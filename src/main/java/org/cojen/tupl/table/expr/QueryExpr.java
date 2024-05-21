@@ -232,11 +232,7 @@ public abstract sealed class QueryExpr extends RelationExpr
 
         TupleType rowType;
 
-        if (projection == null) {
-            // Use the existing row type.
-            rowType = fromType;
-            projection = from.fullProjection();
-        } else if (fromType.canRepresent(projection)) {
+        if (projection == null || fromType.canRepresent(projection)) {
             // Use the existing row type.
             rowType = fromType;
         } else {
@@ -247,9 +243,8 @@ public abstract sealed class QueryExpr extends RelationExpr
         RelationType type = RelationType.make
             (rowType, from.type().cardinality().filter(mappedRowFilter));
 
-        return new MappedQueryExpr
-            (-1, -1, type, from, mappedRowFilter, mappedFilter, projection, maxArgument,
-             mappedOrderBy);
+        return MappedQueryExpr.make(-1, -1, type, from, mappedRowFilter, mappedFilter,
+                                    projection, maxArgument, mappedOrderBy);
     }
 
     private static boolean hasRepeatedNonPureFunctions(RowFilter filter) {

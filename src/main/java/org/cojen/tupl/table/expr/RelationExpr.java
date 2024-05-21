@@ -201,7 +201,7 @@ public abstract sealed class RelationExpr extends Expr permits TableExpr, QueryE
 
         var newType = RelationType.make(TupleType.make(projection), type().cardinality());
 
-        return new MappedQueryExpr
+        return MappedQueryExpr.make
             (-1, -1, newType, this, TrueFilter.THE, null, projection, maxArgument(), null)
             .makeCompiledRowQuery();
     }

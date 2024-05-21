@@ -55,22 +55,47 @@ import org.cojen.maker.Variable;
  * @see QueryExpr#make
  */
 final class MappedQueryExpr extends QueryExpr {
-    private final Expr mFilter;
-    private final String mOrderBy;
-
     /**
      * @param filter can be null if rowFilter is TrueFilter
-     * @param projection not null; see RelationExpr.fullProjection
+     * @param projection can be null to project all columns
      * @param orderBy optional view ordering to apply after calling map
      * @see QueryExpr#make
      */
-    MappedQueryExpr(int startPos, int endPos, RelationType type,
-                    RelationExpr from, RowFilter rowFilter, Expr filter,
-                    List<ProjExpr> projection, int maxArgument, String orderBy)
+    static MappedQueryExpr make(int startPos, int endPos, RelationType type,
+                                RelationExpr from, RowFilter rowFilter, Expr filter,
+                                List<ProjExpr> projection, int maxArgument, String orderBy)
+    {
+        List<ProjExpr> effectiveProjection;
+
+        if (projection == null) {
+            effectiveProjection = from.fullProjection();
+        } else {
+            effectiveProjection = projection;
+            if (from.rowType().isFullProjection(projection)) {
+                projection = null;
+            }
+        }
+
+        return new MappedQueryExpr(startPos, endPos, type, from, rowFilter, filter,
+                                   projection, effectiveProjection, maxArgument, orderBy);
+    }
+
+    private final Expr mFilter;
+    private final String mOrderBy;
+
+    private final List<ProjExpr> mEffectiveProjection; // not null
+
+    private MappedQueryExpr(int startPos, int endPos, RelationType type,
+                            RelationExpr from, RowFilter rowFilter, Expr filter,
+                            List<ProjExpr> projection, List<ProjExpr> effectiveProjection,
+                            int maxArgument, String orderBy)
     {
         super(startPos, endPos, type, from, rowFilter, projection, maxArgument);
+
         mFilter = filter;
         mOrderBy = orderBy;
+
+        mEffectiveProjection = effectiveProjection;
     }
 
     @Override
@@ -274,7 +299,7 @@ final class MappedQueryExpr extends QueryExpr {
             mFilter.gatherEvalColumns(evalColumns);
         }
 
-        for (Expr expr : mProjection) {
+        for (Expr expr : mEffectiveProjection) {
             expr.gatherEvalColumns(evalColumns);
         }
 
@@ -306,13 +331,15 @@ final class MappedQueryExpr extends QueryExpr {
         // FIXME: This is too eager -- not checking canThrowRuntimeException, and not checking
         // downstream expressions.
         IdentityHashMap<AssignExpr, Variable> projectedVars = null;
-        for (ProjExpr pe : mProjection) {
-            if (pe.wrapped() instanceof AssignExpr ae) {
-                Variable v = pe.makeEval(context);
-                if (projectedVars == null) {
-                    projectedVars = new IdentityHashMap<>();
+        if (mProjection != null) {
+            for (ProjExpr pe : mProjection) {
+                if (pe.wrapped() instanceof AssignExpr ae) {
+                    Variable v = pe.makeEval(context);
+                    if (projectedVars == null) {
+                        projectedVars = new IdentityHashMap<>();
+                    }
+                    projectedVars.put(ae, v);
                 }
-                projectedVars.put(ae, v);
             }
         }
 
@@ -325,7 +352,7 @@ final class MappedQueryExpr extends QueryExpr {
             pass.here();
         }
 
-        for (ProjExpr pe : mProjection) {
+        for (ProjExpr pe : mEffectiveProjection) {
             if (pe.shouldExclude()) {
                 continue;
             }
@@ -351,7 +378,7 @@ final class MappedQueryExpr extends QueryExpr {
         TupleType targetType = rowType();
         int numColumns = targetType.numColumns();
 
-        for (ProjExpr pe : mProjection) {
+        for (ProjExpr pe : mEffectiveProjection) {
             ColumnExpr source;
             if (pe.shouldExclude() || (source = pe.sourceColumn()) == null) {
                 continue;
