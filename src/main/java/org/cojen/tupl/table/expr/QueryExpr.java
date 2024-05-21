@@ -403,6 +403,7 @@ public abstract sealed class QueryExpr extends RelationExpr
     public final boolean equals(Object obj) {
         return obj == this ||
             obj instanceof QueryExpr qe
+            && getClass() == qe.getClass()
             && mFrom.equals(qe.mFrom)
             && mRowFilter.equals(qe.mRowFilter)
             && Objects.equals(mProjection, qe.mProjection);
