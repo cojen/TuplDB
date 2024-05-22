@@ -141,12 +141,12 @@ final class MappedQueryExpr extends QueryExpr {
         }
     }
 
-    private static final WeakCache<Object, MapperFactory, MappedQueryExpr> cCache;
+    private static final WeakCache<Object, QueryMapper, MappedQueryExpr> cCache;
 
     static {
         cCache = new WeakCache<>() {
             @Override
-            public MapperFactory newValue(Object key, MappedQueryExpr expr) {
+            public QueryMapper newValue(Object key, MappedQueryExpr expr) {
                 return expr.makeMapper();
             }
         };
@@ -157,14 +157,14 @@ final class MappedQueryExpr extends QueryExpr {
     public CompiledQuery makeCompiledQuery() throws IOException {
         CompiledQuery source = mFrom.makeCompiledQuery();
 
-        MapperFactory factory = cCache.obtain(makeKey(), this);
+        QueryMapper factory = cCache.obtain(makeKey(), this);
 
         Class targetClass = rowTypeClass();
 
         int argCount = maxArgument();
 
         if (argCount == 0) {
-            Table table = source.table().map(targetClass, factory.get(RowUtils.NO_ARGS));
+            Table table = source.table().map(targetClass, factory.mapperFor(RowUtils.NO_ARGS));
             if (mOrderBy != null) {
                 table = table.view(mOrderBy);
             }
@@ -181,9 +181,9 @@ final class MappedQueryExpr extends QueryExpr {
     @SuppressWarnings("unchecked")
     private static sealed class NoView extends CompiledQuery.Wrapped {
         private final Class mTargetClass;
-        private final MapperFactory mFactory;
+        private final QueryMapper mFactory;
 
-        NoView(CompiledQuery source, int argCount, Class targetClass, MapperFactory factory) {
+        NoView(CompiledQuery source, int argCount, Class targetClass, QueryMapper factory) {
             super(source, argCount);
             mTargetClass = targetClass;
             mFactory = factory;
@@ -197,14 +197,14 @@ final class MappedQueryExpr extends QueryExpr {
         @Override
         public Table table(Object... args) throws IOException {
             checkArgumentCount(args);
-            return source.table(args).map(mTargetClass, mFactory.get(args));
+            return source.table(args).map(mTargetClass, mFactory.mapperFor(args));
         }
     }
 
     private static final class WithView extends NoView {
         private final String mViewStr;
 
-        WithView(CompiledQuery source, int argCount, Class targetClass, MapperFactory factory,
+        WithView(CompiledQuery source, int argCount, Class targetClass, QueryMapper factory,
                  String viewStr)
         {
             super(source, argCount, targetClass, factory);
@@ -217,19 +217,15 @@ final class MappedQueryExpr extends QueryExpr {
         }
     }
 
-    public static interface MapperFactory {
-        /**
-         * Returns a new or singleton Mapper instance.
-         */
-        Mapper<?, ?> get(Object[] args);
-    }
-
-    private MapperFactory makeMapper() {
+    private QueryMapper makeMapper() {
         Class<?> targetClass = rowTypeClass();
+
+        Class<?> baseClass = mRowFilter == TrueFilter.THE
+            ? QueryMapper.Unfiltered.class : QueryMapper.class;
 
         ClassMaker cm = RowGen.beginClassMaker
             (MappedQueryExpr.class, targetClass, targetClass.getName(), null, "mapper")
-            .implement(Mapper.class).implement(MapperFactory.class).final_();
+            .extend(baseClass).final_();
 
         // Keep a reference to the factory instance, to prevent it from being garbage collected
         // as long as the generated class still exists.
@@ -243,9 +239,9 @@ final class MappedQueryExpr extends QueryExpr {
 
         int argCount = maxArgument();
 
-        // The Mapper is also its own MapperFactory.
+        // Implement the factory method.
         {
-            MethodMaker mm = cm.addMethod(Mapper.class, "get", Object[].class).public_();
+            MethodMaker mm = cm.addMethod(Mapper.class, "mapperFor", Object[].class).public_();
 
             if (argCount == 0) {
                 // Just return a singleton.
@@ -265,28 +261,16 @@ final class MappedQueryExpr extends QueryExpr {
 
         addMapMethod(cm, evalColumns, argCount);
 
-        if (mRowFilter == TrueFilter.THE) {
-            cm.addMethod(boolean.class, "performsFiltering").public_().override().return_(false);
-        }
-
         addInverseMappingFunctions(cm);
 
-        addToStringMethod(cm);
         addPlanMethod(cm);
-
-        // Override the check methods to do nothing. This behavior is correct for an update
-        // statement, because it permits altering the row to appear outside the set of rows
-        // selected by the filter. This behavior is incorrect for a view, which disallows
-        // creating or altering rows such that they appear outside the view's bounds. A view
-        // needs to check another filter before allowing the operation to proceed.
-        addCheckMethods(cm);
 
         MethodHandles.Lookup lookup = cm.finishHidden();
         Class<?> clazz = lookup.lookupClass();
 
         try {
             MethodHandle mh = lookup.findConstructor(clazz, MethodType.methodType(void.class));
-            return (MapperFactory) mh.invoke();
+            return (QueryMapper) mh.invoke();
         } catch (Throwable e) {
             throw RowUtils.rethrow(e);
         }
@@ -398,26 +382,11 @@ final class MappedQueryExpr extends QueryExpr {
         }
     }
 
-    private void addToStringMethod(ClassMaker cm) {
-        MethodMaker mm = cm.addMethod(String.class, "toString").public_();
-        mm.return_(mm.class_().invoke("getName"));
-    }
-
     private void addPlanMethod(ClassMaker cm) {
         if (mRowFilter == TrueFilter.THE) {
             return;
         }
         MethodMaker mm = cm.addMethod(QueryPlan.class, "plan", QueryPlan.Mapper.class).public_();
         mm.return_(mm.new_(QueryPlan.Filter.class, mRowFilter.toString(), mm.param(0)));
-    }
-
-    protected void addCheckMethods(ClassMaker cm) {
-        for (int i=0; i<3; i++) {
-            String name = "check" + switch(i) {
-                default -> "Store"; case 1 -> "Update"; case 2 -> "Delete";
-            };
-            cm.addMethod(null, name, Table.class, Object.class).public_().override();
-            // The method is simply empty.
-        }
     }
 }
