@@ -158,13 +158,11 @@ public class TableBasicsMaker {
         var rowVar = mm.param(0).cast(rowClass);
         var colName = mm.param(1);
 
-        Set<String> keys = rowInfo.allColumns.keySet();
-        String[] cases = keys.toArray(String[]::new);
+        String[] cases = rowInfo.allColumns.keySet().toArray(String[]::new);
         var labels = new Label[cases.length];
 
-        int i = 0;
-        for (String key : keys) {
-            labels[i++] = mm.label();
+        for (int i=0; i<labels.length; i++) {
+            labels[i] = mm.label();
         }
 
         var notFound = mm.label();
@@ -178,7 +176,7 @@ public class TableBasicsMaker {
 
         Label check = mm.label();
 
-        for (i=0; i<cases.length; i++) {
+        for (int i=0; i<cases.length; i++) {
             labels[i].here();
             int colNum = colNums.get(cases[i]);
             stateVar.set(rowVar.field(rowGen.stateField(colNum)));

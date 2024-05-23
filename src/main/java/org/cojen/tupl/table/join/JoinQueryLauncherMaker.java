@@ -143,7 +143,7 @@ final class JoinQueryLauncherMaker {
         var scannerMaker = new JoinScannerMaker(mJoinType, spec, mQuery);
 
         mClassMaker = scannerMaker.anotherClassMaker(getClass(), "launcher")
-            .extend(QueryLauncher.class).public_().final_();
+            .extend(JoinQueryLauncher.class).public_().final_();
 
         mQueryMethods = new LinkedHashMap<>();
         mScannerMaker = scannerMaker.classMaker();

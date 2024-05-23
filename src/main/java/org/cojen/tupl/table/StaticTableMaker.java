@@ -332,7 +332,8 @@ class StaticTableMaker extends TableMaker {
 
         if (!isPrimaryTable()) {
             addSecondaryDescriptorMethod();
-        } else if (!isEvolvable()) {
+        }
+        if (!isEvolvable()) {
             addUnfilteredMethods(0);
         }
 
