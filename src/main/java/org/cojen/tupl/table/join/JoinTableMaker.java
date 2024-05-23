@@ -38,6 +38,7 @@ import org.cojen.tupl.Table;
 import org.cojen.tupl.table.ColumnInfo;
 import org.cojen.tupl.table.RowGen;
 import org.cojen.tupl.table.RowInfo;
+import org.cojen.tupl.table.RowMethodsMaker;
 import org.cojen.tupl.table.RowUtils;
 import org.cojen.tupl.table.WeakClassCache;
 
@@ -273,7 +274,8 @@ public class JoinTableMaker {
             Label next = mm.label();
             var value = rowVar.invoke(colName);
             value.ifEq(null, next);
-            consumerVar.invoke("accept", rowVar, colName, value);
+            String realName = RowMethodsMaker.unescape(colName);
+            consumerVar.invoke("accept", rowVar, realName, value);
             next.here();
         }
 

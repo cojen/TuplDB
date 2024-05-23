@@ -31,6 +31,7 @@ import java.util.stream.Stream;
 import org.cojen.tupl.ColumnProcessor;
 import org.cojen.tupl.DurabilityMode;
 import org.cojen.tupl.Query;
+import org.cojen.tupl.Row;
 import org.cojen.tupl.Scanner;
 import org.cojen.tupl.Table;
 import org.cojen.tupl.Transaction;
@@ -51,9 +52,7 @@ import org.cojen.tupl.table.filter.QuerySpec;
  *
  * @author Brian S. O'Neill
  */
-public final class IdentityTable implements Table<IdentityTable.Row>, Query<IdentityTable.Row> {
-    public interface Row extends Comparable<Row> { }
-
+public final class IdentityTable implements Table<Row>, Query<Row> {
     // Singleton instance.
     public static final IdentityTable THE = new IdentityTable();
 

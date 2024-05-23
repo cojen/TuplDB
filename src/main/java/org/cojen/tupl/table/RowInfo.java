@@ -47,6 +47,7 @@ import org.cojen.tupl.Automatic;
 import org.cojen.tupl.Hidden;
 import org.cojen.tupl.Nullable;
 import org.cojen.tupl.PrimaryKey;
+import org.cojen.tupl.Row;
 import org.cojen.tupl.SecondaryIndex;
 import org.cojen.tupl.Unsigned;
 
@@ -395,6 +396,20 @@ public class RowInfo extends ColumnSet {
                         }
                         info.mutator = method;
                         break lookup;
+                    }
+                }
+
+                if (method.getDeclaringClass() == Row.class) {
+                    continue;
+                }
+
+                if (Row.class.isAssignableFrom(rowType)) {
+                    // The inherited Row method might have been explicitly overridden.
+                    try {
+                        if (Row.class.getDeclaredMethod(name, params).getReturnType() == type) {
+                            continue;
+                        }
+                    } catch (NoSuchMethodException e) {
                     }
                 }
 

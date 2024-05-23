@@ -35,6 +35,7 @@ import org.cojen.maker.Label;
 import org.cojen.maker.MethodMaker;
 import org.cojen.maker.Variable;
 
+import org.cojen.tupl.Row;
 import org.cojen.tupl.UnsetColumnException;
 
 import org.cojen.tupl.table.codec.ColumnCodec;
@@ -177,6 +178,10 @@ public class RowMaker {
 
         // Add Comparable methods.
         addCompareTo();
+
+        if (Row.class.isAssignableFrom(mRowType)) {
+            new RowMethodsMaker(mClassMaker, mRowType, mRowGen).addMethods();
+        }
 
         return mClassMaker.finish();
     }
@@ -406,7 +411,7 @@ public class RowMaker {
         bob.invoke("append", '*');
         clean.here();
 
-        bob.invoke("append", info.name).invoke("append", '=');
+        bob.invoke("append", RowMethodsMaker.unescape(info.name)).invoke("append", '=');
         CodeUtils.appendValue(bob, info, rowObject.field(info.name));
 
         unset.here();
