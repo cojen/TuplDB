@@ -875,12 +875,36 @@ public class BasicJoinTest {
         assertEquals(plan, actualPlan);
 
         int resultNum = 0;
+        var numRef = new int[1];
+        var nameRef = new String[1];
 
         try (var scanner = mJoin.newScanner(null, queryStr, args)) {
             for (var row = scanner.row(); row != null; row = scanner.step(row)) {
                 String result = results[resultNum++];
                 String actualResult = row.toString();
                 assertEquals(result, actualResult);
+
+                numRef[0] = 0;
+
+                mJoin.forEach(row, (r, name, value) -> {
+                    assertTrue(result.contains(name + '=' + value));
+                    numRef[0]++;
+
+                    assertTrue(mJoin.isSet(r, name));
+
+                    nameRef[0] = name;
+                });
+
+                assertTrue(numRef[0] > 0);
+
+                mJoin.unsetRow(row);
+                assertFalse(mJoin.isSet(row, nameRef[0]));
+                try {
+                    mJoin.isSet(row, "xxxxxxxxx");
+                    fail();
+                } catch (IllegalArgumentException e) {
+                    assertTrue(e.getMessage().contains("Unknown column"));
+                }
             }
         }
     }

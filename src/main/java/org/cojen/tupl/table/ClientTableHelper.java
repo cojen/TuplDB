@@ -30,7 +30,11 @@ import org.cojen.maker.Label;
 import org.cojen.maker.MethodMaker;
 import org.cojen.maker.Variable;
 
+import org.cojen.tupl.DurabilityMode;
+import org.cojen.tupl.Query;
+import org.cojen.tupl.Scanner;
 import org.cojen.tupl.Table;
+import org.cojen.tupl.Transaction;
 
 import org.cojen.tupl.table.codec.ColumnCodec;
 
@@ -60,6 +64,50 @@ public abstract class ClientTableHelper<R> implements Table<R> {
     @SuppressWarnings("unchecked")
     public static <R> ClientTableHelper<R> find(Class<R> rowType) {
         return (ClientTableHelper<R>) cCache.obtain(rowType, null);
+    }
+
+    @Override
+    public final Scanner<R> newScanner(R row, Transaction txn) {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public final Scanner<R> newScanner(R row, Transaction txn, String query, Object... args) {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public final Query<R> query(String query) {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public final Transaction newTransaction(DurabilityMode durabilityMode) {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public final boolean isEmpty() {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public final boolean tryLoad(Transaction txn, R row) {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public final boolean exists(Transaction txn, R row) {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public final void close() {
+    }
+
+    @Override
+    public final boolean isClosed() {
+        return false;
     }
 
     /**
