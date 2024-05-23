@@ -151,6 +151,10 @@ public final class RowMethodsMaker {
     private final ColumnInfo[] mColumns;
     private final Map<String, Integer> mUnescapedMap; // maps unescaped names to column indexes
 
+    public RowMethodsMaker(ClassMaker cm, Class<?> rowType, RowInfo rowInfo) {
+        this(cm, rowType, rowInfo.rowGen());
+    }
+
     RowMethodsMaker(ClassMaker cm, Class<?> rowType, RowGen rowGen) {
         mClassMaker = cm;
         mRowType = rowType;
@@ -187,10 +191,10 @@ public final class RowMethodsMaker {
     }
 
     private RowMethodsMaker(ClassMaker cm, Class<?> rowType) {
-        this(cm, rowType, RowInfo.find(rowType).rowGen());
+        this(cm, rowType, RowInfo.find(rowType));
     }
 
-    void addMethods() {
+    public void addMethods() {
         addColumnType();
         addColumnMethodName();
 
