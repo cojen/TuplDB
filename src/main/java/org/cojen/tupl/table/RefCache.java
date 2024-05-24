@@ -145,11 +145,4 @@ abstract class RefCache<K, V, H> extends ReferenceQueue<Object> {
     protected V newValue(K key, H helper) {
         throw new UnsupportedOperationException();
     }
-
-    /**
-     * Caller must be synchronized.
-     *
-     * @param ref not null
-     */
-    protected abstract void cleanup(Object ref);
 }
