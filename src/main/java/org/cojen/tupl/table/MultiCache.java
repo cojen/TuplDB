@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2022 Cojen.org
+ *  Copyright (C) 2024 Cojen.org
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU Affero General Public License as
@@ -17,97 +17,332 @@
 
 package org.cojen.tupl.table;
 
-import java.util.function.Consumer;
-import java.util.function.IntFunction;
+import java.lang.invoke.VarHandle;
+
+import java.lang.ref.Reference;
+import java.lang.ref.ReferenceQueue;
+import java.lang.ref.SoftReference;
+
+import org.cojen.tupl.util.Latch;
 
 /**
- * A cache of numerically indexed caches.
+ * A cache of softly referenced values, referenced by type-key pairs.
  *
- * @author Brian S O'Neill
+ * @author Brian S. O'Neill
  */
-final class MultiCache<K, V, H> {
-    /**
-     * @param typeMap maps requested types to effective types
-     * @param factory called to make missing entries on demand
-     */
+public abstract class MultiCache<K, V, H, X extends Throwable> extends ReferenceQueue<Object> {
+    public static sealed abstract class Type {
+        abstract int hash(int hash);
+
+        abstract <K> boolean matches(Entry<K, ?> entry, K key);
+
+        abstract <K, V> Entry<K, V> newEntry(K key, V value, int hash,
+                                             ReferenceQueue<Object> queue);
+    }
+
+    public static final Type Type1 = new Type1(), Type2 = new Type2();
+
+    private Entry<K, V>[] mEntries;
+    private int mSize;
+
     @SuppressWarnings({"unchecked"})
-    public static <K, V, H> MultiCache<K, V, H> newSoftCache(int[] typeMap,
-                                                             Factory<K, V, H> factory)
-    {
-        return new MultiCache(typeMap, type -> new SoftCache<K, V, H>() {
-            @Override
-            protected V newValue(K key, H helper) {
-                return factory.newValue(type, key, helper);
-            }
-        });
+    public MultiCache() {
+        // Initial capacity must be a power of 2.
+        mEntries = new Entry[2];
+    }
+
+    @SuppressWarnings({"unchecked"})
+    public synchronized void cacheClear() {
+        if (mSize != 0 || mEntries.length != 2) {
+            mEntries = new Entry[2];
+            mSize = 0;
+        }
     }
 
     /**
-     * @param typeMap maps requested types to effective types
-     * @param factory called to make missing entries on demand
+     * Can be called without explicit synchronization, but entries can appear to go missing.
+     * Double check with synchronization.
      */
-    @SuppressWarnings({"unchecked"})
-    public static <K, V, H> MultiCache<K, V, H> newWeakCache(int[] typeMap,
-                                                             Factory<K, V, H> factory)
-    {
-        return new MultiCache(typeMap, type -> new WeakCache<K, V, H>() {
-            @Override
-            protected V newValue(K key, H helper) {
-                return factory.newValue(type, key, helper);
-            }
-        });
-    }
-
-    private final RefCache<K, V, H>[] mCaches;
-
-    @SuppressWarnings({"unchecked"})
-    private MultiCache(int[] typeMap, IntFunction<RefCache<K, V, H>> f) {
-        var caches = new RefCache[typeMap.length];
-
-        for (int i=0; i<caches.length; i++) {
-            int type = typeMap[i];
-            if (type == i) {
-                caches[i] = f.apply(type);
+    public final V cacheGet(Type type, K key) {
+        Object ref = poll();
+        if (ref != null) {
+            synchronized (this) {
+                cleanup(ref);
             }
         }
 
-        for (int i=0; i<caches.length; i++) {
-            int type = typeMap[i];
-            if (type != i) {
-                if ((caches[i] = caches[type]) == null) {
-                    throw new IllegalArgumentException();
+        var entries = mEntries;
+        int hash = type.hash(key.hashCode());
+        int index = hash & (entries.length - 1);
+
+        for (var e = entries[index]; e != null; e = e.mNext) {
+            if (type.matches(e, key)) {
+                return e.get();
+            }
+        }
+
+        return null;
+    }
+
+    @SuppressWarnings("unchecked")
+    public final V cacheObtain(Type type, K key, H helper) throws X {
+        Latch latch;
+        while (true) {
+            V value = cacheGet(type, key);
+            if (value != null) {
+                return value;
+            }
+
+            synchronized (this) {
+                value = cacheGet(type, key);
+                if (value != null) {
+                    return value;
+                }
+
+                latch = (Latch) cacheGet(LatchType.THE, key);
+
+                if (latch == null) {
+                    latch = new Latch(Latch.EXCLUSIVE);
+                    cachePut(LatchType.THE, key, (V) latch);
+                    // Break out of the loop and do the work.
+                    break;
                 }
             }
+
+            // Wait for another thread to do the work and try again.
+            latch.acquireShared();
+        }
+        
+        V value;
+        Throwable ex = null;
+
+        try {
+            value = cacheNewValue(type, key, helper);
+        } catch (Throwable e) {
+            value = null;
+            ex = e;
         }
 
-        mCaches = caches;
+        synchronized (this) {
+            if (value != null) {
+                try {
+                    cachePut(type, key, value);
+                } catch (Throwable e) {
+                    if (ex == null) {
+                        ex = e;
+                    } else {
+                        ex.addSuppressed(e);
+                    }
+                }
+            }
+
+            cacheRemove(LatchType.THE, key);
+            latch.releaseExclusive();
+        }
+
+        if (ex != null) {
+            throw RowUtils.rethrow(ex);
+        }
+
+        return value;
     }
 
-    public void clear() {
-        for (var cache : mCaches) {
-            cache.clear();
+    @SuppressWarnings("unchecked")
+    public synchronized final void cachePut(Type type, K key, V value) {
+        Object ref = poll();
+        if (ref != null) {
+            cleanup(ref);
+        }
+
+        var entries = mEntries;
+        int hash = type.hash(key.hashCode());
+        int index = hash & (entries.length - 1);
+
+        for (Entry<K, V> e = entries[index], prev = null; e != null; e = e.mNext) {
+            if (type.matches(e, key)) {
+                e.clear();
+                var newEntry = type.newEntry(key, value, hash, this);
+                if (prev == null) {
+                    newEntry.mNext = e.mNext;
+                } else {
+                    prev.mNext = e.mNext;
+                    newEntry.mNext = entries[index];
+                }
+                VarHandle.storeStoreFence(); // ensure that entry value is safely visible
+                entries[index] = newEntry;
+                return;
+            } else {
+                prev = e;
+            }
+        }
+
+        if (mSize >= mEntries.length) {
+            // Rehash.
+            var newEntries = new Entry[entries.length << 1];
+            int size = 0;
+            for (int i=0; i<entries.length; i++) {
+                for (var existing = entries[i]; existing != null; ) {
+                    var e = existing;
+                    existing = existing.mNext;
+                    if (!e.refersTo(null)) {
+                        size++;
+                        index = e.mHash & (newEntries.length - 1);
+                        e.mNext = newEntries[index];
+                        newEntries[index] = e;
+                    }
+                }
+            }
+            mEntries = entries = newEntries;
+            mSize = size;
+            index = hash & (entries.length - 1);
+        }
+
+        var newEntry = type.newEntry(key, value, hash, this);
+        newEntry.mNext = entries[index];
+        VarHandle.storeStoreFence(); // ensure that entry value is safely visible
+        entries[index] = newEntry;
+        mSize++;
+    }
+
+    public synchronized final void cacheRemove(Type type, K key) {
+        var entries = mEntries;
+        int hash = type.hash(key.hashCode());
+        int index = hash & (entries.length - 1);
+
+        for (Entry<K, V> e = entries[index], prev = null; e != null; e = e.mNext) {
+            if (type.matches(e, key)) {
+                e.clear();
+                if (prev == null) {
+                    entries[index] = e.mNext;
+                } else {
+                    prev.mNext = e.mNext;
+                }
+                mSize--;
+                break;
+            } else {
+                prev = e;
+            }
+        }
+
+        Object ref = poll();
+        if (ref != null) {
+            cleanup(ref);
         }
     }
 
     /**
-     * Calls the consumer for each value that was in the cache that was removed.
+     * @return non-null value
      */
-    public void clear(Consumer<V> c) {
-        for (var cache : mCaches) {
-            cache.clear(c);
+    protected abstract V cacheNewValue(Type type, K key, H helper) throws X;
+
+    /**
+     * Caller must be synchronized.
+     *
+     * @param ref not null
+     */
+    @SuppressWarnings({"unchecked"})
+    private void cleanup(Object ref) {
+        var entries = mEntries;
+        do {
+            var cleared = (Entry<K, V>) ref;
+            int ix = cleared.mHash & (entries.length - 1);
+            for (Entry<K, V> e = entries[ix], prev = null; e != null; e = e.mNext) {
+                if (e == cleared) {
+                    if (prev == null) {
+                        entries[ix] = e.mNext;
+                    } else {
+                        prev.mNext = e.mNext;
+                    }
+                    mSize--;
+                    break;
+                } else {
+                    prev = e;
+                }
+            }
+        } while ((ref = poll()) != null);
+    }
+
+    private static sealed abstract class Entry<K, V> extends SoftReference<V> {
+        final K mKey;
+        final int mHash;
+
+        Entry<K, V> mNext;
+
+        Entry(K key, V value, int hash, ReferenceQueue<Object> queue) {
+            super(value, queue);
+            mKey = key;
+            mHash = hash;
         }
     }
 
-    /**
-     * Generates missing entries on demand, using an entry latch to ensure that only one thread
-     * does the work.
-     */
-    public V obtain(int type, K key, H helper) {
-        return mCaches[type].obtain(key, helper);
+    private static final class LatchType extends Type {
+        static final LatchType THE = new LatchType();
+
+        @Override
+        int hash(int hash) {
+            return hash * 565696537;
+        }
+
+        @Override
+        <K> boolean matches(Entry<K, ?> entry, K key) {
+            return entry instanceof LatchEntry && entry.mKey.equals(key);
+        }
+
+        @Override
+        <K, V> Entry<K, V> newEntry(K key, V value, int hash, ReferenceQueue<Object> queue) {
+            return new LatchEntry<>(key, value, hash, queue);
+        }
     }
 
-    @FunctionalInterface
-    public static interface Factory<K, V, H> {
-        V newValue(int type, K key, H helper);
+    private static final class LatchEntry<K, V> extends Entry<K, V> {
+        LatchEntry(K key, V value, int hash, ReferenceQueue<Object> queue) {
+            super(key, value, hash, queue);
+        }
+    }
+
+    private static final class Type1 extends Type {
+        @Override
+        int hash(int hash) {
+            return hash * 219380501;
+        }
+
+        @Override
+        <K> boolean matches(Entry<K, ?> entry, K key) {
+            return entry instanceof Type1Entry && entry.mKey.equals(key);
+        }
+
+        @Override
+        <K, V> Entry<K, V> newEntry(K key, V value, int hash, ReferenceQueue<Object> queue) {
+            return new Type1Entry<>(key, value, hash, queue);
+        }
+    }
+
+    private static final class Type1Entry<K, V> extends Entry<K, V> {
+        Type1Entry(K key, V value, int hash, ReferenceQueue<Object> queue) {
+            super(key, value, hash, queue);
+        }
+    }
+
+    private static final class Type2 extends Type {
+        @Override
+        int hash(int hash) {
+            return hash * 785391669;
+        }
+
+        @Override
+        <K> boolean matches(Entry<K, ?> entry, K key) {
+            return entry instanceof Type2Entry && entry.mKey.equals(key);
+        }
+
+        @Override
+        <K, V> Entry<K, V> newEntry(K key, V value, int hash, ReferenceQueue<Object> queue) {
+            return new Type2Entry<>(key, value, hash, queue);
+        }
+    }
+
+    private static final class Type2Entry<K, V> extends Entry<K, V> {
+        Type2Entry(K key, V value, int hash, ReferenceQueue<Object> queue) {
+            super(key, value, hash, queue);
+        }
     }
 }
