@@ -79,16 +79,17 @@ import static java.util.Spliterator.*;
  *
  * @author Brian S O'Neill
  */
-public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R> {
+public abstract class BaseTable<R>
+    extends MultiCache<String, ScanControllerFactory<R>, QuerySpec, RuntimeException>
+    implements Table<R>, ScanControllerFactory<R>
+{
     final TableManager<R> mTableManager;
 
     protected final Index mSource;
 
-    // MultiCache and QueryLauncher types.
+    // QueryLauncher types.
     static final int PLAIN = 0b00, DOUBLE_CHECK = 0b01,
         FOR_UPDATE = 0b10, FOR_UPDATE_DOUBLE_CHECK = FOR_UPDATE | DOUBLE_CHECK;
-
-    private final MultiCache<String, ScanControllerFactory<R>, QuerySpec> mFilterFactoryCache;
 
     // Short lived helper, used by QueryCache.
     private record ParsedQuery(String queryStr, RelationExpr expr) { }
@@ -145,15 +146,6 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
         mTableManager = Objects.requireNonNull(manager);
         mSource = Objects.requireNonNull(source);
         mIndexLock = Objects.requireNonNull(indexLock);
-
-        {
-            int[] typeMap = {PLAIN, DOUBLE_CHECK};
-            if (joinedPrimaryTableClass() == null) {
-                // Won't need to double check.
-                typeMap[DOUBLE_CHECK] = PLAIN;
-            }
-            mFilterFactoryCache = MultiCache.newSoftCache(typeMap, this::newFilteredFactory);
-        }
 
         if (supportsSecondaries()) {
             mQueryCache = new QueryCache();
@@ -242,9 +234,9 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
 
     private ScanControllerFactory<R> scannerFilteredFactory(Transaction txn, String queryStr) {
         // Might need to double check the filter after joining to the primary, in case there
-        // were any changes after the secondary entry was loaded.
-        int type = RowUtils.isUnlocked(txn) ? DOUBLE_CHECK : PLAIN;
-        return mFilterFactoryCache.obtain(type, queryStr, null);
+        // were any changes after the secondary entry was loaded. See cacheNewValue.
+        MultiCache.Type cacheType = RowUtils.isUnlocked(txn) ? Type2 : Type1;
+        return cacheObtain(cacheType, queryStr, null);
     }
 
     @Override
@@ -353,8 +345,9 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
         // were any changes after the secondary entry was loaded. Note that no double check is
         // needed with READ_UNCOMMITTED, because the updater for it still acquires locks. Also
         // note that FOR_UPDATE isn't used, because mFilterFactoryCache doesn't support it.
-        int type = RowUtils.isUnsafe(txn) ? DOUBLE_CHECK : PLAIN;
-        return mFilterFactoryCache.obtain(type, queryStr, null);
+        // See cacheNewValue.
+        MultiCache.Type cacheType = RowUtils.isUnsafe(txn) ? Type2 : Type1;
+        return cacheObtain(cacheType, queryStr, null);
     }
 
     @Override
@@ -596,6 +589,21 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
         return unfiltered();
     }
 
+    @Override // MultiCache
+    public final ScanControllerFactory<R> cacheNewValue
+        (MultiCache.Type cacheType, String queryStr, QuerySpec query)
+    {
+        return newFilteredFactory(toQueryLauncherType(cacheType), queryStr, query);
+    }
+
+    private static int toQueryLauncherType(MultiCache.Type cacheType) {
+        return cacheType == MultiCache.Type1 ? PLAIN : DOUBLE_CHECK;
+    }
+
+    private static MultiCache.Type toCacheType(int type) {
+        return (type & ~FOR_UPDATE) == PLAIN ? MultiCache.Type1 : MultiCache.Type2;
+    }
+
     /**
      * @param type PLAIN or DOUBLE_CHECK
      * @param queryStr the parsed and reduced query string; can be null initially
@@ -639,7 +647,7 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
         String canonical = query.toString();
         if (!canonical.equals(queryStr)) {
             // Don't actually return a specialized instance because it will be same.
-            return mFilterFactoryCache.obtain(type, canonical, query);
+            return cacheObtain(toCacheType(type), canonical, query);
         }
 
         var keyColumns = rowInfo.keyColumns.values().toArray(ColumnInfo[]::new);
@@ -818,8 +826,8 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
         QuerySpec subQuery = selector.selectedQuery(i);
         String subQueryStr = subQuery.toString();
 
-        ScanControllerFactory<R> subFactory =
-            subTable.mFilterFactoryCache.obtain(type & ~FOR_UPDATE, subQueryStr, subQuery);
+        ScanControllerFactory<R> subFactory = 
+            subTable.cacheObtain(toCacheType(type), subQueryStr, subQuery);
 
         if ((type & FOR_UPDATE) == 0 && subFactory.loadsOne()) {
             if (subTable.joinedPrimaryTableClass() != null) {
