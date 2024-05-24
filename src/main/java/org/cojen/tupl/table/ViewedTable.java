@@ -258,13 +258,6 @@ public abstract sealed class ViewedTable<R> extends WrappedTable<R, R> {
     }
 
     @Override
-    public final Scanner<R> newScanner(R row, Transaction txn, String query, Object... args)
-        throws IOException
-    {
-        return mSource.newScanner(row, txn, fuseQuery(query), fuseArguments(args));
-    }
-
-    @Override
     public final Updater<R> newUpdater(Transaction txn) throws IOException {
         return applyChecks(mSource.newUpdater(txn, mQueryStr, mArgs));
     }
@@ -272,19 +265,6 @@ public abstract sealed class ViewedTable<R> extends WrappedTable<R, R> {
     @Override
     public final Updater<R> newUpdater(R row, Transaction txn) throws IOException {
         return applyChecks(mSource.newUpdater(row, txn, mQueryStr, mArgs));
-    }
-
-    @Override
-    public final Updater<R> newUpdater(Transaction txn, String query, Object... args)
-        throws IOException
-    {
-        return applyChecks(mSource.newUpdater(txn, fuseQuery(query), fuseArguments(args)));
-    }
-
-    public final Updater<R> newUpdater(R row, Transaction txn, String query, Object... args)
-        throws IOException
-    {
-        return applyChecks(mSource.newUpdater(row, txn, fuseQuery(query), fuseArguments(args)));
     }
 
     protected Updater<R> applyChecks(Updater<R> updater) {
