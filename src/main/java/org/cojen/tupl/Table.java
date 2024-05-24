@@ -189,8 +189,11 @@ public interface Table<R> extends Closeable {
     /**
      * @hidden
      */
-    public Scanner<R> newScanner(R row, Transaction txn, String query, Object... args)
-        throws IOException;
+    public default Scanner<R> newScanner(R row, Transaction txn, String query, Object... args)
+        throws IOException
+    {
+        return query(query).newScanner(row, txn, args);
+    }
 
     /**
      * @hidden
@@ -256,7 +259,7 @@ public interface Table<R> extends Closeable {
     public default Updater<R> newUpdater(R row, Transaction txn, String query, Object... args)
         throws IOException
     {
-        throw new UnmodifiableViewException();
+        return query(query).newUpdater(row, txn, args);
     }
 
     /**
