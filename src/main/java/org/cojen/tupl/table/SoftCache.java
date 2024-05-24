@@ -203,9 +203,8 @@ public class SoftCache<K, V, H> extends RefCache<K, V, H> {
      *
      * @param ref not null
      */
-    @Override
     @SuppressWarnings({"unchecked"})
-    protected void cleanup(Object ref) {
+    private void cleanup(Object ref) {
         var entries = mEntries;
         do {
             var cleared = (Entry<K, V>) ref;
