@@ -281,8 +281,14 @@ public abstract sealed class ViewedTable<R> extends WrappedTable<R, R> {
         return mSource.derive(fuseQuery(query), fuseArguments(args));
     }
 
-    @Override
-    protected final Query<R> newQuery(String queryStr) throws IOException {
+    @Override // MultiCache; see also WrappedTable
+    protected final Query<R> cacheNewValue(Type type, String queryStr, Object helper)
+        throws IOException
+    {
+        if (type != Type1) {
+            throw new AssertionError();
+        }
+
         Query<R> query = mSource.query(fuseQuery(queryStr));
 
         return new Query<R>() {

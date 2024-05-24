@@ -331,10 +331,16 @@ public abstract class AggregatedTable<S, T> extends WrappedTable<S, T>
         return (source.characteristics() & ~(SIZED | SUBSIZED)) | ORDERED | SORTED;
     }
 
-    @Override
-    protected final Query<T> newQuery(String query) throws IOException {
+    @Override // MultiCache; see also WrappedTable
+    protected final Query<T> cacheNewValue(Type type, String queryStr, Object helper)
+        throws IOException
+    {
+        if (type != Type1) {
+            throw new AssertionError();
+        }
+
         try {
-            return (Query<T>) mQueryFactoryCache.obtain(query, this).invoke(this);
+            return (Query<T>) mQueryFactoryCache.obtain(queryStr, this).invoke(this);
         } catch (Throwable e) {
             throw RowUtils.rethrow(e);
         }

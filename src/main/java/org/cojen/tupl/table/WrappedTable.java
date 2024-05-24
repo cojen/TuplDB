@@ -33,7 +33,7 @@ import org.cojen.tupl.Transaction;
  * @param <T> target row type
  * @author Brian S. O'Neill
  */
-public abstract class WrappedTable<S, T> extends SoftCache<String, Query<T>, Object>
+public abstract class WrappedTable<S, T> extends MultiCache<String, Query<T>, Object, IOException>
     implements Table<T>
 {
     protected final Table<S> mSource;
@@ -83,18 +83,6 @@ public abstract class WrappedTable<S, T> extends SoftCache<String, Query<T>, Obj
 
     @Override
     public final Query<T> query(String query) throws IOException {
-        return obtain(query, null);
+        return cacheObtain(Type1, query, null);
     }
-
-    // Defined in the SoftCache class.
-    @Override
-    protected final Query<T> newValue(String query, Object unused) {
-        try {
-            return newQuery(query);
-        } catch (IOException e) {
-            throw RowUtils.rethrow(e);
-        }
-    }
-
-    protected abstract Query<T> newQuery(String query) throws IOException;
 }

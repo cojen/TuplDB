@@ -215,10 +215,16 @@ public abstract class GroupedTable<S, T> extends AbstractMappedTable<S, T>
         return spec.isEmpty() ? null : OrderBy.splitSpec(spec);
     }
 
-    @Override
-    protected final Query<T> newQuery(String query) throws IOException {
+    @Override // MultiCache; see also WrappedTable
+    protected final Query<T> cacheNewValue(Type type, String queryStr, Object helper)
+        throws IOException
+    {
+        if (type != Type1) {
+            throw new AssertionError();
+        }
+
         try {
-            return (Query<T>) mQueryFactoryCache.obtain(query, this).invoke(this);
+            return (Query<T>) mQueryFactoryCache.obtain(queryStr, this).invoke(this);
         } catch (Throwable e) {
             throw RowUtils.rethrow(e);
         }
