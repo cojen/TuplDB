@@ -111,6 +111,10 @@ public record QuerySpec(Map<String, ColumnInfo> projection, OrderBy orderBy, Row
 
         var b = new StringBuilder().append('{');
 
+        if (projection == null) {
+            b.append('*');
+        }
+
         for (String name : names) {
             if (b.length() != 1) {
                 b.append(',').append(' ');
@@ -121,10 +125,6 @@ public record QuerySpec(Map<String, ColumnInfo> projection, OrderBy orderBy, Row
             } else {
                 b.append(name);
             }
-        }
-
-        if (projection == null) {
-            b.append(", *");
         }
 
         b.append('}');

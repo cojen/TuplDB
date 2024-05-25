@@ -102,8 +102,8 @@ public class ParserTest {
         passQuery("{*, ~ a}", "{b, c\u1f600}");
         passQuery("{+a}");
         passQuery("{+ a}", "{+a}");
-        passQuery("{+a, *}");
-        passQuery("{+ a, *}", "{+a, *}");
+        passQuery("{*, +a}");
+        passQuery("{+ a, *}", "{*, +a}");
         passQuery("{+ !a}", "{+!a}");
         passQuery("{+ ! a}", "{+!a}");
         passQuery("{-b, + ! a}", "{-b, +!a}");
