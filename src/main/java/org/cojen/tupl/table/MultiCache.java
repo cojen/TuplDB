@@ -134,7 +134,9 @@ public abstract class MultiCache<K, V, H, X extends Throwable> extends Reference
 
     @SuppressWarnings("unchecked")
     public final V cacheObtain(Type type, K key, H helper) throws X {
+        LatchType latchType;
         Latch latch;
+
         while (true) {
             V value = cacheGet(type, key);
             if (value != null) {
@@ -147,11 +149,12 @@ public abstract class MultiCache<K, V, H, X extends Throwable> extends Reference
                     return value;
                 }
 
-                latch = (Latch) cacheGet(LatchType.THE, key);
+                latchType = new LatchType(type);
+                latch = (Latch) cacheGet(latchType, key);
 
                 if (latch == null) {
                     latch = new Latch(Latch.EXCLUSIVE);
-                    cachePut(LatchType.THE, key, (V) latch);
+                    cachePut(latchType, key, (V) latch);
                     // Break out of the loop and do the work.
                     break;
                 }
@@ -184,7 +187,7 @@ public abstract class MultiCache<K, V, H, X extends Throwable> extends Reference
                 }
             }
 
-            cacheRemove(LatchType.THE, key);
+            cacheRemove(latchType, key);
             latch.releaseExclusive();
         }
 
@@ -324,27 +327,35 @@ public abstract class MultiCache<K, V, H, X extends Throwable> extends Reference
     }
 
     private static final class LatchType extends Type {
-        static final LatchType THE = new LatchType();
+        private final Type mObtainType;
+
+        LatchType(Type obtainType) {
+            mObtainType = obtainType;
+        }
 
         @Override
         int hash(int hash) {
-            return hash * 565696537;
+            return mObtainType.hash(hash) * 565696537;
         }
 
         @Override
         <K> boolean matches(Entry<K, ?> entry, K key) {
-            return entry instanceof LatchEntry && entry.mKey.equals(key);
+            return entry instanceof LatchEntry le
+                && le.mObtainType.equals(mObtainType) && le.mKey.equals(key);
         }
 
         @Override
         <K, V> Entry<K, V> newEntry(K key, V value, int hash, ReferenceQueue<Object> queue) {
-            return new LatchEntry<>(key, value, hash, queue);
+            return new LatchEntry<>(key, value, hash, queue, mObtainType);
         }
     }
 
     private static final class LatchEntry<K, V> extends Entry<K, V> {
-        LatchEntry(K key, V value, int hash, ReferenceQueue<Object> queue) {
+        final Type mObtainType;
+
+        LatchEntry(K key, V value, int hash, ReferenceQueue<Object> queue, Type obtainType) {
             super(key, value, hash, queue);
+            mObtainType = obtainType;
         }
     }
 
