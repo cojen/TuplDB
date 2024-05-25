@@ -334,7 +334,7 @@ public abstract class BaseTable<R>
     @SuppressWarnings("unchecked")
     public final Table<Row> derive(String query, Object... args) throws IOException {
         // See the cacheNewValue method.
-        return ((CompiledQuery<Row>) cacheObtain(MultiCache.Type3, query, this)).table(args);
+        return ((CompiledQuery<Row>) cacheObtain(MultiCache.Type2, query, this)).table(args);
     }
 
     @Override
