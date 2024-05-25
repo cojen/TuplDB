@@ -205,7 +205,7 @@ public abstract class BaseTable<R>
         throws IOException
     {
         // Might need to double check the filter after joining to the primary, in case there
-        // were any changes after the secondary entry was loaded. See cacheNewValue.
+        // were any changes after the secondary entry was loaded. See the cacheNewValue method.
         MultiCache.Type cacheType = RowUtils.isUnlocked(txn) ? Type4 : Type3;
         return (ScanControllerFactory<R>) cacheObtain(cacheType, queryStr, null);
     }
@@ -319,7 +319,7 @@ public abstract class BaseTable<R>
         // were any changes after the secondary entry was loaded. Note that no double check is
         // needed with READ_UNCOMMITTED, because the updater for it still acquires locks. Also
         // note that FOR_UPDATE isn't used, because mFilterFactoryCache doesn't support it.
-        // See cacheNewValue.
+        // See the cacheNewValue method.
         MultiCache.Type cacheType = RowUtils.isUnsafe(txn) ? Type4 : Type3;
         return (ScanControllerFactory<R>) cacheObtain(cacheType, queryStr, null);
     }
@@ -327,7 +327,8 @@ public abstract class BaseTable<R>
     @Override
     @SuppressWarnings("unchecked")
     public QueryLauncher<R> query(String queryStr) throws IOException {
-        return (QueryLauncher<R>) cacheObtain(Type1, queryStr, null);
+        // See the cacheNewValue method.
+        return (QueryLauncher<R>) cacheObtain(MultiCache.Type1, queryStr, null);
     }
 
     @Override
@@ -587,13 +588,18 @@ public abstract class BaseTable<R>
         }
 
         if (cacheType == MultiCache.Type1) { // see the query method
+            // Short lived helper object.
+            record ParsedQuery(String queryStr, RelationExpr expr) { }
+
             if (key instanceof TupleKey) {
                 var pq = (ParsedQuery) helper;
                 return BaseQueryLauncher.make(BaseTable.this, pq.queryStr(), pq.expr());
             }
+
             String queryStr = (String) key;
             assert helper == null;
             RelationExpr expr = BaseQueryLauncher.parse(BaseTable.this, queryStr);
+
             // Obtain the canonical instance and map to that.
             TupleKey canonicalKey = expr.makeKey();
             return cacheObtain(cacheType, canonicalKey, new ParsedQuery(queryStr, expr));
@@ -605,9 +611,6 @@ public abstract class BaseTable<R>
 
         throw new AssertionError();
     }
-
-    // Short lived helper, used by cacheNewValue.
-    private record ParsedQuery(String queryStr, RelationExpr expr) { }
 
     private static MultiCache.Type toCacheType(int type) {
         return (type & ~FOR_UPDATE) == PLAIN ? MultiCache.Type3 : MultiCache.Type4;
