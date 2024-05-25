@@ -42,6 +42,7 @@ import org.cojen.tupl.Transaction;
 
 import org.cojen.tupl.diag.QueryPlan;
 
+import org.cojen.tupl.table.expr.CompiledQuery;
 import org.cojen.tupl.table.expr.Parser;
 
 import org.cojen.tupl.table.filter.ComplexFilterException;
@@ -124,6 +125,8 @@ public abstract class AggregatedTable<S, T> extends WrappedTable<S, T>
 
         {
             MethodMaker ctor = cm.addConstructor(Table.class, Aggregator.Factory.class).private_();
+            // Note: By using a QueryFactoryCache instance created here, all generated
+            // AggregatedTable instances will refer to the exact same cache.
             var cacheVar = ctor.var(QueryFactoryCache.class).setExact(new QueryFactoryCache());
             ctor.invokeSuperConstructor(cacheVar, ctor.param(0), ctor.param(1));
         }
@@ -332,18 +335,23 @@ public abstract class AggregatedTable<S, T> extends WrappedTable<S, T>
     }
 
     @Override // MultiCache; see also WrappedTable
-    protected final Query<T> cacheNewValue(Type type, String queryStr, Object helper)
+    protected final Object cacheNewValue(Type type, Object key, Object helper)
         throws IOException
     {
-        if (type != Type1) {
-            throw new AssertionError();
+        if (type == Type1) { // see the inherited query method
+            var queryStr = (String) key;
+            try {
+                return (Query<T>) mQueryFactoryCache.obtain(queryStr, this).invoke(this);
+            } catch (Throwable e) {
+                throw RowUtils.rethrow(e);
+            }
         }
 
-        try {
-            return (Query<T>) mQueryFactoryCache.obtain(queryStr, this).invoke(this);
-        } catch (Throwable e) {
-            throw RowUtils.rethrow(e);
+        if (type == Type2) { // see the inherited derive method
+            return CompiledQuery.makeDerived(this, type, key, helper);
         }
+
+        throw new AssertionError();
     }
 
     @Override

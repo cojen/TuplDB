@@ -54,6 +54,8 @@ import org.cojen.tupl.ViewConstraintException;
 
 import org.cojen.tupl.diag.QueryPlan;
 
+import org.cojen.tupl.table.expr.CompiledQuery;
+
 import org.cojen.tupl.table.filter.RowFilter;
 import org.cojen.tupl.table.filter.QuerySpec;
 import org.cojen.tupl.table.filter.TrueFilter;
@@ -107,6 +109,8 @@ public abstract class MappedTable<S, T> extends AbstractMappedTable<S, T>
 
         {
             MethodMaker ctor = tableMaker.addConstructor(Table.class, Mapper.class).private_();
+            // Note: By using a QueryFactoryCache instance created here, all generated
+            // MappedTable instances will refer to the exact same cache.
             var cacheVar = ctor.var(QueryFactoryCache.class).setExact(new QueryFactoryCache());
             ctor.invokeSuperConstructor(cacheVar, ctor.param(0), ctor.param(1));
         }
@@ -334,18 +338,23 @@ public abstract class MappedTable<S, T> extends AbstractMappedTable<S, T>
     }
 
     @Override // MultiCache; see also WrappedTable
-    protected final Query<T> cacheNewValue(Type type, String queryStr, Object helper)
+    protected final Object cacheNewValue(Type type, Object key, Object helper)
         throws IOException
     {
-        if (type != Type1) {
-            throw new AssertionError();
+        if (type == Type1) { // see the inherited query method
+            var queryStr = (String) key;
+            try {
+                return (Query<T>) mQueryFactoryCache.obtain(queryStr, this).invoke(this);
+            } catch (Throwable e) {
+                throw RowUtils.rethrow(e);
+            }
         }
 
-        try {
-            return (Query<T>) mQueryFactoryCache.obtain(queryStr, this).invoke(this);
-        } catch (Throwable e) {
-            throw RowUtils.rethrow(e);
+        if (type == Type2) { // see the inherited derive method
+            return CompiledQuery.makeDerived(this, type, key, helper);
         }
+
+        throw new AssertionError();
     }
 
     /**

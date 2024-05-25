@@ -282,13 +282,14 @@ public abstract sealed class ViewedTable<R> extends WrappedTable<R, R> {
     }
 
     @Override // MultiCache; see also WrappedTable
-    protected final Query<R> cacheNewValue(Type type, String queryStr, Object helper)
+    protected final Object cacheNewValue(Type type, Object key, Object helper)
         throws IOException
     {
         if (type != Type1) {
             throw new AssertionError();
         }
 
+        var queryStr = (String) key;
         Query<R> query = mSource.query(fuseQuery(queryStr));
 
         return new Query<R>() {

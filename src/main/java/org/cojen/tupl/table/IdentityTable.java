@@ -41,7 +41,7 @@ import org.cojen.tupl.Updater;
 import org.cojen.tupl.diag.QueryPlan;
 
 import org.cojen.tupl.table.expr.Cardinality;
-import org.cojen.tupl.table.expr.CompiledQueryCache;
+import org.cojen.tupl.table.expr.CompiledQuery;
 import org.cojen.tupl.table.expr.Parser;
 
 import org.cojen.tupl.table.filter.FalseFilter;
@@ -55,9 +55,13 @@ import org.cojen.tupl.table.filter.QuerySpec;
  *
  * @author Brian S. O'Neill
  */
-public final class IdentityTable implements Table<Row>, Query<Row> {
+public final class IdentityTable extends MultiCache<Object, Object, Object, IOException>
+    implements Table<Row>, Query<Row>
+{
     // Singleton instance.
     public static final IdentityTable THE = new IdentityTable();
+
+    private static volatile EmptyQuery<Row> cEmptyQuery;
 
     private static final MethodHandle NEW_ROW;
 
@@ -71,8 +75,6 @@ public final class IdentityTable implements Table<Row>, Query<Row> {
             throw RowUtils.rethrow(e);
         }
     }
-
-    private final CompiledQueryCache mDerivedCache = new CompiledQueryCache();
 
     private IdentityTable() {
     }
@@ -137,13 +139,9 @@ public final class IdentityTable implements Table<Row>, Query<Row> {
     }
 
     @Override
-    public Scanner<Row> newScanner(Row row, Transaction txn, String query, Object... args) {
-        return findsAnything(query) ? new ScanOne(row) : EmptyScanner.the();
-    }
-
-    @Override
-    public Query<Row> query(String query) {
-        return findsAnything(query) ? this : new EmptyQuery<>(Row.class);
+    @SuppressWarnings("unchecked")
+    public Query<Row> query(String query) throws IOException {
+        return (Query<Row>) cacheObtain(Type1, query, this);
     }
 
     @Override
@@ -156,11 +154,6 @@ public final class IdentityTable implements Table<Row>, Query<Row> {
         return true;
     }
 
-    @Override
-    public boolean anyRows(Row row, Transaction txn, String query, Object... args) {
-        return findsAnything(query);
-    }
-       
     @Override
     public Transaction newTransaction(DurabilityMode durabilityMode) {
         throw new UnsupportedOperationException();
@@ -182,13 +175,10 @@ public final class IdentityTable implements Table<Row>, Query<Row> {
     }
 
     @Override
-    public Table<Row> view(String query, Object... args) {
-        return findsAnything(query) ? this : ViewedTable.view(this, query, args);
-    }
-
-    @Override
+    @SuppressWarnings("unchecked")
     public Table<Row> derive(String query, Object... args) throws IOException {
-        return mDerivedCache.obtain(query, this).table(args);
+        // See the cacheNewValue method.
+        return ((CompiledQuery<Row>) cacheObtain(Type2, query, this)).table(args);
     }
 
     @Override
@@ -255,9 +245,25 @@ public final class IdentityTable implements Table<Row>, Query<Row> {
         return new QueryPlan.Identity();
     }
 
-    private static boolean findsAnything(String query) {
-        // FIXME: The Parser needs to have a cache.
-        return Parser.parse(query).type().cardinality() != Cardinality.ZERO;
+    @Override // MultiCache
+    protected Object cacheNewValue(Type type, Object key, Object helper) throws IOException {
+        if (type == Type1) { // see the query method
+            var queryStr = (String) key;
+            if (Parser.parse(queryStr).type().cardinality() != Cardinality.ZERO) {
+                return this;
+            }
+            EmptyQuery<Row> empty = cEmptyQuery;
+            if (empty == null) {
+                cEmptyQuery = empty = new EmptyQuery<>(Row.class);
+            }
+            return empty;
+        }
+
+        if (type == Type2) { // see the derive method
+            return CompiledQuery.makeDerived(this, type, key, helper);
+        }
+
+        throw new AssertionError();
     }
 
     private static final class ScanOne implements Scanner<Row> {

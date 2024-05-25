@@ -24,16 +24,19 @@ import java.util.Set;
 
 import org.cojen.tupl.DurabilityMode;
 import org.cojen.tupl.Query;
+import org.cojen.tupl.Row;
 import org.cojen.tupl.Scanner;
 import org.cojen.tupl.Table;
 import org.cojen.tupl.Transaction;
+
+import org.cojen.tupl.table.expr.CompiledQuery;
 
 /**
  * @param <S> source row type
  * @param <T> target row type
  * @author Brian S. O'Neill
  */
-public abstract class WrappedTable<S, T> extends MultiCache<String, Query<T>, Object, IOException>
+public abstract class WrappedTable<S, T> extends MultiCache<Object, Object, Object, IOException>
     implements Table<T>
 {
     protected final Table<S> mSource;
@@ -82,7 +85,14 @@ public abstract class WrappedTable<S, T> extends MultiCache<String, Query<T>, Ob
     }
 
     @Override
+    @SuppressWarnings("unchecked")
     public final Query<T> query(String query) throws IOException {
-        return cacheObtain(Type1, query, null);
+        return (Query<T>) cacheObtain(Type1, query, null);
+    }
+
+    @Override
+    @SuppressWarnings("unchecked")
+    public Table<Row> derive(String query, Object... args) throws IOException {
+        return ((CompiledQuery<Row>) cacheObtain(Type2, query, this)).table(args);
     }
 }

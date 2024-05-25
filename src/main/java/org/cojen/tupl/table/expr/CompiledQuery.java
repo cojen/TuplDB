@@ -21,13 +21,17 @@ import java.io.IOException;
 
 import java.util.stream.Stream;
 
+import org.cojen.tupl.Row;
 import org.cojen.tupl.Scanner;
 import org.cojen.tupl.Table;
 import org.cojen.tupl.Transaction;
 import org.cojen.tupl.Updater;
 
+import org.cojen.tupl.core.TupleKey;
+
 import org.cojen.tupl.diag.QueryPlan;
 
+import org.cojen.tupl.table.MultiCache;
 import org.cojen.tupl.table.QueryLauncher;
 import org.cojen.tupl.table.RowUtils;
 import org.cojen.tupl.table.RowWriter;
@@ -133,6 +137,31 @@ public abstract class CompiledQuery<R> extends QueryLauncher<R> {
                 table.close();
             }
         };
+    }
+
+    /**
+     * Make a new or cached CompiledQuery instance, suitable for queries which derive new
+     * columns.
+     *
+     * @param cache stores canonical CompiledQuery instances
+     * @param type type to be passed to the cache instance
+     * @param key must be a query string
+     * @param helper must be a Table instance
+     */
+    @SuppressWarnings("unchecked")
+    public static CompiledQuery<Row> makeDerived
+        (MultiCache<? super TupleKey,? super CompiledQuery,? super RelationExpr,IOException> cache,
+         MultiCache.Type type, Object key, Object helper)
+        throws IOException
+    {
+        if (key instanceof TupleKey) {
+            return ((RelationExpr) helper).makeCompiledRowQuery();
+        }
+        var queryStr = (String) key;
+        RelationExpr expr = Parser.parse((Table) helper, queryStr);
+        // Obtain the canonical instance and map to that.
+        TupleKey canonicalKey = expr.makeKey();
+        return (CompiledQuery<Row>) cache.cacheObtain(type, canonicalKey, expr);
     }
 
     public static abstract class Wrapped<R> extends CompiledQuery<R> {
