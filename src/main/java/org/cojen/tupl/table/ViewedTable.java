@@ -172,17 +172,12 @@ public abstract sealed class ViewedTable<R> extends WrappedTable<R, R> {
 
     private SoftReference<QuerySpec> mQueryRef;
 
-    private volatile SoftCache<String, String, Object> mFusedQueries;
-    private static final VarHandle cFusedQueriesHandle;
-
     private Helper<R> mHelper;
     private static final VarHandle cHelperHandle;
 
     static {
         try {
             var lookup = MethodHandles.lookup();
-            cFusedQueriesHandle = lookup.findVarHandle
-                (ViewedTable.class, "mFusedQueries", SoftCache.class);
             cHelperHandle = lookup.findVarHandle(ViewedTable.class, "mHelper", Helper.class);
         } catch (Throwable e) {
             throw RowUtils.rethrow(e);
@@ -285,58 +280,87 @@ public abstract sealed class ViewedTable<R> extends WrappedTable<R, R> {
     protected final Object cacheNewValue(Type type, Object key, Object helper)
         throws IOException
     {
-        if (type != Type1) {
-            throw new AssertionError();
+        if (type == Type1) { // see the inherited query method
+            var queryStr = (String) key;
+            Query<R> query = mSource.query(fuseQuery(queryStr));
+
+            return new Query<R>() {
+                @Override
+                public Class<R> rowType() {
+                    return ViewedTable.this.rowType();
+                }
+
+                @Override
+                public int argumentCount() {
+                    return mMaxArg + query.argumentCount();
+                }
+
+                @Override
+                public Scanner<R> newScanner(R row, Transaction txn, Object... args)
+                    throws IOException
+                {
+                    return query.newScanner(row, txn, fuseArguments(args));
+                }
+
+                @Override
+                public Updater<R> newUpdater(R row, Transaction txn, Object... args)
+                    throws IOException
+                {
+                    return applyChecks(query.newUpdater(row, txn, fuseArguments(args)));
+                }
+
+                @Override
+                public boolean anyRows(Transaction txn, Object... args) throws IOException {
+                    return query.anyRows(txn, fuseArguments(args));
+                }
+
+                @Override
+                public boolean anyRows(R row, Transaction txn, Object... args) throws IOException {
+                    return query.anyRows(row, txn, fuseArguments(args));
+                }
+
+                @Override
+                public QueryPlan scannerPlan(Transaction txn, Object... args) throws IOException {
+                    return query.scannerPlan(txn, fuseArguments(args));
+                }
+
+                @Override
+                public QueryPlan updaterPlan(Transaction txn, Object... args) throws IOException {
+                    return query.updaterPlan(txn, fuseArguments(args));
+                }
+            };
         }
 
-        var queryStr = (String) key;
-        Query<R> query = mSource.query(fuseQuery(queryStr));
+        if (type == Type3) { // see the fuseQuery method
+            var queryStr = (String) key;
 
-        return new Query<R>() {
-            @Override
-            public Class<R> rowType() {
-                return ViewedTable.this.rowType();
-            }
+            QuerySpec thisQuery = querySpec();
 
-            @Override
-            public int argumentCount() {
-                return mMaxArg + query.argumentCount();
-            }
-
-            @Override
-            public Scanner<R> newScanner(R row, Transaction txn, Object... args)
-                throws IOException
+            Set<String> availSet;
             {
-                return query.newScanner(row, txn, fuseArguments(args));
+                Map<String, ColumnInfo> availMap = thisQuery.projection();
+                availSet = availMap == null ? null : availMap.keySet();
             }
 
-            @Override
-            public Updater<R> newUpdater(R row, Transaction txn, Object... args)
-                throws IOException
-            {
-                return applyChecks(query.newUpdater(row, txn, fuseArguments(args)));
+            QuerySpec otherQuery = Parser.parseQuerySpec(mMaxArg, rowType(), availSet, queryStr);
+
+            Map<String, ColumnInfo> projection = otherQuery.projection();
+
+            if (projection == null) {
+                projection = thisQuery.projection();
             }
 
-            @Override
-            public boolean anyRows(Transaction txn, Object... args) throws IOException {
-                return query.anyRows(txn, fuseArguments(args));
+            OrderBy orderBy = otherQuery.orderBy();
+            if (orderBy == null && thisQuery.orderBy() != null) {
+                orderBy = thisQuery.orderBy().truncate(projection);
             }
 
-            @Override
-            public boolean anyRows(R row, Transaction txn, Object... args) throws IOException {
-                return query.anyRows(row, txn, fuseArguments(args));
-            }
+            RowFilter filter = thisQuery.filter().and(otherQuery.filter());
 
-            @Override
-            public QueryPlan scannerPlan(Transaction txn, Object... args) throws IOException {
-                return query.scannerPlan(txn, fuseArguments(args));
-            }
+            return new QuerySpec(projection, orderBy, filter).toString();
+        }
 
-            @Override
-            public QueryPlan updaterPlan(Transaction txn, Object... args) throws IOException {
-                return query.updaterPlan(txn, fuseArguments(args));
-            }
-        };
+        throw new AssertionError();
     }
 
     /**
@@ -357,53 +381,9 @@ public abstract sealed class ViewedTable<R> extends WrappedTable<R, R> {
      * Fuse this view's query specification with the one given. The arguments of the given
      * query are incremented by mMaxArg.
      */
-    protected final String fuseQuery(String queryStr) {
-        SoftCache<String, String, Object> cache = mFusedQueries;
-
-        if (cache == null) {
-            cache = new SoftCache<>() {
-                @Override
-                public String newValue(String queryStr, Object unused) {
-                    return doFuseQuery(queryStr).toString();
-                }
-            };
-
-            var actual = (SoftCache<String, String, Object>)
-                cFusedQueriesHandle.compareAndExchange(this, null, cache);
-
-            if (actual != null) {
-                cache = actual;
-            }
-        }
-
-        return cache.obtain(queryStr, null);
-    }
-
-    private QuerySpec doFuseQuery(String queryStr) {
-        QuerySpec thisQuery = querySpec();
-
-        Set<String> availSet;
-        {
-            Map<String, ColumnInfo> availMap = thisQuery.projection();
-            availSet = availMap == null ? null : availMap.keySet();
-        }
-
-        QuerySpec otherQuery = Parser.parseQuerySpec(mMaxArg, rowType(), availSet, queryStr);
-
-        Map<String, ColumnInfo> projection = otherQuery.projection();
-
-        if (projection == null) {
-            projection = thisQuery.projection();
-        }
-
-        OrderBy orderBy = otherQuery.orderBy();
-        if (orderBy == null && thisQuery.orderBy() != null) {
-            orderBy = thisQuery.orderBy().truncate(projection);
-        }
-
-        RowFilter filter = thisQuery.filter().and(otherQuery.filter());
-
-        return new QuerySpec(projection, orderBy, filter);
+    protected final String fuseQuery(String queryStr) throws IOException {
+        // See the cacheNewValue method.
+        return (String) cacheObtain(Type3, queryStr, null);
     }
 
     /**
