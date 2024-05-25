@@ -375,20 +375,22 @@ public abstract sealed class ViewedTable<R> extends WrappedTable<R, R> {
             allColumns = RowInfo.find(rowType()).allColumns;
         }
 
-        QuerySpec query = new Parser(allColumns, queryStr, mMaxArg).parseQuery(null);
+        QuerySpec otherQuery = new Parser(allColumns, queryStr, mMaxArg).parseQuery(null);
 
-        Map<String, ColumnInfo> projection = query.projection();
+        OrderBy orderBy = otherQuery.orderBy();
+
+        if (orderBy == null) {
+            otherQuery = otherQuery.withOrderBy(thisQuery.orderBy());
+            orderBy = otherQuery.orderBy();
+        }
+
+        Map<String, ColumnInfo> projection = otherQuery.projection();
 
         if (projection == null) {
             projection = thisQuery.projection();
         }
-
-        OrderBy orderBy = query.orderBy();
-        if (orderBy == null && thisQuery.orderBy() != null) {
-            orderBy = thisQuery.orderBy().truncate(projection);
-        }
-
-        RowFilter filter = thisQuery.filter().and(query.filter());
+		
+		RowFilter filter = thisQuery.filter().and(otherQuery.filter());
 
         return new QuerySpec(projection, orderBy, filter);
     }
