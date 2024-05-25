@@ -23,6 +23,8 @@ import java.lang.ref.Reference;
 import java.lang.ref.ReferenceQueue;
 import java.lang.ref.SoftReference;
 
+import java.util.function.Consumer;
+
 import org.cojen.tupl.util.Latch;
 
 /**
@@ -40,7 +42,15 @@ public abstract class MultiCache<K, V, H, X extends Throwable> extends Reference
                                              ReferenceQueue<Object> queue);
     }
 
-    public static final Type Type1 = new Type1(), Type2 = new Type2(), Type3 = new Type3();
+    /** Cache key type typically used by Table.query implementations. */
+    public static final Type Type1 = new Type1();
+
+    /** Cache key type typically used by Table.derive implementations. */
+    public static final Type Type2 = new Type2();
+
+    public static final Type Type3 = new Type3();
+
+    public static final Type Type4 = new Type4();
 
     private Entry<K, V>[] mEntries;
     private int mSize;
@@ -56,6 +66,44 @@ public abstract class MultiCache<K, V, H, X extends Throwable> extends Reference
         if (mSize != 0 || mEntries.length != 2) {
             mEntries = new Entry[2];
             mSize = 0;
+        }
+    }
+
+    /**
+     * Clears the cache and then calls the consumer for each value that was in the cache.
+     */
+    public void cacheClear(Consumer<V> c) {
+        Entry<K, V>[] entries;
+        int size;
+
+        synchronized (this) {
+            entries = mEntries;
+            size = mSize;
+            cacheClear();
+        }
+
+        if (size > 0) {
+            cacheTraverse(entries, c);
+        }
+    }
+
+    /**
+     * Traverse all values while synchronized.
+     */
+    public synchronized void cacheTraverse(Consumer<V> c) {
+        if (mSize > 0) {
+            cacheTraverse(mEntries, c);
+        }
+    }
+
+    private static <K, V> void cacheTraverse(Entry<K, V>[] entries, Consumer<V> c) {
+        for (int i=0; i<entries.length; i++) {
+            for (var e = entries[i]; e != null; e = e.mNext) {
+                V value = e.get();
+                if (value != null) {
+                    c.accept(value);
+                }
+            }
         }
     }
 
@@ -365,6 +413,29 @@ public abstract class MultiCache<K, V, H, X extends Throwable> extends Reference
 
     private static final class Type3Entry<K, V> extends Entry<K, V> {
         Type3Entry(K key, V value, int hash, ReferenceQueue<Object> queue) {
+            super(key, value, hash, queue);
+        }
+    }
+
+    private static final class Type4 extends Type {
+        @Override
+        int hash(int hash) {
+            return hash * 1104993829;
+        }
+
+        @Override
+        <K> boolean matches(Entry<K, ?> entry, K key) {
+            return entry instanceof Type4Entry && entry.mKey.equals(key);
+        }
+
+        @Override
+        <K, V> Entry<K, V> newEntry(K key, V value, int hash, ReferenceQueue<Object> queue) {
+            return new Type4Entry<>(key, value, hash, queue);
+        }
+    }
+
+    private static final class Type4Entry<K, V> extends Entry<K, V> {
+        Type4Entry(K key, V value, int hash, ReferenceQueue<Object> queue) {
             super(key, value, hash, queue);
         }
     }

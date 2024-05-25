@@ -91,30 +91,6 @@ public abstract class BaseTable<R>
     static final int PLAIN = 0b00, DOUBLE_CHECK = 0b01,
         FOR_UPDATE = 0b10, FOR_UPDATE_DOUBLE_CHECK = FOR_UPDATE | DOUBLE_CHECK;
 
-    // Short lived helper, used by QueryCache.
-    private record ParsedQuery(String queryStr, RelationExpr expr) { }
-
-    class QueryCache extends SoftCache<Object, QueryLauncher<R>, ParsedQuery> {
-        @Override
-        public QueryLauncher<R> newValue(Object queryOrKey, ParsedQuery pq) {
-            if (queryOrKey instanceof TupleKey) {
-                try {
-                    return BaseQueryLauncher.make(BaseTable.this, pq.queryStr(), pq.expr());
-                } catch (IOException e) {
-                    throw Utils.rethrow(e);
-                }
-            }
-            String queryStr = (String) queryOrKey;
-            assert pq == null;
-            RelationExpr expr = BaseQueryLauncher.parse(BaseTable.this, queryStr);
-            // Obtain the canonical instance and map to that.
-            TupleKey key = expr.makeKey();
-            return obtain(key, new ParsedQuery(queryStr, expr));
-        }
-    }
-
-    private final QueryCache mQueryCache;
-
     private Trigger<R> mTrigger;
     private static final VarHandle cTriggerHandle;
 
@@ -146,15 +122,9 @@ public abstract class BaseTable<R>
         mIndexLock = Objects.requireNonNull(indexLock);
 
         if (supportsSecondaries()) {
-            mQueryCache = new QueryCache();
-
             var trigger = new Trigger<R>();
             trigger.mMode = Trigger.SKIP;
             cTriggerHandle.setRelease(this, trigger);
-        } else {
-            // This table implements a secondary index which doesn't join to the primary table,
-            // and it's not expected to be directly queried.
-            mQueryCache = null;
         }
     }
 
@@ -236,7 +206,7 @@ public abstract class BaseTable<R>
     {
         // Might need to double check the filter after joining to the primary, in case there
         // were any changes after the secondary entry was loaded. See cacheNewValue.
-        MultiCache.Type cacheType = RowUtils.isUnlocked(txn) ? Type2 : Type1;
+        MultiCache.Type cacheType = RowUtils.isUnlocked(txn) ? Type4 : Type3;
         return (ScanControllerFactory<R>) cacheObtain(cacheType, queryStr, null);
     }
 
@@ -350,13 +320,14 @@ public abstract class BaseTable<R>
         // needed with READ_UNCOMMITTED, because the updater for it still acquires locks. Also
         // note that FOR_UPDATE isn't used, because mFilterFactoryCache doesn't support it.
         // See cacheNewValue.
-        MultiCache.Type cacheType = RowUtils.isUnsafe(txn) ? Type2 : Type1;
+        MultiCache.Type cacheType = RowUtils.isUnsafe(txn) ? Type4 : Type3;
         return (ScanControllerFactory<R>) cacheObtain(cacheType, queryStr, null);
     }
 
     @Override
+    @SuppressWarnings("unchecked")
     public QueryLauncher<R> query(String queryStr) throws IOException {
-        return mQueryCache.obtain(queryStr, null);
+        return (QueryLauncher<R>) cacheObtain(Type1, queryStr, null);
     }
 
     @Override
@@ -510,15 +481,15 @@ public abstract class BaseTable<R>
         // forces any in-progress scans to abort. Scans over sorted results aren't necessarily
         // affected, athough it would be nice if those always aborted too.
 
-        if (mQueryCache != null) {
-            mQueryCache.clear(launcher -> {
+        cacheClear(value -> {
+            if (value instanceof QueryLauncher launcher) {
                 try {
                     launcher.closeIndexes();
                 } catch (IOException e) {
                     throw Utils.rethrow(e);
                 }
-            });
-        }
+            }
+        });
     }
 
     @Override
@@ -601,9 +572,9 @@ public abstract class BaseTable<R>
     {
         factory: {
             int type;
-            if (cacheType == MultiCache.Type1) {
+            if (cacheType == MultiCache.Type3) {
                 type = PLAIN;
-            } else if (cacheType == MultiCache.Type2) {
+            } else if (cacheType == MultiCache.Type4) {
                 type = DOUBLE_CHECK;
             } else {
                 break factory;
@@ -615,15 +586,31 @@ public abstract class BaseTable<R>
             return newFilteredFactory(type, queryStr, spec);
         }
 
-        if (cacheType == MultiCache.Type3) { // see the derive method
+        if (cacheType == MultiCache.Type1) { // see the query method
+            if (key instanceof TupleKey) {
+                var pq = (ParsedQuery) helper;
+                return BaseQueryLauncher.make(BaseTable.this, pq.queryStr(), pq.expr());
+            }
+            String queryStr = (String) key;
+            assert helper == null;
+            RelationExpr expr = BaseQueryLauncher.parse(BaseTable.this, queryStr);
+            // Obtain the canonical instance and map to that.
+            TupleKey canonicalKey = expr.makeKey();
+            return cacheObtain(cacheType, canonicalKey, new ParsedQuery(queryStr, expr));
+        }
+
+        if (cacheType == MultiCache.Type2) { // see the derive method
             return CompiledQuery.makeDerived(this, cacheType, key, helper);
         }
 
         throw new AssertionError();
     }
 
+    // Short lived helper, used by cacheNewValue.
+    private record ParsedQuery(String queryStr, RelationExpr expr) { }
+
     private static MultiCache.Type toCacheType(int type) {
-        return (type & ~FOR_UPDATE) == PLAIN ? MultiCache.Type1 : MultiCache.Type2;
+        return (type & ~FOR_UPDATE) == PLAIN ? MultiCache.Type3 : MultiCache.Type4;
     }
 
     /**
@@ -878,9 +865,11 @@ public abstract class BaseTable<R>
      * To be called when the set of available secondary indexes and alternate keys has changed.
      */
     void clearQueryCache() {
-        if (mQueryCache != null) {
-            mQueryCache.traverse(QueryLauncher::clearCache);
-        }
+        cacheTraverse(value -> {
+            if (value instanceof QueryLauncher launcher) {
+                launcher.clearCache();
+            }
+        });
     }
 
     /**
