@@ -20,7 +20,6 @@ package org.cojen.tupl.table;
 import java.lang.invoke.VarHandle;
 
 import java.lang.ref.Reference;
-import java.lang.ref.ReferenceQueue;
 import java.lang.ref.SoftReference;
 
 import org.cojen.tupl.util.Latch;
@@ -30,14 +29,13 @@ import org.cojen.tupl.util.Latch;
  *
  * @author Brian S. O'Neill
  */
-public abstract class MultiCache<K, V, H, X extends Throwable> extends ReferenceQueue<Object> {
+public abstract class MultiCache<K, V, H, X extends Throwable> {
     public static sealed abstract class Type {
         abstract int hash(int hash);
 
         abstract <K> boolean matches(Entry<K, ?> entry, K key);
 
-        abstract <K, V> Entry<K, V> newEntry(K key, V value, int hash,
-                                             ReferenceQueue<Object> queue);
+        abstract <K, V> Entry<K, V> newEntry(K key, V value, int hash);
     }
 
     public static final Type Type1 = new Type1(), Type2 = new Type2();
@@ -64,13 +62,6 @@ public abstract class MultiCache<K, V, H, X extends Throwable> extends Reference
      * Double check with synchronization.
      */
     public final V cacheGet(Type type, K key) {
-        Object ref = poll();
-        if (ref != null) {
-            synchronized (this) {
-                cleanup(ref);
-            }
-        }
-
         var entries = mEntries;
         int hash = type.hash(key.hashCode());
         int index = hash & (entries.length - 1);
@@ -149,11 +140,6 @@ public abstract class MultiCache<K, V, H, X extends Throwable> extends Reference
 
     @SuppressWarnings("unchecked")
     public synchronized final void cachePut(Type type, K key, V value) {
-        Object ref = poll();
-        if (ref != null) {
-            cleanup(ref);
-        }
-
         var entries = mEntries;
         int hash = type.hash(key.hashCode());
         int index = hash & (entries.length - 1);
@@ -161,7 +147,7 @@ public abstract class MultiCache<K, V, H, X extends Throwable> extends Reference
         for (Entry<K, V> e = entries[index], prev = null; e != null; e = e.mNext) {
             if (type.matches(e, key)) {
                 e.clear();
-                var newEntry = type.newEntry(key, value, hash, this);
+                var newEntry = type.newEntry(key, value, hash);
                 if (prev == null) {
                     newEntry.mNext = e.mNext;
                 } else {
@@ -197,7 +183,7 @@ public abstract class MultiCache<K, V, H, X extends Throwable> extends Reference
             index = hash & (entries.length - 1);
         }
 
-        var newEntry = type.newEntry(key, value, hash, this);
+        var newEntry = type.newEntry(key, value, hash);
         newEntry.mNext = entries[index];
         VarHandle.storeStoreFence(); // ensure that entry value is safely visible
         entries[index] = newEntry;
@@ -223,11 +209,6 @@ public abstract class MultiCache<K, V, H, X extends Throwable> extends Reference
                 prev = e;
             }
         }
-
-        Object ref = poll();
-        if (ref != null) {
-            cleanup(ref);
-        }
     }
 
     /**
@@ -235,41 +216,14 @@ public abstract class MultiCache<K, V, H, X extends Throwable> extends Reference
      */
     protected abstract V cacheNewValue(Type type, K key, H helper) throws X;
 
-    /**
-     * Caller must be synchronized.
-     *
-     * @param ref not null
-     */
-    @SuppressWarnings({"unchecked"})
-    private void cleanup(Object ref) {
-        var entries = mEntries;
-        do {
-            var cleared = (Entry<K, V>) ref;
-            int ix = cleared.mHash & (entries.length - 1);
-            for (Entry<K, V> e = entries[ix], prev = null; e != null; e = e.mNext) {
-                if (e == cleared) {
-                    if (prev == null) {
-                        entries[ix] = e.mNext;
-                    } else {
-                        prev.mNext = e.mNext;
-                    }
-                    mSize--;
-                    break;
-                } else {
-                    prev = e;
-                }
-            }
-        } while ((ref = poll()) != null);
-    }
-
     private static sealed abstract class Entry<K, V> extends SoftReference<V> {
         final K mKey;
         final int mHash;
 
         Entry<K, V> mNext;
 
-        Entry(K key, V value, int hash, ReferenceQueue<Object> queue) {
-            super(value, queue);
+        Entry(K key, V value, int hash) {
+            super(value);
             mKey = key;
             mHash = hash;
         }
@@ -289,14 +243,14 @@ public abstract class MultiCache<K, V, H, X extends Throwable> extends Reference
         }
 
         @Override
-        <K, V> Entry<K, V> newEntry(K key, V value, int hash, ReferenceQueue<Object> queue) {
-            return new LatchEntry<>(key, value, hash, queue);
+        <K, V> Entry<K, V> newEntry(K key, V value, int hash) {
+            return new LatchEntry<>(key, value, hash);
         }
     }
 
     private static final class LatchEntry<K, V> extends Entry<K, V> {
-        LatchEntry(K key, V value, int hash, ReferenceQueue<Object> queue) {
-            super(key, value, hash, queue);
+        LatchEntry(K key, V value, int hash) {
+            super(key, value, hash);
         }
     }
 
@@ -312,14 +266,14 @@ public abstract class MultiCache<K, V, H, X extends Throwable> extends Reference
         }
 
         @Override
-        <K, V> Entry<K, V> newEntry(K key, V value, int hash, ReferenceQueue<Object> queue) {
-            return new Type1Entry<>(key, value, hash, queue);
+        <K, V> Entry<K, V> newEntry(K key, V value, int hash) {
+            return new Type1Entry<>(key, value, hash);
         }
     }
 
     private static final class Type1Entry<K, V> extends Entry<K, V> {
-        Type1Entry(K key, V value, int hash, ReferenceQueue<Object> queue) {
-            super(key, value, hash, queue);
+        Type1Entry(K key, V value, int hash) {
+            super(key, value, hash);
         }
     }
 
@@ -335,14 +289,14 @@ public abstract class MultiCache<K, V, H, X extends Throwable> extends Reference
         }
 
         @Override
-        <K, V> Entry<K, V> newEntry(K key, V value, int hash, ReferenceQueue<Object> queue) {
-            return new Type2Entry<>(key, value, hash, queue);
+        <K, V> Entry<K, V> newEntry(K key, V value, int hash) {
+            return new Type2Entry<>(key, value, hash);
         }
     }
 
     private static final class Type2Entry<K, V> extends Entry<K, V> {
-        Type2Entry(K key, V value, int hash, ReferenceQueue<Object> queue) {
-            super(key, value, hash, queue);
+        Type2Entry(K key, V value, int hash) {
+            super(key, value, hash);
         }
     }
 }
