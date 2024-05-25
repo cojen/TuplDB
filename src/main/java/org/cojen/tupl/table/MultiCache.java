@@ -60,7 +60,7 @@ public abstract class MultiCache<K, V, H, X extends Throwable> {
     }
 
     @SuppressWarnings({"unchecked"})
-    public synchronized void cacheClear() {
+    public final synchronized void cacheClear() {
         if (mSize != 0 || mEntries.length != 2) {
             mEntries = new Entry[2];
             mSize = 0;
@@ -70,7 +70,7 @@ public abstract class MultiCache<K, V, H, X extends Throwable> {
     /**
      * Clears the cache and then calls the consumer for each value that was in the cache.
      */
-    public void cacheClear(Consumer<V> c) {
+    public final void cacheClear(Consumer<V> c) {
         Entry<K, V>[] entries;
         int size;
 
@@ -88,7 +88,7 @@ public abstract class MultiCache<K, V, H, X extends Throwable> {
     /**
      * Traverse all values while synchronized.
      */
-    public synchronized void cacheTraverse(Consumer<V> c) {
+    public final synchronized void cacheTraverse(Consumer<V> c) {
         if (mSize > 0) {
             cacheTraverse(mEntries, c);
         }
