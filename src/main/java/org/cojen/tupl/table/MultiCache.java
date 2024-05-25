@@ -22,6 +22,8 @@ import java.lang.invoke.VarHandle;
 import java.lang.ref.Reference;
 import java.lang.ref.SoftReference;
 
+import java.util.function.Consumer;
+
 import org.cojen.tupl.util.Latch;
 
 /**
@@ -38,7 +40,11 @@ public abstract class MultiCache<K, V, H, X extends Throwable> {
         abstract <K, V> Entry<K, V> newEntry(K key, V value, int hash);
     }
 
-    public static final Type Type1 = new Type1(), Type2 = new Type2();
+    /** Cache key type typically used by Table.query implementations. */
+    public static final Type Type1 = new Type1();
+
+    /** Cache key type typically used by Table.derive implementations. */
+    public static final Type Type2 = new Type2();
 
     private Entry<K, V>[] mEntries;
     private int mSize;
@@ -50,10 +56,48 @@ public abstract class MultiCache<K, V, H, X extends Throwable> {
     }
 
     @SuppressWarnings({"unchecked"})
-    public synchronized void cacheClear() {
+    public final synchronized void cacheClear() {
         if (mSize != 0 || mEntries.length != 2) {
             mEntries = new Entry[2];
             mSize = 0;
+        }
+    }
+
+    /**
+     * Clears the cache and then calls the consumer for each value that was in the cache.
+     */
+    public final void cacheClear(Consumer<V> c) {
+        Entry<K, V>[] entries;
+        int size;
+
+        synchronized (this) {
+            entries = mEntries;
+            size = mSize;
+            cacheClear();
+        }
+
+        if (size > 0) {
+            cacheTraverse(entries, c);
+        }
+    }
+
+    /**
+     * Traverse all values while synchronized.
+     */
+    public final synchronized void cacheTraverse(Consumer<V> c) {
+        if (mSize > 0) {
+            cacheTraverse(mEntries, c);
+        }
+    }
+
+    private static <K, V> void cacheTraverse(Entry<K, V>[] entries, Consumer<V> c) {
+        for (int i=0; i<entries.length; i++) {
+            for (var e = entries[i]; e != null; e = e.mNext) {
+                V value = e.get();
+                if (value != null) {
+                    c.accept(value);
+                }
+            }
         }
     }
 
