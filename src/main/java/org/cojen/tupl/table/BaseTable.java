@@ -56,7 +56,7 @@ import org.cojen.tupl.diag.EventListener;
 import org.cojen.tupl.diag.EventType;
 import org.cojen.tupl.diag.QueryPlan;
 
-import org.cojen.tupl.table.expr.CompiledQueryCache;
+import org.cojen.tupl.table.expr.CompiledQuery;
 import org.cojen.tupl.table.expr.Parser;
 import org.cojen.tupl.table.expr.RelationExpr;
 
@@ -80,7 +80,7 @@ import static java.util.Spliterator.*;
  * @author Brian S O'Neill
  */
 public abstract class BaseTable<R>
-    extends MultiCache<String, ScanControllerFactory<R>, QuerySpec, RuntimeException>
+    extends MultiCache<Object, Object, Object, IOException>
     implements Table<R>, ScanControllerFactory<R>
 {
     final TableManager<R> mTableManager;
@@ -114,8 +114,6 @@ public abstract class BaseTable<R>
     }
 
     private final QueryCache mQueryCache;
-
-    private final CompiledQueryCache mDerivedCache = new CompiledQueryCache();
 
     private Trigger<R> mTrigger;
     private static final VarHandle cTriggerHandle;
@@ -232,11 +230,14 @@ public abstract class BaseTable<R>
         return newScanner(row, txn, scannerFilteredFactory(txn, queryStr).scanController(args));
     }
 
-    private ScanControllerFactory<R> scannerFilteredFactory(Transaction txn, String queryStr) {
+    @SuppressWarnings("unchecked")
+    private ScanControllerFactory<R> scannerFilteredFactory(Transaction txn, String queryStr)
+        throws IOException
+    {
         // Might need to double check the filter after joining to the primary, in case there
         // were any changes after the secondary entry was loaded. See cacheNewValue.
         MultiCache.Type cacheType = RowUtils.isUnlocked(txn) ? Type2 : Type1;
-        return cacheObtain(cacheType, queryStr, null);
+        return (ScanControllerFactory<R>) cacheObtain(cacheType, queryStr, null);
     }
 
     @Override
@@ -340,14 +341,17 @@ public abstract class BaseTable<R>
         return newUpdater(row, txn, updaterFilteredFactory(txn, queryStr).scanController(args));
     }
 
-    private ScanControllerFactory<R> updaterFilteredFactory(Transaction txn, String queryStr) {
+    @SuppressWarnings("unchecked")
+    private ScanControllerFactory<R> updaterFilteredFactory(Transaction txn, String queryStr)
+        throws IOException
+    {
         // Might need to double check the filter after joining to the primary, in case there
         // were any changes after the secondary entry was loaded. Note that no double check is
         // needed with READ_UNCOMMITTED, because the updater for it still acquires locks. Also
         // note that FOR_UPDATE isn't used, because mFilterFactoryCache doesn't support it.
         // See cacheNewValue.
         MultiCache.Type cacheType = RowUtils.isUnsafe(txn) ? Type2 : Type1;
-        return cacheObtain(cacheType, queryStr, null);
+        return (ScanControllerFactory<R>) cacheObtain(cacheType, queryStr, null);
     }
 
     @Override
@@ -356,8 +360,10 @@ public abstract class BaseTable<R>
     }
 
     @Override
+    @SuppressWarnings("unchecked")
     public final Table<Row> derive(String query, Object... args) throws IOException {
-        return mDerivedCache.obtain(query, this).table(args);
+        // See the cacheNewValue method.
+        return ((CompiledQuery<Row>) cacheObtain(MultiCache.Type3, query, this)).table(args);
     }
 
     @Override
@@ -590,14 +596,30 @@ public abstract class BaseTable<R>
     }
 
     @Override // MultiCache
-    public final ScanControllerFactory<R> cacheNewValue
-        (MultiCache.Type cacheType, String queryStr, QuerySpec query)
+    public final Object cacheNewValue(MultiCache.Type cacheType, Object key, Object helper)
+        throws IOException
     {
-        return newFilteredFactory(toQueryLauncherType(cacheType), queryStr, query);
-    }
+        factory: {
+            int type;
+            if (cacheType == MultiCache.Type1) {
+                type = PLAIN;
+            } else if (cacheType == MultiCache.Type2) {
+                type = DOUBLE_CHECK;
+            } else {
+                break factory;
+            }
 
-    private static int toQueryLauncherType(MultiCache.Type cacheType) {
-        return cacheType == MultiCache.Type1 ? PLAIN : DOUBLE_CHECK;
+            var queryStr = (String) key;
+            var spec = (QuerySpec) helper;
+
+            return newFilteredFactory(type, queryStr, spec);
+        }
+
+        if (cacheType == MultiCache.Type3) { // see the derive method
+            return CompiledQuery.makeDerived(this, cacheType, key, helper);
+        }
+
+        throw new AssertionError();
     }
 
     private static MultiCache.Type toCacheType(int type) {
@@ -610,6 +632,7 @@ public abstract class BaseTable<R>
      */
     @SuppressWarnings("unchecked")
     private ScanControllerFactory<R> newFilteredFactory(int type, String queryStr, QuerySpec query)
+        throws IOException
     {
         Class<?> rowType = rowType();
         RowInfo rowInfo = RowInfo.find(rowType);
@@ -647,7 +670,7 @@ public abstract class BaseTable<R>
         String canonical = query.toString();
         if (!canonical.equals(queryStr)) {
             // Don't actually return a specialized instance because it will be same.
-            return cacheObtain(toCacheType(type), canonical, query);
+            return (ScanControllerFactory<R>) cacheObtain(toCacheType(type), canonical, query);
         }
 
         var keyColumns = rowInfo.keyColumns.values().toArray(ColumnInfo[]::new);
@@ -821,12 +844,15 @@ public abstract class BaseTable<R>
     /**
      * @param type PLAIN, DOUBLE_CHECK, etc.
      */
-    private QueryLauncher<R> newSubLauncher(int type, IndexSelector<R> selector, int i) {
+    @SuppressWarnings("unchecked")
+    private QueryLauncher<R> newSubLauncher(int type, IndexSelector<R> selector, int i)
+        throws IOException
+    {
         BaseTable<R> subTable = selector.selectedIndexTable(i);
         QuerySpec subQuery = selector.selectedQuery(i);
         String subQueryStr = subQuery.toString();
 
-        ScanControllerFactory<R> subFactory = 
+        var subFactory = (ScanControllerFactory<R>)
             subTable.cacheObtain(toCacheType(type), subQueryStr, subQuery);
 
         if ((type & FOR_UPDATE) == 0 && subFactory.loadsOne()) {

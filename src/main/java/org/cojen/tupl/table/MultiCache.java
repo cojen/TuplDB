@@ -40,7 +40,7 @@ public abstract class MultiCache<K, V, H, X extends Throwable> extends Reference
                                              ReferenceQueue<Object> queue);
     }
 
-    public static final Type Type1 = new Type1(), Type2 = new Type2();
+    public static final Type Type1 = new Type1(), Type2 = new Type2(), Type3 = new Type3();
 
     private Entry<K, V>[] mEntries;
     private int mSize;
@@ -342,6 +342,29 @@ public abstract class MultiCache<K, V, H, X extends Throwable> extends Reference
 
     private static final class Type2Entry<K, V> extends Entry<K, V> {
         Type2Entry(K key, V value, int hash, ReferenceQueue<Object> queue) {
+            super(key, value, hash, queue);
+        }
+    }
+
+    private static final class Type3 extends Type {
+        @Override
+        int hash(int hash) {
+            return hash * 1702561261;
+        }
+
+        @Override
+        <K> boolean matches(Entry<K, ?> entry, K key) {
+            return entry instanceof Type3Entry && entry.mKey.equals(key);
+        }
+
+        @Override
+        <K, V> Entry<K, V> newEntry(K key, V value, int hash, ReferenceQueue<Object> queue) {
+            return new Type3Entry<>(key, value, hash, queue);
+        }
+    }
+
+    private static final class Type3Entry<K, V> extends Entry<K, V> {
+        Type3Entry(K key, V value, int hash, ReferenceQueue<Object> queue) {
             super(key, value, hash, queue);
         }
     }
