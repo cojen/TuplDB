@@ -18,6 +18,7 @@
 package org.cojen.tupl.table.expr;
 
 import java.math.BigInteger;
+import java.math.MathContext;
 
 import org.cojen.maker.MethodMaker;
 import org.cojen.maker.Variable;
@@ -543,10 +544,23 @@ final class Arithmetic {
 
     public static final class BigDecimal {
         static Variable eval(int op, Variable left, Variable right) {
-            return switch (op) {
-            case T_AND, T_OR, T_XOR -> null;
-                default -> Big.eval(op, left, right);
-            };
+            final String method;
+
+            switch (op) {
+            case T_AND: case T_OR: case T_XOR: return null;
+
+            case T_DIV:
+                method = "divide";
+                break;
+            case T_REM:
+                method = "remainder";
+                break;
+                
+            default: return Big.eval(op, left, right);
+            }
+
+            var contextVar = left.methodMaker().var(MathContext.class).field("DECIMAL64");
+            return left.invoke(method, right, contextVar);
         }
     }
 }
