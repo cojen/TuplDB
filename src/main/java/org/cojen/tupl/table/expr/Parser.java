@@ -42,18 +42,6 @@ import static org.cojen.tupl.table.expr.Token.*;
  * @author Brian S. O'Neill
  */
 public final class Parser {
-    /*
-
-      FIXME: Notes:
-
-      Can support sub queries with this entity variant: Path Projection [ Filter ]
-
-      The Parser should have a weak cache. The existing filter Parser can go away, and because
-      the Parser has a cache, any queries which can be implemented without mapping won't likely
-      be double parsed.
-
-     */
-
     public static RelationExpr parse(String query) throws QueryException {
         return parse((RelationExpr) null, query);
     }

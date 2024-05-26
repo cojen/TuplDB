@@ -22,6 +22,8 @@ import java.util.Objects;
 
 import java.util.function.Consumer;
 
+import org.cojen.maker.Label;
+import org.cojen.maker.MethodMaker;
 import org.cojen.maker.Variable;
 
 import org.cojen.tupl.table.ColumnInfo;
@@ -47,10 +49,15 @@ public abstract sealed class ColumnExpr extends Expr implements Named {
      * @param column can be null for wildcard
      */
     public static ColumnExpr make(int startPos, int endPos, ColumnExpr parent, Column column) {
+        if (parent.isNullable()) {
+            column = column.nullable();
+        }
         return new Sub(startPos, endPos, parent, column);
     }
 
     protected final Column mColumn;
+
+    protected boolean mHasSubColumns;
 
     protected ColumnExpr(int startPos, int endPos, Column column) {
         super(startPos, endPos);
@@ -157,9 +164,32 @@ public abstract sealed class ColumnExpr extends Expr implements Named {
 
         @Override
         public Variable makeEval(EvalContext context) {
+            if (mColumn == null) {
+                throw new UnsupportedOperationException();
+            }
+
             var resultRef = context.refFor(this);
             var result = resultRef.get();
-            return result != null ? result : resultRef.set(context.rowVar.invoke(name()));
+            if (result != null) {
+                return result;
+            }
+
+            result = resultRef.set(context.rowVar.invoke(mColumn.name()));
+
+            if (mHasSubColumns && isNullable()) {
+                // Define notNull/isNull labels for the sub columns to insert code into.
+                // See Sub.makeEval.
+                MethodMaker mm = context.methodMaker();
+                Label notNull = mm.label();
+                result.ifNe(null, notNull);
+                Label isNull = mm.label().here();
+                Label cont = mm.label().goto_();
+                notNull.here();
+                cont.here();
+                resultRef.attachment = new Label[] {notNull, isNull};
+            }
+
+            return result;
         }
 
         @Override
@@ -241,6 +271,7 @@ public abstract sealed class ColumnExpr extends Expr implements Named {
         Sub(int startPos, int endPos, ColumnExpr parent, Column column) {
             super(startPos, endPos, column);
             mParent = parent;
+            parent.mHasSubColumns = true;
         }
 
         @Override
@@ -273,8 +304,26 @@ public abstract sealed class ColumnExpr extends Expr implements Named {
                 throw new UnsupportedOperationException();
             }
 
-            // FIXME
-            throw null;
+            var resultRef = context.refFor(this);
+            var result = resultRef.get();
+            if (result != null) {
+                return result;
+            }
+
+            var parentVar = mParent.makeEval(context);
+            String subName = mColumn.name();
+
+            if (!mParent.isNullable()) {
+                return resultRef.set(parentVar.invoke(subName));
+            }
+
+            // Rather than checking if the parent was null or not each time, assign a
+            // not-null or null result within the parent code blocks. See Base.makeEval.
+            var labels = (Label[]) context.refFor(mParent).attachment;
+            labels[0].insert(() -> resultRef.set(parentVar.invoke(subName).box()));
+            labels[1].insert(() -> resultRef.get().set(null));
+
+            return resultRef.get();
         }
 
         @Override
@@ -394,79 +443,4 @@ public abstract sealed class ColumnExpr extends Expr implements Named {
             }
         }
     }
-
-    /* FIXME: remove / fold into the new Sub class
-
-
-        boolean nullable = false;
-        Sub sub = null;
-
-        for (String subName : mColumn.subNames()) {
-            Column subColumn = rowType.findColumn(subName);
-            Type subType = subColumn.type();
-            if (subType.isNullable()) {
-                nullable = true;
-            }
-            if (subType instanceof TupleType tt) {
-                rowType = tt;
-            }
-            sub = new Sub(sub, subColumn.name(), nullable);
-        }
-
-        mLastSub = sub;
-
-    private static final class Sub {
-        final Sub mParent;
-        final String mName;
-        final boolean mNullable;
-        Sub mNext;
-
-        Sub(Sub parent, String name, boolean nullable) {
-            mParent = parent;
-            mName = name;
-            mNullable = nullable;
-            if (parent != null) {
-                parent.mNext = this;
-            }
-        }
-
-        Variable makeEval(EvalContext context) {
-            var resultRef = context.refFor(this);
-            var result = resultRef.get();
-            if (result != null) {
-                return result;
-            }
-
-            final var baseVar = mParent == null ? context.rowVar : mParent.makeEval(context);
-
-            if (!mNullable) {
-                return resultRef.set(baseVar.invoke(mName));
-            }
-
-            if (mParent == null || !mParent.mNullable) {
-                resultRef.set(baseVar.invoke(mName));
-            } else {
-                // Rather than checking if the parent was null or not each time, assign a
-                // not-null or null result within the parent code blocks. See below.
-                var labels = (Label[]) context.refFor(mParent).attachment;
-                labels[0].insert(() -> resultRef.set(baseVar.invoke(mName).box()));
-                labels[1].insert(() -> resultRef.get().set(null));
-            }
-
-            if (mNext != null) {
-                // Define notNull/isNull labels for the next sub column to insert code into.
-                MethodMaker mm = context.methodMaker();
-                Label notNull = mm.label();
-                resultRef.get().ifNe(null, notNull);
-                Label isNull = mm.label().here();
-                Label cont = mm.label().goto_();
-                notNull.here();
-                cont.here();
-                resultRef.attachment = new Label[] {notNull, isNull};
-            }
-
-            return resultRef.get();
-        }
-    }
-    */
 }
