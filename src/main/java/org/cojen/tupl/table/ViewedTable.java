@@ -56,6 +56,7 @@ import org.cojen.tupl.core.TupleKey;
 
 import org.cojen.tupl.diag.QueryPlan;
 
+import org.cojen.tupl.table.expr.CompiledQuery;
 import org.cojen.tupl.table.expr.Parser;
 
 import org.cojen.tupl.table.filter.ColumnFilter;
@@ -272,8 +273,10 @@ public abstract sealed class ViewedTable<R> extends WrappedTable<R, R> {
     }
 
     @Override
+    @SuppressWarnings("unchecked")
     public final Table<Row> derive(String query, Object... args) throws IOException {
-        return mSource.derive(fuseQuery(query), fuseArguments(args));
+        // See the cacheNewValue method.
+        return ((CompiledQuery<Row>) cacheObtain(Type4, query, null)).table(fuseArguments(args));
     }
 
     @Override // MultiCache; see also WrappedTable
@@ -331,17 +334,17 @@ public abstract sealed class ViewedTable<R> extends WrappedTable<R, R> {
             };
         }
 
+        var queryStr = (String) key;
+
+        QuerySpec thisQuery = querySpec();
+
+        Set<String> availSet;
+        {
+            Map<String, ColumnInfo> availMap = thisQuery.projection();
+            availSet = availMap == null ? null : availMap.keySet();
+        }
+
         if (type == Type3) { // see the fuseQuery method
-            var queryStr = (String) key;
-
-            QuerySpec thisQuery = querySpec();
-
-            Set<String> availSet;
-            {
-                Map<String, ColumnInfo> availMap = thisQuery.projection();
-                availSet = availMap == null ? null : availMap.keySet();
-            }
-
             QuerySpec otherQuery = Parser.parseQuerySpec(mMaxArg, rowType(), availSet, queryStr);
 
             OrderBy orderBy = otherQuery.orderBy();
@@ -360,6 +363,10 @@ public abstract sealed class ViewedTable<R> extends WrappedTable<R, R> {
             RowFilter filter = thisQuery.filter().and(otherQuery.filter());
 
             return new QuerySpec(projection, orderBy, filter).toString();
+        }
+
+        if (type == Type4) { // see the derive method
+            return Parser.parse(mMaxArg, this, availSet, queryStr).makeCompiledRowQuery();
         }
 
         throw new AssertionError();

@@ -83,6 +83,23 @@ public final class Parser {
     }
 
     /**
+     * @param paramDelta amount to add to each parameter number after being parsed
+     * @param availableColumns can pass null if all columns are available
+     */
+    public static RelationExpr parse(int paramDelta, Table<?> fromTable,
+                                     Set<String> availableColumns, String query)
+        throws QueryException
+    {
+        RelationExpr from = TableExpr.make(-1, -1, fromTable, availableColumns);
+        try {
+            return new Parser(paramDelta, from, query).parseQueryExpr();
+        } catch (IOException e) {
+            // Not expected.
+            throw new QueryException(e);
+        }
+    }
+
+    /**
      * Attempt to parse a query into a QuerySpec, throwing a QueryException if not possible.
      */
     public static QuerySpec parseQuerySpec(Class<?> rowType, String query) throws QueryException {

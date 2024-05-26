@@ -44,8 +44,17 @@ public final class TableExpr extends RelationExpr {
      * @param endPos source code end position, zero-based, exclusive; is -1 if not applicable
      */
     public static TableExpr make(int startPos, int endPos, Table table) {
+        return make(startPos, endPos, table, null);
+    }
+
+    /**
+     * @param startPos source code start position, zero-based, inclusive; is -1 if not applicable
+     * @param endPos source code end position, zero-based, exclusive; is -1 if not applicable
+     * @param projection consists of column names; can pass null to project all columns
+     */
+    public static TableExpr make(int startPos, int endPos, Table table, Set<String> projection) {
         var cardinality = table instanceof IdentityTable ? Cardinality.ONE : Cardinality.MANY;
-        var type = RelationType.make(TupleType.make(table.rowType(), null), cardinality);
+        var type = RelationType.make(TupleType.make(table.rowType(), projection), cardinality);
         return new TableExpr(startPos, endPos, type, table);
     }
 
@@ -143,6 +152,7 @@ public final class TableExpr extends RelationExpr {
     public void appendTo(StringBuilder b) {
         // FIXME: Need to revise the syntax for the "from" portion. Pipeline syntax? It must
         // always be parseable, so perhaps no table at all for now?
+        // FIXME: If not all columns are projected, don't use the wildcard character.
         b.append(rowTypeClass().getName()).append(' ').append("{*}");
     }
 }
