@@ -282,7 +282,7 @@ public final class TupleType extends Type implements Iterable<Column> {
 
                 Column column = columns.get(name);
                 if (column == null) {
-                    throw new IllegalArgumentException();
+                    throw new IllegalArgumentException("Unknown column: " + name);
                 }
 
                 projColumns.put(name, column);

@@ -658,6 +658,7 @@ public final class JoinSpec {
             mTable = table;
             mColumn = column;
             mNullable = nullable;
+            nullableCheck();
         }
 
         @Override
@@ -811,6 +812,7 @@ public final class JoinSpec {
         @Override
         void nullable() {
             mNullable = true;
+            nullableCheck();
         }
 
         @Override
@@ -822,6 +824,12 @@ public final class JoinSpec {
         final void appendGroupedTo(StringBuilder b) {
             // No need for parens around a single column.
             appendTo(b);
+        }
+
+        private void nullableCheck() {
+            if (mNullable && !mColumn.isNullable()) {
+                throw new IllegalArgumentException("Column must be declared nullable: " + name());
+            }
         }
     }
 

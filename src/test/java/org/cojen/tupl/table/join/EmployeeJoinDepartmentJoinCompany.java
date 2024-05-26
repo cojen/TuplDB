@@ -17,8 +17,11 @@
 
 package org.cojen.tupl.table.join;
 
+import org.cojen.tupl.Nullable;
+
 @org.junit.Ignore
 public interface EmployeeJoinDepartmentJoinCompany extends EmployeeJoinDepartment {
+    @Nullable
     Company company();
     void company(Company c);
 }

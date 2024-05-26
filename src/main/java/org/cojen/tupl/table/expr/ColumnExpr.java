@@ -124,19 +124,6 @@ public abstract sealed class ColumnExpr extends Expr implements Named {
      */
     public abstract ColumnInfo tryFindColumn(RowInfo info);
 
-    /**
-     * Returns true if the column path matches a path starting from the given tuple columns.
-     * The names and types of each path element is examined, and they must match exactly.
-     */
-    public final boolean matches(Map<String, Column> columns) {
-        return findMatch(columns) != null;
-    }
-
-    /**
-     * @return null if not found
-     */
-    protected abstract Column findMatch(Map<String, Column> columns);
-
     private static final class Base extends ColumnExpr {
         private final TupleType mRowType;
 
@@ -224,15 +211,6 @@ public abstract sealed class ColumnExpr extends Expr implements Named {
         @Override
         public ColumnInfo tryFindColumn(RowInfo info) {
             return info.allColumns.get(name());
-        }
-
-        @Override
-        protected Column findMatch(Map<String, Column> columns) {
-            if (mColumn == null) {
-                return null;
-            }
-            Column match = columns.get(mColumn.name());
-            return match != null && match.type().equals(type()) ? match : null;
         }
 
         private static final byte K_TYPE = KeyEncoder.allocType(), K_WILD = KeyEncoder.allocType();
@@ -387,19 +365,6 @@ public abstract sealed class ColumnExpr extends Expr implements Named {
             ci.name = head.name + '.' + name;
 
             return ci;
-        }
-
-        @Override
-        protected Column findMatch(Map<String, Column> columns) {
-            if (mColumn == null) {
-                return null;
-            }
-            Column match = mParent.findMatch(columns);
-            if (match == null || !(match.type() instanceof TupleType tt)) {
-                return null;
-            }
-            match = tt.findColumn(mColumn.name());
-            return match != null && match.type().equals(type()) ? match : null;
         }
 
         private static final byte K_TYPE = KeyEncoder.allocType(), K_WILD = KeyEncoder.allocType();

@@ -177,12 +177,13 @@ public final class ProjExpr extends WrappedExpr implements Named {
     }
 
     /**
-     * Returns true if the projection matches a path starting from the given tuple columns.
-     * The names and types of each path element is examined, and they must match exactly.
+     * Returns true if the start of the projection path matches one of the given tuple columns.
      */
     public boolean matches(Map<String, Column> columns) {
         if (mExpr instanceof ColumnExpr ce) {
-            return ce.matches(columns);
+            Column first = ce.firstColumn();
+            Column column = columns.get(first.name());
+            return column != null && column.type().equals(first.type());
         } else {
             Column column = columns.get(name());
             return column != null && column.type().equals(type());
