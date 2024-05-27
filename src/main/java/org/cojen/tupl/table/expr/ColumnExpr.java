@@ -49,10 +49,17 @@ public abstract sealed class ColumnExpr extends Expr implements Named {
      * @param column can be null for wildcard
      */
     public static ColumnExpr make(int startPos, int endPos, ColumnExpr parent, Column column) {
-        if (parent.isNullable()) {
-            column = column.nullable();
+        Type type;
+        if (column == null) {
+            type = AnyType.THE;
+        } else {
+            type = column.type();
+            if (parent.isNullable()) {
+                type = type.nullable();
+            }
         }
-        return new Sub(startPos, endPos, parent, column);
+
+        return new Sub(startPos, endPos, parent, type, column);
     }
 
     protected final Column mColumn;
@@ -65,7 +72,16 @@ public abstract sealed class ColumnExpr extends Expr implements Named {
     }
 
     @Override
-    public final Type type() {
+    public Type type() {
+        return originalType();
+    }
+
+    /**
+     * The original type can differ from the actual type of this expression if it needed to be
+     * boxed to support null values. In that case the original type will be a primitive type,
+     * and the type of this expression is the boxed peer.
+     */
+    public final Type originalType() {
         return mColumn == null ? AnyType.THE : mColumn.type();
     }
 
@@ -242,14 +258,21 @@ public abstract sealed class ColumnExpr extends Expr implements Named {
     }
 
     private static final class Sub extends ColumnExpr {
+        private final Type mType;
         private final ColumnExpr mParent;
 
         private String mFullName;
 
-        Sub(int startPos, int endPos, ColumnExpr parent, Column column) {
+        Sub(int startPos, int endPos, ColumnExpr parent, Type type, Column column) {
             super(startPos, endPos, column);
+            mType = type;
             mParent = parent;
             parent.mHasSubColumns = true;
+        }
+
+        @Override
+        public Type type() {
+            return mType;
         }
 
         @Override
@@ -268,7 +291,7 @@ public abstract sealed class ColumnExpr extends Expr implements Named {
 
         @Override
         public boolean isNullable() {
-            return mParent.isNullable() || (mColumn != null && mColumn.type().isNullable());
+            return mType.isNullable();
         }
 
         @Override

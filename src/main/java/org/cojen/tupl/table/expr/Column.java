@@ -60,13 +60,6 @@ public final class Column implements Named {
         return name.equals(mName) ? this : new Column(mType, name, mHidden);
     }
 
-    /**
-     * Returns a column instance which is nullable.
-     */
-    public Column nullable() {
-        return mType.isNullable() ? this : new Column(mType.nullable(), mName, mHidden);
-    }
-
     private static final byte K_TYPE = KeyEncoder.allocType();
 
     void encodeKey(KeyEncoder enc) {

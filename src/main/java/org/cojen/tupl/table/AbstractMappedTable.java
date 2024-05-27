@@ -56,90 +56,6 @@ public abstract class AbstractMappedTable<S, T> extends WrappedTable<S, T> {
         super(source);
     }
 
-    /**
-     * Converts '.' to "$_" and converts '$' to "$$".
-     */
-    public static String escape(String name) {
-        int length = name.length();
-        int ix;
-        char c;
-        StringBuilder b;
-
-        quick: {
-            for (ix = 0; ix < length; ix++) {
-                c = name.charAt(ix);
-                if (c == '.' || c == '$') {
-                    b = new StringBuilder(length + 4).append(name, 0, ix);
-                    break quick;
-                }
-            }
-            return name;
-        }
-
-        while (true) {
-            if (c == '.') {
-                b.append("$_");
-            } else if (c == '$') {
-                b.append("$$");
-            } else {
-                b.append(c);
-            }
-
-            if (++ix >= length) {
-                break;
-            }
-
-            c = name.charAt(ix);
-        }
-
-        return b.toString();
-    }
-
-    /**
-     * Converts "$_" to '.' and converts "$$" to '$'.
-     */
-    public static String unescape(String name) {
-        int ix2 = name.indexOf('$');
-
-        if (ix2 < 0) {
-            return name;
-        }
-
-        int length = name.length();
-        var b = new StringBuilder(length);
-        int ix1 = 0;
-
-        while (true) {
-            b.append(name, ix1, ix2);
-            ix1 = ix2;
-
-            if (++ix1 >= length) {
-                b.append(name, ix2, name.length());
-                break;
-            }
-
-            int c = name.charAt(ix1);
-
-            if (c == '_') {
-                b.append('.');
-            } else {
-                b.append('$');
-                if (c != '$') {
-                    b.append((char) c);
-                }
-            }
-
-            ix2 = name.indexOf('$', ++ix1);
-
-            if (ix2 < 0) {
-                b.append(name, ix1, name.length());
-                break;
-            }
-        }
-
-        return b.toString();
-    }
-
     protected abstract String sourceProjection();
 
     /**
@@ -360,7 +276,7 @@ public abstract class AbstractMappedTable<S, T> extends WrappedTable<S, T> {
                     continue;
                 }
 
-                String sourceName = unescape(name.substring(prefix.length()));
+                String sourceName = RowMethodsMaker.unescape(name.substring(prefix.length()));
 
                 ColumnInfo sourceColumn = ColumnSet.findColumn(mSourceColumns, sourceName);
                 if (sourceColumn == null) {

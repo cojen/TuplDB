@@ -370,14 +370,16 @@ final class MappedQueryExpr extends QueryExpr {
 
             Column targetColumn = targetType.findColumn(pe.name());
 
-            Class columnType = targetColumn.type().clazz();
-            if (columnType != source.type().clazz()) {
+            Class targetColumnType = targetColumn.type().clazz();
+            if (targetColumnType != source.type().clazz()) {
                 continue;
             }
 
+            Class sourceColumnType = source.originalType().clazz();
+
             String methodName = targetColumn.name() + "_to_" + source.name();
-            MethodMaker mm = cm.addMethod(columnType, methodName, columnType).public_().static_();
-            mm.addAnnotation(Untransformed.class, true);
+            MethodMaker mm = cm.addMethod(sourceColumnType, methodName, targetColumnType);
+            mm.public_().static_().addAnnotation(Untransformed.class, true);
             mm.return_(mm.param(0));
         }
     }

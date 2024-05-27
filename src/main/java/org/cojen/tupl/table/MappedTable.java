@@ -167,7 +167,7 @@ public abstract class MappedTable<S, T> extends AbstractMappedTable<S, T>
                 continue;
             }
 
-            String sourceName = unescape(name.substring(ix + "_to_".length()));
+            String sourceName = RowMethodsMaker.unescape(name.substring(ix + "_to_".length()));
 
             if (ColumnSet.findColumn(sourceInfo.keyColumns, sourceName) == null) {
                 continue;
