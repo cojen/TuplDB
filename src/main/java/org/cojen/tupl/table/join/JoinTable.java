@@ -38,6 +38,7 @@ import org.cojen.tupl.Transaction;
 import org.cojen.tupl.table.MultiCache;
 import org.cojen.tupl.table.QueryLauncher;
 import org.cojen.tupl.table.RowInfo;
+import org.cojen.tupl.table.RowUtils;
 
 import org.cojen.tupl.table.expr.CompiledQuery;
 
@@ -64,8 +65,13 @@ public abstract class JoinTable<J> extends MultiCache<Object, Object, Object, IO
     }
 
     @SuppressWarnings("unchecked")
-    protected final QueryLauncher<J> scannerQueryLauncher(String query) throws IOException {
-        return (QueryLauncher<J>) cacheObtain(Type1, query, this);
+    protected final QueryLauncher<J> scannerQueryLauncher(String query) {
+        try {
+            return (QueryLauncher<J>) cacheObtain(Type1, query, this);
+        } catch (IOException e) {
+            // Not expected.
+            throw RowUtils.rethrow(e);
+        }
     }
 
     @Override
@@ -96,7 +102,7 @@ public abstract class JoinTable<J> extends MultiCache<Object, Object, Object, IO
     }
 
     @Override
-    public final Query<J> query(String query) throws IOException {
+    public final Query<J> query(String query) {
         return scannerQueryLauncher(query);
     }
 
