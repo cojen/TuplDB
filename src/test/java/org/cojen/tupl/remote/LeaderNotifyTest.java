@@ -84,6 +84,7 @@ public class LeaderNotifyTest {
         mServerDb1 = null;
         mServerDb2 = null;
 
+        // TODO: Sometimes repl files remain in the temp directory.
         closeTempDatabases(getClass());
         deleteTempFiles(getClass());
     }
