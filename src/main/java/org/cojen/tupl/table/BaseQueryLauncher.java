@@ -87,11 +87,6 @@ final class BaseQueryLauncher<R> extends QueryLauncher<R> {
         mForScanner, mForScannerDoubleCheck,
         mForUpdater, mForUpdaterDoubleCheck;
 
-    // FIXME: remove this ctor
-    BaseQueryLauncher(BaseTable<R> table, String queryStr) {
-        this(table, queryStr, parse(table, queryStr).querySpec(table.rowType()).reduce());
-    }
-
     private BaseQueryLauncher(BaseTable<R> table, String queryStr, QuerySpec query) {
         mTable = table;
 

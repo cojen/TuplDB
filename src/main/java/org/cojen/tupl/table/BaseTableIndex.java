@@ -123,10 +123,4 @@ public abstract class BaseTableIndex<R> extends BaseTable<R> {
     {
         return primaryTable.newUpdater(row, txn, controller, this);
     }
-
-    @Override
-    public QueryLauncher<R> query(String queryStr) {
-        // Not cached because this method is just used by the test suite.
-        return new BaseQueryLauncher<>(this, queryStr);
-    }
 }

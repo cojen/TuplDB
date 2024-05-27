@@ -326,7 +326,7 @@ public abstract class BaseTable<R>
 
     @Override
     @SuppressWarnings("unchecked")
-    public QueryLauncher<R> query(String queryStr) throws IOException {
+    public final QueryLauncher<R> query(String queryStr) throws IOException {
         // See the cacheNewValue method.
         return (QueryLauncher<R>) cacheObtain(MultiCache.Type1, queryStr, null);
     }
