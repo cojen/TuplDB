@@ -19,8 +19,6 @@ package org.cojen.tupl.table;
 
 import java.io.IOException;
 
-import java.lang.invoke.VarHandle;
-
 import java.lang.ref.WeakReference;
 
 import java.util.Map;
@@ -81,9 +79,9 @@ final class BaseQueryLauncher<R> extends QueryLauncher<R> {
     private final BaseTable<R> mTable;
     private final String mQueryStr;
 
-    private WeakReference<QuerySpec> mQueryRef;
+    private volatile WeakReference<QuerySpec> mQueryRef;
 
-    private QueryLauncher<R>
+    private volatile QueryLauncher<R>
         mForScanner, mForScannerDoubleCheck,
         mForUpdater, mForUpdaterDoubleCheck;
 
@@ -159,26 +157,12 @@ final class BaseQueryLauncher<R> extends QueryLauncher<R> {
     protected void closeIndexes() throws IOException {
         mTable.close();
 
-        QueryLauncher<R> forScanner, forScannerDoubleCheck, forUpdater, forUpdaterDoubleCheck;
+        closeIndexes(mForScanner);
+        closeIndexes(mForScannerDoubleCheck);
+        closeIndexes(mForUpdater);
+        closeIndexes(mForUpdaterDoubleCheck);
 
-        synchronized (this) {
-            forScanner = mForScanner;
-            mForScanner = null;
-
-            forScannerDoubleCheck = mForScannerDoubleCheck;
-            mForScannerDoubleCheck = null;
-
-            forUpdater = mForUpdater;
-            mForUpdater = null;
-
-            forUpdaterDoubleCheck = mForUpdaterDoubleCheck;
-            mForUpdaterDoubleCheck = null;
-        }
-
-        closeIndexes(forScanner);
-        closeIndexes(forScannerDoubleCheck);
-        closeIndexes(forUpdater);
-        closeIndexes(forUpdaterDoubleCheck);
+        clearCache();
     }
 
     private static void closeIndexes(QueryLauncher<?> launcher) throws IOException {
@@ -191,7 +175,7 @@ final class BaseQueryLauncher<R> extends QueryLauncher<R> {
      * Clears the cached launcher instances.
      */
     @Override
-    protected synchronized void clearCache() {
+    protected void clearCache() {
         mForScanner = null;
         mForScannerDoubleCheck = null;
         mForUpdater = null;
@@ -267,8 +251,6 @@ final class BaseQueryLauncher<R> extends QueryLauncher<R> {
             }
         }
 
-        VarHandle.storeStoreFence();
-
         switch (type) {
             default -> mForScanner = launcher;
             case DOUBLE_CHECK -> mForScannerDoubleCheck = launcher;
@@ -283,9 +265,7 @@ final class BaseQueryLauncher<R> extends QueryLauncher<R> {
         QuerySpec query = mQueryRef.get();
         if (query == null) {
             query = parse(mTable, mQueryStr).querySpec(mTable.rowType());
-            var ref = new WeakReference<>(query);
-            VarHandle.storeStoreFence();
-            mQueryRef = ref;
+            mQueryRef = new WeakReference<>(query);
         }
         return query;
     }
