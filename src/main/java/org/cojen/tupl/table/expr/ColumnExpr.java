@@ -77,9 +77,8 @@ public abstract sealed class ColumnExpr extends Expr implements Named {
     }
 
     /**
-     * The original type can differ from the actual type of this expression if it needed to be
-     * boxed to support null values. In that case the original type will be a primitive type,
-     * and the type of this expression is the boxed peer.
+     * The type of this expression can differ from the original type if it needs to support
+     * nulls. If the original type is primitive, then the nullable type is the boxed peer.
      */
     public final Type originalType() {
         return mColumn == null ? AnyType.THE : mColumn.type();
