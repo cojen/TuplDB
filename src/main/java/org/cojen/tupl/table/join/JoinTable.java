@@ -30,13 +30,16 @@ import java.util.function.Predicate;
 
 import org.cojen.tupl.DurabilityMode;
 import org.cojen.tupl.Query;
+import org.cojen.tupl.Row;
 import org.cojen.tupl.Scanner;
 import org.cojen.tupl.Table;
 import org.cojen.tupl.Transaction;
 
+import org.cojen.tupl.table.MultiCache;
 import org.cojen.tupl.table.QueryLauncher;
 import org.cojen.tupl.table.RowInfo;
-import org.cojen.tupl.table.SoftCache;
+
+import org.cojen.tupl.table.expr.CompiledQuery;
 
 /**
  * Base class for generated join tables.
@@ -44,12 +47,12 @@ import org.cojen.tupl.table.SoftCache;
  * @author Brian S O'Neill
  * @see JoinTableMaker
  */
-public abstract class JoinTable<J> implements Table<J> {
+public abstract class JoinTable<J> extends MultiCache<Object, Object, Object, IOException>
+    implements Table<J>
+{
     private final String mSpecStr;
     private SoftReference<JoinSpec> mSpecRef;
     private final Table[] mTables;
-
-    private final SoftCache<String, QueryLauncher<J>, Object> mQueryLauncherCache;
 
     /**
      * @param tables table order matches the JoinSpec
@@ -58,17 +61,11 @@ public abstract class JoinTable<J> implements Table<J> {
         mSpecStr = specStr;
         mSpecRef = new SoftReference<>(spec);
         mTables = tables;
-
-        mQueryLauncherCache = new SoftCache<>() {
-            @Override
-            protected QueryLauncher<J> newValue(String query, Object unused) {
-                return JoinQueryLauncherMaker.newInstance(JoinTable.this, query);
-            }
-        };
     }
 
-    protected final QueryLauncher<J> scannerQueryLauncher(String query) {
-        return mQueryLauncherCache.obtain(query, null);
+    @SuppressWarnings("unchecked")
+    protected final QueryLauncher<J> scannerQueryLauncher(String query) throws IOException {
+        return (QueryLauncher<J>) cacheObtain(Type1, query, this);
     }
 
     @Override
@@ -84,12 +81,12 @@ public abstract class JoinTable<J> implements Table<J> {
     }
 
     @Override
-    public Transaction newTransaction(DurabilityMode durabilityMode) {
+    public final Transaction newTransaction(DurabilityMode durabilityMode) {
         return mTables[0].newTransaction(durabilityMode);
     }
 
     @Override
-    public boolean isEmpty() throws IOException {
+    public final boolean isEmpty() throws IOException {
         return joinSpec().root().isEmpty();
     }
 
@@ -99,32 +96,39 @@ public abstract class JoinTable<J> implements Table<J> {
     }
 
     @Override
-    public Query<J> query(String query) throws IOException {
+    public final Query<J> query(String query) throws IOException {
         return scannerQueryLauncher(query);
     }
 
     @Override
-    public boolean tryLoad(Transaction txn, J row) throws IOException {
+    public final boolean tryLoad(Transaction txn, J row) throws IOException {
         throw new UnsupportedOperationException();
     }
 
     @Override
-    public boolean exists(Transaction txn, J row) throws IOException {
+    public final boolean exists(Transaction txn, J row) throws IOException {
         throw new UnsupportedOperationException();
     }
 
     @Override
-    public Predicate<J> predicate(String query, Object... args) {
+    @SuppressWarnings("unchecked")
+    public final Table<Row> derive(String query, Object... args) throws IOException {
+        // See the cacheNewValue method.
+        return ((CompiledQuery<Row>) cacheObtain(Type2, query, this)).table(args);
+    }
+
+    @Override
+    public final Predicate<J> predicate(String query, Object... args) {
         return JoinPredicateMaker.newInstance(rowType(), query, args);
     }
 
     @Override
-    public void close() throws IOException {
+    public final void close() throws IOException {
         // Do nothing.
     }
 
     @Override
-    public boolean isClosed() {
+    public final boolean isClosed() {
         return false;
     }
 
@@ -142,15 +146,15 @@ public abstract class JoinTable<J> implements Table<J> {
     /**
      * Returns tables in the JoinSpec order.
      */
-    Table[] joinTables() {
+    final Table[] joinTables() {
         return mTables;
     }
 
-    String joinSpecString() {
+    final String joinSpecString() {
         return mSpecStr;
     }
 
-    JoinSpec joinSpec() {
+    final JoinSpec joinSpec() {
         JoinSpec spec = mSpecRef.get();
 
         if (spec == null) {
@@ -161,5 +165,19 @@ public abstract class JoinTable<J> implements Table<J> {
         }
 
         return spec;
+    }
+
+    @Override // MultiCache
+    protected final Object cacheNewValue(Type type, Object key, Object helper) throws IOException {
+        if (type == Type1) { // see the scannerQueryLauncher method
+            var queryStr = (String) key;
+            return JoinQueryLauncherMaker.newInstance(JoinTable.this, queryStr);
+        }
+
+        if (type == Type2) { // see the derive method
+            return CompiledQuery.makeDerived(this, type, key, helper);
+        }
+
+        throw new AssertionError();
     }
 }

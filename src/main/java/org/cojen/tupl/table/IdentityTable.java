@@ -246,7 +246,7 @@ public final class IdentityTable extends MultiCache<Object, Object, Object, IOEx
     }
 
     @Override // MultiCache
-    protected Object cacheNewValue(Type type, Object key, Object helper) throws IOException {
+    protected final Object cacheNewValue(Type type, Object key, Object helper) throws IOException {
         if (type == Type1) { // see the query method
             var queryStr = (String) key;
             if (Parser.parse(queryStr).type().cardinality() != Cardinality.ZERO) {
