@@ -32,6 +32,8 @@ public enum EventType {
 
     /** Signals the beginning of cache initialization. */
     CACHE_INIT_BEGIN(Category.CACHE, Level.INFO),
+    /** Generic info message during cache initialization. */
+    CACHE_INIT_INFO(Category.CACHE, Level.INFO),
     /** Signals the end of cache initialization, reporting the duration. */
     CACHE_INIT_COMPLETE(Category.CACHE, Level.INFO),
 

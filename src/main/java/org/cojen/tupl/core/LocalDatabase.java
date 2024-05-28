@@ -548,7 +548,7 @@ final class LocalDatabase extends CoreDatabase {
                     /*P*/ // ]
 
                     try {
-                        mArena = p_arenaAlloc(mPageDb.directPageSize(), minCache);
+                        mArena = p_arenaAlloc(mPageDb.directPageSize(), minCache, mEventListener);
                     } catch (IOException e) {
                         var oom = new OutOfMemoryError();
                         oom.initCause(e);

@@ -24,6 +24,9 @@ import java.util.EnumSet;
 
 import com.sun.jna.Platform;
 
+import org.cojen.tupl.diag.EventListener;
+import org.cojen.tupl.diag.EventType;
+
 /**
  * 
  *
@@ -38,7 +41,7 @@ class PosixMappedPageArray extends MappedPageArray {
     private volatile boolean mEmpty;
 
     PosixMappedPageArray(int pageSize, long pageCount,
-                         File file, EnumSet<OpenOption> options)
+                         File file, EnumSet<OpenOption> options, EventListener listener)
         throws IOException
     {
         super(pageSize, pageCount, options);
@@ -62,7 +65,11 @@ class PosixMappedPageArray extends MappedPageArray {
                 try {
                     PosixFileIO.madvisePtr(addr, mappingSize, 14); // 14 = MADV_HUGEPAGE
                 } catch (IOException e) {
-                    // Ignore if it doesn't work.
+                    if (listener != null) {
+                        listener.notify
+                            (EventType.CACHE_INIT_INFO,
+                             "Unable to allocate using transparent huge pages");
+                    }
                 }
             }
 
@@ -155,7 +162,7 @@ class PosixMappedPageArray extends MappedPageArray {
     @Override
     MappedPageArray doOpen() throws IOException {
         boolean empty = mEmpty;
-        var pa = new PosixMappedPageArray(pageSize(), super.pageCount(), mFile, mOptions);
+        var pa = new PosixMappedPageArray(pageSize(), super.pageCount(), mFile, mOptions, null);
         pa.mEmpty = empty;
         return pa;
     }

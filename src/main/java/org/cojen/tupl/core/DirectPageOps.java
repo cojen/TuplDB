@@ -26,6 +26,8 @@ import java.util.zip.CRC32;
 import org.cojen.tupl.ClosedIndexException;
 import org.cojen.tupl.DeletedIndexException;
 
+import org.cojen.tupl.diag.EventListener;
+
 import org.cojen.tupl.io.MappedPageArray;
 
 import org.cojen.tupl.unsafe.DirectAccess;
@@ -160,9 +162,9 @@ public final class DirectPageOps {
 
         private long mNextPtr;
 
-        Arena(int pageSize, long pageCount) throws IOException {
+        Arena(int pageSize, long pageCount, EventListener listener) throws IOException {
             pageSize = Math.abs(pageSize);
-            mPageArray = MappedPageArray.open(pageSize, pageCount, null, null);
+            mPageArray = MappedPageArray.open(pageSize, pageCount, null, null, listener);
             mStartPtr = mPageArray.directPagePointer(0);
             mEndPtr = mStartPtr + (pageSize * pageCount);
             synchronized (this) {
@@ -298,9 +300,11 @@ public final class DirectPageOps {
         }
     }
 
-    static Object p_arenaAlloc(int pageSize, long pageCount) throws IOException {
+    static Object p_arenaAlloc(int pageSize, long pageCount, EventListener listener)
+        throws IOException
+    {
         try {
-            var arena = new Arena(pageSize, pageCount);
+            var arena = new Arena(pageSize, pageCount, listener);
             registerArena(arena);
             return arena;
         } catch (UnsupportedOperationException e) {
