@@ -705,7 +705,7 @@ public interface Table<R> extends Closeable {
      * Returns a row comparator based on the given specification, which defines the ordering
      * columns. Each column name is prefixed with '+' or '-', to indicate ascending or
      * descending order. For example: {@code "+lastName+firstName-birthdate"}. By default,
-     * nulls are treated as higher non-nulls, but a '!' after the '+'/'-' character causes
+     * nulls are treated as higher than non-nulls, but a '!' after the '+'/'-' character causes
      * nulls to be treated as lower than non-nulls.
      *
      * @throws IllegalArgumentException if the specification is malformed
