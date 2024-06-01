@@ -252,6 +252,7 @@ public class GroupedTest {
             for (var row = scanner.row(); row != null; row = scanner.step(row)) {
                 assertEquals(expect[i++], row.toString());
             }
+            assertNull(scanner.row());
         }
 
         grouped = mTable.group
@@ -281,6 +282,7 @@ public class GroupedTest {
             for (var row = scanner.row(); row != null; row = scanner.step(row)) {
                 assertEquals(expect[i++], row.toString());
             }
+            assertNull(scanner.row());
         }
 
         grouped = mTable.group
@@ -311,6 +313,7 @@ public class GroupedTest {
             for (var row = scanner.row(); row != null; row = scanner.step()) {
                 assertEquals(expect[i++], row.toString());
             }
+            assertNull(scanner.row());
         }
 
         grouped = mTable.group
@@ -342,6 +345,7 @@ public class GroupedTest {
             for (var row = scanner.row(); row != null; row = scanner.step()) {
                 assertEquals(expect[i++], row.toString());
             }
+            assertNull(scanner.row());
         }
 
         Query<TestRowGroup> query = grouped.query("count == ?");
@@ -372,6 +376,7 @@ public class GroupedTest {
             for (var row = scanner.row(); row != null; row = scanner.step()) {
                 assertEquals(expect[i++], row.toString());
             }
+            assertNull(scanner.row());
         }
 
         plan = grouped.query("{*, ~sumNum}").scannerPlan(null);
@@ -400,6 +405,7 @@ public class GroupedTest {
             for (var row = scanner.row(); row != null; row = scanner.step()) {
                 assertEquals(expect[i++], row.toString());
             }
+            assertNull(scanner.row());
         }
 
         plan = grouped.query("{*, ~sumNum} count == ?").scannerPlan(null, 1);
@@ -427,6 +433,7 @@ public class GroupedTest {
             for (var row = scanner.row(); row != null; row = scanner.step()) {
                 assertEquals(expect[i++], row.toString());
             }
+            assertNull(scanner.row());
         }
     }
 
@@ -486,6 +493,7 @@ public class GroupedTest {
             for (var row = scanner.row(); row != null; row = scanner.step(row)) {
                 assertEquals(expect[i++], row.toString());
             }
+            assertNull(scanner.row());
         }
 
         plan = grouped.query("{*, -name}").scannerPlan(null);
@@ -514,6 +522,7 @@ public class GroupedTest {
             for (var row = scanner.row(); row != null; row = scanner.step(row)) {
                 assertEquals(expect[i++], row.toString());
             }
+            assertNull(scanner.row());
         }
 
         plan = grouped.query("{*, -name, +avgNum, ~sumNum} count > ?").scannerPlan(null, 1);
@@ -540,6 +549,7 @@ public class GroupedTest {
             for (var row = scanner.row(); row != null; row = scanner.step()) {
                 assertEquals(expect[i++], row.toString());
             }
+            assertNull(scanner.row());
         }
     }
 

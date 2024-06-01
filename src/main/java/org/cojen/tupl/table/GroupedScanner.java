@@ -111,6 +111,7 @@ public class GroupedScanner<S, T> implements Scanner<T> {
                 sourceRow = mSourceRow;
 
                 if (sourceRow == null) {
+                    mTargetRow = null;
                     break doStep;
                 }
 
@@ -130,25 +131,18 @@ public class GroupedScanner<S, T> implements Scanner<T> {
                 targetRow = prepareTargetRow(targetRow);
                 actualTargetRow = grouper.process(targetRow);
 
-                if (actualTargetRow != null) {
+                while (actualTargetRow != null) {
                     if (finish(actualTargetRow)) {
                         mGroupedTable.cleanRow(actualTargetRow);
                         mTargetRow = actualTargetRow;
                         return actualTargetRow;
                     }
-
-                    while ((actualTargetRow = grouper.step(targetRow)) != null) {
-                        if (finish(actualTargetRow)) {
-                            mGroupedTable.cleanRow(actualTargetRow);
-                            mTargetRow = actualTargetRow;
-                            return actualTargetRow;
-                        }
-                    }
+                    actualTargetRow = grouper.step(targetRow);
                 }
 
                 if (sourceRow == null) {
-                    mTargetRow = actualTargetRow;
-                    break;
+                    mTargetRow = null;
+                    break doStep;
                 }
 
                 mGroupedTable.source().copyRow(sourceRow, mHeader);
