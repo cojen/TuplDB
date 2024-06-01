@@ -19,6 +19,7 @@ package org.cojen.tupl.table;
 
 import java.io.IOException;
 
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -210,6 +211,72 @@ public class GroupedTest {
         @Override
         public String toString() {
             return "Grouped2";
+        }
+    }
+
+    public static class RollingAvg implements Grouper<TestRow, TestRowGroup> {
+        private final ArrayDeque<Long> mNums = new ArrayDeque<>();
+        private final int mSize;
+        private long mSum;
+        private String mName;
+
+        RollingAvg(int size) {
+            mSize = size;
+        }
+
+        @Override
+        public TestRow begin(TestRow source) throws IOException {
+            mNums.clear();
+            long num = source.num();
+            mNums.add(num);
+            mSum = num;
+            mName = source.name();
+            return source;
+        }
+
+        @Override
+        public TestRow accumulate(TestRow source) throws IOException {
+            long num = source.num();
+            mNums.add(num);
+            mSum += num;
+            if (mNums.size() > mSize) {
+                mSum -= mNums.remove();
+            }
+            return source;
+        }
+
+        @Override
+        public TestRowGroup process(TestRowGroup target) throws IOException {
+            if (mNums.size() < mSize) {
+                target.avgNum(Double.NaN);
+            } else {
+                target.avgNum(mSum / (double) mSize);
+            }
+            target.name(mName);
+            return target;
+        }
+
+        @Override
+        public TestRowGroup step(TestRowGroup target) throws IOException {
+            return null;
+        }
+    }
+
+    public static class RollingAvgFactory implements Grouper.Factory<TestRow, TestRowGroup> {
+        private final int mSize;
+
+        RollingAvgFactory(int size) {
+            mSize = size;
+        }
+
+        @Override
+        public Grouper<TestRow, TestRowGroup> newGrouper() {
+            return new RollingAvg(mSize);
+        }
+
+        @Override
+        public boolean incremental() {
+            return true;
         }
     }
 
@@ -553,6 +620,57 @@ public class GroupedTest {
         }
     }
 
+    @Test
+    public void rollingAvg() throws Exception {
+        Table<TestRowGroup> grouped = mTable.group
+            ("+name", "", TestRowGroup.class, new RollingAvgFactory(3));
+
+        assertTrue(grouped.isEmpty());
+        assertFalse(grouped.anyRows(null));
+        assertFalse(grouped.anyRows(null, "avgNum == ?", 33));
+
+        Object[][] data = {
+            {1, "hello", 11},
+            {2, "world", 22},
+            {3, "hello", 33},
+            {4, "world", 44},
+            {5, "hello", 55},
+            {6, "world", 66},
+            {7, "hello", 77},
+            {8, "world", 88},
+            {9, "hello", 99},
+            {10, "world", 1010},
+        };
+
+        fill(data);
+
+        assertFalse(grouped.isEmpty());
+        assertTrue(grouped.anyRows(null));
+        assertTrue(grouped.anyRows(null, "avgNum == ?", 33));
+        assertFalse(grouped.anyRows(null, "avgNum == ?", 300));
+
+        var expect = new String[] {
+            "{avgNum=NaN, name=hello}",
+            "{avgNum=NaN, name=hello}",
+            "{avgNum=33.0, name=hello}",
+            "{avgNum=55.0, name=hello}",
+            "{avgNum=77.0, name=hello}",
+            "{avgNum=NaN, name=world}",
+            "{avgNum=NaN, name=world}",
+            "{avgNum=44.0, name=world}",
+            "{avgNum=66.0, name=world}",
+            "{avgNum=388.0, name=world}",
+        };
+
+        try (var scanner = grouped.newScanner(null)) {
+            int i = 0;
+            for (var row = scanner.row(); row != null; row = scanner.step(row)) {
+                assertEquals(expect[i++], row.toString());
+            }
+            assertNull(scanner.row());
+        }
+    }
+
     private void fill() throws Exception {
         Object[][] data = {
             {1, "hello", 1},
@@ -563,6 +681,10 @@ public class GroupedTest {
             {6, "name", 1},
         };
 
+        fill(data);
+    }
+
+    private void fill(Object[][] data) throws Exception {
         for (Object[] r : data) {
             var row = mTable.newRow();
             row.id((int) r[0]);

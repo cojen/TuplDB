@@ -260,7 +260,8 @@ public abstract class GroupedTable<S, T> extends AbstractMappedTable<S, T>
             }
         }
 
-        Class scannerClass = GroupedScanner.class;
+        Class scannerClass = mGrouperFactory.incremental()
+            ? GroupedScanner.Incremental.class : GroupedScanner.Full.class;
 
         RowFilter targetRemainder = splitter.mTargetRemainder;
 
@@ -268,7 +269,7 @@ public abstract class GroupedTable<S, T> extends AbstractMappedTable<S, T>
             // Subclass the GroupedScanner class and override the finish method.
 
             ClassMaker scMaker = targetInfo.rowGen().beginClassMaker
-                (GroupedTable.class, targetType, "scanner").final_().extend(GroupedScanner.class);
+                (GroupedTable.class, targetType, "scanner").final_().extend(scannerClass);
 
             MethodMaker ctor;
             if (targetRemainder == TrueFilter.THE) {

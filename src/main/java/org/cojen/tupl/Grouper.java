@@ -45,6 +45,15 @@ public interface Grouper<R, T> extends Closeable {
         Grouper<R, T> newGrouper() throws IOException;
 
         /**
+         * Return true if {@code Grouper} instances don't need to accumulate all the source
+         * rows before target rows can be produced. The implementation of this method must
+         * return a static constant.
+         */
+        default boolean incremental() {
+            return false;
+        }
+
+        /**
          * Returns a comma-separated list of source columns which are needed by the {@code
          * Grouper} instances. Null is returned by default, which indicates that all columns
          * are needed. The implementation of this method must return a static constant.
@@ -84,6 +93,9 @@ public interface Grouper<R, T> extends Closeable {
      * Is called when all source group rows have been provided, and the first row for the
      * target group should be assigned. Returning null signals that the target group is empty,
      * and the next source group can begin.
+     *
+     * <p>If {@link Factory#incremental incremental} mode is enabled, then this method is
+     * called immediately after {@code begin} or {@code accumulate} is called.
      *
      * @param target never null; all columns are initially unset
      * @return null if target group is empty
