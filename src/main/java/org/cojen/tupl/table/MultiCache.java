@@ -112,7 +112,7 @@ public abstract class MultiCache<K, V, H, X extends Throwable> extends Reference
      * Double check with synchronization.
      */
     public final V cacheGet(Type type, K key) {
-        Object ref = poll();
+        Object ref = super.poll();
         if (ref != null) {
             synchronized (this) {
                 cleanup(ref);
@@ -200,7 +200,7 @@ public abstract class MultiCache<K, V, H, X extends Throwable> extends Reference
 
     @SuppressWarnings("unchecked")
     public synchronized final void cachePut(Type type, K key, V value) {
-        Object ref = poll();
+        Object ref = super.poll();
         if (ref != null) {
             cleanup(ref);
         }
@@ -275,7 +275,7 @@ public abstract class MultiCache<K, V, H, X extends Throwable> extends Reference
             }
         }
 
-        Object ref = poll();
+        Object ref = super.poll();
         if (ref != null) {
             cleanup(ref);
         }
@@ -310,7 +310,22 @@ public abstract class MultiCache<K, V, H, X extends Throwable> extends Reference
                     prev = e;
                 }
             }
-        } while ((ref = poll()) != null);
+        } while ((ref = super.poll()) != null);
+    }
+
+    @Override
+    public final Reference<Object> poll() {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public final Reference<Object> remove() {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public final Reference<Object> remove(long timeout) {
+        throw new UnsupportedOperationException();
     }
 
     private static sealed abstract class Entry<K, V> extends SoftReference<V> {
