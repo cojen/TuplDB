@@ -93,6 +93,13 @@ final class EvalContext {
         mUndoSize = savepoint;
     }
 
+    /**
+     * Commit all ref assignments up to a savepoint.
+     */
+    void refCommit(int savepoint) {
+        mUndoSize = savepoint;
+    }
+
     private void undoPush(ResultRef ref) {
         ResultRef[] undo = mUndoLog;
         if (undo != null) {

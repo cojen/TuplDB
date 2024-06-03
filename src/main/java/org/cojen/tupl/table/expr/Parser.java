@@ -697,13 +697,12 @@ public final class Parser {
 
         if (peekTokenType() == T_LPAREN) {
             consumePeek();
-            List<Expr> params = parseExprs();
+            List<Expr> args = parseExprs();
             Token next = nextToken();
             if (next.type() != T_RPAREN) {
                 throw new QueryException("Right paren expected", next);
             }
-            // FIXME: CallExpr; need function search; exclude wildcards
-            throw new RuntimeException("CallExpr: " + path + ", " + params);
+            return resolveCall(path, args);
         }
 
         if (mLocalVars != null && path.size() == 1) {
@@ -716,6 +715,24 @@ public final class Parser {
         }
 
         return resolveColumn(path, false);
+    }
+
+    private CallExpr resolveCall(List<Token> path, List<Expr> args) {
+        int startPos = path.get(0).startPos();
+        int endPos = path.get(path.size() - 1).endPos();
+
+        String name = toPath(path, false);
+
+        // FIXME: argTypes, argNames, args, reason
+        FunctionApplier applier = StandardFunctionFinder.THE
+            .tryFindFunction(name, null, null, null, null);
+
+        if (applier == null) {
+            // FIXME: reason
+            throw new QueryException("Unknown function: " + name, startPos, endPos);
+        }
+
+        return CallExpr.make(startPos, endPos, name, args, applier);
     }
 
     private ColumnExpr resolveColumn(List<Token> path, boolean allowWildcards) {

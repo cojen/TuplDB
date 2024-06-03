@@ -39,7 +39,7 @@ import org.cojen.maker.Variable;
  * @author Brian S. O'Neill
  */
 public abstract sealed class Expr
-    permits BinaryOpExpr, ColumnExpr, ConstantExpr, InExpr,
+    permits BinaryOpExpr, CallExpr, ColumnExpr, ConstantExpr, InExpr,
     ParamExpr, RelationExpr, VarExpr, WrappedExpr
 {
     private final int mStartPos, mEndPos;
@@ -181,6 +181,13 @@ public abstract sealed class Expr
      */
     public ColumnExpr sourceColumn() {
         return null;
+    }
+
+    /**
+     * Returns a new LazyArg instance backed by this expression.
+     */
+    public LazyArg lazyArg(EvalContext context) {
+        return new LazyArg(context, this);
     }
 
     /**

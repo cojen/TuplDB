@@ -61,10 +61,12 @@ public final class ConstantExpr extends Expr {
     }
 
     public static ConstantExpr make(int startPos, int endPos, BigInteger value) {
+        value = canonicalize(value);
         return new ConstantExpr(startPos, endPos, BigInteger.class, TYPE_BIG_INTEGER, value);
     }
 
     public static ConstantExpr make(int startPos, int endPos, BigDecimal value) {
+        value = canonicalize(value);
         return new ConstantExpr(startPos, endPos, BigDecimal.class, TYPE_BIG_DECIMAL, value);
     }
 
@@ -89,6 +91,13 @@ public final class ConstantExpr extends Expr {
     }
 
     private static final Canonicalizer cCanonicalizer = new Canonicalizer();
+
+    private static <V> V canonicalize(V value) {
+        if (value != null && mustSetExact(value.getClass(), value)) {
+            value = cCanonicalizer.apply(value);
+        }
+        return value;
+    }
 
     private static final SoftCache<Class, MethodHandle, Object> cConverterCache;
 
@@ -133,6 +142,7 @@ public final class ConstantExpr extends Expr {
 
         try {
             Object value = cConverterCache.obtain(type.clazz(), null).invoke(mValue);
+            value = canonicalize(value);
             return new ConstantExpr(startPos(), endPos(), type, value);
         } catch (IllegalArgumentException | ArithmeticException e) {
             throw new QueryException(e.getMessage(), this);
@@ -171,9 +181,9 @@ public final class ConstantExpr extends Expr {
                     newValue = Long.valueOf(-n);
                 }
             } else if (num instanceof BigDecimal n) {
-                newValue = n.negate();
+                newValue = canonicalize(n.negate());
             } else if (num instanceof BigInteger n) {
-                newValue = n.negate();
+                newValue = canonicalize(n.negate());
             } else if (num instanceof Float n) {
                 newValue = Float.valueOf(-n);
             } else {
@@ -280,21 +290,29 @@ public final class ConstantExpr extends Expr {
     }
 
     @Override
+    public LazyArg lazyArg(EvalContext context) {
+        return new LazyArg(context, this) {
+            @Override
+            public boolean isConstant() {
+                return true;
+            }
+
+            @Override
+            public Object value() {
+                return ConstantExpr.this.value();
+            }
+        };
+    }
+
+    @Override
     public void gatherEvalColumns(Consumer<Column> c) {
     }
 
     @Override
     protected Variable doMakeEval(EvalContext context, EvalContext.ResultRef resultRef) {
-        return makeEval(context, mType.clazz(), mValue);
-    }
-
-    private static Variable makeEval(EvalContext context, Class type, Object value) {
-        var valueVar = context.methodMaker().var(type);
-        if (!mustSetExact(type, value)) {
-            return valueVar.set(value);
-        } else {
-            return valueVar.setExact(cCanonicalizer.apply(value));
-        }
+        var valueVar = context.methodMaker().var(mType.clazz());
+        setAny(valueVar, mValue);
+        return valueVar;
     }
 
     @Override
