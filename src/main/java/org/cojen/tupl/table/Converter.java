@@ -1009,6 +1009,10 @@ public class Converter {
             }
             break;
 
+        case TYPE_REFERENCE:
+            dstVar.set(srcVar);
+            break;
+
         default:
             handled = false;
         }
