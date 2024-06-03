@@ -66,12 +66,17 @@ public final class AssignExpr extends WrappedExpr implements Named {
     }
 
     @Override
+    public boolean isTrivial() {
+        return true;
+    }
+
+    @Override
     public ColumnExpr sourceColumn() {
         return mExpr.sourceColumn();
     }
 
     @Override
-    public Variable makeEval(EvalContext context) {
+    protected Variable doMakeEval(EvalContext context, EvalContext.ResultRef resultRef) {
         Variable dest = context.findOrDeclareLocalVar(type(), name());
         setAny(dest, mExpr.makeEval(context));
         return dest;

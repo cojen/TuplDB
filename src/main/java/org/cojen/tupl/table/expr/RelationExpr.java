@@ -71,7 +71,7 @@ public abstract sealed class RelationExpr extends Expr permits TableExpr, QueryE
     }
 
     @Override
-    public final Variable makeEval(EvalContext context) {
+    protected final Variable doMakeEval(EvalContext context, EvalContext.ResultRef resultRef) {
         // FIXME: makeEval - return a Table
         throw null;
     }

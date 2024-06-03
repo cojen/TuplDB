@@ -61,7 +61,7 @@ public final class ConversionExpr extends WrappedExpr {
     }
 
     @Override
-    public Variable makeEval(EvalContext context) {
+    protected Variable doMakeEval(EvalContext context, EvalContext.ResultRef resultRef) {
         MethodMaker mm = context.methodMaker();
         var dstVar = mm.var(mType.clazz());
         String name = mExpr instanceof Named n ? n.name() : null;

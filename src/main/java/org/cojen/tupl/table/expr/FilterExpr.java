@@ -148,8 +148,8 @@ public final class FilterExpr extends BinaryOpExpr {
     }
 
     @Override
-    public Variable makeEval(EvalContext context) {
-        return makeEvalForFilter(context);
+    protected Variable doMakeEval(EvalContext context, EvalContext.ResultRef resultRef) {
+        return doMakeEvalForFilter(context, resultRef);
     }
 
     @Override

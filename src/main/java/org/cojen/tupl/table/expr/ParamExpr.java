@@ -80,19 +80,13 @@ public final class ParamExpr extends Expr {
     }
 
     @Override
-    public Variable makeEval(EvalContext context) {
-        var resultRef = context.refFor(this);
-        var result = resultRef.get();
-        if (result != null) {
-            return result;
-        } else {
-            var value = context.argsVar.aget(mOrdinal - 1);
-            Class<?> clazz = mType.clazz();
-            if (clazz != Object.class) {
-                value = ConvertCallSite.make(context.methodMaker(), clazz, value);
-            }
-            return resultRef.set(value);
+    protected Variable doMakeEval(EvalContext context, EvalContext.ResultRef resultRef) {
+        var value = context.argsVar.aget(mOrdinal - 1);
+        Class<?> clazz = mType.clazz();
+        if (clazz != Object.class) {
+            value = ConvertCallSite.make(context.methodMaker(), clazz, value);
         }
+        return value;
     }
 
     @Override

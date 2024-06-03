@@ -151,6 +151,12 @@ public final class ProjExpr extends WrappedExpr implements Named {
     }
 
     @Override
+    public boolean isTrivial() {
+        // Return true because the doMakeEval simply delegates to the wrapped expression.
+        return true;
+    }
+
+    @Override
     public ColumnExpr sourceColumn() {
         return mExpr.sourceColumn();
     }
@@ -191,7 +197,9 @@ public final class ProjExpr extends WrappedExpr implements Named {
     }
 
     @Override
-    public Variable makeEval(EvalContext context) {
+    protected Variable doMakeEval(EvalContext context, EvalContext.ResultRef resultRef) {
+        // Note that makeEval is called instead of doMakeEval, allowing the expression to save
+        // a sharable reference to the result.
         return mExpr.makeEval(context);
     }
 

@@ -133,6 +133,13 @@ public abstract sealed class Expr
     public abstract boolean isPureFunction();
 
     /**
+     * Returns true if evaluating this expression is a cheap operation.
+     */
+    public boolean isTrivial() {
+        return false;
+    }
+
+    /**
      * Performs a best effort conversion of this expression into a RowFilter. Any expressions
      * which cannot be converted are represented by ExprFilters which refer to the expression.
      *
@@ -216,25 +223,40 @@ public abstract sealed class Expr
      * Generates code which evaluates the expression. The context tracks expressions which have
      * already been evaluated and is updated by this method.
      */
-    public abstract Variable makeEval(EvalContext context);
-
-    /**
-     * Provides an implementation of the makeEval method which calls makeFilter and returns
-     * true or false.
-     */
-    protected Variable makeEvalForFilter(EvalContext context) {
+    public Variable makeEval(EvalContext context) {
         EvalContext.ResultRef resultRef;
 
-        if (isPureFunction()) {
+        if (isTrivial() || !isPureFunction()) {
+            resultRef = null;
+        } else {
             resultRef = context.refFor(this);
             var result = resultRef.get();
             if (result != null) {
                 return result;
             }
-        } else {
-            resultRef = null;
         }
 
+        Variable resultVar = doMakeEval(context, resultRef);
+
+        if (resultRef != null) {
+            resultVar = resultRef.set(resultVar);
+        }
+
+        return resultVar;
+    }
+
+    /**
+     * Implementation of makeEval, which should only be called via the makeEval method.
+     *
+     * @param resultRef is non-null if this expression is a non-trivial pure function
+     */
+    protected abstract Variable doMakeEval(EvalContext context, EvalContext.ResultRef resultRef);
+
+    /**
+     * Provides an implementation of the doMakeEval method which calls makeFilter and returns
+     * true or false.
+     */
+    protected Variable doMakeEvalForFilter(EvalContext context, EvalContext.ResultRef resultRef) {
         MethodMaker mm = context.methodMaker();
 
         Label pass = mm.label();
@@ -242,7 +264,7 @@ public abstract sealed class Expr
 
         makeFilter(context, pass, fail);
 
-        var result = resultRef == null ? mm.var(boolean.class) : resultRef.toSet(boolean.class);
+        var result = mm.var(boolean.class);
 
         fail.here();
         result.set(false);

@@ -69,6 +69,11 @@ public final class VarExpr extends Expr implements Named {
     }
 
     @Override
+    public boolean isTrivial() {
+        return true;
+    }
+
+    @Override
     public boolean isNullable() {
         return type().isNullable();
     }
@@ -83,7 +88,7 @@ public final class VarExpr extends Expr implements Named {
     }
 
     @Override
-    public Variable makeEval(EvalContext context) {
+    protected Variable doMakeEval(EvalContext context, EvalContext.ResultRef resultRef) {
         return context.findLocalVar(name()).get();
     }
 

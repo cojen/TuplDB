@@ -44,7 +44,7 @@ final class NotExpr extends WrappedExpr {
     }
 
     @Override
-    public Variable makeEval(EvalContext context) {
+    protected Variable doMakeEval(EvalContext context, EvalContext.ResultRef resultRef) {
         var v = mExpr.makeEval(context);
         if (BigInteger.class.isAssignableFrom(v.classType())) {
             v = v.invoke("not");

@@ -217,6 +217,11 @@ public final class ConstantExpr extends Expr {
     }
 
     @Override
+    public boolean isTrivial() {
+        return true;
+    }
+
+    @Override
     public RowFilter toRowFilter(RowInfo info, Map<String, ColumnExpr> columns) {
         if (mValue == Boolean.TRUE) {
             return TrueFilter.THE;
@@ -279,7 +284,7 @@ public final class ConstantExpr extends Expr {
     }
 
     @Override
-    public Variable makeEval(EvalContext context) {
+    protected Variable doMakeEval(EvalContext context, EvalContext.ResultRef resultRef) {
         return makeEval(context, mType.clazz(), mValue);
     }
 

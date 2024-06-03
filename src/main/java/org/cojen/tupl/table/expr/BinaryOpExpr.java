@@ -258,19 +258,7 @@ public sealed class BinaryOpExpr extends Expr permits FilterExpr {
     }
 
     @Override
-    public Variable makeEval(EvalContext context) {
-        EvalContext.ResultRef resultRef;
-
-        if (isPureFunction()) {
-            resultRef = context.refFor(this);
-            var result = resultRef.get();
-            if (result != null) {
-                return result;
-            }
-        } else {
-            resultRef = null;
-        }
-
+    protected Variable doMakeEval(EvalContext context, EvalContext.ResultRef resultRef) {
         var leftVar = mLeft.makeEval(context);
         var rightVar = mRight.makeEval(context);
 
@@ -302,10 +290,6 @@ public sealed class BinaryOpExpr extends Expr permits FilterExpr {
 
         if (ready != null) {
             ready.here();
-        }
-
-        if (resultRef != null) {
-            resultVar = resultRef.set(resultVar);
         }
 
         return resultVar;

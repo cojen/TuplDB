@@ -195,6 +195,11 @@ public abstract sealed class ColumnExpr extends Expr implements Named {
         }
 
         @Override
+        protected Variable doMakeEval(EvalContext context, EvalContext.ResultRef resultRef) {
+            throw new AssertionError();
+        }
+
+        @Override
         protected ColumnExpr parent() {
             return null;
         }
@@ -324,6 +329,11 @@ public abstract sealed class ColumnExpr extends Expr implements Named {
             labels[1].insert(() -> resultRef.get().set(null));
 
             return resultRef.get();
+        }
+
+        @Override
+        protected Variable doMakeEval(EvalContext context, EvalContext.ResultRef resultRef) {
+            throw new AssertionError();
         }
 
         @Override
