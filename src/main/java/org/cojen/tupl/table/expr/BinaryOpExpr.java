@@ -252,6 +252,11 @@ public sealed class BinaryOpExpr extends Expr permits FilterExpr {
     }
 
     @Override
+    public final boolean isConstant() {
+        return mLeft.isConstant() && mRight.isConstant();
+    }
+
+    @Override
     public final void gatherEvalColumns(Consumer<Column> c) {
         mLeft.gatherEvalColumns(c);
         mRight.gatherEvalColumns(c);

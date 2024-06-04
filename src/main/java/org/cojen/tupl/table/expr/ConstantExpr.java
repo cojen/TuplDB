@@ -247,6 +247,11 @@ public final class ConstantExpr extends Expr {
     }
 
     @Override
+    public boolean isConstant() {
+        return true;
+    }
+
+    @Override
     public boolean isNull() {
         return mValue == null;
     }

@@ -155,6 +155,21 @@ public final class CallExpr extends Expr {
     }
 
     @Override
+    public boolean isConstant() {
+        if (!mApplier.isPureFunction()) {
+            return false;
+        }
+
+        for (Expr arg : mArgs) {
+            if (!arg.isConstant()) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    @Override
     public void gatherEvalColumns(Consumer<Column> c) {
         for (Expr arg : mArgs) {
             arg.gatherEvalColumns(c);

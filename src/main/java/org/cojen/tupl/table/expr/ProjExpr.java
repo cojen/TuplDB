@@ -44,6 +44,10 @@ public final class ProjExpr extends WrappedExpr implements Named {
         if (!(expr instanceof Named)) {
             throw new IllegalArgumentException();
         }
+        if (expr.isConstant()) {
+            // No need to order it.
+            flags = flags & ~(F_ORDER_BY | F_DESCENDING | F_NULL_LOW);
+        }
         return new ProjExpr(startPos, endPos, expr, flags);
     }
 

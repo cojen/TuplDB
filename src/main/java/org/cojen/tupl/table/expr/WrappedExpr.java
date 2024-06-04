@@ -59,6 +59,11 @@ abstract sealed class WrappedExpr extends Expr
     }
 
     @Override
+    public final boolean isConstant() {
+        return mExpr.isConstant();
+    }
+
+    @Override
     public final void gatherEvalColumns(Consumer<Column> c) {
         mExpr.gatherEvalColumns(c);
     }

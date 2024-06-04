@@ -100,6 +100,11 @@ public abstract sealed class ColumnExpr extends Expr implements Named {
     }
 
     @Override
+    public final boolean isConstant() {
+        return false;
+    }
+
+    @Override
     public final ColumnExpr sourceColumn() {
         return this;
     }

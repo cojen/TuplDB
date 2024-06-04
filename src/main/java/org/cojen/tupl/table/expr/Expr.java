@@ -133,7 +133,7 @@ public abstract sealed class Expr
     public abstract boolean isPureFunction();
 
     /**
-     * Returns true if evaluating this expression is a cheap operation.
+     * Returns true if evaluating this expression is cheap.
      */
     public boolean isTrivial() {
         return false;
@@ -155,7 +155,12 @@ public abstract sealed class Expr
     public abstract boolean isNullable();
 
     /**
-     * Returns true if this expression evaluates to a constant value of zero.
+     * Returns true if this expression evaluates to a constant value.
+     */
+    public abstract boolean isConstant();
+
+    /**
+     * Returns true if this expression evaluates to a constant value of null.
      */
     public boolean isNull() {
         return false;

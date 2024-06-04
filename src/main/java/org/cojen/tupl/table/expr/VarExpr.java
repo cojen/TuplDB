@@ -79,6 +79,11 @@ public final class VarExpr extends Expr implements Named {
     }
 
     @Override
+    public boolean isConstant() {
+        return mAssign.isConstant();
+    }
+
+    @Override
     public ColumnExpr sourceColumn() {
         return mAssign.sourceColumn();
     }

@@ -115,6 +115,11 @@ public final class InExpr extends Expr {
     }
 
     @Override
+    public final boolean isConstant() {
+        return mLeft.isConstant() && mRight.isConstant();
+    }
+
+    @Override
     public void gatherEvalColumns(Consumer<Column> c) {
         mLeft.gatherEvalColumns(c);
         mRight.gatherEvalColumns(c);

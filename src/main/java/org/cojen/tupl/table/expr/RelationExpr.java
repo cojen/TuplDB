@@ -65,6 +65,11 @@ public abstract sealed class RelationExpr extends Expr permits TableExpr, QueryE
     }
 
     @Override
+    public final boolean isConstant() {
+        return false;
+    }
+
+    @Override
     public final void gatherEvalColumns(Consumer<Column> c) {
         // FIXME: revise when makeEval is implemented
         throw null;

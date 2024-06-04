@@ -76,6 +76,11 @@ public final class ParamExpr extends Expr {
     }
 
     @Override
+    public boolean isConstant() {
+        return false;
+    }
+
+    @Override
     public void gatherEvalColumns(Consumer<Column> c) {
     }
 
