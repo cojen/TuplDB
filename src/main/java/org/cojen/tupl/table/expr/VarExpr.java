@@ -84,6 +84,21 @@ public final class VarExpr extends Expr implements Named {
     }
 
     @Override
+    public boolean isNull() {
+        return mAssign.isNull();
+    }
+
+    @Override
+    public boolean isZero() {
+        return mAssign.isZero();
+    }
+
+    @Override
+    public boolean isOne() {
+        return mAssign.isOne();
+    }
+
+    @Override
     public ColumnExpr sourceColumn() {
         return mAssign.sourceColumn();
     }

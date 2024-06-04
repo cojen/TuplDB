@@ -161,6 +161,21 @@ public final class ProjExpr extends WrappedExpr implements Named {
     }
 
     @Override
+    public boolean isNull() {
+        return mExpr.isNull();
+    }
+
+    @Override
+    public boolean isZero() {
+        return mExpr.isZero();
+    }
+
+    @Override
+    public boolean isOne() {
+        return mExpr.isOne();
+    }
+
+    @Override
     public ColumnExpr sourceColumn() {
         return mExpr.sourceColumn();
     }
