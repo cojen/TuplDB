@@ -47,8 +47,10 @@ import org.cojen.maker.Variable;
  *
  * @author Brian S. O'Neill
  */
-public abstract class TupleKey extends AbstractList implements RandomAccess {
+public abstract class TupleKey implements RandomAccess {
     public static final Maker make = makeMaker();
+
+    public abstract int size();
 
     /**
      * Returns the declared type of a tuple element.
