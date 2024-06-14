@@ -94,7 +94,7 @@ public final class StandardFunctionFinder extends SoftCache<String, Object, Obje
         }
 
         @Override
-        public void apply(Type retType, Variable retVar, Type[] argTypes, LazyArg[] args) {
+        public void apply(Type retType, Variable retVar, Type[] argTypes, LazyValue[] args) {
             if (retVar.classType().isPrimitive()) {
                 // No arguments can be null, so just return the first one.
                 retVar.set(args[0].eval(true));
@@ -105,7 +105,7 @@ public final class StandardFunctionFinder extends SoftCache<String, Object, Obje
             Label done = mm.label();
 
             for (int i=0; i<args.length; i++) {
-                LazyArg arg = args[i];
+                LazyValue arg = args[i];
 
                 if (!arg.isConstant()) {
                     var argVar = arg.eval(i == 0);
@@ -114,7 +114,7 @@ public final class StandardFunctionFinder extends SoftCache<String, Object, Obje
                     retVar.set(argVar);
                     done.goto_();
                     next.here();
-                } else if (arg.value() != null) {
+                } else if (arg.constantValue() != null) {
                     retVar.set(arg.eval(i == 0));
                     // Once a constant non-null value is reached, skip the rest.
                     break;

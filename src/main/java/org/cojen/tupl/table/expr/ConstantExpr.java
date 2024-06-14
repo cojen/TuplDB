@@ -295,15 +295,15 @@ public final class ConstantExpr extends Expr {
     }
 
     @Override
-    public LazyArg lazyArg(EvalContext context) {
-        return new LazyArg(context, this) {
+    public LazyValue lazyValue(EvalContext context) {
+        return new LazyValue(context, this) {
             @Override
             public boolean isConstant() {
                 return true;
             }
 
             @Override
-            public Object value() {
+            public Object constantValue() {
                 return ConstantExpr.this.value();
             }
         };

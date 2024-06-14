@@ -183,7 +183,7 @@ public final class CallExpr extends Expr {
         // FIXME: requireRowNum, requireGroupNum, requireGroupRowNum; must be in the context
 
         if (applier instanceof FunctionApplier.Plain plain) {
-            LazyArg[] args = lazyArgs(context);
+            LazyValue[] args = lazyArgs(context);
 
             // Must rollback to a savepoint for lazy/eager evaluation to work properly.
             // Arguments which aren't eagerly evaluated will rollback, forcing the underlying
@@ -202,8 +202,8 @@ public final class CallExpr extends Expr {
         throw new UnsupportedOperationException();
     }
 
-    private LazyArg[] lazyArgs(EvalContext context) {
-        return mArgs.stream().map(arg -> arg.lazyArg(context)).toArray(LazyArg[]::new);
+    private LazyValue[] lazyArgs(EvalContext context) {
+        return mArgs.stream().map(arg -> arg.lazyValue(context)).toArray(LazyValue[]::new);
     }
 
     private static final byte K_TYPE = KeyEncoder.allocType();

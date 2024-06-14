@@ -86,10 +86,10 @@ public abstract class FunctionApplier {
      */
     public abstract Type validate(Type[] argTypes, String[] argNames, Consumer<String> reasons);
 
-    abstract void apply(Type retType, Variable retVar, Type[] argTypes, LazyArg[] args,
+    abstract void apply(Type retType, Variable retVar, Type[] argTypes, LazyValue[] args,
                         Variable rowNum, Variable groupNum, Variable groupRowNum);
 
-    abstract void apply(Type retType, Variable retVar, Type[] argTypes, LazyArg[] args);
+    abstract void apply(Type retType, Variable retVar, Type[] argTypes, LazyValue[] args);
 
     /**
      * A plain function is a plain function.
@@ -111,7 +111,7 @@ public abstract class FunctionApplier {
          * @param groupRowNum if required, represents the last group row number (>= 1L)
          */
         @Override
-        public void apply(Type retType, Variable retVar, Type[] argTypes, LazyArg[] args,
+        public void apply(Type retType, Variable retVar, Type[] argTypes, LazyValue[] args,
                           Variable rowNum, Variable groupNum, Variable groupRowNum)
         {
             apply(retType, retVar, argTypes, args);
@@ -126,7 +126,7 @@ public abstract class FunctionApplier {
          * @return a Variable or a constant
          */
         @Override
-        public void apply(Type retType, Variable retVar, Type[] argTypes, LazyArg[] args) {
+        public void apply(Type retType, Variable retVar, Type[] argTypes, LazyValue[] args) {
             throw new AbstractMethodError();
         }
     }
@@ -176,7 +176,7 @@ public abstract class FunctionApplier {
          * @return a Variable or a constant
          */
         @Override
-        public void apply(Type retType, Variable retVar, Type[] argTypes, LazyArg[] args,
+        public void apply(Type retType, Variable retVar, Type[] argTypes, LazyValue[] args,
                           Variable rowNum, Variable groupNum, Variable groupRowNum)
         {
             apply(retType, retVar, argTypes, args);
@@ -191,7 +191,7 @@ public abstract class FunctionApplier {
          * @return a Variable or a constant
          */
         @Override
-        public void apply(Type retType, Variable retVar, Type[] argTypes, LazyArg[] args) {
+        public void apply(Type retType, Variable retVar, Type[] argTypes, LazyValue[] args) {
             throw new AbstractMethodError();
         }
     }
@@ -200,10 +200,10 @@ public abstract class FunctionApplier {
         private Accumulator() {
         }
 
-        abstract void accumulate(MethodMaker mm, Type[] argTypes, LazyArg[] args,
+        abstract void accumulate(MethodMaker mm, Type[] argTypes, LazyValue[] args,
                                  Variable rowNum, Variable groupNum, Variable groupRowNum);
 
-        abstract void accumulate(MethodMaker mm, Type[] argTypes, LazyArg[] args);
+        abstract void accumulate(MethodMaker mm, Type[] argTypes, LazyValue[] args);
     }
 
     /**
@@ -240,7 +240,7 @@ public abstract class FunctionApplier {
          * @param groupRowNum if required, represents the current group row number (>= 1L)
          */
         @Override
-        public void accumulate(MethodMaker mm, Type[] argTypes, LazyArg[] args,
+        public void accumulate(MethodMaker mm, Type[] argTypes, LazyValue[] args,
                                Variable rowNum, Variable groupNum, Variable groupRowNum)
         {
             accumulate(mm, argTypes, args);
@@ -253,7 +253,7 @@ public abstract class FunctionApplier {
          * @param args Variables or constants
          */
         @Override
-        public void accumulate(MethodMaker mm, Type[] argTypes, LazyArg[] args) {
+        public void accumulate(MethodMaker mm, Type[] argTypes, LazyValue[] args) {
             throw new AbstractMethodError();
         }
 
@@ -268,7 +268,7 @@ public abstract class FunctionApplier {
          * @return a Variable or a constant
          */
         @Override
-        public void apply(Type retType, Variable retVar, Type[] argTypes, LazyArg[] args,
+        public void apply(Type retType, Variable retVar, Type[] argTypes, LazyValue[] args,
                           Variable rowNum, Variable groupNum, Variable groupRowNum)
         {
             apply(retType, retVar, argTypes, args);
@@ -282,7 +282,7 @@ public abstract class FunctionApplier {
          * @return a Variable or a constant
          */
         @Override
-        public void apply(Type retType, Variable retVar, Type[] argTypes, LazyArg[] args) {
+        public void apply(Type retType, Variable retVar, Type[] argTypes, LazyValue[] args) {
             throw new AbstractMethodError();
         }
 
@@ -328,7 +328,7 @@ public abstract class FunctionApplier {
          * @param groupRowNum if required, represents the current group row number (>= 1L)
          */
         @Override
-        public void accumulate(MethodMaker mm, Type[] argTypes, LazyArg[] args,
+        public void accumulate(MethodMaker mm, Type[] argTypes, LazyValue[] args,
                                Variable rowNum, Variable groupNum, Variable groupRowNum)
         {
             accumulate(mm, argTypes, args);
@@ -341,7 +341,7 @@ public abstract class FunctionApplier {
          * @param args Variables or constants
          */
         @Override
-        public void accumulate(MethodMaker mm, Type[] argTypes, LazyArg[] args) {
+        public void accumulate(MethodMaker mm, Type[] argTypes, LazyValue[] args) {
             throw new AbstractMethodError();
         }
 
@@ -356,7 +356,7 @@ public abstract class FunctionApplier {
          * @return a Variable or a constant
          */
         @Override
-        public void apply(Type retType, Variable retVar, Type[] argTypes, LazyArg[] args,
+        public void apply(Type retType, Variable retVar, Type[] argTypes, LazyValue[] args,
                           Variable rowNum, Variable groupNum, Variable groupRowNum)
         {
             apply(retType, retVar, argTypes, args);
@@ -370,7 +370,7 @@ public abstract class FunctionApplier {
          * @return a Variable or a constant
          */
         @Override
-        public void apply(Type retType, Variable retVar, Type[] argTypes, LazyArg[] args) {
+        public void apply(Type retType, Variable retVar, Type[] argTypes, LazyValue[] args) {
             throw new AbstractMethodError();
         }
     }

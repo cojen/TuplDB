@@ -189,10 +189,10 @@ public abstract sealed class Expr
     }
 
     /**
-     * Returns a new LazyArg instance backed by this expression.
+     * Returns a new LazyValue instance backed by this expression.
      */
-    public LazyArg lazyArg(EvalContext context) {
-        return new LazyArg(context, this);
+    public LazyValue lazyValue(EvalContext context) {
+        return new LazyValue(context, this);
     }
 
     /**

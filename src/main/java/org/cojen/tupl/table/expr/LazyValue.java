@@ -23,35 +23,35 @@ import org.cojen.maker.Variable;
  * @author Brian S. O'Neill
  * @see FunctionApplier
  */
-public class LazyArg {
+public class LazyValue {
     private final EvalContext mContext;
     private final Expr mExpr;
 
     private Variable mEvaluated;
 
-    LazyArg(EvalContext context, Expr expr) {
+    LazyValue(EvalContext context, Expr expr) {
         mContext = context;
         mExpr = expr;
     }
 
     /**
-     * Returns true if the argument represents a constant.
+     * Returns true if the value represents a constant.
      */
     public boolean isConstant() {
         return false;
     }
 
     /**
-     * Returns the argument value, which is only applicable if isConstant returns true.
+     * Returns a constant value, which is only applicable if isConstant returns true.
      */
-    public Object value() {
+    public Object constantValue() {
         return null;
     }
 
     /**
-     * Evaluates the argument.
+     * Evaluates the value.
      *
-     * @param eager when true, the argument is guaranteed to be evaluated for all execution paths
+     * @param eager when true, the value is guaranteed to be evaluated for all execution paths
      */
     public final Variable eval(boolean eager) {
         Variable var = mEvaluated;
