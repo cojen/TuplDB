@@ -27,6 +27,7 @@ import java.math.BigInteger;
 
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 
 import java.util.function.Consumer;
 
@@ -292,6 +293,26 @@ public final class ConstantExpr extends Expr {
         }
 
         return false;
+    }
+
+    @Override
+    public boolean isGrouping() {
+        return false;
+    }
+
+    @Override
+    public boolean isAccumulating() {
+        return false;
+    }
+
+    @Override
+    public boolean isAggregating() {
+        return false;
+    }
+
+    @Override
+    public ConstantExpr asAggregate(Set<String> group) {
+        return this;
     }
 
     @Override

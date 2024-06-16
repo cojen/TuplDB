@@ -104,6 +104,26 @@ public final class TableExpr extends RelationExpr {
     }
 
     @Override
+    public boolean isGrouping() {
+        return false;
+    }
+
+    @Override
+    public boolean isAccumulating() {
+        return false;
+    }
+
+    @Override
+    public boolean isAggregating() {
+        return false;
+    }
+
+    @Override
+    public Expr asAggregate(Set<String> group) {
+        return this;
+    }
+
+    @Override
     public QuerySpec querySpec() {
         return new QuerySpec(null, null, TrueFilter.THE);
     }

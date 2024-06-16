@@ -21,12 +21,15 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.SortedSet;
 import java.util.TreeMap;
 import java.util.TreeSet;
+
+import org.cojen.tupl.core.TupleKey;
 
 import org.cojen.tupl.table.ColumnInfo;
 import org.cojen.tupl.table.RowGen;
@@ -40,6 +43,7 @@ import org.cojen.maker.MethodMaker;
 
 import org.cojen.tupl.Hidden;
 import org.cojen.tupl.Nullable;
+import org.cojen.tupl.PrimaryKey;
 import org.cojen.tupl.Row;
 
 /**
@@ -50,17 +54,44 @@ import org.cojen.tupl.Row;
 public final class TupleType extends Type implements Iterable<Column> {
     /**
      * Makes a type which has a generated row type class. Columns aren't defined for excluded
-     * projections.
+     * projections, unless they're part of the primary key.
      *
+     * @param pkNum number of projected columns which should be part of the primary key
      * @throws QueryException if any names are duplicated
      */
-    public static TupleType make(Collection<ProjExpr> projExprs) {
+    public static TupleType make(List<ProjExpr> projExprs, int pkNum) {
         var columns = new TreeMap<String, Column>();
 
         var enc = new KeyEncoder();
 
-        for (ProjExpr pe : projExprs) {
-            if (!pe.shouldExclude()) {
+        String[] primaryKey;
+        if (pkNum <= 0) {
+            primaryKey = null;
+        } else {
+            primaryKey = new String[pkNum];
+
+            for (int i=0; i<pkNum; i++) {
+                ProjExpr pe = projExprs.get(i);
+                String name = pe.name();
+
+                if (pe.hasOrderBy()) {
+                    var b = new StringBuilder(2 + name.length());
+                    b.append(pe.hasDescending() ? '-' : '+');
+                    if (pe.hasNullLow()) {
+                        b.append('!');
+                    }
+                    name = b.toString();
+                }
+
+                primaryKey[i] = name;
+            }
+        }
+
+        enc.encodeStrings(primaryKey);
+
+        for (int i=0; i<projExprs.size(); i++) {
+            ProjExpr pe = projExprs.get(i);
+            if (i < pkNum || !pe.shouldExclude()) {
                 boolean hidden = pe.wrapped() instanceof ColumnExpr ce && ce.isHidden();
                 Column column = Column.make(pe.type(), pe.name(), hidden);
                 addColumn(columns, column);
@@ -68,7 +99,9 @@ public final class TupleType extends Type implements Iterable<Column> {
             }
         }
 
-        Class rowType = cGeneratedCache.obtain(enc.finish(), columns);
+        Object helper = primaryKey == null ? columns : TupleKey.make.with(primaryKey, columns);
+
+        Class rowType = cGeneratedCache.obtain(enc.finish(), helper);
 
         return new TupleType(rowType, TYPE_REFERENCE, null, columns);
     }
@@ -374,18 +407,29 @@ public final class TupleType extends Type implements Iterable<Column> {
         return true;
     }
 
-    private static final WeakCache<Object, Class<?>, Map<String, Column>> cGeneratedCache;
+    private static final WeakCache<Object, Class<?>, Object> cGeneratedCache;
 
     static {
         cGeneratedCache = new WeakCache<>() {
             @Override
-            public Class<?> newValue(Object key, Map<String, Column> columns) {
-                return columns.isEmpty() ? Row.class : makeRowTypeClass(columns);
+            @SuppressWarnings("unchecked")
+            public Class<?> newValue(Object key, Object helper) {
+                String[] primaryKey;
+                Map<String, Column> columns;                
+                if (helper instanceof TupleKey tk) {
+                    primaryKey = (String[]) tk.get(0);
+                    columns = (Map<String, Column>) tk.get(1);
+                } else {
+                    primaryKey = null;
+                    columns = (Map<String, Column>) helper;
+                }
+
+                return columns.isEmpty() ? Row.class : makeRowTypeClass(primaryKey, columns);
             }
         };
     }
 
-    private static Class<?> makeRowTypeClass(Map<String, Column> columns) {
+    private static Class<?> makeRowTypeClass(String[] primaryKey, Map<String, Column> columns) {
         ClassMaker cm = RowGen.beginClassMakerForRowType(TupleType.class.getPackageName(), "Type");
         cm.implement(Row.class);
         cm.sourceFile(TupleType.class.getSimpleName());
@@ -407,6 +451,10 @@ public final class TupleType extends Type implements Iterable<Column> {
             }
 
             cm.addMethod(null, name, clazz).public_().abstract_();
+        }
+
+        if (primaryKey != null) {
+            cm.addAnnotation(PrimaryKey.class, true).put("value", primaryKey);
         }
 
         return cm.finish();

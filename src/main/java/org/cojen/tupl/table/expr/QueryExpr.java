@@ -45,16 +45,18 @@ import org.cojen.tupl.table.filter.Visitor;
  * @author Brian S. O'Neill
  */
 public abstract sealed class QueryExpr extends RelationExpr
-    permits MappedQueryExpr, UnmappedQueryExpr
+    permits MappedQueryExpr, UnmappedQueryExpr, AggregatedQueryExpr
 {
     /**
      * @param from can be null if not selecting from any table at all
      * @param filter can be null if not filtered, or else filter type must be boolean or be
      * convertible to boolean
-     * @param projection can be null to project all columns
+     * @param projection can be null to project all columns (only when groupBy is disabled)
+     * @param groupBy number of projected columns to group by; pass -1 if disabled
      */
     public static RelationExpr make(int startPos, int endPos,
-                                    RelationExpr from, Expr filter, List<ProjExpr> projection)
+                                    RelationExpr from, Expr filter,
+                                    List<ProjExpr> projection, int groupBy)
     {
         if (from == null) {
             from = TableExpr.identity();
@@ -104,8 +106,9 @@ public abstract sealed class QueryExpr extends RelationExpr
         }
 
         // Split the filter such that the unmapped part can be pushed down. The remaining
-        // mapped part must be handled by a Mapper. The unmapped part is guaranteed to have no
-        // ExprFilters. If it did, UnmappedQueryExpr would produce a broken query string.
+        // mapped part must be handled by a Mapper or Aggregator. The unmapped part is
+        // guaranteed to have no ExprFilters. If it did, UnmappedQueryExpr would produce a
+        // broken query string.
         RowFilter unmappedRowFilter, mappedRowFilter;
         Expr mappedFilter;
 
@@ -165,7 +168,7 @@ public abstract sealed class QueryExpr extends RelationExpr
             }
         }
 
-        boolean needsMapper = mappedRowFilter != TrueFilter.THE ||
+        boolean needsMapper = groupBy >= 0 || mappedRowFilter != TrueFilter.THE ||
             (projection != null && !projection.equals(fromProjection));
 
         String mappedOrderBy = null;
@@ -179,7 +182,7 @@ public abstract sealed class QueryExpr extends RelationExpr
 
             // Projected columns which were initially excluded must be projected too. Also
             // determine if any columns are ordered, for possibly performing sorting at the
-            // mapper layer.
+            // mapper/aggregator layer.
 
             boolean hasOrderBy = false;
             boolean orderByDerived = false;
@@ -200,7 +203,7 @@ public abstract sealed class QueryExpr extends RelationExpr
 
             if (orderByDerived || (hasOrderBy && mappedRowFilter != TrueFilter.THE)) {
                 // Strip away order-by flags in the "from" projection and build an order-by
-                // expression for the mapper layer to use.
+                // expression for the mapper/aggregator layer to use.
 
                 for (int i=0; i<fromProjection.size(); i++) {
                     ProjExpr pe = fromProjection.get(i);
@@ -228,23 +231,30 @@ public abstract sealed class QueryExpr extends RelationExpr
             return from;
         }
 
-        // A Mapper is required.
+        // A Mapper or Aggregator is required.
 
         TupleType rowType;
 
-        if (projection == null || fromType.canRepresent(projection)) {
+        // FIXME: If grouping by the primary key, then it might be possible to use the existing
+        // row type.
+        if (groupBy < 0 && (projection == null || fromType.canRepresent(projection))) {
             // Use the existing row type.
             rowType = fromType;
         } else {
             // Use a custom row type.
-            rowType = TupleType.make(projection);
+            rowType = TupleType.make(projection, groupBy);
         }
 
         RelationType type = RelationType.make
             (rowType, from.type().cardinality().filter(mappedRowFilter));
 
-        return MappedQueryExpr.make(-1, -1, type, from, mappedRowFilter, mappedFilter,
-                                    projection, maxArgument, mappedOrderBy);
+        if (groupBy < 0) {
+            return MappedQueryExpr.make(-1, -1, type, from, mappedRowFilter, mappedFilter,
+                                        projection, maxArgument, mappedOrderBy);
+        } else {
+            return AggregatedQueryExpr.make(-1, -1, type, from, mappedRowFilter, mappedFilter,
+                                            projection, groupBy, maxArgument, mappedOrderBy);
+        }
     }
 
     private static boolean hasRepeatedNonPureFunctions(RowFilter filter) {
@@ -326,6 +336,63 @@ public abstract sealed class QueryExpr extends RelationExpr
         // subclass overrides this method and checks the filter expression too.
 
         return true;
+    }
+
+    @Override
+    public boolean isGrouping() {
+        if (mFrom.isGrouping()) {
+            return true;
+        }
+
+        if (mProjection != null) {
+            for (Expr expr : mProjection) {
+                if (expr.isGrouping()) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    @Override
+    public boolean isAccumulating() {
+        if (mFrom.isAccumulating()) {
+            return true;
+        }
+
+        if (mProjection != null) {
+            for (Expr expr : mProjection) {
+                if (expr.isAccumulating()) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    @Override
+    public boolean isAggregating() {
+        if (mFrom.isAggregating()) {
+            return true;
+        }
+
+        if (mProjection != null) {
+            for (Expr expr : mProjection) {
+                if (expr.isAggregating()) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    @Override
+    public QueryExpr asAggregate(Set<String> group) {
+        // FIXME: asAggregate
+        throw null;
     }
 
     /**

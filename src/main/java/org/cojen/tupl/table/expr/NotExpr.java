@@ -17,6 +17,8 @@
 
 package org.cojen.tupl.table.expr;
 
+import java.util.Set;
+
 import org.cojen.maker.Variable;
 
 import java.math.BigInteger;
@@ -41,6 +43,12 @@ final class NotExpr extends WrappedExpr {
     @Override
     public Expr asType(Type type) {
         return ConversionExpr.make(startPos(), endPos(), this, type);
+    }
+
+    @Override
+    public NotExpr asAggregate(Set<String> group) {
+        Expr expr = mExpr.asAggregate(group);
+        return expr == mExpr ? this : new NotExpr(startPos(), endPos(), expr);
     }
 
     @Override

@@ -166,25 +166,37 @@ public final class Parser {
      * QueryExpr  = Projection [ Filter ]
      *            | Filter
      * Filter     = Expr
-     * Projection = "{" ProjExprs "}"
+     * Projection = "{" ProjExprs [ ";" ProjExprs ] "}"
      */
     private RelationExpr doParseQueryExpr() throws IOException {
         final Token first = peekToken();
 
         final Expr filter;
         final List<ProjExpr> projection;
+        final int groupBy;
         final int endPos;
 
         if (first.type() != T_LBRACE) {
             filter = parseExpr();
             projection = null;
+            groupBy = -1;
             endPos = filter.endPos();
         } else {
             consumePeek();
-            projection = new ArrayList<>(parseProjExprs().values());
+            Map<String, ProjExpr> projExprs = parseProjExprs();
             Token next = nextToken();
+            if (next.type() != T_SEMI) {
+                projection = new ArrayList<>(projExprs.values());
+                groupBy = -1;
+            } else {
+                groupBy = projExprs.size();
+                projection = prepareGroupBy(projExprs, parseProjExprs());
+                next = nextToken();
+            }
             if (next.type() != T_RBRACE) {
-                throw new QueryException("Right brace expected", next);
+                String message = next.type() == T_SEMI
+                    ? "At most one group specification is allowed" : "Right brace expected";
+                throw new QueryException(message, next);
             }
             if (peekTokenType() == T_EOF) {
                 filter = null;
@@ -200,7 +212,51 @@ public final class Parser {
             throw new QueryException("Unexpected trailing characters", peek);
         }
 
-        return QueryExpr.make(first.startPos(), endPos, mFrom, filter, projection);
+        if (groupBy < 0) {
+            if (projection != null) {
+                projection.forEach(expr -> verifyNoGrouping(expr));
+            }
+            if (filter != null) {
+                verifyNoGrouping(filter);
+            }
+        }
+
+        return QueryExpr.make(first.startPos(), endPos, mFrom, filter, projection, groupBy);
+    }
+
+    private static void verifyNoGrouping(Expr expr) {
+        if (expr.isGrouping()) {
+            throw new QueryException("Query depends on a function which requires grouping, " +
+                                     "but no group specification is defined", expr);
+        }
+    }
+
+    /**
+     * @return combined projection
+     */
+    private static List<ProjExpr> prepareGroupBy(Map<String, ProjExpr> groupByExprs,
+                                                 Map<String, ProjExpr> projExprs)
+    {
+        for (Map.Entry<String, ProjExpr> e : projExprs.entrySet()) {
+            String name = e.getKey();
+            ProjExpr expr = e.getValue();
+            if (groupByExprs.containsKey(name)) {
+                throw new QueryException("Duplicate projection: " + unescape(name), expr);
+            }
+        }
+
+        for (ProjExpr expr : groupByExprs.values()) {
+            if (expr.isGrouping()) {
+                throw new QueryException("Group specification depends on a function " +
+                                         "which itself needs a group specification", expr);
+            }
+        }
+
+        var projection = new ArrayList<ProjExpr>(groupByExprs.size() + projExprs.size());
+        projection.addAll(groupByExprs.values());
+        projection.addAll(projExprs.values());
+
+        return projection;
     }
 
     /*
@@ -209,7 +265,7 @@ public final class Parser {
     private Map<String, ProjExpr> parseProjExprs() throws IOException {
         final Token first = peekToken();
 
-        if (first.type() == T_RBRACE) {
+        if (first.type() == T_RBRACE || first.type() == T_SEMI) {
             return Collections.emptyMap();
         }
 
@@ -338,7 +394,7 @@ public final class Parser {
             }
         }
 
-        List<Token> path = parsePath();
+        List<Token> path = parsePath(true);
 
         final Expr expr;
 
@@ -374,7 +430,6 @@ public final class Parser {
             }
 
             expr = resolveColumn(path, true);
-
         }
 
         return ProjExpr.make(startPos, expr.endPos(), expr, flags);
@@ -693,16 +748,10 @@ public final class Parser {
 
         pushbackToken(t);
 
-        List<Token> path = parsePath();
+        List<Token> path = parsePath(false);
 
         if (peekTokenType() == T_LPAREN) {
-            consumePeek();
-            List<Expr> args = parseExprs();
-            Token next = nextToken();
-            if (next.type() != T_RPAREN) {
-                throw new QueryException("Right paren expected", next);
-            }
-            return resolveCall(path, args);
+            return parseCallExpr(path);
         }
 
         if (mLocalVars != null && path.size() == 1) {
@@ -715,6 +764,19 @@ public final class Parser {
         }
 
         return resolveColumn(path, false);
+    }
+
+    /**
+     * Note: A peek token must exist, which is immediately consumed.
+     */
+    private CallExpr parseCallExpr(List<Token> path) throws IOException {
+        consumePeek();
+        List<Expr> args = parseExprs();
+        Token next = nextToken();
+        if (next.type() != T_RPAREN) {
+            throw new QueryException("Right paren expected", next);
+        }
+        return resolveCall(path, args);
     }
 
     private CallExpr resolveCall(List<Token> path, List<Expr> args) {
@@ -732,10 +794,21 @@ public final class Parser {
             throw new QueryException("Unknown function: " + name, startPos, endPos);
         }
 
+        if (!args.isEmpty()) {
+            endPos = args.get(args.size() - 1).endPos();
+        }
+
         return CallExpr.make(startPos, endPos, name, args, applier);
     }
 
-    private ColumnExpr resolveColumn(List<Token> path, boolean allowWildcards) {
+    private ColumnExpr resolveColumn(List<Token> path, boolean allowWildcards) throws IOException {
+        if (peekTokenType() == T_LPAREN) {
+            // A function call isn't allowed here, but parse it anyhow to provide a better
+            // error message.
+            CallExpr call = parseCallExpr(path);
+            throw new QueryException("Expression result must be assigned to column", call);
+        }
+
         TupleType rowType = mFrom.rowType();
         Token.Text ident = asIdentifier(path.get(0));
         Column c = rowType.tryFindColumn(ident.text(true));
@@ -779,13 +852,27 @@ public final class Parser {
 
     /*
      * Path = Identifier { "." Identifier } [ "." | "*" ]
+     *
+     * @param exprCheck when true, check if a erroneous path is actually a misplaced expression
      */
-    private List<Token> parsePath() throws IOException {
+    private List<Token> parsePath(boolean exprCheck) throws IOException {
         Token first = nextToken();
 
         if (first.type() != T_IDENTIFIER) {
-            String msg = first.type() == T_STAR ? "Wildcard disallowed" : "Identifier expected";
-            throw new QueryException(msg, first);
+            String message;
+            if (first.type() == T_STAR) {
+                message = "Wildcard disallowed";
+            } else if (exprCheck) {
+                // An expression isn't allowed here, but parse it anyhow to provide a better
+                // error message.
+                pushbackToken(first);
+                Expr expr = parseExpr();
+                throw new QueryException("Expression result must be assigned to column", expr);
+            } else {
+                message = "Identifier expected";
+            }
+
+            throw new QueryException(message, first);
         }
 
         if (peekTokenType() != T_DOT) {

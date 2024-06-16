@@ -71,10 +71,14 @@ public class ParserTest {
         parseFail("a<=?999999999999999999999999999999999999", "Malformed argument number");
         parseFail("{~a, -a}", "Excluded projection not found");
         parseFail("{~*}", "Wildcard disallowed");
-        parseFail("{~!a}", "Identifier expected");
+        parseFail("{~!a}", "Cannot convert double to boolean");
         parseFail("{~a}", "Excluded projection not found");
         parseFail("a<=?0", "at least one");
         parseFail("()!)", "Identifier expected");
+        parseFail("{1}", "must be assigned");
+        parseFail("{1 + sum(1)}", "must be assigned");
+        parseFail("{sum(1)}", "must be assigned");
+        parseFail("{foo(1)}", "Unknown function");
     }
 
     private void parseFail(String queryStr, String message) {

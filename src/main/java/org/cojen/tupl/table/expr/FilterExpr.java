@@ -18,6 +18,7 @@
 package org.cojen.tupl.table.expr;
 
 import java.util.Map;
+import java.util.Set;
 
 import org.cojen.tupl.table.ColumnInfo;
 import org.cojen.tupl.table.CompareUtils;
@@ -59,8 +60,17 @@ public final class FilterExpr extends BinaryOpExpr {
         if (type.isBoolean()) {
             return this;
         }
-        throw new QueryException("Cannot convert " + mType + " to " + type,
-                                 mLeft.startPos(), mRight.endPos());
+        throw new QueryException("Cannot convert " + mType + " to " + type, startPos(), endPos());
+    }
+
+    @Override
+    public Expr asAggregate(Set<String> group) {
+        Expr left = mOriginalLeft.asAggregate(group);
+        Expr right = mOriginalRight.asAggregate(group);
+        if (left == mOriginalLeft && right == mOriginalRight) {
+            return this;
+        }
+        return BinaryOpExpr.make(startPos(), endPos(), mOp, left, right);
     }
 
     @Override

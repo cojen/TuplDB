@@ -17,8 +17,10 @@
 
 package org.cojen.tupl.table.expr;
 
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 
 import java.util.function.Consumer;
 
@@ -110,6 +112,30 @@ public abstract sealed class ColumnExpr extends Expr implements Named {
     }
 
     @Override
+    public final boolean isGrouping() {
+        return false;
+    }
+
+    @Override
+    public final boolean isAccumulating() {
+        return false;
+    }
+
+    @Override
+    public final boolean isAggregating() {
+        return false;
+    }
+
+    @Override
+    public Expr asAggregate(Set<String> group) {
+        if (!group.contains(name())) {
+            throw new QueryException("Column isn't part of the aggregation group", this);
+        }
+        return CallExpr.make(startPos(), endPos(), "first", List.of(this),
+                             new StandardFunctionFinder.first(null));
+    }
+
+    @Override
     public final boolean canThrowRuntimeException() {
         return false;
     }
@@ -181,7 +207,7 @@ public abstract sealed class ColumnExpr extends Expr implements Named {
                 return result;
             }
 
-            result = resultRef.set(context.rowVar.invoke(mColumn.name()));
+            result = resultRef.set(context.sourceRowVar().invoke(mColumn.name()));
 
             if (mHasSubColumns && isNullable()) {
                 // Define notNull/isNull labels for the sub columns to insert code into.

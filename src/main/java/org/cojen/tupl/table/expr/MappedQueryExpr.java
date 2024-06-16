@@ -58,7 +58,7 @@ final class MappedQueryExpr extends QueryExpr {
     /**
      * @param filter can be null if rowFilter is TrueFilter
      * @param projection can be null to project all columns
-     * @param orderBy optional view ordering to apply after calling map
+     * @param orderBy optional view ordering to apply after calling Table.map
      * @see QueryExpr#make
      */
     static MappedQueryExpr make(int startPos, int endPos, RelationType type,
@@ -101,6 +101,21 @@ final class MappedQueryExpr extends QueryExpr {
     @Override
     public boolean isPureFunction() {
         return super.isPureFunction() && (mFilter == null || mFilter.isPureFunction());
+    }
+
+    @Override
+    public boolean isGrouping() {
+        return super.isGrouping() || (mFilter != null && mFilter.isGrouping());
+    }
+
+    @Override
+    public boolean isAccumulating() {
+        return super.isAccumulating() || (mFilter != null && mFilter.isAccumulating());
+    }
+
+    @Override
+    public boolean isAggregating() {
+        return super.isAggregating() || (mFilter != null && mFilter.isAggregating());
     }
 
     @Override
@@ -312,8 +327,8 @@ final class MappedQueryExpr extends QueryExpr {
         // Eagerly evaluate AssignExprs. The result might be needed by downstream expressions,
         // the filter, or it might throw an exception. In the unlikely case that none of these
         // conditions are met, then the AssignExprs can be evaluated after filtering.
-        // FIXME: This is too eager -- not checking canThrowRuntimeException, and not checking
-        // downstream expressions.
+        // TODO: This is too eager -- it's not checking canThrowRuntimeException, and it's not
+        // checking if any downstream expressions exist.
         IdentityHashMap<AssignExpr, Variable> projectedVars = null;
         if (mProjection != null) {
             for (ProjExpr pe : mProjection) {

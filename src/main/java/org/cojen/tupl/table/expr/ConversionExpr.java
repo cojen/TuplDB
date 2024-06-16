@@ -17,6 +17,8 @@
 
 package org.cojen.tupl.table.expr;
 
+import java.util.Set;
+
 import org.cojen.maker.MethodMaker;
 import org.cojen.maker.Variable;
 
@@ -58,6 +60,12 @@ public final class ConversionExpr extends WrappedExpr {
     @Override
     public Expr asType(Type type) {
         return make(startPos(), endPos(), this, type);
+    }
+
+    @Override
+    public ConversionExpr asAggregate(Set<String> group) {
+        Expr expr = mExpr.asAggregate(group);
+        return expr == mExpr ? this : new ConversionExpr(startPos(), endPos(), expr, mType);
     }
 
     @Override

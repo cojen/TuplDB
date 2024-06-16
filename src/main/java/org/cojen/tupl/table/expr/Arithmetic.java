@@ -24,20 +24,62 @@ import org.cojen.maker.MethodMaker;
 import org.cojen.maker.Variable;
 
 import org.cojen.tupl.table.ConvertUtils;
+import org.cojen.tupl.table.ColumnInfo;
 
 import static org.cojen.tupl.table.expr.Token.*;
+import static org.cojen.tupl.table.expr.Type.*;
 
 import java.lang.Long;
 
 /**
- * The arithmetic operations act on two variables, of the same type, with non-null values, and
- * returns a new variable of the same type. If the operation isn't supported, a null Variable
- * instance is returned. Exact arithmetic is performed, and so an exception can be thrown at
- * runtime, depending on the type and operation.
+ * Collection of utilities for generating arithmetic code.
  *
  * @author Brian S. O'Neill
  */
 final class Arithmetic {
+    // Define operations which aren't defined by token. Must not collide with any arithmetic
+    // operations defined in the Token class, or else the switch statements won't compile.
+    private static final int OP_MIN = 17, OP_MAX = 18;
+
+    /**
+     * Evaluate an operation against two variables, of the same type, non-null, and return a
+     * new variable of the same type. If the operation isn't supported, a null Variable
+     * instance is returned. Exact arithmetic is performed, and so an exception can be thrown
+     * at runtime, depending on the type and operation.
+     */
+    public static Variable eval(ColumnInfo type, int op, Variable left, Variable right) {
+        return switch (type.plainTypeCode()) {
+            case TYPE_BOOLEAN -> Arithmetic.Bool.eval(op, left, right);
+            case TYPE_UBYTE -> Arithmetic.UByte.eval(op, left, right);
+            case TYPE_USHORT -> Arithmetic.UShort.eval(op, left, right);
+            case TYPE_UINT -> Arithmetic.UInteger.eval(op, left, right);
+            case TYPE_ULONG -> Arithmetic.ULong.eval(op, left, right);
+            case TYPE_BYTE -> Arithmetic.Byte.eval(op, left, right);
+            case TYPE_SHORT -> Arithmetic.Short.eval(op, left, right);
+            case TYPE_INT, TYPE_LONG -> Arithmetic.Integer.eval(op, left, right);
+            case TYPE_FLOAT, TYPE_DOUBLE -> Arithmetic.Float.eval(op, left, right);
+            case TYPE_BIG_INTEGER -> Arithmetic.Big.eval(op, left, right);
+            case TYPE_BIG_DECIMAL -> Arithmetic.BigDecimal.eval(op, left, right);
+            default -> null;
+        };
+    }
+
+    /**
+     * Generates code for computing the minimum value, neither of which can be null. If the
+     * type isn't supported, a null Variable instance is returned.
+     */
+    public static Variable min(ColumnInfo type, Variable left, Variable right) {
+        return eval(type, OP_MIN, left, right);
+    }
+
+    /**
+     * Generates code for computing the maximum value, neither of which can be null. If the
+     * type isn't supported, a null Variable instance is returned.
+     */
+    public static Variable max(ColumnInfo type, Variable left, Variable right) {
+        return eval(type, OP_MAX, left, right);
+    }
+
     public static final class Bool {
         static Variable eval(int op, Variable left, Variable right) {
             switch (op) {
@@ -77,6 +119,14 @@ final class Arithmetic {
                 return left.or(right);
             case T_XOR:
                 return left.xor(right);
+
+            case OP_MIN:
+                method = "min";
+                break;
+            case OP_MAX:
+                method = "max";
+                break;
+
             default:
                 return null;
             }
@@ -105,6 +155,14 @@ final class Arithmetic {
 
         public static byte remainderExact(int x, int y) {
             return (byte) (x % y);
+        }
+
+        public static byte min(int x, int y) {
+            return (byte) Math.min(x, y);
+        }
+
+        public static byte max(int x, int y) {
+            return (byte) Math.max(x, y);
         }
 
         private static byte convert(int r) {
@@ -140,6 +198,14 @@ final class Arithmetic {
                 return left.or(right);
             case T_XOR:
                 return left.xor(right);
+
+            case OP_MIN:
+                method = "min";
+                break;
+            case OP_MAX:
+                method = "max";
+                break;
+
             default:
                 return null;
             }
@@ -168,6 +234,14 @@ final class Arithmetic {
 
         public static short remainderExact(int x, int y) {
             return (short) (x % y);
+        }
+
+        public static short min(int x, int y) {
+            return (short) Math.min(x, y);
+        }
+
+        public static short max(int x, int y) {
+            return (short) Math.max(x, y);
         }
 
         private static short convert(int r) {
@@ -203,6 +277,14 @@ final class Arithmetic {
                 return left.or(right);
             case T_XOR:
                 return left.xor(right);
+
+            case OP_MIN:
+                method = "min";
+                break;
+            case OP_MAX:
+                method = "max";
+                break;
+
             default:
                 return null;
             }
@@ -234,6 +316,14 @@ final class Arithmetic {
 
         public static int remainderExact(long x, long y) {
             return (int) (x % y);
+        }
+
+        public static int min(int x, int y) {
+            return (int) Math.min((long) x, (long) y);
+        }
+
+        public static int max(int x, int y) {
+            return (int) Math.max((long) x, (long) y);
         }
 
         private static int convert(long r) {
@@ -275,6 +365,14 @@ final class Arithmetic {
                 return left.or(right);
             case T_XOR:
                 return left.xor(right);
+
+            case OP_MIN:
+                method = "min";
+                break;
+            case OP_MAX:
+                method = "max";
+                break;
+
             default:
                 return null;
             }
@@ -316,6 +414,14 @@ final class Arithmetic {
             return convert(bx.remainder(by));
         }
 
+        public static long min(long x, long y) {
+            return Long.compareUnsigned(x, y) <= 0 ? x : y;
+        }
+
+        public static long max(long x, long y) {
+            return Long.compareUnsigned(x, y) >= 0 ? x : y;
+        }
+
         private static long convert(BigInteger r) {
             if (r.compareTo(OVERFLOW) >= 0) {
                 throw new ArithmeticException("integer overflow");
@@ -349,6 +455,14 @@ final class Arithmetic {
                 return left.or(right);
             case T_XOR:
                 return left.xor(right);
+
+            case OP_MIN:
+                method = "min";
+                break;
+            case OP_MAX:
+                method = "max";
+                break;
+
             default:
                 return null;
             }
@@ -387,6 +501,14 @@ final class Arithmetic {
             }
             throw new ArithmeticException("integer overflow");
         }
+
+        public static byte min(byte x, byte y) {
+            return (byte) Math.min(x, y);
+        }
+
+        public static byte max(byte x, byte y) {
+            return (byte) Math.max(x, y);
+        }
     }
 
     public static final class Short {
@@ -414,6 +536,14 @@ final class Arithmetic {
                 return left.or(right);
             case T_XOR:
                 return left.xor(right);
+
+            case OP_MIN:
+                method = "min";
+                break;
+            case OP_MAX:
+                method = "max";
+                break;
+
             default:
                 return null;
             }
@@ -452,6 +582,14 @@ final class Arithmetic {
             }
             throw new ArithmeticException("integer overflow");
         }
+
+        public static short min(short x, short y) {
+            return (short) Math.min(x, y);
+        }
+
+        public static short max(short x, short y) {
+            return (short) Math.max(x, y);
+        }
     }
 
     public static final class Integer {
@@ -479,6 +617,14 @@ final class Arithmetic {
                 return left.or(right);
             case T_XOR:
                 return left.xor(right);
+
+            case OP_MIN:
+                method = "min";
+                break;
+            case OP_MAX:
+                method = "max";
+                break;
+
             default:
                 return null;
             }
@@ -489,6 +635,8 @@ final class Arithmetic {
 
     public static final class Float {
         static Variable eval(int op, Variable left, Variable right) {
+            final String method;
+
             switch (op) {
             case T_PLUS:
                 return left.add(right);
@@ -500,8 +648,19 @@ final class Arithmetic {
                 return left.div(right);
             case T_REM:
                 return left.rem(right);
+
+            case OP_MIN:
+                method = "min";
+                break;
+            case OP_MAX:
+                method = "max";
+                break;
+
+            default:
+                return null;
             }
-            return null;
+
+            return left.methodMaker().var(Math.class).invoke(method, left, right);
         }
     }
 
@@ -534,7 +693,14 @@ final class Arithmetic {
             case T_XOR:
                 method = "xor";
                 break;
-            default:
+
+            case OP_MIN:
+                method = "min";
+                break;
+            case OP_MAX:
+                method = "max";
+
+             default:
                 return null;
             }
 

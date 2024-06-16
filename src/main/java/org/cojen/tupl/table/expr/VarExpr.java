@@ -17,6 +17,8 @@
 
 package org.cojen.tupl.table.expr;
 
+import java.util.Set;
+
 import java.util.function.Consumer;
 
 import org.cojen.maker.Variable;
@@ -101,6 +103,31 @@ public final class VarExpr extends Expr implements Named {
     @Override
     public ColumnExpr sourceColumn() {
         return mAssign.sourceColumn();
+    }
+
+    @Override
+    public boolean isGrouping() {
+        return mAssign.isGrouping();
+    }
+
+    @Override
+    public boolean isAccumulating() {
+        return mAssign.isAccumulating();
+    }
+
+    @Override
+    public boolean isAggregating() {
+        return mAssign.isAggregating();
+    }
+
+    @Override
+    public VarExpr asAggregate(Set<String> group) {
+        if (!mAssign.isAggregating()) {
+            // Cannot change how mAssign behaves, so require that asAggregate has already been
+            // called against it.
+            throw new QueryException("Not aggregating", this);
+        }
+        return this;
     }
 
     @Override

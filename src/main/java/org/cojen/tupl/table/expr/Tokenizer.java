@@ -167,6 +167,10 @@ final class Tokenizer {
                 type = Token.T_COMMA;
                 break loop;
 
+            case ';':
+                type = Token.T_SEMI;
+                break loop;
+
             case '?':
                 type = Token.T_ARG;
                 break loop;

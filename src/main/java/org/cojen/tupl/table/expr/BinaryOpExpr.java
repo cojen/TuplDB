@@ -20,10 +20,12 @@ package org.cojen.tupl.table.expr;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 
+import java.util.Set;
+
 import java.util.function.Consumer;
 
-import static org.cojen.tupl.table.expr.Type.*;
 import static org.cojen.tupl.table.expr.Token.*;
+import static org.cojen.tupl.table.expr.Type.*;
 
 import org.cojen.maker.Label;
 import org.cojen.maker.MethodMaker;
@@ -257,6 +259,31 @@ public sealed class BinaryOpExpr extends Expr permits FilterExpr {
     }
 
     @Override
+    public final boolean isGrouping() {
+        return mLeft.isGrouping() || mRight.isGrouping();
+    }
+
+    @Override
+    public final boolean isAccumulating() {
+        return mLeft.isAccumulating() || mRight.isAccumulating();
+    }
+
+    @Override
+    public final boolean isAggregating() {
+        return mLeft.isAggregating() || mRight.isAggregating();
+    }
+
+    @Override
+    public Expr asAggregate(Set<String> group) {
+        Expr left = mLeft.asAggregate(group);
+        Expr right = mRight.asAggregate(group);
+        if (left == mLeft && right == mRight) {
+            return this;
+        }
+        return new BinaryOpExpr(startPos(), endPos(), mType, mOp, left, right);
+    }
+
+    @Override
     public final void gatherEvalColumns(Consumer<Column> c) {
         mLeft.gatherEvalColumns(c);
         mRight.gatherEvalColumns(c);
@@ -305,22 +332,7 @@ public sealed class BinaryOpExpr extends Expr permits FilterExpr {
      * @param rightVar not null, same type as mType
      */
     private Variable doMakeEval(Variable leftVar, Variable rightVar) {
-        int op = mOp;
-
-        Variable resulVar = switch (mType.plainTypeCode()) {
-            case TYPE_BOOLEAN -> Arithmetic.Bool.eval(op, leftVar, rightVar);
-            case TYPE_UBYTE -> Arithmetic.UByte.eval(op, leftVar, rightVar);
-            case TYPE_USHORT -> Arithmetic.UShort.eval(op, leftVar, rightVar);
-            case TYPE_UINT -> Arithmetic.UInteger.eval(op, leftVar, rightVar);
-            case TYPE_ULONG -> Arithmetic.ULong.eval(op, leftVar, rightVar);
-            case TYPE_BYTE -> Arithmetic.Byte.eval(op, leftVar, rightVar);
-            case TYPE_SHORT -> Arithmetic.Short.eval(op, leftVar, rightVar);
-            case TYPE_INT, TYPE_LONG -> Arithmetic.Integer.eval(op, leftVar, rightVar);
-            case TYPE_FLOAT, TYPE_DOUBLE -> Arithmetic.Float.eval(op, leftVar, rightVar);
-            case TYPE_BIG_INTEGER -> Arithmetic.Big.eval(op, leftVar, rightVar);
-            case TYPE_BIG_DECIMAL -> Arithmetic.BigDecimal.eval(op, leftVar, rightVar);
-            default -> null;
-        };
+        Variable resulVar = Arithmetic.eval(mType, mOp, leftVar, rightVar);
 
         if (resulVar != null) {
             return resulVar;

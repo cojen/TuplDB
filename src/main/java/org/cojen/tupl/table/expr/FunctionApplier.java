@@ -18,11 +18,13 @@
 package org.cojen.tupl.table.expr;
 
 import java.util.function.Consumer;
-import java.util.function.Function;
 
 import org.cojen.maker.Field;
+import org.cojen.maker.Label;
 import org.cojen.maker.MethodMaker;
 import org.cojen.maker.Variable;
+
+import org.cojen.tupl.io.Utils;
 
 /**
  * Generates code to invoke a function.
@@ -31,39 +33,82 @@ import org.cojen.maker.Variable;
  * @see FunctionFinder
  */
 public abstract class FunctionApplier {
-    private FunctionApplier() {
+    private final Type mType;
+
+    private FunctionApplier(Type type) {
+        mType = type;
     }
 
     /**
-     * Returns this instance or a new instance if the applier requires unsharable state when
-     * generating code.
+     * Checks if the number of function arguments provided is legal.
+     *
+     * @param min minimum number of required arguments
+     * @param max maximum number of required arguments
+     * @param actual actual number of arguments provided
+     * @param reason if false is returned, a reason is provided
+     * @return true if the number is legal
      */
-    public FunctionApplier prepare() {
-        return this;
-    }
+    public static boolean checkNumArgs(int min, int max, int actual, Consumer<String> reason) {
+        if (min <= actual && actual <= max) {
+            return true;
+        }
 
-    /**
-     * Return true if the function needs a row number value, which spans the entire query. Row
-     * numbers begin at one.
-     */
-    public boolean requireRowNum() {
+        final String message;
+
+        message: {
+            if (min == 0) {
+                if (max == 0) {
+                    message = "no arguments are allowed";
+                    break message;
+                } else if (max == 1) {
+                    message = "at most 1 argument is allowed";
+                    break message;
+                } else {
+                    message = "at most " + max + " arguments are allowed";
+                    break message;
+                }
+            } else if (min == 1) {
+                if (max == 1) {
+                    message = "exactly 1 argument is required";
+                    break message;
+                } else if (max == Integer.MAX_VALUE) {
+                    message = "at least 1 argument is required";
+                    break message;
+                }
+            } else if (min == max) {
+                message = "exactly " + min + " arguments are required";
+                break message;
+            } else if (max == Integer.MAX_VALUE) {
+                message = "at least " + min + " arguments are required";
+                break message;
+            }
+
+            message = min + " to " + max + " arguments are required";
+        }
+
+        reason.accept(message);
         return false;
     }
 
     /**
-     * Return true if the function needs a group number value, which spans the entire query.
-     * Group numbers begin at one.
+     * Validate that the function acceps the given arguments, and returns a new applier
+     * instance. If any arguments should be converted, directly replace elements of the
+     * argTypes array with the desired type.
+     *
+     * @param argTypes non-null array of argument types
+     * @param argNames non-null array of optional argument names; same length as argTypes
+     * @param reasons if validation fails, optionally provide reasons
+     * @return the new applier, or else null if validation fails
      */
-    public boolean requireGroupNum() {
-        return false;
-    }
+    public abstract FunctionApplier validate(Type[] argTypes, String[] argNames,
+                                             Consumer<String> reasons);
 
     /**
-     * Return true if the function needs a group row number value. Group row numbers begin at
-     * one, and they reset back to one for each new group.
+     * Returns the type that the function returns, or else null if this applier isn't
+     * validated.
      */
-    public boolean requireGroupRowNum() {
-        return false;
+    public final Type type() {
+        return mType;
     }
 
     /**
@@ -75,69 +120,87 @@ public abstract class FunctionApplier {
     }
 
     /**
-     * Validate that the function acceps the given arguments, and returns the type of the
-     * function. If any arguments should be converted, directly replace elements of the
-     * argTypes array with the desired type.
-     *
-     * @param argTypes non-null array of argument types
-     * @param argNames non-null array of optional argument names; same length as argTypes
-     * @param reasons if validation fails, optionally provide reasons
-     * @return the function return type or null if validation fails
+     * Returns true if the function needs a projection group.
      */
-    public abstract Type validate(Type[] argTypes, String[] argNames, Consumer<String> reasons);
+    public abstract boolean isGrouping();
 
-    abstract void apply(Type retType, Variable retVar, Type[] argTypes, LazyValue[] args,
-                        Variable rowNum, Variable groupNum, Variable groupRowNum);
+    /**
+     * Returns true if the function accepts named parameters.
+     */
+    public boolean hasNamedParameters() {
+        return false;
+    }
 
-    abstract void apply(Type retType, Variable retVar, Type[] argTypes, LazyValue[] args);
+    public static interface Context {
+        MethodMaker methodMaker();
+
+        /**
+         * Defines a new field with the given type. Should only be called by a begin method.
+         */
+        default Field newWorkField(Class<?> type) {
+            throw new IllegalStateException();
+        }
+
+        /**
+         * Returns a variable for the current row number, which spans the entire query. Row
+         * numbers begin at 1L.
+         */
+        default Variable rowNum() {
+            throw new IllegalStateException();
+        }
+
+        /**
+         * Returns a variable for the current group number, which spans the entire group. Group
+         * numbers begin at 1L.
+         */
+        default Variable groupNum() {
+            throw new IllegalStateException();
+        }
+
+        /**
+         * Returns a variable for the current group row number. Group row numbers begin at 1L.
+         */
+        default Variable groupRowNum() {
+            throw new IllegalStateException();
+        }
+    }
 
     /**
      * A plain function is a plain function.
      */
     public abstract static class Plain extends FunctionApplier {
-        @Override
-        public Plain prepare() {
-            return this;
+        protected Plain(Type type) {
+            super(type);
         }
 
         /**
-         * Called to apply the function. The given arguments are either Variables or constant
-         * values.
+         * Generate code to apply the function.
          *
-         * @param retVar non-null return variable to set
-         * @param args Variables or constants
-         * @param rowNum if required, represents the current row number (>= 1L)
-         * @param groupNum if required, represents the current group number (>= 1L)
-         * @param groupRowNum if required, represents the last group row number (>= 1L)
+         * @param args arguments passed to function
+         * @param resultVar non-null result variable to set
          */
-        @Override
-        public void apply(Type retType, Variable retVar, Type[] argTypes, LazyValue[] args,
-                          Variable rowNum, Variable groupNum, Variable groupRowNum)
-        {
-            apply(retType, retVar, argTypes, args);
-        }
+        public abstract void apply(Context context, LazyValue[] args, Variable resultVar);
 
         /**
-         * Called to apply the function. The given arguments are either Variables or constant
-         * values.
-         *
-         * @param retVar non-null return variable to set
-         * @param args Variables or constants
-         * @return a Variable or a constant
+         * Override and return true if the function requires a group number or group row number.
          */
         @Override
-        public void apply(Type retType, Variable retVar, Type[] argTypes, LazyValue[] args) {
-            throw new AbstractMethodError();
+        public boolean isGrouping() {
+            return false;
         }
     }
 
     abstract static class ByGroup extends FunctionApplier {
-        private ByGroup() {
+        private ByGroup(Type type) {
+            super(type);
         }
 
-        abstract void prepare(Function<Class, Field> fieldDefiner);
+        abstract void begin(Context context, LazyValue[] args);
 
-        abstract void reset();
+        @Override
+        public final boolean isGrouping() {
+            return true;
+        }
     }
 
     /**
@@ -145,65 +208,35 @@ public abstract class FunctionApplier {
      * row, without requiring that the entire group of values be provided up front.
      */
     public abstract static class Rolling extends ByGroup {
-        @Override
-        public Rolling prepare() {
-            return this;
+        protected Rolling(Type type) {
+            super(type);
         }
 
         /**
-         * Called when code generation begins. The given definer can be called to produce all
-         * of the necessary work fields, and if necessary, the prepare method should initialize
-         * them.
-         */
-        @Override
-        public abstract void prepare(Function<Class, Field> fieldDefiner);
-
-        /**
-         * Called to reset the work fields before a group begins.
-         */
-        @Override
-        public abstract void reset();
-
-        /**
-         * Called to apply the function. The given arguments are either Variables or constant
-         * values.
+         * Generate code for the first row in the group. The given context can be called to
+         * make and initialize all of the necessary work fields, and the applier instance needs
+         * to maintain references to their names.
          *
-         * @param retVar non-null return variable to set
-         * @param args Variables or constants
-         * @param rowNum if required, represents the current row number (>= 1L)
-         * @param groupNum if required, represents the current group number (>= 1L)
-         * @param groupRowNum if required, represents the last group row number (>= 1L)
-         * @return a Variable or a constant
+         * @param args arguments passed to function
          */
         @Override
-        public void apply(Type retType, Variable retVar, Type[] argTypes, LazyValue[] args,
-                          Variable rowNum, Variable groupNum, Variable groupRowNum)
-        {
-            apply(retType, retVar, argTypes, args);
-        }
+        public abstract void begin(Context context, LazyValue[] args);
 
         /**
-         * Called to apply the function. The given arguments are either Variables or constant
-         * values.
+         * Generate code to apply the function.
          *
-         * @param retVar non-null return variable to set
-         * @param args Variables or constants
-         * @return a Variable or a constant
+         * @param args arguments passed to function
+         * @param resultVar non-null result variable to set
          */
-        @Override
-        public void apply(Type retType, Variable retVar, Type[] argTypes, LazyValue[] args) {
-            throw new AbstractMethodError();
-        }
+        public abstract void apply(Context context, LazyValue[] args, Variable resultVar);
     }
 
     abstract static class Accumulator extends ByGroup {
-        private Accumulator() {
+        private Accumulator(Type type) {
+            super(type);
         }
 
-        abstract void accumulate(MethodMaker mm, Type[] argTypes, LazyValue[] args,
-                                 Variable rowNum, Variable groupNum, Variable groupRowNum);
-
-        abstract void accumulate(MethodMaker mm, Type[] argTypes, LazyValue[] args);
+        abstract void accumulate(Context context, LazyValue[] args);
     }
 
     /**
@@ -211,87 +244,37 @@ public abstract class FunctionApplier {
      * row, while also requiring that the entire group of values be provided up front.
      */
     public abstract static class Grouped extends Accumulator {
-        @Override
-        public Grouped prepare() {
-            return this;
+        protected Grouped(Type type) {
+            super(type);
         }
 
         /**
-         * Called when code generation begins. The given definer can be called to produce all
-         * of the necessary work fields, and if necessary, the prepare method should initialize
-         * them.
-         */
-        @Override
-        public abstract void prepare(Function<Class, Field> fieldDefiner);
-
-        /**
-         * Called to reset the work fields before a group begins.
-         */
-        @Override
-        public abstract void reset();
-
-        /**
-         * Called for each row in the group. The given arguments are either Variables or
-         * constant values.
+         * Generate code for the first row in the group. The given context can be called to
+         * make and initialize all of the necessary work fields, and the applier instance needs
+         * to maintain references to their names.
          *
-         * @param args Variables or constants
-         * @param rowNum if required, represents the current row number (>= 1L)
-         * @param groupNum if required, represents the current group number (>= 1L)
-         * @param groupRowNum if required, represents the current group row number (>= 1L)
+         * @param args arguments passed to function
          */
         @Override
-        public void accumulate(MethodMaker mm, Type[] argTypes, LazyValue[] args,
-                               Variable rowNum, Variable groupNum, Variable groupRowNum)
-        {
-            accumulate(mm, argTypes, args);
-        }
+        public abstract void begin(Context context, LazyValue[] args);
 
         /**
-         * Called for each row in the group. The given arguments are either Variables or
-         * constant values.
+         * Generate code for each row in the group, other than the first.
          *
-         * @param args Variables or constants
+         * @param args arguments passed to function
          */
         @Override
-        public void accumulate(MethodMaker mm, Type[] argTypes, LazyValue[] args) {
-            throw new AbstractMethodError();
-        }
+        public abstract void accumulate(Context context, LazyValue[] args);
 
         /**
-         * Called for the last row in the group, and produces the first result.
-         *
-         * @param retVar non-null return variable to set
-         * @param args Variables or constants
-         * @param rowNum if required, represents the current row number (>= 1L)
-         * @param groupNum if required, represents the current group number (>= 1L)
-         * @param groupRowNum if required, represents the current group row number (>= 1L)
-         * @return a Variable or a constant
+         * Generate code for the last row in the group, producing the first result.
          */
-        @Override
-        public void apply(Type retType, Variable retVar, Type[] argTypes, LazyValue[] args,
-                          Variable rowNum, Variable groupNum, Variable groupRowNum)
-        {
-            apply(retType, retVar, argTypes, args);
-        }
+        public abstract Variable process(Context context);
 
         /**
-         * Called for the last row in the group, and produces the first result.
-         *
-         * @param retVar non-null return variable to set
-         * @param args Variables or constants
-         * @return a Variable or a constant
+         * Generate code to produce each remaining result.
          */
-        @Override
-        public void apply(Type retType, Variable retVar, Type[] argTypes, LazyValue[] args) {
-            throw new AbstractMethodError();
-        }
-
-        /**
-         * Called to produce each remaining result.
-         *
-         * @return a Variable or a constant
-         */
-        public abstract Object next();
+        public abstract Variable step(Context context);
     }
 
     /**
@@ -299,79 +282,135 @@ public abstract class FunctionApplier {
      * produced for a group of input rows.
      */
     public abstract static class Aggregated extends Accumulator {
-        @Override
-        public Aggregated prepare() {
-            return this;
+        protected Aggregated(Type type) {
+            super(type);
         }
 
         /**
-         * Called when code generation begins. The given definer can be called to produce all
-         * of the necessary work fields, and if necessary, the prepare method should initialize
-         * them.
-         */
-        @Override
-        public abstract void prepare(Function<Class, Field> fieldDefiner);
-
-        /**
-         * Called to reset the work fields before a group begins.
-         */
-        @Override
-        public abstract void reset();
-
-        /**
-         * Called for each row in the group. The given arguments are either Variables or
-         * constant values.
+         * Generate code for the first row in the group. The given context can be called to
+         * make and initialize all of the necessary work fields, and the applier instance needs
+         * to maintain references to their names.
          *
-         * @param args Variables or constants
-         * @param rowNum if required, represents the current row number (>= 1L)
-         * @param groupNum if required, represents the current group number (>= 1L)
-         * @param groupRowNum if required, represents the current group row number (>= 1L)
+         * @param args arguments passed to function
          */
         @Override
-        public void accumulate(MethodMaker mm, Type[] argTypes, LazyValue[] args,
-                               Variable rowNum, Variable groupNum, Variable groupRowNum)
+        public abstract void begin(Context context, LazyValue[] args);
+
+        /**
+         * Generate code for each row in the group, other than the first.
+         *
+         * @param args arguments passed to function
+         */
+        @Override
+        public abstract void accumulate(Context context, LazyValue[] args);
+
+        /**
+         * Generate code for when the group is finished, producing an aggregate result.
+         */
+        public abstract Variable finish(Context context);
+    }
+
+    /**
+     * Defines an aggregate function which needs one work field.
+     */
+    public abstract static class BasicAggregated extends Aggregated {
+        private String mFieldName;
+
+        protected BasicAggregated(Type type) {
+            super(type);
+        }
+
+        @Override
+        public void begin(Context context, LazyValue[] args) {
+            mFieldName = context.newWorkField(type().clazz()).set(eval(args[0])).name();
+        }
+
+        @Override
+        public Variable finish(Context context) {
+            return workField(context);
+        }
+
+        protected final Field workField(Context context) {
+            return context.methodMaker().field(mFieldName);
+        }
+
+        protected Variable eval(LazyValue arg) {
+            return arg.eval(true);
+        }
+    }
+
+    /**
+     * Defines an aggregate function which computes against one work field.
+     */
+    public abstract static class ComputeAggregated extends BasicAggregated {
+        protected ComputeAggregated(Type type) {
+            super(type);
+        }
+
+        @Override
+        public void accumulate(Context context, LazyValue[] args) {
+            Field field = workField(context);
+            Type type = type();
+            Label done = null;
+
+            Variable left = field;
+
+            if (type.isNullable()) {
+                left = left.get();
+                done = context.methodMaker().label();
+                left.ifEq(null, done);
+            }
+
+            Variable right = eval(args[0]);
+
+            if (type.isNullable()) {
+                Label notNull = context.methodMaker().label();
+                right.ifNe(null, notNull);
+                field.set(null);
+                done.goto_();
+                notNull.here();
+            }
+
+            field.set(compute(type, left, right));
+
+            if (done != null) {
+                done.here();
+            }
+        }
+
+        /**
+         * Generate code to compute an incremental result against two non-null values.
+         */
+        protected abstract Variable compute(Type type, Variable left, Variable right);
+    }
+
+    /**
+     * Defines an aggregate function which performs numerical computation against one work
+     * field.
+     */
+    public abstract static class NumericalAggregated extends ComputeAggregated {
+        protected NumericalAggregated(Type type) {
+            super(type);
+        }
+
+        @Override
+        public NumericalAggregated validate(Type[] argTypes, String[] argNames,
+                                            Consumer<String> reason)
         {
-            accumulate(mm, argTypes, args);
+            if (!checkNumArgs(1, 1, argTypes.length, reason)) {
+                return null;
+            }
+
+            Type type = argTypes[0];
+
+            if (!type.isNumber()) {
+                reason.accept("argument must be a number");
+                return null;
+            }
+
+            return validate(type, reason);
         }
 
-        /**
-         * Called for each row in the group. The given arguments are either Variables or
-         * constant values.
-         *
-         * @param args Variables or constants
-         */
-        @Override
-        public void accumulate(MethodMaker mm, Type[] argTypes, LazyValue[] args) {
-            throw new AbstractMethodError();
-        }
-
-        /**
-         * Called for the last row in the group, and produces an aggregate result.
-         *
-         * @param retVar non-null return variable to set
-         * @param args Variables or constants
-         * @param rowNum if required, represents the current row number (>= 1L)
-         * @param groupNum if required, represents the current group number (>= 1L)
-         * @param groupRowNum if required, represents the current group row number (>= 1L)
-         * @return a Variable or a constant
-         */
-        @Override
-        public void apply(Type retType, Variable retVar, Type[] argTypes, LazyValue[] args,
-                          Variable rowNum, Variable groupNum, Variable groupRowNum)
-        {
-            apply(retType, retVar, argTypes, args);
-        }
-
-        /**
-         * Called for the last row in the group, and produces an aggregate result.
-         *
-         * @param retVar non-null return variable to set
-         * @param args Variables or constants
-         * @return a Variable or a constant
-         */
-        @Override
-        public void apply(Type retType, Variable retVar, Type[] argTypes, LazyValue[] args) {
-            throw new AbstractMethodError();
-        }
+        protected abstract NumericalAggregated validate(Type type, Consumer<String> reason);
     }
 }

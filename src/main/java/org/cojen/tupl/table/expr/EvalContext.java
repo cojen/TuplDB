@@ -21,6 +21,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.cojen.maker.Field;
 import org.cojen.maker.MethodMaker;
 import org.cojen.maker.Variable;
 
@@ -29,30 +30,62 @@ import org.cojen.maker.Variable;
  *
  * @author Brian S. O'Neill
  */
-final class EvalContext {
+class EvalContext implements FunctionApplier.Context {
+    private final Variable mArgsVar, mSourceRowVar;
+
     private Map<Object, ResultRef> mEvaluated;
     private ResultRef[] mUndoLog;
     private int mUndoSize;
 
     private Map<String, Variable> mLocalVars;
 
-    /**
-     * Object array of arguments, used by ParamExpr.
-     */
-    final Variable argsVar;
-
-    /**
-     * Source row with columns, used by ColumnExpr.
-     */
-    final Variable rowVar;
-
-    EvalContext(Variable argsVar, Variable rowVar) {
-        this.argsVar = argsVar;
-        this.rowVar = rowVar;
+    EvalContext(Variable argsVar, Variable sourceRowVar) {
+        mArgsVar = argsVar;
+        mSourceRowVar = sourceRowVar;
     }
 
-    MethodMaker methodMaker() {
-        return rowVar.methodMaker();
+    @Override
+    public MethodMaker methodMaker() {
+        return mSourceRowVar.methodMaker();
+    }
+
+    /**
+     * Defines a new field with the given type. Throws IllegalStateException unless called by a
+     * context suitable for the FunctionApplier.Aggregated.begin method.
+     */
+    @Override
+    public Field newWorkField(Class<?> type) {
+        throw new IllegalStateException();
+    }
+
+    /**
+     * Returns a context to use for the FunctionApplier.Aggregated.begin method. Throws
+     * IllegalStateException when not supported.
+     */
+    EvalContext beginContext() {
+        throw new IllegalStateException();
+    }
+
+    /**
+     * Returns a context to use for the FunctionApplier.Aggregated.accumulate method. Throws
+     * IllegalStateException when not supported.
+     */
+    EvalContext accumContext() {
+        throw new IllegalStateException();
+    }
+
+    /**
+     * Returns an object array of arguments, used by ParamExpr. Is null if no arguments.
+     */
+    final Variable argsVar() {
+        return mArgsVar;
+    }
+
+    /**
+     * Returns the source row with columns, used by ColumnExpr.
+     */
+    final Variable sourceRowVar() {
+        return mSourceRowVar;
     }
 
     /**
@@ -60,7 +93,7 @@ final class EvalContext {
      * be used for non-trivial expressions which are pure functions. There's no point in
      * stashing references to trivial expressions because evaluating them again is cheap.
      */
-    ResultRef refFor(Object expr) {
+    final ResultRef refFor(Object expr) {
         Map<Object, ResultRef> evaluated = mEvaluated;
         if (evaluated == null) {
             mEvaluated = evaluated = new HashMap<>();
@@ -73,7 +106,7 @@ final class EvalContext {
      *
      * @return a non-negative int
      */
-    int refSavepoint() {
+    final int refSavepoint() {
         if (mUndoLog == null) {
             mUndoLog = new ResultRef[10];
             return 0;
@@ -85,7 +118,7 @@ final class EvalContext {
     /**
      * Rollback to a savepoint, invalidating all ref assignments.
      */
-    void refRollback(int savepoint) {
+    final void refRollback(int savepoint) {
         ResultRef[] undo = mUndoLog;
         for (int i=mUndoSize; --i>= savepoint; ) {
             undo[i].invalidate();
@@ -96,7 +129,7 @@ final class EvalContext {
     /**
      * Commit all ref assignments up to a savepoint.
      */
-    void refCommit(int savepoint) {
+    final void refCommit(int savepoint) {
         mUndoSize = savepoint;
     }
 
@@ -115,7 +148,7 @@ final class EvalContext {
     /**
      * @param type only used if the variable needs to be declared
      */
-    Variable findOrDeclareLocalVar(Type type, String name) {
+    final Variable findOrDeclareLocalVar(Type type, String name) {
         if (mLocalVars == null) {
             mLocalVars = new HashMap<>();
         }
@@ -125,7 +158,7 @@ final class EvalContext {
     /**
      * @return null if not found
      */
-    Variable findLocalVar(String name) {
+    final Variable findLocalVar(String name) {
         return mLocalVars == null ? null : mLocalVars.get(name);
     }
 

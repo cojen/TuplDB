@@ -17,6 +17,8 @@
 
 package org.cojen.tupl.table.expr;
 
+import java.util.Set;
+
 import java.util.function.Consumer;
 
 import org.cojen.tupl.table.ConvertCallSite;
@@ -81,12 +83,32 @@ public final class ParamExpr extends Expr {
     }
 
     @Override
+    public boolean isGrouping() {
+        return false;
+    }
+
+    @Override
+    public boolean isAccumulating() {
+        return false;
+    }
+
+    @Override
+    public boolean isAggregating() {
+        return false;
+    }
+
+    @Override
+    public ParamExpr asAggregate(Set<String> group) {
+        return this;
+    }
+
+    @Override
     public void gatherEvalColumns(Consumer<Column> c) {
     }
 
     @Override
     protected Variable doMakeEval(EvalContext context, EvalContext.ResultRef resultRef) {
-        var value = context.argsVar.aget(mOrdinal - 1);
+        var value = context.argsVar().aget(mOrdinal - 1);
         Class<?> clazz = mType.clazz();
         if (clazz != Object.class) {
             value = ConvertCallSite.make(context.methodMaker(), clazz, value);

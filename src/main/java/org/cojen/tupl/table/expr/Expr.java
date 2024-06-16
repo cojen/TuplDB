@@ -19,6 +19,7 @@ package org.cojen.tupl.table.expr;
 
 import java.util.Collection;
 import java.util.Map;
+import java.util.Set;
 
 import java.util.function.Consumer;
 
@@ -187,6 +188,30 @@ public abstract sealed class Expr
     public ColumnExpr sourceColumn() {
         return null;
     }
+
+    /**
+     * Returns true if this expression depends on a function which needs a projection group.
+     */
+    public abstract boolean isGrouping();
+
+    /**
+     * Returns true if this expression directly or indirectly depends upon a function which
+     * accumulates group results, which also implies that isGrouping returns true.
+     */
+    public abstract boolean isAccumulating();
+
+    /**
+     * Returns true if this expression directly or indirectly depends upon an aggregation
+     * function, which also implies that isAccumulating returns true.
+     */
+    public abstract boolean isAggregating();
+
+    /**
+     * Return this or a replacement expression such that all direct column accesses are wrapped
+     * by the "last" aggregation function. A QueryException is thrown if any column which needs
+     * to be wrapped isn't in the specified group.
+     */
+    public abstract Expr asAggregate(Set<String> group);
 
     /**
      * Returns a new LazyValue instance backed by this expression.

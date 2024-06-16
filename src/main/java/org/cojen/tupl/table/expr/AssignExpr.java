@@ -17,6 +17,8 @@
 
 package org.cojen.tupl.table.expr;
 
+import java.util.Set;
+
 import org.cojen.maker.Variable;
 
 import org.cojen.tupl.table.RowMethodsMaker;
@@ -48,6 +50,12 @@ public final class AssignExpr extends WrappedExpr implements Named {
     public Expr asType(Type type) {
         return type.equals(type()) ? this
             : new AssignExpr(startPos(), endPos(), mName, mExpr.asType(type));
+    }
+
+    @Override
+    public AssignExpr asAggregate(Set<String> group) {
+        Expr expr = mExpr.asAggregate(group);
+        return expr == mExpr ? this : new AssignExpr(startPos(), endPos(), mName, expr);
     }
 
     @Override

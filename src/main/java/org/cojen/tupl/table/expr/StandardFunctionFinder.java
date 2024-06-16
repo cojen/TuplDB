@@ -17,8 +17,13 @@
 
 package org.cojen.tupl.table.expr;
 
+import java.lang.reflect.Modifier;
+
+import java.math.BigDecimal;
+
 import java.util.function.Consumer;
 
+import org.cojen.maker.Field;
 import org.cojen.maker.Label;
 import org.cojen.maker.MethodMaker;
 import org.cojen.maker.Variable;
@@ -27,6 +32,8 @@ import org.cojen.tupl.io.Utils;
 
 import org.cojen.tupl.table.Converter;
 import org.cojen.tupl.table.SoftCache;
+
+import static org.cojen.tupl.table.expr.Type.*;
 
 /**
  * 
@@ -52,7 +59,12 @@ public final class StandardFunctionFinder extends SoftCache<String, Object, Obje
     protected Object newValue(String name, Object unused) {
         try {
             Class<?> clazz = Class.forName(getClass().getName() + '$' + name);
-            return (FunctionApplier) clazz.getDeclaredConstructor().newInstance();
+            if (Modifier.isAbstract(clazz.getModifiers())) {
+                // Negative cache.
+                return new Object();
+            }
+            return (FunctionApplier) clazz
+                .getDeclaredConstructor(Type.class).newInstance((Type) null);
         } catch (ClassNotFoundException e) {
             // Negative cache.
             return new Object();
@@ -61,19 +73,18 @@ public final class StandardFunctionFinder extends SoftCache<String, Object, Obje
         }
     }
 
+    /**
+     * Defines a function which evaluates the first non-null argument.
+     */
     private static class coalesce extends FunctionApplier.Plain {
-        @Override
-        public Type validate(Type[] argTypes, String[] argNames, Consumer<String> reason) {
-            if (argTypes.length == 0) {
-                reason.accept("at least one argument is required");
-                return null;
-            }
+        coalesce(Type type) {
+            super(type);
+        }
 
-            for (String name : argNames) {
-                if (name != null) {
-                    reason.accept("unknown parameter: " + name);
-                    return null;
-                }
+        @Override
+        public coalesce validate(Type[] argTypes, String[] argNames, Consumer<String> reason) {
+            if (!checkNumArgs(0, Integer.MAX_VALUE, argTypes.length, reason)) {
+                return null;
             }
 
             Type type = argTypes[0];
@@ -90,18 +101,18 @@ public final class StandardFunctionFinder extends SoftCache<String, Object, Obje
                 argTypes[i] = type;
             }
 
-            return type;
+            return new coalesce(type);
         }
 
         @Override
-        public void apply(Type retType, Variable retVar, Type[] argTypes, LazyValue[] args) {
-            if (retVar.classType().isPrimitive()) {
-                // No arguments can be null, so just return the first one.
-                retVar.set(args[0].eval(true));
+        public void apply(Context context, LazyValue[] args, Variable resultVar) {
+            if (resultVar.classType().isPrimitive()) {
+                // No arguments will be null, so just return the first one.
+                resultVar.set(args[0].eval(true));
                 return;
             }
 
-            MethodMaker mm = retVar.clear().methodMaker();
+            MethodMaker mm = resultVar.clear().methodMaker();
             Label done = mm.label();
 
             for (int i=0; i<args.length; i++) {
@@ -111,17 +122,224 @@ public final class StandardFunctionFinder extends SoftCache<String, Object, Obje
                     var argVar = arg.eval(i == 0);
                     Label next = mm.label();
                     argVar.ifEq(null, next);
-                    retVar.set(argVar);
+                    resultVar.set(argVar);
                     done.goto_();
                     next.here();
                 } else if (arg.constantValue() != null) {
-                    retVar.set(arg.eval(i == 0));
+                    resultVar.set(arg.eval(i == 0));
                     // Once a constant non-null value is reached, skip the rest.
                     break;
                 }
             }
 
             done.here();
+        }
+    }
+
+    /**
+     * Defines an aggregated function which evaluates the argument for only the first row in a
+     * group.
+     */
+    static class first extends FunctionApplier.BasicAggregated {
+        first(Type type) {
+            super(type);
+        }
+
+        @Override
+        public first validate(Type[] argTypes, String[] argNames, Consumer<String> reason) {
+            if (!checkNumArgs(1, 1, argTypes.length, reason)) {
+                return null;
+            }
+            return new first(argTypes[0]);
+        }
+
+        @Override
+        public void accumulate(Context context, LazyValue[] args) {
+        }
+    }
+
+    /**
+     * Defines an aggregated function which evaluates the argument for all rows in the group,
+     * but only the last one is used in the aggregate result.
+     */
+    private static class last extends FunctionApplier.BasicAggregated {
+        last(Type type) {
+            super(type);
+        }
+
+        @Override
+        public last validate(Type[] argTypes, String[] argNames, Consumer<String> reason) {
+            if (!checkNumArgs(1, 1, argTypes.length, reason)) {
+                return null;
+            }
+            return new last(argTypes[0]);
+        }
+
+        // Note: The Aggregator interface doesn't provide a convenient (or efficient) way of
+        // accessing just the last row in the group. Instead, the arg is evaluated for each row
+        // and stored in the field. This can be expensive if evaluating the arg is expensive.
+
+        @Override
+        public void accumulate(Context context, LazyValue[] args) {
+            workField(context).set(args[0].eval(true));
+        }
+    }
+
+    /**
+     * Defines an aggregated function which yields the smallest argument in the group.
+     */
+    private static class min extends FunctionApplier.NumericalAggregated {
+        min(Type type) {
+            super(type);
+        }
+
+        @Override
+        protected min validate(Type type, Consumer<String> reason) {
+            return new min(type);
+        }
+
+        @Override
+        protected Variable compute(Type type, Variable left, Variable right) {
+            return Arithmetic.min(type, left, right);
+        }
+    }
+
+    /**
+     * Defines an aggregated function which yields the largest argument in the group.
+     */
+    private static class max extends FunctionApplier.NumericalAggregated {
+        max(Type type) {
+            super(type);
+        }
+
+        @Override
+        protected max validate(Type type, Consumer<String> reason) {
+            return new max(type);
+        }
+
+        @Override
+        protected Variable compute(Type type, Variable left, Variable right) {
+            return Arithmetic.max(type, left, right);
+        }
+    }
+
+    /**
+     * Defines an aggregated function which adds together the evaluated argument for all rows
+     * in the group.
+     */
+    private static class sum extends FunctionApplier.NumericalAggregated {
+        sum(Type type) {
+            super(type);
+        }
+
+        @Override
+        protected sum validate(Type type, Consumer<String> reason) {
+            Class<?> clazz = type.clazz();
+            int typeCode = type.plainTypeCode();
+
+            switch (typeCode) {
+                case TYPE_UBYTE, TYPE_USHORT, TYPE_UINT -> {
+                    typeCode = TYPE_ULONG;
+                    clazz = type.isNullable() ? Long.class : long.class;
+                }
+                case TYPE_BYTE, TYPE_SHORT, TYPE_INT -> {
+                    typeCode = TYPE_LONG;
+                    clazz = type.isNullable() ? Long.class : long.class;
+                }
+                case TYPE_FLOAT -> {
+                    typeCode = TYPE_DOUBLE;
+                    clazz = type.isNullable() ? Double.class : double.class;
+                }
+                case TYPE_ULONG, TYPE_LONG, TYPE_DOUBLE, TYPE_BIG_INTEGER, TYPE_BIG_DECIMAL -> {
+                    // big enough
+                }
+                default -> {
+                    reason.accept("unsupported argument type");
+                    return null;
+                }
+            }
+
+            typeCode |= type.modifiers();
+
+            return new sum(BasicType.make(clazz, typeCode));
+        }
+
+        @Override
+        protected Variable compute(Type type, Variable left, Variable right) {
+            return Arithmetic.eval(type, Token.T_PLUS, left, right);
+        }
+    }
+
+    /**
+     * Defines an aggregated function computes the average argument value against all rows in
+     * the group.
+     */
+    private static class avg extends FunctionApplier.NumericalAggregated {
+        private final Type mOriginalType;
+
+        avg(Type type) {
+            this(type, type);
+        }
+
+        private avg(Type type, Type originalType) {
+            super(type);
+            mOriginalType = originalType;
+        }
+
+        @Override
+        public Variable finish(Context context) {
+            Variable sum = super.finish(context);
+
+            Variable count = context.groupRowNum();
+            if (type().clazz() == BigDecimal.class) {
+                count = count.methodMaker().var(BigDecimal.class).invoke("valueOf", count);
+            } else {
+                count = count.cast(double.class);
+            }
+
+            return Arithmetic.eval(type(), Token.T_DIV, sum, count);
+        }
+
+        @Override
+        protected Variable eval(LazyValue arg) {
+            Variable value = arg.eval(true);
+            MethodMaker mm = value.methodMaker();
+            var converted = mm.var(type().clazz());
+            Converter.convertLossy(mm, mOriginalType, value, type(), converted);
+            return converted;
+        }
+
+        @Override
+        protected avg validate(final Type type, Consumer<String> reason) {
+            Class<?> clazz = type.clazz();
+            int typeCode = type.plainTypeCode();
+
+            switch (typeCode) {
+                case TYPE_UBYTE, TYPE_USHORT, TYPE_UINT, TYPE_ULONG,
+                     TYPE_BYTE, TYPE_SHORT, TYPE_INT, TYPE_LONG,
+                     TYPE_FLOAT, TYPE_DOUBLE ->
+                {
+                    typeCode = TYPE_DOUBLE;
+                    clazz = type.isNullable() ? Double.class : double.class;
+                }
+                case TYPE_BIG_INTEGER, TYPE_BIG_DECIMAL -> {
+                    typeCode = TYPE_BIG_DECIMAL;
+                    clazz = BigDecimal.class;
+                }
+                default -> {
+                    reason.accept("unsupported argument type");
+                    return null;
+                }
+            }
+
+            typeCode |= type.modifiers();
+
+            return new avg(BasicType.make(clazz, typeCode), type);
+        }
+
+        @Override
+        protected Variable compute(Type type, Variable left, Variable right) {
+            return Arithmetic.eval(type, Token.T_PLUS, left, right);
         }
     }
 }

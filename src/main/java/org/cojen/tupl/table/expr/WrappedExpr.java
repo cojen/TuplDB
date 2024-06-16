@@ -64,6 +64,21 @@ abstract sealed class WrappedExpr extends Expr
     }
 
     @Override
+    public final boolean isGrouping() {
+        return mExpr.isGrouping();
+    }
+
+    @Override
+    public final boolean isAccumulating() {
+        return mExpr.isAccumulating();
+    }
+
+    @Override
+    public final boolean isAggregating() {
+        return mExpr.isAggregating();
+    }
+
+    @Override
     public final void gatherEvalColumns(Consumer<Column> c) {
         mExpr.gatherEvalColumns(c);
     }

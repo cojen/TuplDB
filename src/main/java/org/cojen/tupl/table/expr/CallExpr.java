@@ -19,10 +19,15 @@ package org.cojen.tupl.table.expr;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 import java.util.function.Consumer;
+import java.util.function.BiFunction;
 
+import org.cojen.maker.MethodMaker;
 import org.cojen.maker.Variable;
+
+import org.cojen.tupl.table.RowUtils;
 
 /**
  * Defines an expression which calls a function.
@@ -38,10 +43,7 @@ public final class CallExpr extends Expr {
 
     private final String mName;
     private final List<Expr> mArgs;
-    private final FunctionApplier mApplier;
-
-    private final Type[] mArgTypes;
-    private final Type mReturnType;
+    private final FunctionApplier mOriginalApplier, mApplier;
 
     private CallExpr(int startPos, int endPos,
                      String name, List<Expr> args, FunctionApplier applier)
@@ -49,7 +51,7 @@ public final class CallExpr extends Expr {
         super(startPos, endPos);
 
         mName = name;
-        mApplier = applier;
+        mOriginalApplier = applier;
 
         Type[] argTypes;
         String[] argNames;
@@ -71,12 +73,24 @@ public final class CallExpr extends Expr {
             assert i == num;
         }
 
-        mArgTypes = argTypes;
         var reasons = new ArrayList<String>(1);
-        mReturnType = applier.validate(argTypes, argNames, reasons::add);
 
-        if (mReturnType != null) {
-            // Apply any necessary type conversions to the arguments.
+        validate: {
+            if (!applier.hasNamedParameters()) {
+                for (String p : argNames) {
+                    if (p != null) {
+                        reasons.add("unknown parameter: " + p);
+                        mApplier = null;
+                        break validate;
+                    }
+                }
+            }
+
+            mApplier = applier.validate(argTypes, argNames, reasons::add);
+        }
+
+        if (mApplier != null) {
+            // Perform any necessary type conversions to the arguments.
 
             boolean copied = false;
             int i = 0;
@@ -97,27 +111,37 @@ public final class CallExpr extends Expr {
 
         mArgs = args;
 
-        if (mReturnType == null) {
-            String message = "Cannot call " + name + " function";
+        if (applier instanceof FunctionApplier.Aggregated) {
+            for (Expr arg : args) {
+                if (arg.isAccumulating()) {
+                    reasons.add("depends on an expression which accumulates group results");
+                    break;
+                }
+            }
+        }
+
+        if (mApplier == null || !reasons.isEmpty()) {
+            var b = new StringBuilder().append("Cannot call ");
+            RowUtils.appendQuotedString(b, name);
+            b.append(" function");
 
             if (!reasons.isEmpty()) {
-                var b = new StringBuilder(message).append(": ");
+                b.append(": ");
                 for (int i=0; i<reasons.size(); i++) {
                     if (i > 0) {
                         b.append(", ");
                     }
                     b.append(reasons.get(i));
                 }
-                message = b.toString();
             }
 
-            throw new QueryException(message, this);
+            throw new QueryException(b.toString(), this);
         }
     }
 
     @Override
     public Type type() {
-        return mReturnType;
+        return mApplier.type();
     }
 
     @Override
@@ -151,7 +175,7 @@ public final class CallExpr extends Expr {
 
     @Override
     public boolean isNullable() {
-        return mReturnType.isNullable();
+        return type().isNullable();
     }
 
     @Override
@@ -170,6 +194,73 @@ public final class CallExpr extends Expr {
     }
 
     @Override
+    public boolean isGrouping() {
+        if (mApplier.isGrouping()) {
+            return true;
+        }
+
+        for (Expr arg : mArgs) {
+            if (arg.isGrouping()) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    @Override
+    public boolean isAccumulating() {
+        if (mApplier instanceof FunctionApplier.Accumulator) {
+            return true;
+        }
+
+        for (Expr arg : mArgs) {
+            if (arg.isAccumulating()) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    @Override
+    public boolean isAggregating() {
+        if (mApplier instanceof FunctionApplier.Aggregated) {
+            return true;
+        }
+
+        for (Expr arg : mArgs) {
+            if (arg.isAggregating()) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    @Override
+    public CallExpr asAggregate(Set<String> group) {
+        if (mApplier instanceof FunctionApplier.Aggregated) {
+            return this;
+        }
+
+        List<Expr> args = mArgs;
+
+        for (int i=0; i<args.size(); i++) {
+            Expr arg = args.get(i);
+            Expr asAgg = arg.asAggregate(group);
+            if (arg != asAgg) {
+                if (args == mArgs) {
+                    args = new ArrayList<>(args);
+                }
+                args.set(i, asAgg);
+            }
+        }
+
+        return args == mArgs ? this : new CallExpr(startPos(), endPos(), mName, args, mApplier);
+    }
+
+    @Override
     public void gatherEvalColumns(Consumer<Column> c) {
         for (Expr arg : mArgs) {
             arg.gatherEvalColumns(c);
@@ -178,28 +269,48 @@ public final class CallExpr extends Expr {
 
     @Override
     protected Variable doMakeEval(EvalContext context, EvalContext.ResultRef resultRef) {
-        FunctionApplier applier = mApplier.prepare();
-
-        // FIXME: requireRowNum, requireGroupNum, requireGroupRowNum; must be in the context
-
-        if (applier instanceof FunctionApplier.Plain plain) {
-            LazyValue[] args = lazyArgs(context);
-
-            // Must rollback to a savepoint for lazy/eager evaluation to work properly.
-            // Arguments which aren't eagerly evaluated will rollback, forcing the underlying
-            // expression to be evaluated again later if used again.
-            int savepoint = context.refSavepoint();
-
-            var retVar = context.methodMaker().var(mReturnType.clazz());
-            plain.apply(mReturnType, retVar, mArgTypes, args);
-
-            context.refRollback(savepoint);
-
-            return retVar;
+        if (mApplier instanceof FunctionApplier.Plain plain) {
+            return withArgs(context, (ctx, args) -> {
+                var resultVar = ctx.methodMaker().var(type().clazz());
+                plain.apply(ctx, args, resultVar);
+                return resultVar;
+            });
         }
 
-        // FIXME: support other function types
+        if (mApplier instanceof FunctionApplier.Aggregated aggregated) {
+            withArgs(context.beginContext(), (ctx, args) -> {
+                aggregated.begin(ctx, args);
+                return null;
+            });
+
+            withArgs(context.accumContext(), (ctx, args) -> {
+                aggregated.accumulate(ctx, args);
+                return null;
+            });
+
+            return aggregated.finish(context);
+        }
+
+        // FIXME: Support other function types.
         throw new UnsupportedOperationException();
+    }
+
+    /**
+     * Prepares LazyValue args and passes it to the applier to use.
+     */
+    private <V> V withArgs(EvalContext context, BiFunction<EvalContext, LazyValue[], V> applier) {
+        LazyValue[] args = lazyArgs(context);
+
+        // Must rollback to a savepoint for lazy/eager evaluation to work properly. Arguments
+        // which aren't eagerly evaluated will rollback, forcing the underlying expression to
+        // be evaluated again later if used again.
+        int savepoint = context.refSavepoint();
+
+        V result = applier.apply(context, args);
+
+        context.refRollback(savepoint);
+
+        return result;
     }
 
     private LazyValue[] lazyArgs(EvalContext context) {
@@ -213,7 +324,7 @@ public final class CallExpr extends Expr {
         if (enc.encode(this, K_TYPE)) {
             enc.encodeString(mName);
             enc.encodeExprs(mArgs);
-            enc.encodeReference(mApplier);
+            enc.encodeReference(mOriginalApplier);
         }
     }
 
@@ -221,7 +332,7 @@ public final class CallExpr extends Expr {
     public int hashCode() {
         int hash = mName.hashCode();
         hash = hash * 31 + mArgs.hashCode();
-        hash = hash * 31 + mApplier.hashCode();
+        hash = hash * 31 + mOriginalApplier.hashCode();
         return hash;
     }
 
@@ -231,7 +342,7 @@ public final class CallExpr extends Expr {
             obj instanceof CallExpr ce
             && mName.equals(ce.mName)
             && mArgs.equals(ce.mArgs)
-            && mApplier.equals(ce.mApplier);
+            && mOriginalApplier.equals(ce.mOriginalApplier);
     }
 
     @Override

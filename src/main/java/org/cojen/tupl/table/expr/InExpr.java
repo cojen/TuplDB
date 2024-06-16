@@ -18,6 +18,7 @@
 package org.cojen.tupl.table.expr;
 
 import java.util.Map;
+import java.util.Set;
 
 import java.util.function.Consumer;
 
@@ -117,6 +118,31 @@ public final class InExpr extends Expr {
     @Override
     public final boolean isConstant() {
         return mLeft.isConstant() && mRight.isConstant();
+    }
+
+    @Override
+    public boolean isGrouping() {
+        return mLeft.isGrouping() || mRight.isGrouping();
+    }
+
+    @Override
+    public final boolean isAccumulating() {
+        return mLeft.isAccumulating() || mRight.isAccumulating();
+    }
+
+    @Override
+    public boolean isAggregating() {
+        return mLeft.isAggregating() || mRight.isAggregating();
+    }
+
+    @Override
+    public InExpr asAggregate(Set<String> group) {
+        Expr left = mLeft.asAggregate(group);
+        Expr right = mRight.asAggregate(group);
+        if (left == mLeft && right == mRight) {
+            return this;
+        }
+        return new InExpr(startPos(), endPos(), left, right, mNot);
     }
 
     @Override
