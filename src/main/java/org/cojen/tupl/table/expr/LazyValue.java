@@ -34,6 +34,10 @@ public class LazyValue {
         mExpr = expr;
     }
 
+    public Expr expr() {
+        return mExpr;
+    }
+
     /**
      * Returns true if the value represents a constant.
      */

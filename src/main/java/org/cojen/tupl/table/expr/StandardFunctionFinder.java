@@ -137,6 +137,81 @@ public final class StandardFunctionFinder extends SoftCache<String, Object, Obje
     }
 
     /**
+     * Defines an aggregated function which counts all rows in the group, or counts all
+     * non-null results for one argument.
+     */
+    private static class count extends FunctionApplier.Aggregated {
+        private String mFieldName;
+
+        count(Type type) {
+            super(type);
+        }
+
+        @Override
+        public count validate(Type[] argTypes, String[] argNames, Consumer<String> reason) {
+            if (!checkNumArgs(0, 1, argTypes.length, reason)) {
+                return null;
+            }
+            return new count(BasicType.make(long.class, Type.TYPE_LONG));
+        }
+
+        @Override
+        public void begin(Context context, LazyValue[] args) {
+            if (args.length != 0) {
+                LazyValue arg = args[0];
+                Expr expr = arg.expr();
+                if (expr.isNullable() || expr.canThrowRuntimeException()) {
+                    Field field = context.newWorkField(type().clazz());
+                    mFieldName = field.name();
+
+                    var result = arg.eval(true);
+
+                    if (!arg.expr().isNullable()) {
+                        field.set(1L);
+                    } else {
+                        MethodMaker mm = field.methodMaker();
+                        Label notNull = mm.label();
+                        result.ifNe(null, notNull);
+                        field.set(0L);
+                        Label done = mm.label().goto_();
+                        notNull.here();
+                        field.set(1L);
+                        done.here();
+                    }
+                }
+            }
+        }
+
+        @Override
+        public void accumulate(Context context, LazyValue[] args) {
+            if (mFieldName != null) {
+                Field field = context.methodMaker().field(mFieldName);
+
+                LazyValue arg = args[0];
+                var result = arg.eval(true);
+
+                if (!arg.expr().isNullable()) {
+                    field.inc(1L);
+                } else {
+                    Label isNull = field.methodMaker().label();
+                    result.ifEq(null, isNull);
+                    field.inc(1L);
+                    isNull.here();
+                }
+            }
+        }
+
+        @Override
+        public Variable finish(Context context) {
+            if (mFieldName == null) {
+                return context.groupRowNum();
+            } else {
+                return context.methodMaker().field(mFieldName);
+            }
+        }
+    }
+
+    /**
      * Defines an aggregated function which evaluates the argument for only the first row in a
      * group.
      */
