@@ -112,12 +112,10 @@ public abstract class FunctionApplier {
     }
 
     /**
-     * Returns true if the applied function is pure with respect to the current row, producing
-     * the same result each time it's applied.
+     * Returns true if the applied function is plain and yields the same result when given the
+     * same arguments.
      */
-    public boolean isPureFunction() {
-        return true;
-    }
+    public abstract boolean isPureFunction();
 
     /**
      * Returns true if the function needs a projection group.
@@ -182,6 +180,14 @@ public abstract class FunctionApplier {
         public abstract void apply(Context context, LazyValue[] args, Variable resultVar);
 
         /**
+         * Override and return false if the function isn't pure.
+         */
+        @Override
+        public boolean isPureFunction() {
+            return true;
+        }
+
+        /**
          * Override and return true if the function requires a group number or group row number.
          */
         @Override
@@ -196,6 +202,11 @@ public abstract class FunctionApplier {
         }
 
         abstract void begin(Context context, LazyValue[] args);
+
+        @Override
+        public final boolean isPureFunction() {
+            return false;
+        }
 
         @Override
         public final boolean isGrouping() {
