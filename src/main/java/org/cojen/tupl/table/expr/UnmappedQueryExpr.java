@@ -129,6 +129,16 @@ final class UnmappedQueryExpr extends QueryExpr {
     protected final void encodeKey(KeyEncoder enc) {
         if (enc.encode(this, K_TYPE)) {
             super.doEncodeKey(enc);
+
+            if (mArgMap == null) {
+                enc.encodeUnsignedVarInt(0);
+            } else {
+                enc.encodeUnsignedVarInt(mArgMap.size() + 1);
+                for (Map.Entry<Object, Integer> e : mArgMap.entrySet()) {
+                    enc.encodeReference(e.getKey());
+                    enc.encodeInt(e.getValue());
+                }
+            }
         }
     }
 
