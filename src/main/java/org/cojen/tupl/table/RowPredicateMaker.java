@@ -693,7 +693,7 @@ public class RowPredicateMaker {
         public void visit(OrFilter filter) {
             RowFilter[] subFilters = filter.subFilters();
             if (subFilters.length == 0) {
-                mBuilderVar = mBuilderVar.invoke("append", 'F');
+                mBuilderVar = mBuilderVar.invoke("append", "false");
             } else {
                 appendGroupFilter(filter, subFilters);
             }
@@ -703,7 +703,7 @@ public class RowPredicateMaker {
         public void visit(AndFilter filter) {
             RowFilter[] subFilters = filter.subFilters();
             if (subFilters.length == 0) {
-                mBuilderVar = mBuilderVar.invoke("append", 'T');
+                mBuilderVar = mBuilderVar.invoke("append", "true");
             } else {
                 appendGroupFilter(filter, subFilters);
             }
