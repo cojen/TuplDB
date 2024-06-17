@@ -61,13 +61,13 @@ public final class StandardFunctionFinder extends SoftCache<String, Object, Obje
             Class<?> clazz = Class.forName(getClass().getName() + '$' + name);
             if (Modifier.isAbstract(clazz.getModifiers())) {
                 // Negative cache.
-                return new Object();
+                return "";
             }
             return (FunctionApplier) clazz
                 .getDeclaredConstructor(Type.class).newInstance((Type) null);
         } catch (ClassNotFoundException e) {
             // Negative cache.
-            return new Object();
+            return "";
         } catch (Exception e) {
             throw Utils.rethrow(e);
         }
@@ -362,29 +362,6 @@ public final class StandardFunctionFinder extends SoftCache<String, Object, Obje
         }
 
         @Override
-        public Variable finish(Context context) {
-            Variable sum = super.finish(context);
-
-            Variable count = context.groupRowNum();
-            if (type().clazz() == BigDecimal.class) {
-                count = count.methodMaker().var(BigDecimal.class).invoke("valueOf", count);
-            } else {
-                count = count.cast(double.class);
-            }
-
-            return Arithmetic.eval(type(), Token.T_DIV, sum, count);
-        }
-
-        @Override
-        protected Variable eval(LazyValue arg) {
-            Variable value = arg.eval(true);
-            MethodMaker mm = value.methodMaker();
-            var converted = mm.var(type().clazz());
-            Converter.convertLossy(mm, mOriginalType, value, type(), converted);
-            return converted;
-        }
-
-        @Override
         protected avg validate(final Type type, Consumer<String> reason) {
             Class<?> clazz = type.clazz();
             int typeCode = type.plainTypeCode();
@@ -413,8 +390,31 @@ public final class StandardFunctionFinder extends SoftCache<String, Object, Obje
         }
 
         @Override
+        protected Variable eval(LazyValue arg) {
+            Variable value = arg.eval(true);
+            MethodMaker mm = value.methodMaker();
+            var converted = mm.var(type().clazz());
+            Converter.convertLossy(mm, mOriginalType, value, type(), converted);
+            return converted;
+        }
+
+        @Override
         protected Variable compute(Type type, Variable left, Variable right) {
             return Arithmetic.eval(type, Token.T_PLUS, left, right);
+        }
+
+        @Override
+        public Variable finish(Context context) {
+            Variable sum = super.finish(context);
+
+            Variable count = context.groupRowNum();
+            if (type().clazz() == BigDecimal.class) {
+                count = count.methodMaker().var(BigDecimal.class).invoke("valueOf", count);
+            } else {
+                count = count.cast(double.class);
+            }
+
+            return Arithmetic.eval(type(), Token.T_DIV, sum, count);
         }
     }
 }
