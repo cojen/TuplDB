@@ -22,6 +22,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 
@@ -67,6 +68,72 @@ public abstract sealed class QueryExpr extends RelationExpr
             if (filter instanceof ConstantExpr ce && ce.value() == Boolean.TRUE) {
                 filter = null;
             }
+        }
+
+        groupByColumns: if (groupBy > 0) {
+            // The group-by projection expressions can only be simple column references. If
+            // not, create an intermediate mapping that converts them.
+
+            TupleType fromRowType = from.type().rowType();
+            Map<String, ProjExpr> fromProjMap = null;
+            Map<Expr, ColumnExpr> replacements = null;
+
+            for (int i=0; i<groupBy; i++) {
+                ProjExpr pe = projection.get(i);
+                Expr wrapped = pe.wrapped();
+                if (wrapped instanceof ColumnExpr) {
+                    continue;
+                }
+
+                if (fromProjMap == null) {
+                    fromProjMap = new LinkedHashMap<>();
+                    replacements = new HashMap<>();
+                    projection = new ArrayList<>(projection);
+                }
+
+                String name = pe.name();
+                fromProjMap.put(name, pe);
+
+                ColumnExpr col = ColumnExpr.make
+                    (-1, -1, fromRowType, Column.make(pe.type(), name, false));
+                projection.set(i, ProjExpr.make(-1, -1, col, 0));
+
+                if (!(wrapped instanceof AssignExpr assign)) {
+                    continue;
+                }
+
+                // Replace VarExpr instances which refer to the assignment with the new column.
+                replacements.put(VarExpr.make(-1, -1, assign), col);
+
+                // As an optimization, replace expressions which refer to the assignment with
+                // the new column, potentially avoiding duplicate expression evaluation.
+                Expr assignment = assign.wrapped();
+                if (assignment.isPureFunction()) {
+                    replacements.putIfAbsent(assignment, col);
+                }
+            }
+
+            if (fromProjMap == null) {
+                // No changes are needed.
+                break groupByColumns;
+            }
+
+            if (filter != null) {
+                filter = filter.replace(replacements);
+                addColumns(fromRowType, fromProjMap, filter);
+            }
+
+            for (int i=groupBy; i<projection.size(); i++) {
+                ProjExpr pe = projection.get(i).replace(replacements);
+                projection.set(i, pe);
+                addColumns(fromRowType, fromProjMap, pe);
+            }
+
+            var fromProjList = new ArrayList<ProjExpr>(fromProjMap.values());
+            var fromType = RelationType.make(TupleType.make(fromProjList, 0),
+                                             from.type().cardinality());
+            from = MappedQueryExpr.make(-1, -1, fromType, from, TrueFilter.THE, null,
+                                        fromProjList, 0, null);
         }
 
         final TupleType fromType = from.rowType();
@@ -257,6 +324,15 @@ public abstract sealed class QueryExpr extends RelationExpr
         }
     }
 
+    /**
+     * Add additional columns to the projection, based on what the given expression needs.
+     */
+    private static void addColumns(TupleType rowType, Map<String, ProjExpr> projMap, Expr expr) {
+        expr.gatherEvalColumns(c -> {
+            projMap.computeIfAbsent(c.name(), name -> ProjExpr.make(rowType, c, 0));
+        });
+    }
+
     private static boolean hasRepeatedNonPureFunctions(RowFilter filter) {
         var visitor = new Visitor() {
             Set<Expr> nonPure;
@@ -392,6 +468,12 @@ public abstract sealed class QueryExpr extends RelationExpr
     @Override
     public QueryExpr asAggregate(Set<String> group) {
         // FIXME: asAggregate
+        throw null;
+    }
+
+    @Override
+    public Expr replace(Map<Expr, ? extends Expr> replacements) {
+        // FIXME: replace
         throw null;
     }
 

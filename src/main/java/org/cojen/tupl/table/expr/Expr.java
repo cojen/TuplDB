@@ -214,6 +214,17 @@ public abstract sealed class Expr
     public abstract Expr asAggregate(Set<String> group);
 
     /**
+     * Returns this or a replacement expression such that expressions in the given map are
+     * replaced.
+     *
+     * @param replacements maps expressions to replace with with their replacements
+     */
+    public Expr replace(Map<Expr, ? extends Expr> replacements) {
+        Expr replaced = replacements.get(this);
+        return replaced == null ? this : replaced;
+    }
+
+    /**
      * Returns a new LazyValue instance backed by this expression.
      */
     public LazyValue lazyValue(EvalContext context) {

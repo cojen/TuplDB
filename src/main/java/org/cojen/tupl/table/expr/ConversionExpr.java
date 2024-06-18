@@ -17,6 +17,7 @@
 
 package org.cojen.tupl.table.expr;
 
+import java.util.Map;
 import java.util.Set;
 
 import org.cojen.maker.MethodMaker;
@@ -66,6 +67,16 @@ public final class ConversionExpr extends WrappedExpr {
     public ConversionExpr asAggregate(Set<String> group) {
         Expr expr = mExpr.asAggregate(group);
         return expr == mExpr ? this : new ConversionExpr(startPos(), endPos(), expr, mType);
+    }
+
+    @Override
+    public Expr replace(Map<Expr, ? extends Expr> replacements) {
+        Expr replaced = replacements.get(this);
+        if (replaced != null) {
+            return replaced;
+        }
+        replaced = mExpr.replace(replacements);
+        return replaced == mExpr ? this : new ConversionExpr(startPos(), endPos(), replaced, mType);
     }
 
     @Override

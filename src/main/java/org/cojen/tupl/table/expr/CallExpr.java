@@ -19,6 +19,7 @@ package org.cojen.tupl.table.expr;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import java.util.function.Consumer;
@@ -249,6 +250,29 @@ public final class CallExpr extends Expr {
         for (int i=0; i<args.size(); i++) {
             Expr arg = args.get(i);
             Expr asAgg = arg.asAggregate(group);
+            if (arg != asAgg) {
+                if (args == mArgs) {
+                    args = new ArrayList<>(args);
+                }
+                args.set(i, asAgg);
+            }
+        }
+
+        return args == mArgs ? this : new CallExpr(startPos(), endPos(), mName, args, mApplier);
+    }
+
+    @Override
+    public Expr replace(Map<Expr, ? extends Expr> replacements) {
+        Expr replaced = replacements.get(this);
+        if (replaced != null) {
+            return replaced;
+        }
+
+        List<Expr> args = mArgs;
+
+        for (int i=0; i<args.size(); i++) {
+            Expr arg = args.get(i);
+            Expr asAgg = arg.replace(replacements);
             if (arg != asAgg) {
                 if (args == mArgs) {
                     args = new ArrayList<>(args);

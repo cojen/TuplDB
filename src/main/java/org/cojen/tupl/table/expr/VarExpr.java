@@ -125,7 +125,8 @@ public final class VarExpr extends Expr implements Named {
         if (!mAssign.isAggregating()) {
             // Cannot change how mAssign behaves, so require that asAggregate has already been
             // called against it.
-            throw new QueryException("Not aggregating", this);
+            throw new QueryException("Column isn't part of the aggregation group or " +
+                                     "wrapped by an aggregation function", this);
         }
         return this;
     }

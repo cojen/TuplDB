@@ -129,7 +129,8 @@ public abstract sealed class ColumnExpr extends Expr implements Named {
     @Override
     public Expr asAggregate(Set<String> group) {
         if (!group.contains(name())) {
-            throw new QueryException("Column isn't part of the aggregation group", this);
+            throw new QueryException("Column isn't part of the aggregation group or " +
+                                     "wrapped by an aggregation function", this);
         }
         return CallExpr.make(startPos(), endPos(), "first", List.of(this),
                              new StandardFunctionFinder.first(null));

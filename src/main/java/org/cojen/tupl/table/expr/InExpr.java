@@ -146,6 +146,20 @@ public final class InExpr extends Expr {
     }
 
     @Override
+    public Expr replace(Map<Expr, ? extends Expr> replacements) {
+        Expr replaced = replacements.get(this);
+        if (replaced != null) {
+            return replaced;
+        }
+        Expr left = mLeft.replace(replacements);
+        Expr right = mRight.replace(replacements);
+        if (left == mLeft && right == mRight) {
+            return this;
+        }
+        return new InExpr(startPos(), endPos(), left, right, mNot);
+    }
+
+    @Override
     public void gatherEvalColumns(Consumer<Column> c) {
         mLeft.gatherEvalColumns(c);
         mRight.gatherEvalColumns(c);

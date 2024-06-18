@@ -107,8 +107,7 @@ public final class TupleType extends Type implements Iterable<Column> {
     }
 
     /**
-     * Makes a type which has a generated row type class. Columns aren't defined for excluded
-     * projections.
+     * Makes a type which has a generated row type class.
      *
      * @throws QueryException if any names are duplicated
      */

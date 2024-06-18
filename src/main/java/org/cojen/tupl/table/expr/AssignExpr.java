@@ -17,6 +17,7 @@
 
 package org.cojen.tupl.table.expr;
 
+import java.util.Map;
 import java.util.Set;
 
 import org.cojen.maker.Variable;
@@ -56,6 +57,16 @@ public final class AssignExpr extends WrappedExpr implements Named {
     public AssignExpr asAggregate(Set<String> group) {
         Expr expr = mExpr.asAggregate(group);
         return expr == mExpr ? this : new AssignExpr(startPos(), endPos(), mName, expr);
+    }
+
+    @Override
+    public Expr replace(Map<Expr, ? extends Expr> replacements) {
+        Expr replaced = replacements.get(this);
+        if (replaced != null) {
+            return replaced;
+        }
+        replaced = mExpr.replace(replacements);
+        return replaced == mExpr ? this : new AssignExpr(startPos(), endPos(), mName, replaced);
     }
 
     @Override

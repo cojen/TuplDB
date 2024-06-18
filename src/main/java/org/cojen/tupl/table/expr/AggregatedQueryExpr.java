@@ -72,8 +72,6 @@ final class AggregatedQueryExpr extends QueryExpr {
         if (groupBy == 0) {
             group = Set.of();
         } else {
-            // FIXME: If any group ProjExpr isn't a ColumnExpr, then first remap "from" using
-            // MappedQueryExpr.
             group = new HashSet<>(groupBy << 1);
             for (int i=0; i<groupBy; i++) {
                 ProjExpr proj = projection.get(i);
@@ -82,7 +80,6 @@ final class AggregatedQueryExpr extends QueryExpr {
         }
 
         if (filter != null) {
-            // FIXME: Must not apply to columns in the group itself.
             filter = filter.asAggregate(group);
         }
 

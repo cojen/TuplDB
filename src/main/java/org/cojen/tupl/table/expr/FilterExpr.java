@@ -74,6 +74,20 @@ public final class FilterExpr extends BinaryOpExpr {
     }
 
     @Override
+    public Expr replace(Map<Expr, ? extends Expr> replacements) {
+        Expr replaced = replacements.get(this);
+        if (replaced != null) {
+            return replaced;
+        }
+        Expr left = mOriginalLeft.replace(replacements);
+        Expr right = mOriginalRight.replace(replacements);
+        if (left == mOriginalLeft && right == mOriginalRight) {
+            return this;
+        }
+        return BinaryOpExpr.make(startPos(), endPos(), mOp, left, right);
+    }
+
+    @Override
     public Expr not(int startPos) {
         int op = mOp;
         if (op < T_LAND) {

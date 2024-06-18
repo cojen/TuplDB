@@ -147,6 +147,15 @@ public final class ProjExpr extends WrappedExpr implements Named {
     }
 
     @Override
+    public ProjExpr replace(Map<Expr, ? extends Expr> replacements) {
+        Expr replaced = replacements.get(this);
+        if (replaced == null) {
+            replaced = mExpr.replace(replacements);
+        }
+        return replaced == mExpr ? this : new ProjExpr(startPos(), endPos(), replaced, mFlags);
+    }
+
+    @Override
     public Expr negate(int startPos, boolean widen) {
         return new ProjExpr(startPos, endPos(), mExpr.negate(widen), mFlags);
     }

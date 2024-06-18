@@ -20,6 +20,7 @@ package org.cojen.tupl.table.expr;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 
+import java.util.Map;
 import java.util.Set;
 
 import java.util.function.Consumer;
@@ -277,6 +278,20 @@ public sealed class BinaryOpExpr extends Expr permits FilterExpr {
     public Expr asAggregate(Set<String> group) {
         Expr left = mLeft.asAggregate(group);
         Expr right = mRight.asAggregate(group);
+        if (left == mLeft && right == mRight) {
+            return this;
+        }
+        return new BinaryOpExpr(startPos(), endPos(), mType, mOp, left, right);
+    }
+
+    @Override
+    public Expr replace(Map<Expr, ? extends Expr> replacements) {
+        Expr replaced = replacements.get(this);
+        if (replaced != null) {
+            return replaced;
+        }
+        Expr left = mLeft.replace(replacements);
+        Expr right = mRight.replace(replacements);
         if (left == mLeft && right == mRight) {
             return this;
         }
