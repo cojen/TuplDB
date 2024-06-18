@@ -621,13 +621,6 @@ public abstract class AggregatedTable<S, T> extends WrappedTable<S, T>
     /**
      * Called by generated Query instances.
      */
-    public final Aggregator<S, T> newAggregator() throws IOException {
-        return mAggregatorFactory.newAggregator();
-    }
-
-    /**
-     * Called by generated Query instances.
-     */
     public final Aggregator<S, T> newAggregator(Scanner<S> sourceScanner) throws IOException {
         try {
             return mAggregatorFactory.newAggregator();

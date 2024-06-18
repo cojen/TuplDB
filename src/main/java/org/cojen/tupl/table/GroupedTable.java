@@ -507,13 +507,6 @@ public abstract class GroupedTable<S, T> extends AbstractMappedTable<S, T>
     /**
      * Called by generated Query instances.
      */
-    public final Grouper<S, T> newGrouper() throws IOException {
-        return mGrouperFactory.newGrouper();
-    }
-
-    /**
-     * Called by generated Query instances.
-     */
     public final Grouper<S, T> newGrouper(Scanner<S> sourceScanner) throws IOException {
         try {
             return mGrouperFactory.newGrouper();
