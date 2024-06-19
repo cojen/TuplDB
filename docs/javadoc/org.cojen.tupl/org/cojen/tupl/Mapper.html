@@ -86,8 +86,13 @@ loadScripts(document, 'script');</script>
 </div>
 <section class="class-description" id="class-description">
 <div class="horizontal-scroll">
+<dl class="notes">
+<dt>All Superinterfaces:</dt>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/22/docs/api/java.base/java/lang/AutoCloseable.html" title="class or interface in java.lang" class="external-link">AutoCloseable</a></code>, <code><a href="https://docs.oracle.com/en/java/javase/22/docs/api/java.base/java/io/Closeable.html" title="class or interface in java.io" class="external-link">Closeable</a></code></dd>
+</dl>
 <hr>
-<div class="type-signature"><span class="modifiers">public interface </span><span class="element-name type-name-label">Mapper&lt;R,<wbr>T&gt;</span></div>
+<div class="type-signature"><span class="modifiers">public interface </span><span class="element-name type-name-label">Mapper&lt;R,<wbr>T&gt;</span><span class="extends-implements">
+extends <a href="https://docs.oracle.com/en/java/javase/22/docs/api/java.base/java/io/Closeable.html" title="class or interface in java.io" class="external-link">Closeable</a></span></div>
 <div class="block">Interface for mapping source rows to target rows. Inverse mapping is optional, but it's
  necessary for supporting modifiable views, and it's also used by the query optimizer.
  Mapper implementations must be thread-safe.
@@ -139,21 +144,31 @@ loadScripts(document, 'script');</script>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
 <div class="block">Checks if the given source row can be updated into the source table.</div>
 </div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="Mapper.html" title="type parameter in Mapper">T</a></code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#map(R,T)" class="member-name-link">map</a><wbr>(<a href="Mapper.html" title="type parameter in Mapper">R</a>&nbsp;source,
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default void</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#close()" class="member-name-link">close</a>()</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
+<div class="block">Is called when this <code>Mapper</code> instance is no longer needed by a scanner.</div>
+</div>
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="Mapper.html" title="type parameter in Mapper">T</a></code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#map(R,T)" class="member-name-link">map</a><wbr>(<a href="Mapper.html" title="type parameter in Mapper">R</a>&nbsp;source,
  <a href="Mapper.html" title="type parameter in Mapper">T</a>&nbsp;target)</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
 <div class="block">Maps source rows to target rows.</div>
 </div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default boolean</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#performsFiltering()" class="member-name-link">performsFiltering</a>()</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default boolean</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#performsFiltering()" class="member-name-link">performsFiltering</a>()</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
 <div class="block">Returns true if the map method can filter out rows, which is true by default.</div>
 </div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default <a href="diag/QueryPlan.html" title="class in org.cojen.tupl.diag">QueryPlan</a></code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#plan(org.cojen.tupl.diag.QueryPlan.Mapper)" class="member-name-link">plan</a><wbr>(<a href="diag/QueryPlan.Mapper.html" title="class in org.cojen.tupl.diag">QueryPlan.Mapper</a>&nbsp;plan)</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default <a href="diag/QueryPlan.html" title="class in org.cojen.tupl.diag">QueryPlan</a></code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#plan(org.cojen.tupl.diag.QueryPlan.Mapper)" class="member-name-link">plan</a><wbr>(<a href="diag/QueryPlan.Mapper.html" title="class in org.cojen.tupl.diag">QueryPlan.Mapper</a>&nbsp;plan)</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
 <div class="block">Override this method to customize the mapper's query plan.</div>
+</div>
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default <a href="Mapper.html" title="interface in org.cojen.tupl">Mapper</a><wbr>&lt;<a href="Mapper.html" title="type parameter in Mapper">R</a>,<wbr><a href="Mapper.html" title="type parameter in Mapper">T</a>&gt;</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#prepare()" class="member-name-link">prepare</a>()</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
+<div class="block">Return a new or singleton instance to be used when scanning rows.</div>
 </div>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default <a href="https://docs.oracle.com/en/java/javase/22/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a></code></div>
 <div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#sourceProjection()" class="member-name-link">sourceProjection</a>()</code></div>
@@ -189,6 +204,21 @@ throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/
 <dd><code>target</code> - never null; all columns are initially unset</dd>
 <dt>Returns:</dt>
 <dd>null if filtered out</dd>
+<dt>Throws:</dt>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/22/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
+</dl>
+</div>
+</section>
+</li>
+<li>
+<section class="detail" id="prepare()">
+<h3>prepare</h3>
+<div class="horizontal-scroll">
+<div class="member-signature"><span class="modifiers">default</span>&nbsp;<span class="return-type"><a href="Mapper.html" title="interface in org.cojen.tupl">Mapper</a>&lt;<a href="Mapper.html" title="type parameter in Mapper">R</a>,<wbr><a href="Mapper.html" title="type parameter in Mapper">T</a>&gt;</span>&nbsp;<span class="element-name">prepare</span>()
+                     throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/22/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
+<div class="block">Return a new or singleton instance to be used when scanning rows. By default, this
+ instance is returned. If a new instance is returned, it doesn't need to be thread-safe.</div>
+<dl class="notes">
 <dt>Throws:</dt>
 <dd><code><a href="https://docs.oracle.com/en/java/javase/22/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
 </dl>
@@ -282,6 +312,24 @@ throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/
 <dd><code>plan</code> - original plan</dd>
 <dt>Returns:</dt>
 <dd>original or replacement plan</dd>
+</dl>
+</div>
+</section>
+</li>
+<li>
+<section class="detail" id="close()">
+<h3>close</h3>
+<div class="horizontal-scroll">
+<div class="member-signature"><span class="modifiers">default</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="element-name">close</span>()
+            throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/22/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
+<div class="block">Is called when this <code>Mapper</code> instance is no longer needed by a scanner.</div>
+<dl class="notes">
+<dt>Specified by:</dt>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/22/docs/api/java.base/java/lang/AutoCloseable.html#close()" title="class or interface in java.lang" class="external-link">close</a></code>&nbsp;in interface&nbsp;<code><a href="https://docs.oracle.com/en/java/javase/22/docs/api/java.base/java/lang/AutoCloseable.html" title="class or interface in java.lang" class="external-link">AutoCloseable</a></code></dd>
+<dt>Specified by:</dt>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/22/docs/api/java.base/java/io/Closeable.html#close()" title="class or interface in java.io" class="external-link">close</a></code>&nbsp;in interface&nbsp;<code><a href="https://docs.oracle.com/en/java/javase/22/docs/api/java.base/java/io/Closeable.html" title="class or interface in java.io" class="external-link">Closeable</a></code></dd>
+<dt>Throws:</dt>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/22/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
 </dl>
 </div>
 </section>
