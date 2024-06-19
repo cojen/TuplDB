@@ -48,6 +48,8 @@ public interface Grouper<R, T> extends Closeable {
          * Return true if {@code Grouper} instances don't need to accumulate all the source
          * rows before target rows can be produced. The implementation of this method must
          * return a static constant.
+         *
+         * @see Grouper#process
          */
         default boolean incremental() {
             return false;
@@ -90,21 +92,24 @@ public interface Grouper<R, T> extends Closeable {
     R accumulate(R source) throws IOException;
 
     /**
-     * Is called when all source group rows have been provided, and the first row for the
-     * target group should be assigned. Returning null signals that the target group is empty,
-     * and the next source group can begin.
+     * Is called when enough source group rows have been provided, and the first row for the
+     * target group should be assigned. Returning null indicates that no target rows remain,
+     * and that reading of source group rows can resume.
      *
-     * <p>If {@link Factory#incremental incremental} mode is enabled, then this method is
-     * called immediately after {@code begin} or {@code accumulate} is called.
+     * <p>When {@link Factory#incremental incremental} mode is disabled (the default), this
+     * method is called only after all source group rows have been provided. When incremental
+     * mode is enabled, this method is called after each invocation of the {@code begin} or
+     * {@code accumulate} methods.
      *
      * @param target never null; all columns are initially unset
-     * @return null if target group is empty
+     * @return null if no target rows remain
      */
     T process(T target) throws IOException;
 
     /**
-     * Is called to produce the next target group row. Returning null signals that no target
-     * rows remain, and the next source group can begin.
+     * Is called to produce subsequent target group rows after the process method has been
+     * called. Returning null indicates that no target rows remain, and that reading of source
+     * group rows can resume.
      *
      * @param target never null; all columns are initially unset
      * @return null if no target rows remain
