@@ -29,11 +29,10 @@ public interface FunctionFinder {
      * @param name function name
      * @param argTypes non-null array of argument types
      * @param argNames non-null array of optional argument names; same length as argTypes
-     * @param args non-null array of argument values; same length as argTypes
      * @param reason if the function isn't found, optionally provide a reason
      * @return null if not found
      */
     FunctionApplier tryFindFunction(String name,
-                                    Type[] argTypes, String[] argNames, Object[] args,
+                                    Type[] argTypes, String[] argNames,
                                     Consumer<String> reason);
 }

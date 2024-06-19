@@ -785,9 +785,9 @@ public final class Parser {
 
         String name = toPath(path, false);
 
-        // FIXME: argTypes, argNames, args, reason
+        // FIXME: argTypes, argNames, reason
         FunctionApplier applier = StandardFunctionFinder.THE
-            .tryFindFunction(name, null, null, null, null);
+            .tryFindFunction(name, null, null, null);
 
         if (applier == null) {
             // FIXME: reason

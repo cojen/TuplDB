@@ -47,7 +47,7 @@ public final class StandardFunctionFinder extends SoftCache<String, Object, Obje
 
     @Override
     public FunctionApplier tryFindFunction(String name,
-                                           Type[] argTypes, String[] argNames, Object[] args,
+                                           Type[] argTypes, String[] argNames,
                                            Consumer<String> reason)
     {
         // Note: Only the function name is examined for now. The FunctionApplier.validate
