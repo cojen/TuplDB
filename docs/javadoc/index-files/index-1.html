@@ -65,11 +65,12 @@ loadScripts(document, 'script');</script>
 </dd>
 <dt><a href="../org.cojen.tupl/org/cojen/tupl/Aggregator.html#accumulate(R)" class="member-name-link">accumulate(R)</a> - Method in interface org.cojen.tupl.<a href="../org.cojen.tupl/org/cojen/tupl/Aggregator.html" title="interface in org.cojen.tupl">Aggregator</a></dt>
 <dd>
-<div class="block">Called for each source row in the group, other than the first one.</div>
+<div class="block">Is called for each source row in the group, other than the first one.</div>
 </dd>
 <dt><a href="../org.cojen.tupl/org/cojen/tupl/Grouper.html#accumulate(R)" class="member-name-link">accumulate(R)</a> - Method in interface org.cojen.tupl.<a href="../org.cojen.tupl/org/cojen/tupl/Grouper.html" title="interface in org.cojen.tupl">Grouper</a></dt>
 <dd>
-<div class="block">Called for each source row in the group, other than the first one.</div>
+<div class="block">Is called for each source row in the group, other than the first one, and then the
+ <a href="../org.cojen.tupl/org/cojen/tupl/Grouper.html#step(T)"><code>step</code></a> method is called.</div>
 </dd>
 <dt><a href="../org.cojen.tupl/org/cojen/tupl/LockResult.html#ACQUIRED" class="member-name-link">ACQUIRED</a> - Enum constant in enum class org.cojen.tupl.<a href="../org.cojen.tupl/org/cojen/tupl/LockResult.html" title="enum class in org.cojen.tupl">LockResult</a></dt>
 <dd>
@@ -163,7 +164,7 @@ loadScripts(document, 'script');</script>
 <dd>&nbsp;</dd>
 <dt><a href="../org.cojen.tupl/org/cojen/tupl/Aggregator.Factory.html" class="type-name-link" title="interface in org.cojen.tupl">Aggregator.Factory&lt;R,<wbr>T&gt;</a> - Interface in <a href="../org.cojen.tupl/org/cojen/tupl/package-summary.html">org.cojen.tupl</a></dt>
 <dd>
-<div class="block">Is called to generate a new <a href="../org.cojen.tupl/org/cojen/tupl/Aggregator.html" title="interface in org.cojen.tupl"><code>Aggregator</code></a> instance for every query against the
+<div class="block">Is used to generate a new <a href="../org.cojen.tupl/org/cojen/tupl/Aggregator.html" title="interface in org.cojen.tupl"><code>Aggregator</code></a> instance for every query against the
  target table.</div>
 </dd>
 <dt><a href="../org.cojen.tupl/org/cojen/tupl/ext/CipherCrypto.html#algorithm()" class="member-name-link">algorithm()</a> - Method in class org.cojen.tupl.ext.<a href="../org.cojen.tupl/org/cojen/tupl/ext/CipherCrypto.html" title="class in org.cojen.tupl.ext">CipherCrypto</a></dt>

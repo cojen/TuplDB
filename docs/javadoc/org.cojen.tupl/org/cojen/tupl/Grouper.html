@@ -118,7 +118,7 @@ extends <a href="https://docs.oracle.com/en/java/javase/22/docs/api/java.base/ja
 <div class="col-first even-row-color"><code>static interface&nbsp;</code></div>
 <div class="col-second even-row-color"><code><a href="Grouper.Factory.html" class="type-name-link" title="interface in org.cojen.tupl">Grouper.Factory</a>&lt;<a href="Grouper.Factory.html" title="type parameter in Grouper.Factory">R</a>,<wbr><a href="Grouper.Factory.html" title="type parameter in Grouper.Factory">T</a>&gt;</code></div>
 <div class="col-last even-row-color">
-<div class="block">Is called to generate a new <a href="Grouper.html" title="interface in org.cojen.tupl"><code>Grouper</code></a> instance for every query against the target
+<div class="block">Is used to generate a new <a href="Grouper.html" title="interface in org.cojen.tupl"><code>Grouper</code></a> instance for every query against the target
  table.</div>
 </div>
 </div>
@@ -138,29 +138,29 @@ extends <a href="https://docs.oracle.com/en/java/javase/22/docs/api/java.base/ja
 <div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="Grouper.html" title="type parameter in Grouper">R</a></code></div>
 <div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#accumulate(R)" class="member-name-link">accumulate</a><wbr>(<a href="Grouper.html" title="type parameter in Grouper">R</a>&nbsp;source)</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
-<div class="block">Called for each source row in the group, other than the first one.</div>
+<div class="block">Is called for each source row in the group, other than the first one, and then the
+ <a href="#step(T)"><code>step</code></a> method is called.</div>
 </div>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="Grouper.html" title="type parameter in Grouper">R</a></code></div>
 <div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#begin(R)" class="member-name-link">begin</a><wbr>(<a href="Grouper.html" title="type parameter in Grouper">R</a>&nbsp;source)</code></div>
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
-<div class="block">Called for the first source row in the group.</div>
+<div class="block">Is called for the first source row in the group, and then the <a href="#step(T)"><code>step</code></a> method
+ is called.</div>
 </div>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default void</code></div>
 <div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#close()" class="member-name-link">close</a>()</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
 <div class="block">Is called when this <code>Grouper</code> instance is no longer needed.</div>
 </div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="Grouper.html" title="type parameter in Grouper">T</a></code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#process(T)" class="member-name-link">process</a><wbr>(<a href="Grouper.html" title="type parameter in Grouper">T</a>&nbsp;target)</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
-<div class="block">Is called when enough source group rows have been provided, and the first row for the
- target group should be assigned.</div>
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default void</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#finished()" class="member-name-link">finished</a>()</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
+<div class="block">Is called after the last source row in the group has been provided, and then the <a href="#step(T)"><code>step</code></a> method is called.</div>
 </div>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="Grouper.html" title="type parameter in Grouper">T</a></code></div>
 <div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#step(T)" class="member-name-link">step</a><wbr>(<a href="Grouper.html" title="type parameter in Grouper">T</a>&nbsp;target)</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
-<div class="block">Is called to produce subsequent target group rows after the process method has been
- called.</div>
+<div class="block">Is called to produce the next target row.</div>
 </div>
 </div>
 </div>
@@ -182,7 +182,8 @@ extends <a href="https://docs.oracle.com/en/java/javase/22/docs/api/java.base/ja
 <div class="horizontal-scroll">
 <div class="member-signature"><span class="return-type"><a href="Grouper.html" title="type parameter in Grouper">R</a></span>&nbsp;<span class="element-name">begin</span><wbr><span class="parameters">(<a href="Grouper.html" title="type parameter in Grouper">R</a>&nbsp;source)</span>
  throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/22/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
-<div class="block">Called for the first source row in the group.</div>
+<div class="block">Is called for the first source row in the group, and then the <a href="#step(T)"><code>step</code></a> method
+ is called.</div>
 <dl class="notes">
 <dt>Parameters:</dt>
 <dd><code>source</code> - never null</dd>
@@ -200,7 +201,8 @@ extends <a href="https://docs.oracle.com/en/java/javase/22/docs/api/java.base/ja
 <div class="horizontal-scroll">
 <div class="member-signature"><span class="return-type"><a href="Grouper.html" title="type parameter in Grouper">R</a></span>&nbsp;<span class="element-name">accumulate</span><wbr><span class="parameters">(<a href="Grouper.html" title="type parameter in Grouper">R</a>&nbsp;source)</span>
       throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/22/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
-<div class="block">Called for each source row in the group, other than the first one.</div>
+<div class="block">Is called for each source row in the group, other than the first one, and then the
+ <a href="#step(T)"><code>step</code></a> method is called.</div>
 <dl class="notes">
 <dt>Parameters:</dt>
 <dd><code>source</code> - never null</dd>
@@ -213,24 +215,13 @@ extends <a href="https://docs.oracle.com/en/java/javase/22/docs/api/java.base/ja
 </section>
 </li>
 <li>
-<section class="detail" id="process(T)">
-<h3 id="process(java.lang.Object)">process</h3>
+<section class="detail" id="finished()">
+<h3>finished</h3>
 <div class="horizontal-scroll">
-<div class="member-signature"><span class="return-type"><a href="Grouper.html" title="type parameter in Grouper">T</a></span>&nbsp;<span class="element-name">process</span><wbr><span class="parameters">(<a href="Grouper.html" title="type parameter in Grouper">T</a>&nbsp;target)</span>
-   throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/22/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
-<div class="block">Is called when enough source group rows have been provided, and the first row for the
- target group should be assigned. Returning null indicates that no target rows remain,
- and that reading of source group rows can resume.
-
- <p>When <a href="Grouper.Factory.html#incremental()"><code>incremental</code></a> mode is disabled (the default), this
- method is called only after all source group rows have been provided. When incremental
- mode is enabled, this method is called after each invocation of the <code>begin</code> or
- <code>accumulate</code> methods.</div>
+<div class="member-signature"><span class="modifiers">default</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="element-name">finished</span>()
+               throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/22/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
+<div class="block">Is called after the last source row in the group has been provided, and then the <a href="#step(T)"><code>step</code></a> method is called.</div>
 <dl class="notes">
-<dt>Parameters:</dt>
-<dd><code>target</code> - never null; all columns are initially unset</dd>
-<dt>Returns:</dt>
-<dd>null if no target rows remain</dd>
 <dt>Throws:</dt>
 <dd><code><a href="https://docs.oracle.com/en/java/javase/22/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
 </dl>
@@ -243,9 +234,8 @@ extends <a href="https://docs.oracle.com/en/java/javase/22/docs/api/java.base/ja
 <div class="horizontal-scroll">
 <div class="member-signature"><span class="return-type"><a href="Grouper.html" title="type parameter in Grouper">T</a></span>&nbsp;<span class="element-name">step</span><wbr><span class="parameters">(<a href="Grouper.html" title="type parameter in Grouper">T</a>&nbsp;target)</span>
 throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/22/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
-<div class="block">Is called to produce subsequent target group rows after the process method has been
- called. Returning null indicates that no target rows remain, and that reading of source
- group rows can resume.</div>
+<div class="block">Is called to produce the next target row. Returning null indicates that no target
+ rows remain, and that reading of source group rows can resume.</div>
 <dl class="notes">
 <dt>Parameters:</dt>
 <dd><code>target</code> - never null; all columns are initially unset</dd>

@@ -118,7 +118,7 @@ extends <a href="https://docs.oracle.com/en/java/javase/22/docs/api/java.base/ja
 <div class="col-first even-row-color"><code>static interface&nbsp;</code></div>
 <div class="col-second even-row-color"><code><a href="Aggregator.Factory.html" class="type-name-link" title="interface in org.cojen.tupl">Aggregator.Factory</a>&lt;<a href="Aggregator.Factory.html" title="type parameter in Aggregator.Factory">R</a>,<wbr><a href="Aggregator.Factory.html" title="type parameter in Aggregator.Factory">T</a>&gt;</code></div>
 <div class="col-last even-row-color">
-<div class="block">Is called to generate a new <a href="Aggregator.html" title="interface in org.cojen.tupl"><code>Aggregator</code></a> instance for every query against the
+<div class="block">Is used to generate a new <a href="Aggregator.html" title="interface in org.cojen.tupl"><code>Aggregator</code></a> instance for every query against the
  target table.</div>
 </div>
 </div>
@@ -138,12 +138,12 @@ extends <a href="https://docs.oracle.com/en/java/javase/22/docs/api/java.base/ja
 <div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="Aggregator.html" title="type parameter in Aggregator">R</a></code></div>
 <div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#accumulate(R)" class="member-name-link">accumulate</a><wbr>(<a href="Aggregator.html" title="type parameter in Aggregator">R</a>&nbsp;source)</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
-<div class="block">Called for each source row in the group, other than the first one.</div>
+<div class="block">Is called for each source row in the group, other than the first one.</div>
 </div>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="Aggregator.html" title="type parameter in Aggregator">R</a></code></div>
 <div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#begin(R)" class="member-name-link">begin</a><wbr>(<a href="Aggregator.html" title="type parameter in Aggregator">R</a>&nbsp;source)</code></div>
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
-<div class="block">Called for the first source row in the group.</div>
+<div class="block">Is called for the first source row in the group.</div>
 </div>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default void</code></div>
 <div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#close()" class="member-name-link">close</a>()</code></div>
@@ -153,7 +153,7 @@ extends <a href="https://docs.oracle.com/en/java/javase/22/docs/api/java.base/ja
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="Aggregator.html" title="type parameter in Aggregator">T</a></code></div>
 <div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#finish(T)" class="member-name-link">finish</a><wbr>(<a href="Aggregator.html" title="type parameter in Aggregator">T</a>&nbsp;target)</code></div>
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
-<div class="block">Called to produce an aggregate result for the current group.</div>
+<div class="block">Is called to produce an aggregate result for the current group.</div>
 </div>
 </div>
 </div>
@@ -175,7 +175,7 @@ extends <a href="https://docs.oracle.com/en/java/javase/22/docs/api/java.base/ja
 <div class="horizontal-scroll">
 <div class="member-signature"><span class="return-type"><a href="Aggregator.html" title="type parameter in Aggregator">R</a></span>&nbsp;<span class="element-name">begin</span><wbr><span class="parameters">(<a href="Aggregator.html" title="type parameter in Aggregator">R</a>&nbsp;source)</span>
  throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/22/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
-<div class="block">Called for the first source row in the group.</div>
+<div class="block">Is called for the first source row in the group.</div>
 <dl class="notes">
 <dt>Parameters:</dt>
 <dd><code>source</code> - never null</dd>
@@ -193,7 +193,7 @@ extends <a href="https://docs.oracle.com/en/java/javase/22/docs/api/java.base/ja
 <div class="horizontal-scroll">
 <div class="member-signature"><span class="return-type"><a href="Aggregator.html" title="type parameter in Aggregator">R</a></span>&nbsp;<span class="element-name">accumulate</span><wbr><span class="parameters">(<a href="Aggregator.html" title="type parameter in Aggregator">R</a>&nbsp;source)</span>
       throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/22/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
-<div class="block">Called for each source row in the group, other than the first one.</div>
+<div class="block">Is called for each source row in the group, other than the first one.</div>
 <dl class="notes">
 <dt>Parameters:</dt>
 <dd><code>source</code> - never null</dd>
@@ -211,9 +211,9 @@ extends <a href="https://docs.oracle.com/en/java/javase/22/docs/api/java.base/ja
 <div class="horizontal-scroll">
 <div class="member-signature"><span class="return-type"><a href="Aggregator.html" title="type parameter in Aggregator">T</a></span>&nbsp;<span class="element-name">finish</span><wbr><span class="parameters">(<a href="Aggregator.html" title="type parameter in Aggregator">T</a>&nbsp;target)</span>
   throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/22/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
-<div class="block">Called to produce an aggregate result for the current group. This method is expected to
- assign the appropriate target column values, except for the primary key. The primary key
- columns are assigned automatically by the caller.</div>
+<div class="block">Is called to produce an aggregate result for the current group. This method is expected
+ to assign the appropriate target column values, except for the primary key. The primary
+ key columns are assigned automatically by the caller.</div>
 <dl class="notes">
 <dt>Parameters:</dt>
 <dd><code>target</code> - never null; all columns are initially unset</dd>
