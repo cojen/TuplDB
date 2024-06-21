@@ -68,6 +68,7 @@ final class Tokenizer {
 
     private Token next(int c) throws IOException {
         int type;
+        int extraWidth = 0;
 
         loop: while (true) {
             if (c < 0) {
@@ -99,6 +100,7 @@ final class Tokenizer {
                 int next = read();
                 if (next == '=') {
                     type = Token.T_EQ;
+                    extraWidth = 1;
                 } else {
                     type = Token.T_ASSIGN;
                     unread(next);
@@ -109,6 +111,7 @@ final class Tokenizer {
                 next = read();
                 if (next == '=') {
                     type = Token.T_NE;
+                    extraWidth = 1;
                 } else {
                     type = Token.T_NOT;
                     unread(next);
@@ -119,6 +122,7 @@ final class Tokenizer {
                 next = read();
                 if (next == '=') {
                     type = Token.T_GE;
+                    extraWidth = 1;
                 } else {
                     type = Token.T_GT;
                     unread(next);
@@ -129,6 +133,7 @@ final class Tokenizer {
                 next = read();
                 if (next == '=') {
                     type = Token.T_LE;
+                    extraWidth = 1;
                 } else {
                     type = Token.T_LT;
                     unread(next);
@@ -139,6 +144,7 @@ final class Tokenizer {
                 next = read();
                 if (next == '|') {
                     type = Token.T_LOR;
+                    extraWidth = 1;
                 } else {
                     type = Token.T_OR;
                     unread(next);
@@ -153,6 +159,7 @@ final class Tokenizer {
                 next = read();
                 if (next == '&') {
                     type = Token.T_LAND;
+                    extraWidth = 1;
                 } else {
                     type = Token.T_AND;
                     unread(next);
@@ -237,7 +244,7 @@ final class Tokenizer {
             c = read();
         }
 
-        return new Token(mPos, mPos + 1, type);
+        return new Token(mPos - extraWidth, mPos + 1, type);
     }
 
     private int read() throws IOException {
