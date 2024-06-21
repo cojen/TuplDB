@@ -30,7 +30,7 @@ import org.cojen.tupl.diag.QueryPlan;
  */
 public interface Grouper<R, T> extends Closeable {
     /**
-     * Is called to generate a new {@link Grouper} instance for every query against the target
+     * Is used to generate a new {@link Grouper} instance for every query against the target
      * table.
      *
      * <p>To help query optimization, inverse mapping functions should be provided. They're
@@ -43,17 +43,6 @@ public interface Grouper<R, T> extends Closeable {
      */
     public static interface Factory<R, T> {
         Grouper<R, T> newGrouper() throws IOException;
-
-        /**
-         * Return true if {@code Grouper} instances don't need to accumulate all the source
-         * rows before target rows can be produced. The implementation of this method must
-         * return a static constant.
-         *
-         * @see Grouper#process
-         */
-        default boolean incremental() {
-            return false;
-        }
 
         /**
          * Returns a comma-separated list of source columns which are needed by the {@code
@@ -76,7 +65,8 @@ public interface Grouper<R, T> extends Closeable {
     }
 
     /**
-     * Called for the first source row in the group.
+     * Is called for the first source row in the group, and then the {@link #step step} method
+     * is called.
      *
      * @param source never null
      * @return the next source row instance to use, or null if it was kept by the grouper
@@ -84,7 +74,8 @@ public interface Grouper<R, T> extends Closeable {
     R begin(R source) throws IOException;
 
     /**
-     * Called for each source row in the group, other than the first one.
+     * Is called for each source row in the group, other than the first one, and then the
+     * {@link #step step} method is called.
      *
      * @param source never null
      * @return the next source row instance to use, or null if it was kept by the grouper
@@ -92,24 +83,15 @@ public interface Grouper<R, T> extends Closeable {
     R accumulate(R source) throws IOException;
 
     /**
-     * Is called when enough source group rows have been provided, and the first row for the
-     * target group should be assigned. Returning null indicates that no target rows remain,
-     * and that reading of source group rows can resume.
-     *
-     * <p>When {@link Factory#incremental incremental} mode is disabled (the default), this
-     * method is called only after all source group rows have been provided. When incremental
-     * mode is enabled, this method is called after each invocation of the {@code begin} or
-     * {@code accumulate} methods.
-     *
-     * @param target never null; all columns are initially unset
-     * @return null if no target rows remain
+     * Is called after the last source row in the group has been provided, and then the {@link
+     * #step step} method is called.
      */
-    T process(T target) throws IOException;
+    default void finished() throws IOException {
+    }
 
     /**
-     * Is called to produce subsequent target group rows after the process method has been
-     * called. Returning null indicates that no target rows remain, and that reading of source
-     * group rows can resume.
+     * Is called to produce the next target row. Returning null indicates that no target
+     * rows remain, and that reading of source group rows can resume.
      *
      * @param target never null; all columns are initially unset
      * @return null if no target rows remain

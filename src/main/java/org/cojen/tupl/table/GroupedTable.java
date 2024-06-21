@@ -260,8 +260,7 @@ public abstract class GroupedTable<S, T> extends AbstractMappedTable<S, T>
             }
         }
 
-        Class scannerClass = mGrouperFactory.incremental()
-            ? GroupedScanner.Incremental.class : GroupedScanner.Full.class;
+        Class scannerClass = GroupedScanner.class;
 
         RowFilter targetRemainder = splitter.mTargetRemainder;
 

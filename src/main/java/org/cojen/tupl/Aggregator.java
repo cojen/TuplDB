@@ -30,7 +30,7 @@ import org.cojen.tupl.diag.QueryPlan;
  */
 public interface Aggregator<R, T> extends Closeable {
     /**
-     * Is called to generate a new {@link Aggregator} instance for every query against the
+     * Is used to generate a new {@link Aggregator} instance for every query against the
      * target table.
      */
     public static interface Factory<R, T> {
@@ -57,7 +57,7 @@ public interface Aggregator<R, T> extends Closeable {
     }
 
     /**
-     * Called for the first source row in the group.
+     * Is called for the first source row in the group.
      *
      * @param source never null
      * @return the next source row instance to use, or null if it was kept by the aggregator
@@ -65,7 +65,7 @@ public interface Aggregator<R, T> extends Closeable {
     R begin(R source) throws IOException;
 
     /**
-     * Called for each source row in the group, other than the first one.
+     * Is called for each source row in the group, other than the first one.
      *
      * @param source never null
      * @return the next source row instance to use, or null if it was kept by the aggregator
@@ -73,9 +73,9 @@ public interface Aggregator<R, T> extends Closeable {
     R accumulate(R source) throws IOException;
 
     /**
-     * Called to produce an aggregate result for the current group. This method is expected to
-     * assign the appropriate target column values, except for the primary key. The primary key
-     * columns are assigned automatically by the caller.
+     * Is called to produce an aggregate result for the current group. This method is expected
+     * to assign the appropriate target column values, except for the primary key. The primary
+     * key columns are assigned automatically by the caller.
      *
      * @param target never null; all columns are initially unset
      * @return null if filtered out

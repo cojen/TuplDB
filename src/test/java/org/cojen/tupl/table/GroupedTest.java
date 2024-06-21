@@ -92,8 +92,8 @@ public class GroupedTest {
         final boolean mNoId;
 
         List<TestRow> mRows = new ArrayList<>();
-        int mPos;
         long mSum;
+        int mPos = Integer.MAX_VALUE;
 
         Grouped1(boolean byName, boolean noId) {
             mByName = byName;
@@ -130,20 +130,15 @@ public class GroupedTest {
         }
 
         @Override
-        public TestRowGroup process(TestRowGroup target) throws IOException {
-            TestRow first = mRows.get(0);
-            target.name(first.name());
-            mSum = first.num();
-            mPos = 1;
-            target.count(1);
-            target.sumNum(mSum);
-            target.avgNum(mSum);
-            return target;
+        public void finished() throws IOException {
+            mSum = 0;
+            mPos = 0;
         }
 
         @Override
         public TestRowGroup step(TestRowGroup target) throws IOException {
             if (mPos >= mRows.size()) {
+                mPos = Integer.MAX_VALUE;
                 return null;
             }
             target.name(mRows.get(0).name());
@@ -198,13 +193,11 @@ public class GroupedTest {
         }
 
         @Override
-        public TestRowGroup process(TestRowGroup target) throws IOException {
-            return null;
+        public void finished() throws IOException {
         }
 
         @Override
         public TestRowGroup step(TestRowGroup target) throws IOException {
-            fail();
             return null;
         }
 
@@ -219,6 +212,7 @@ public class GroupedTest {
         private final int mSize;
         private long mSum;
         private String mName;
+        private boolean mReady;
 
         RollingAvg(int size) {
             mSize = size;
@@ -226,6 +220,7 @@ public class GroupedTest {
 
         @Override
         public TestRow begin(TestRow source) throws IOException {
+            mReady = true;
             mNums.clear();
             long num = source.num();
             mNums.add(num);
@@ -236,17 +231,29 @@ public class GroupedTest {
 
         @Override
         public TestRow accumulate(TestRow source) throws IOException {
+            mReady = true;
             long num = source.num();
             mNums.add(num);
             mSum += num;
-            if (mNums.size() > mSize) {
-                mSum -= mNums.remove();
+            if (mNums.size() >= mSize) {
+                mReady = true;
+                if (mNums.size() > mSize) {
+                    mSum -= mNums.remove();
+                }
             }
             return source;
         }
 
         @Override
-        public TestRowGroup process(TestRowGroup target) throws IOException {
+        public void finished() throws IOException {
+        }
+
+        @Override
+        public TestRowGroup step(TestRowGroup target) throws IOException {
+            if (!mReady) {
+                return null;
+            }
+            mReady = false;
             if (mNums.size() < mSize) {
                 target.avgNum(Double.NaN);
             } else {
@@ -254,11 +261,6 @@ public class GroupedTest {
             }
             target.name(mName);
             return target;
-        }
-
-        @Override
-        public TestRowGroup step(TestRowGroup target) throws IOException {
-            return null;
         }
     }
 
@@ -272,11 +274,6 @@ public class GroupedTest {
         @Override
         public Grouper<TestRow, TestRowGroup> newGrouper() {
             return new RollingAvg(mSize);
-        }
-
-        @Override
-        public boolean incremental() {
-            return true;
         }
     }
 
