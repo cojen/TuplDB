@@ -129,7 +129,40 @@ public abstract class FunctionApplier {
         return false;
     }
 
-    public static interface Context {
+    /**
+     * A plain function is a plain function.
+     */
+    public abstract static class Plain extends FunctionApplier {
+        protected Plain(Type type) {
+            super(type);
+        }
+
+        /**
+         * Generate code to apply the function.
+         *
+         * @param args arguments passed to the function
+         * @param resultVar non-null result variable to set
+         */
+        public abstract void apply(LazyValue[] args, Variable resultVar);
+
+        /**
+         * Override and return false if the function isn't pure.
+         */
+        @Override
+        public boolean isPureFunction() {
+            return true;
+        }
+
+        /**
+         * Override and return true if the function requires a group number or group row number.
+         */
+        @Override
+        public boolean isGrouping() {
+            return false;
+        }
+    }
+
+    public static interface GroupContext {
         MethodMaker methodMaker();
 
         /**
@@ -163,45 +196,10 @@ public abstract class FunctionApplier {
         }
     }
 
-    /**
-     * A plain function is a plain function.
-     */
-    public abstract static class Plain extends FunctionApplier {
-        protected Plain(Type type) {
+    abstract static class Accumulator extends FunctionApplier {
+        private Accumulator(Type type) {
             super(type);
         }
-
-        /**
-         * Generate code to apply the function.
-         *
-         * @param args arguments passed to function
-         * @param resultVar non-null result variable to set
-         */
-        public abstract void apply(Context context, LazyValue[] args, Variable resultVar);
-
-        /**
-         * Override and return false if the function isn't pure.
-         */
-        @Override
-        public boolean isPureFunction() {
-            return true;
-        }
-
-        /**
-         * Override and return true if the function requires a group number or group row number.
-         */
-        @Override
-        public boolean isGrouping() {
-            return false;
-        }
-    }
-
-    abstract static class ByGroup extends FunctionApplier {
-        private ByGroup(Type type) {
-            super(type);
-        }
-
-        abstract void begin(Context context, LazyValue[] args);
 
         @Override
         public final boolean isPureFunction() {
@@ -212,47 +210,15 @@ public abstract class FunctionApplier {
         public final boolean isGrouping() {
             return true;
         }
+
+        abstract void begin(GroupContext context, LazyValue[] args);
+
+        abstract void accumulate(GroupContext context, LazyValue[] args);
     }
 
     /**
-     * A rolling function operates over groups of rows, producing one output row for each input
-     * row, without requiring that the entire group of values be provided up front.
-     */
-    public abstract static class Rolling extends ByGroup {
-        protected Rolling(Type type) {
-            super(type);
-        }
-
-        /**
-         * Generate code for the first row in the group. The given context can be called to
-         * make and initialize all of the necessary work fields, and the applier instance needs
-         * to maintain references to their names.
-         *
-         * @param args arguments passed to function
-         */
-        @Override
-        public abstract void begin(Context context, LazyValue[] args);
-
-        /**
-         * Generate code to apply the function.
-         *
-         * @param args arguments passed to function
-         * @param resultVar non-null result variable to set
-         */
-        public abstract void apply(Context context, LazyValue[] args, Variable resultVar);
-    }
-
-    abstract static class Accumulator extends ByGroup {
-        private Accumulator(Type type) {
-            super(type);
-        }
-
-        abstract void accumulate(Context context, LazyValue[] args);
-    }
-
-    /**
-     * A grouped function operates over groups of rows, producing one output row for each input
-     * row, while also requiring that the entire group of values be provided up front.
+     * A grouped function operates over groups of rows, producing one result for each input
+     * value.
      */
     public abstract static class Grouped extends Accumulator {
         protected Grouped(Type type) {
@@ -264,33 +230,34 @@ public abstract class FunctionApplier {
          * make and initialize all of the necessary work fields, and the applier instance needs
          * to maintain references to their names.
          *
-         * @param args arguments passed to function
+         * @param args arguments passed to the function
          */
         @Override
-        public abstract void begin(Context context, LazyValue[] args);
+        public abstract void begin(GroupContext context, LazyValue[] args);
 
         /**
          * Generate code for each row in the group, other than the first.
          *
-         * @param args arguments passed to function
+         * @param args arguments passed to the function
          */
         @Override
-        public abstract void accumulate(Context context, LazyValue[] args);
+        public abstract void accumulate(GroupContext context, LazyValue[] args);
 
         /**
-         * Generate code for the last row in the group, producing the first result.
+         * Generate code which is called after all rows in the group have been provided.
          */
-        public abstract Variable process(Context context);
+        public void finished(GroupContext context) {
+        }
 
         /**
-         * Generate code to produce each remaining result.
+         * Generate code to produce a result.
          */
-        public abstract Variable step(Context context);
+        public abstract Variable step(GroupContext context);
     }
 
     /**
-     * An aggregate function computes an aggregate over a group of rows. One output row is
-     * produced for a group of input rows.
+     * An aggregate function computes an aggregate over a group of rows. One result is produced
+     * for a group of input values.
      */
     public abstract static class Aggregated extends Accumulator {
         protected Aggregated(Type type) {
@@ -302,23 +269,23 @@ public abstract class FunctionApplier {
          * make and initialize all of the necessary work fields, and the applier instance needs
          * to maintain references to their names.
          *
-         * @param args arguments passed to function
+         * @param args arguments passed to the function
          */
         @Override
-        public abstract void begin(Context context, LazyValue[] args);
+        public abstract void begin(GroupContext context, LazyValue[] args);
 
         /**
          * Generate code for each row in the group, other than the first.
          *
-         * @param args arguments passed to function
+         * @param args arguments passed to the function
          */
         @Override
-        public abstract void accumulate(Context context, LazyValue[] args);
+        public abstract void accumulate(GroupContext context, LazyValue[] args);
 
         /**
          * Generate code for when the group is finished, producing an aggregate result.
          */
-        public abstract Variable finish(Context context);
+        public abstract Variable finish(GroupContext context);
     }
 
     /**
@@ -332,16 +299,16 @@ public abstract class FunctionApplier {
         }
 
         @Override
-        public void begin(Context context, LazyValue[] args) {
+        public void begin(GroupContext context, LazyValue[] args) {
             mFieldName = context.newWorkField(type().clazz()).set(eval(args[0])).name();
         }
 
         @Override
-        public Variable finish(Context context) {
+        public Variable finish(GroupContext context) {
             return workField(context);
         }
 
-        protected final Field workField(Context context) {
+        protected final Field workField(GroupContext context) {
             return context.methodMaker().field(mFieldName);
         }
 
@@ -359,7 +326,7 @@ public abstract class FunctionApplier {
         }
 
         @Override
-        public void accumulate(Context context, LazyValue[] args) {
+        public void accumulate(GroupContext context, LazyValue[] args) {
             Field field = workField(context);
             Type type = type();
             Label done = null;

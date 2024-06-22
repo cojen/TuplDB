@@ -105,7 +105,7 @@ public final class StandardFunctionFinder extends SoftCache<String, Object, Obje
         }
 
         @Override
-        public void apply(Context context, LazyValue[] args, Variable resultVar) {
+        public void apply(LazyValue[] args, Variable resultVar) {
             if (resultVar.classType().isPrimitive()) {
                 // No arguments will be null, so just return the first one.
                 resultVar.set(args[0].eval(true));
@@ -156,7 +156,7 @@ public final class StandardFunctionFinder extends SoftCache<String, Object, Obje
         }
 
         @Override
-        public void begin(Context context, LazyValue[] args) {
+        public void begin(GroupContext context, LazyValue[] args) {
             if (args.length != 0) {
                 LazyValue arg = args[0];
                 Expr expr = arg.expr();
@@ -183,7 +183,7 @@ public final class StandardFunctionFinder extends SoftCache<String, Object, Obje
         }
 
         @Override
-        public void accumulate(Context context, LazyValue[] args) {
+        public void accumulate(GroupContext context, LazyValue[] args) {
             if (mFieldName != null) {
                 Field field = context.methodMaker().field(mFieldName);
 
@@ -202,7 +202,7 @@ public final class StandardFunctionFinder extends SoftCache<String, Object, Obje
         }
 
         @Override
-        public Variable finish(Context context) {
+        public Variable finish(GroupContext context) {
             if (mFieldName == null) {
                 return context.groupRowNum();
             } else {
@@ -229,7 +229,7 @@ public final class StandardFunctionFinder extends SoftCache<String, Object, Obje
         }
 
         @Override
-        public void accumulate(Context context, LazyValue[] args) {
+        public void accumulate(GroupContext context, LazyValue[] args) {
         }
     }
 
@@ -255,7 +255,7 @@ public final class StandardFunctionFinder extends SoftCache<String, Object, Obje
         // and stored in the field. This can be expensive if evaluating the arg is expensive.
 
         @Override
-        public void accumulate(Context context, LazyValue[] args) {
+        public void accumulate(GroupContext context, LazyValue[] args) {
             workField(context).set(args[0].eval(true));
         }
     }
@@ -404,7 +404,7 @@ public final class StandardFunctionFinder extends SoftCache<String, Object, Obje
         }
 
         @Override
-        public Variable finish(Context context) {
+        public Variable finish(GroupContext context) {
             Variable sum = super.finish(context);
 
             Variable count = context.groupRowNum();

@@ -30,7 +30,7 @@ import org.cojen.maker.Variable;
  *
  * @author Brian S. O'Neill
  */
-class EvalContext implements FunctionApplier.Context {
+class EvalContext implements FunctionApplier.GroupContext {
     private final Variable mArgsVar, mSourceRowVar;
 
     private Map<Object, ResultRef> mEvaluated;

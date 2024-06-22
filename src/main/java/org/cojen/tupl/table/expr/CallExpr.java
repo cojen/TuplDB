@@ -296,7 +296,7 @@ public final class CallExpr extends Expr {
         if (mApplier instanceof FunctionApplier.Plain plain) {
             return withArgs(context, (ctx, args) -> {
                 var resultVar = ctx.methodMaker().var(type().clazz());
-                plain.apply(ctx, args, resultVar);
+                plain.apply(args, resultVar);
                 return resultVar;
             });
         }
