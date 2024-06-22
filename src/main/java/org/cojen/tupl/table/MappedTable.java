@@ -695,12 +695,13 @@ public abstract class MappedTable<S, T> extends AbstractMappedTable<S, T>
 
             argsVar = splitter.prepareArgs(argsVar);
 
-            var sourceScannerVar = mm.field("squery").invoke(methodName, txnVar, argsVar);
-            var mapperVar = tableVar.invoke("mapperForScan", sourceScannerVar);
+            var mapperVar = tableVar.invoke("mapper");
 
             if (targetRemainder != TrueFilter.THE || targetQuery.projection() != null) {
                 mapperVar.set(mm.new_(cm, mapperVar, argsVar));
             }
+
+            var sourceScannerVar = mm.field("squery").invoke(methodName, txnVar, argsVar);
 
             Variable resultVar;
 
@@ -757,9 +758,10 @@ public abstract class MappedTable<S, T> extends AbstractMappedTable<S, T>
             ready.here();
 
             var targetVar = mm.var(Class.class).set(targetType).invoke("getName");
+            var mapperVar = mm.field("table").invoke("mapper");
 
             var mapperPlanVar = mm.new_(QueryPlan.Mapper.class, targetVar, null, planVar);
-            planVar.set(mm.field("table").invoke("plan", mapperPlanVar));
+            planVar.set(mapperVar.invoke("plan", mapperPlanVar));
 
             if (targetRemainder != TrueFilter.THE) {
                 planVar.set(mm.new_(QueryPlan.Filter.class, targetRemainder.toString(), planVar));
@@ -857,24 +859,8 @@ public abstract class MappedTable<S, T> extends AbstractMappedTable<S, T>
     /**
      * Called by generated Query instances.
      */
-    public final Mapper<S, T> mapperForScan(Scanner<S> sourceScanner) throws IOException {
-        try {
-            return mMapper.prepare();
-        } catch (Throwable e) {
-            try {
-                sourceScanner.close();
-            } catch (Throwable e2) {
-                RowUtils.suppress(e, e2);
-            }
-            throw e;
-        }
-    }
-
-    /**
-     * Called by generated Query instances.
-     */
-    public final QueryPlan plan(QueryPlan.Mapper plan) {
-        return mMapper.plan(plan);
+    public final Mapper<S, T> mapper() {
+        return mMapper;
     }
 
     /**

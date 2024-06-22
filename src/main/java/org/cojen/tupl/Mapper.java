@@ -17,7 +17,6 @@
 
 package org.cojen.tupl;
 
-import java.io.Closeable;
 import java.io.IOException;
 
 import org.cojen.tupl.diag.QueryPlan;
@@ -37,7 +36,7 @@ import org.cojen.tupl.diag.QueryPlan;
  * @author Brian S O'Neill
  * @see Table#map Table.map
  */
-public interface Mapper<R, T> extends Closeable {
+public interface Mapper<R, T> {
     /**
      * Maps source rows to target rows.
      *
@@ -46,14 +45,6 @@ public interface Mapper<R, T> extends Closeable {
      * @return null if filtered out
      */
     T map(R source, T target) throws IOException;
-
-    /**
-     * Return a new or singleton instance to be used when scanning rows. By default, this
-     * instance is returned. If a new instance is returned, it doesn't need to be thread-safe.
-     */
-    default Mapper<R, T> prepare() throws IOException {
-        return this;
-    }
 
     /**
      * Returns true if the map method can filter out rows, which is true by default. If the map
@@ -111,12 +102,5 @@ public interface Mapper<R, T> extends Closeable {
      */
     default QueryPlan plan(QueryPlan.Mapper plan) {
         return plan;
-    }
-
-    /**
-     * Is called when this {@code Mapper} instance is no longer needed by a scanner.
-     */
-    @Override
-    default void close() throws IOException {
     }
 }

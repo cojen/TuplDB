@@ -45,9 +45,8 @@ public class MappedScanner<S, T> implements Scanner<T> {
 
         try {
             S sourceRow = source.row();
-            if (sourceRow == null) {
-                mapper.close();
-            } else {
+
+            if (sourceRow != null) {
                 targetRow = prepareTargetRow(targetRow);
                 T mappedTargetRow = mapper.map(sourceRow, targetRow);
                 if (mappedTargetRow != null) {
@@ -82,7 +81,6 @@ public class MappedScanner<S, T> implements Scanner<T> {
                 sourceRow = source.step(sourceRow);
                 if (sourceRow == null) {
                     mTargetRow = null;
-                    mMapper.close();
                     return null;
                 }
                 targetRow = prepareTargetRow(targetRow);
@@ -106,11 +104,7 @@ public class MappedScanner<S, T> implements Scanner<T> {
     @Override
     public final void close() throws IOException {
         mTargetRow = null;
-
-        // Use try-with-resources to close both and not lose any exceptions.
-        try (mSource) {
-            mMapper.close();
-        }
+        mSource.close();
     }
 
     @Override
