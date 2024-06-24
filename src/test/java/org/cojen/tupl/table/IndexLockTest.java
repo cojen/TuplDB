@@ -1118,6 +1118,15 @@ public class IndexLockTest {
 
     @Test
     public void joinNullTxn() throws Exception {
+        joinNullTxn(false);
+    }
+
+    @Test
+    public void joinNullTxnUpdater() throws Exception {
+        joinNullTxn(true);
+    }
+
+    private void joinNullTxn(boolean withUpdater) throws Exception {
         // Test that a scanner over a secondary index with a null transaction acquires the
         // secondary lock first, and then acquires the primary lock while the secondary lock is
         // still held.
@@ -1154,10 +1163,18 @@ public class IndexLockTest {
         nameIxSource.lockExclusive(txn1, sk2);
 
         // Should be blocked on the secondary key lock until txn1 is reset.
-        Waiter w1 = start(() -> {
-            var scanner = nameIx.newScanner(null, "name == ?", "name-2");
-            fail("Obtained scanner instance: " + scanner + ", " + scanner.row());
-        }, "org.cojen.tupl.core.Lock", "tryLockShared");
+        Waiter w1;
+        if (!withUpdater) {
+            w1 = start(() -> {
+                var scanner = nameIx.newScanner(null, "name == ?", "name-2");
+                fail("Obtained scanner instance: " + scanner + ", " + scanner.row());
+            }, "org.cojen.tupl.core.Lock", "tryLockShared");
+        } else {
+            w1 = start(() -> {
+                var updater = nameIx.newUpdater(null, "name == ?", "name-2");
+                fail("Obtained updater instance: " + updater + ", " + updater.row());
+            }, "org.cojen.tupl.core.Lock", "tryLockUpgradable");
+        }
 
         assertEquals(Thread.State.TIMED_WAITING, w1.getState());
 

@@ -54,6 +54,10 @@ public abstract class JoinedScanController<R> extends SingleScanController<R> {
         return 0;
     }
 
+    /**
+     * Is overridden by FilteredScanMaker to return false when a Scanner doesn't join to the
+     * primary table.
+     */
     @Override
     public boolean isJoined() {
         return true;

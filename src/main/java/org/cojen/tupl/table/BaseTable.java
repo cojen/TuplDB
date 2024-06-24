@@ -156,11 +156,14 @@ public abstract class BaseTable<R>
                     closer = mIndexLock.addGuard(txn);
 
                     if (controller.isJoined()) {
-                        // Need to retain row locks against the secondary until after the primary
-                        // row has been loaded.
+                        // See the JoinedScanController.validate method. When using
+                        // READ_COMMITTED, it assumes a predicate lock is preventing deletes.
+                        // Since none is used here, explicitly retain row locks against the
+                        // secondary until after the primary row has been loaded.
                         txn.lockMode(LockMode.REPEATABLE_READ);
                         scanner = new AutoUnlockScanner<>(this, controller);
                     } else {
+                        // Since the validate method won't be called, READ_COMMITTED is fine.
                         txn.lockMode(LockMode.READ_COMMITTED);
                         scanner = new TxnResetScanner<>(this, controller);
                     }
@@ -233,7 +236,7 @@ public abstract class BaseTable<R>
 
         addPredicate: {
             if (txn == null) {
-                txn = mSource.newTransaction(null);
+                txn = mSource.newTransaction(null); // always UPGRADABLE_READ
                 updater = new AutoCommitUpdater<>(this, controller);
                 if (secondary != null) {
                     // Need to guard against the secondary index from being concurrently
