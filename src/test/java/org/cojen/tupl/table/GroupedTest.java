@@ -193,10 +193,6 @@ public class GroupedTest {
         }
 
         @Override
-        public void finished() throws IOException {
-        }
-
-        @Override
         public TestRowGroup step(TestRowGroup target) throws IOException {
             return null;
         }
@@ -242,10 +238,6 @@ public class GroupedTest {
                 }
             }
             return source;
-        }
-
-        @Override
-        public void finished() throws IOException {
         }
 
         @Override
