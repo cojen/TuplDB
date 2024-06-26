@@ -482,6 +482,20 @@ public class ColumnInfo implements Cloneable {
         return info;
     }
 
+    public String typeName() {
+        if (type == null) {
+            assignType();
+        }
+
+        String name = type.getSimpleName();
+
+        if (isUnsignedInteger()) {
+            return "unsigned " + name;
+        } else {
+            return name;
+        }
+    }
+
     @Override
     public int hashCode() {
         return name.hashCode() * 31 + typeCode;
