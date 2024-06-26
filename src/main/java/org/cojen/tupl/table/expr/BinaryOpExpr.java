@@ -416,11 +416,12 @@ public sealed class BinaryOpExpr extends Expr permits FilterExpr {
     }
 
     private static void append(StringBuilder b, Expr expr) {
-        String str = expr.toString();
         if (expr instanceof BinaryOpExpr) {
-            b.append('(').append(str).append(')');
+            b.append('(');
+            expr.appendTo(b);
+            b.append(')');
         } else {
-            b.append(str);
+            expr.appendTo(b);
         }
     }
 
