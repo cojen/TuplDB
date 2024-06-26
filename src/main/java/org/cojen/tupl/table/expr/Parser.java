@@ -570,11 +570,11 @@ public final class Parser {
     }
 
     /*
-     * RelExpr = AddExpr { RelOp AddExpr }
+     * RelExpr = RangeExpr { RelOp RangeExpr }
      * RelOp   = ">=" | "<" | "<=" | ">" | "in"
      */
     private Expr parseRelExpr() throws IOException {
-        Expr expr = parseAddExpr();
+        Expr expr = parseRangeExpr();
 
         loop: while (true) {
             Token peek = peekToken();
@@ -583,18 +583,64 @@ public final class Parser {
             default: break loop;
             case T_GE: case T_LT: case T_LE: case T_GT:
                 consumePeek();
-                Expr right = parseAddExpr();
+                Expr right = parseRangeExpr();
                 expr = BinaryOpExpr.make(expr.startPos(), right.endPos(), type, expr, right);
                 break;
             case T_IN:
                 consumePeek();
-                right = parseAddExpr();
+                right = parseRangeExpr();
                 expr = InExpr.make(expr.startPos(), right.endPos(), expr, right);
                 break;
             }
         }
 
         return expr;
+    }
+
+    /*
+     * RangeExpr = ".." [ AddExpr ]
+     *           | AddExpr [ ".." [ AddExpr ] ]
+     */
+    private Expr parseRangeExpr() throws IOException {
+        Token peek;
+        if ((peek = peekToken()).type() == T_DOTDOT) {
+            consumePeek();
+            if (isAddExprStart(peekToken())) {
+                // ..end
+                Expr end = parseAddExpr();
+                return RangeExpr.make(peek.startPos(), end.endPos(), null, end);
+            } else {
+                // ..
+                return RangeExpr.make(peek.startPos(), peek.endPos(), null, null);
+            }
+        }
+
+        Expr expr = parseAddExpr();
+
+        if ((peek = peekToken()).type() == T_DOTDOT) {
+            consumePeek();
+            if (isAddExprStart(peekToken())) {
+                // start..end
+                Expr end = parseAddExpr();
+                return RangeExpr.make(expr.startPos(), end.endPos(), expr, end);
+            } else {
+                // start..
+                return RangeExpr.make(expr.startPos(), peek.endPos(), expr, null);
+            }
+        }
+
+        return expr;
+    }
+
+    private static boolean isAddExprStart(Token t) {
+        return switch (t.type()) {
+            case T_NOT, T_PLUS, T_MINUS, T_LPAREN, T_ARG, 
+                T_FALSE, T_TRUE, T_NULL, 
+                T_IDENTIFIER, T_STRING,
+                T_INT, T_LONG, T_BIGINT, T_FLOAT, T_DOUBLE, T_BIGDEC
+                -> true;
+            default -> false;
+        };
     }
 
     /*
@@ -806,7 +852,7 @@ public final class Parser {
             // A function call isn't allowed here, but parse it anyhow to provide a better
             // error message.
             CallExpr call = parseCallExpr(path);
-            throw new QueryException("Expression result must be assigned to column", call);
+            throw new QueryException("Expression result must be assigned to a column", call);
         }
 
         TupleType rowType = mFrom.rowType();
@@ -867,7 +913,7 @@ public final class Parser {
                 // error message.
                 pushbackToken(first);
                 Expr expr = parseExpr();
-                throw new QueryException("Expression result must be assigned to column", expr);
+                throw new QueryException("Expression result must be assigned to a column", expr);
             } else {
                 message = "Identifier expected";
             }

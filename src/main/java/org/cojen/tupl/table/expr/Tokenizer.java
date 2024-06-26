@@ -213,10 +213,18 @@ final class Tokenizer {
                 return parseNumber(c);
 
             case '.':
-                if (isDigit(peek())) {
+                next = read();
+                if (isDigit(next)) {
+                    unread(next);
                     return parseNumber(c);
                 }
-                type = Token.T_DOT;
+                if (next == '.') {
+                    type = Token.T_DOTDOT;
+                    extraWidth = 1;
+                } else {
+                    type = Token.T_DOT;
+                    unread(next);
+                }
                 break loop;
 
             case 'a': case 'b': case 'c': case 'd': case 'e': case 'f': case 'g': case 'h':
@@ -363,7 +371,7 @@ final class Tokenizer {
 
             switch (c) {
             case '.':
-                if (!bin && !fp && !exp) {
+                if (!bin && !fp && !exp && peek() != '.') {
                     fp = true;
                     mWord.append((char) c);
                     continue;

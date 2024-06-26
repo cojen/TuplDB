@@ -41,7 +41,7 @@ import org.cojen.maker.Variable;
  */
 public abstract sealed class Expr
     permits BinaryOpExpr, CallExpr, ColumnExpr, ConstantExpr, InExpr,
-    ParamExpr, RelationExpr, VarExpr, WrappedExpr
+    ParamExpr, RangeExpr, RelationExpr, VarExpr, WrappedExpr
 {
     private final int mStartPos, mEndPos;
 

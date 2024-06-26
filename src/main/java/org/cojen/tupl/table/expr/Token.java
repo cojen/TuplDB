@@ -40,17 +40,18 @@ sealed class Token {
 
     static final int T_LPAREN = 17, T_RPAREN = 18, T_LBRACE = 19, T_RBRACE = 20;
 
-    static final int T_ASSIGN = 21, T_TILDE = 22, T_COMMA = 23, T_SEMI = 24, T_DOT = 25, T_ARG = 26;
+    static final int T_ASSIGN = 21, T_TILDE = 22, T_COMMA = 23, T_SEMI = 24,
+        T_DOT = 25, T_DOTDOT = 26, T_ARG = 27;
 
     // Keywords.
-    static final int T_FALSE = 27, T_TRUE = 28, T_NULL = 29, T_IN = 30;
+    static final int T_FALSE = 28, T_TRUE = 29, T_NULL = 30, T_IN = 31;
 
     // Tokens which have a text value.
-    static final int T_UNKNOWN = 31, T_IDENTIFIER = 32, T_STRING = 33;
+    static final int T_UNKNOWN = 32, T_IDENTIFIER = 33, T_STRING = 34;
 
     // Numerical constants.
-    static final int T_INT = 34, T_LONG = 35, T_BIGINT = 36,
-        T_FLOAT = 37, T_DOUBLE = 38, T_BIGDEC = 39;
+    static final int T_INT = 35, T_LONG = 36, T_BIGINT = 37,
+        T_FLOAT = 38, T_DOUBLE = 39, T_BIGDEC = 40;
 
     private final int mStartPos, mEndPos, mType;
 
