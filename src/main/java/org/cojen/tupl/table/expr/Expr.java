@@ -17,10 +17,14 @@
 
 package org.cojen.tupl.table.expr;
 
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import java.util.function.BiFunction;
 import java.util.function.Consumer;
 
 import org.cojen.tupl.core.TupleKey;
@@ -373,6 +377,59 @@ public abstract sealed class Expr
         return value != null && !(value instanceof Variable) && !type.isPrimitive()
             && !String.class.isAssignableFrom(type)
             && !Class.class.isAssignableFrom(type);
+    }
+
+    @FunctionalInterface
+    public static interface Replacer<E> {
+        E apply(int i, E element);
+    }
+
+    /**
+     * Apply a function to replace all the elements of list, returning a new list if any
+     * replacements were actually made. The original list is returned otherwise.
+     *
+     * @param i first element to replace (usually 0)
+     */
+    public static <E> List<E> replaceElements(List<E> list, int i, Replacer<E> replacer) {
+        if (!list.isEmpty()) {
+            boolean copied = false;
+            for (; i<list.size(); i++) {
+                E element = list.get(i);
+                E replacement = replacer.apply(i, element);
+                if (replacement != element) {
+                    if (!copied) {
+                        list = new ArrayList<>(list);
+                        copied = true;
+                    }
+                    list.set(i, replacement);
+                }
+            }
+        }
+
+        return list;
+    }
+
+    /**
+     * Apply a function to replace all the values of map, returning a map list if any
+     * replacements were actually made. The original map is returned otherwise.
+     */
+    public static <K, V> Map<K, V> replaceValues(Map<K, V> map, BiFunction<K, V, V> replacer) {
+        if (!map.isEmpty()) {
+            boolean copied = false;
+            for (K key : map.keySet()) {
+                V value = map.get(key);
+                V replacement = replacer.apply(key, value);
+                if (replacement != value) {
+                    if (!copied) {
+                        map = new LinkedHashMap<>(map);
+                        copied = true;
+                    }
+                    map.put(key, replacement);
+                }
+            }
+        }
+
+        return map;
     }
 
     /**

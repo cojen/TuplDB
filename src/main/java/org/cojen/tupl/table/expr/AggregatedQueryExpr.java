@@ -83,18 +83,7 @@ final class AggregatedQueryExpr extends QueryExpr {
             filter = filter.asAggregate(group);
         }
 
-        boolean copied = false;
-
-        for (int i=groupBy; i<projection.size(); i++) {
-            ProjExpr proj = projection.get(i);
-            ProjExpr asAgg = proj.asAggregate(group);
-            if (proj != asAgg) {
-                if (!copied) {
-                    projection = new ArrayList<>(projection);
-                }
-                projection.set(i, asAgg);
-            }
-        }
+        projection = replaceElements(projection, groupBy, (i, proj) -> proj.asAggregate(group));
         
         return new AggregatedQueryExpr(startPos, endPos, type, from, rowFilter, filter,
                                        projection, groupBy, maxArgument, orderBy);

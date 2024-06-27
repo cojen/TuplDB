@@ -90,22 +90,7 @@ public final class CallExpr extends Expr {
 
         if (mApplier != null) {
             // Perform any necessary type conversions to the arguments.
-
-            boolean copied = false;
-            int i = 0;
-            for (Expr arg : args) {
-                Expr altArg = arg.asType(argTypes[i]);
-                if (altArg != arg) {
-                    if (!copied) {
-                        args = new ArrayList<>(args);
-                        copied = true;
-                    }
-                    args.set(i, altArg);
-                }
-                i++;
-            }
-
-            assert i == argTypes.length;
+            args = replaceElements(args, 0, (i, arg) -> arg.asType(argTypes[i]));
         }
 
         mArgs = args;
@@ -244,33 +229,10 @@ public final class CallExpr extends Expr {
             return this;
         }
 
-        List<Expr> args = mArgs;
+        List<Expr> args = replaceElements(mArgs, 0, (i, arg) -> arg.asAggregate(group));
 
-        for (int i=0; i<args.size(); i++) {
-            Expr arg = args.get(i);
-            Expr asAgg = arg.asAggregate(group);
-            if (arg != asAgg) {
-                if (args == mArgs) {
-                    args = new ArrayList<>(args);
-                }
-                args.set(i, asAgg);
-            }
-        }
-
-        Map<String, Expr> namedArgs = mNamedArgs;
-
-        if (!namedArgs.isEmpty()) {
-            for (String name : namedArgs.keySet()) {
-                Expr arg = namedArgs.get(name);
-                Expr asAgg = arg.asAggregate(group);
-                if (arg != asAgg) {
-                    if (namedArgs == mNamedArgs) {
-                        namedArgs = new LinkedHashMap<>(namedArgs);
-                    }
-                    namedArgs.put(name, asAgg);
-                }
-            }
-        }
+        Map<String, Expr> namedArgs = replaceValues
+            (mNamedArgs, (k, arg) -> arg.asAggregate(group));
 
         return args == mArgs && namedArgs == mNamedArgs ? this
             : new CallExpr(startPos(), endPos(), mName, args, namedArgs, mApplier);
@@ -283,33 +245,10 @@ public final class CallExpr extends Expr {
             return replaced;
         }
 
-        List<Expr> args = mArgs;
+        List<Expr> args = replaceElements(mArgs, 0, (i, arg) -> arg.replace(replacements));
 
-        for (int i=0; i<args.size(); i++) {
-            Expr arg = args.get(i);
-            Expr replacement = arg.replace(replacements);
-            if (arg != replacement) {
-                if (args == mArgs) {
-                    args = new ArrayList<>(args);
-                }
-                args.set(i, replacement);
-            }
-        }
-
-        Map<String, Expr> namedArgs = mNamedArgs;
-
-        if (!namedArgs.isEmpty()) {
-            for (String name : namedArgs.keySet()) {
-                Expr arg = namedArgs.get(name);
-                Expr replacement = arg.replace(replacements);
-                if (arg != replacement) {
-                    if (namedArgs == mNamedArgs) {
-                        namedArgs = new LinkedHashMap<>(namedArgs);
-                    }
-                    namedArgs.put(name, replacement);
-                }
-            }
-        }
+        Map<String, Expr> namedArgs = replaceValues
+            (mNamedArgs, (k, arg) -> arg.replace(replacements));
 
         return args == mArgs && namedArgs == mNamedArgs ? this
             : new CallExpr(startPos(), endPos(), mName, args, namedArgs, mApplier);
