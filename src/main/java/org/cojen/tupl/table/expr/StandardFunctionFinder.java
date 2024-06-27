@@ -21,6 +21,8 @@ import java.lang.reflect.Modifier;
 
 import java.math.BigDecimal;
 
+import java.util.Map;
+
 import java.util.function.Consumer;
 
 import org.cojen.maker.Field;
@@ -47,7 +49,7 @@ public final class StandardFunctionFinder extends SoftCache<String, Object, Obje
 
     @Override
     public FunctionApplier tryFindFunction(String name,
-                                           Type[] argTypes, String[] argNames,
+                                           Type[] argTypes, Map<String, Type> namedArgTypes,
                                            Consumer<String> reason)
     {
         // Note: Only the function name is examined for now. The FunctionApplier.validate
@@ -82,7 +84,9 @@ public final class StandardFunctionFinder extends SoftCache<String, Object, Obje
         }
 
         @Override
-        public coalesce validate(Type[] argTypes, String[] argNames, Consumer<String> reason) {
+        public coalesce validate(Type[] argTypes, Map<String, Type> namedArgTypes,
+                                 Consumer<String> reason)
+        {
             if (!checkNumArgs(0, Integer.MAX_VALUE, argTypes.length, reason)) {
                 return null;
             }
@@ -148,7 +152,9 @@ public final class StandardFunctionFinder extends SoftCache<String, Object, Obje
         }
 
         @Override
-        public count validate(Type[] argTypes, String[] argNames, Consumer<String> reason) {
+        public count validate(Type[] argTypes, Map<String, Type> namedArgTypes,
+                              Consumer<String> reason)
+        {
             if (!checkNumArgs(0, 1, argTypes.length, reason)) {
                 return null;
             }
@@ -221,7 +227,9 @@ public final class StandardFunctionFinder extends SoftCache<String, Object, Obje
         }
 
         @Override
-        public first validate(Type[] argTypes, String[] argNames, Consumer<String> reason) {
+        public first validate(Type[] argTypes, Map<String, Type> namedArgTypes,
+                              Consumer<String> reason)
+        {
             if (!checkNumArgs(1, 1, argTypes.length, reason)) {
                 return null;
             }
@@ -243,7 +251,9 @@ public final class StandardFunctionFinder extends SoftCache<String, Object, Obje
         }
 
         @Override
-        public last validate(Type[] argTypes, String[] argNames, Consumer<String> reason) {
+        public last validate(Type[] argTypes, Map<String, Type> namedArgTypes,
+                             Consumer<String> reason)
+        {
             if (!checkNumArgs(1, 1, argTypes.length, reason)) {
                 return null;
             }

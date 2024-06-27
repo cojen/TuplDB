@@ -20,8 +20,8 @@ package org.cojen.tupl.table.expr;
 import java.io.IOException;
 import java.io.Reader;
 
+import java.util.ArrayDeque;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -116,8 +116,7 @@ public final class Parser {
     private final int mParamDelta;
     private final RelationExpr mFrom;
     private final Tokenizer mTokenizer;
-
-    private Token mNextToken;
+    private final ArrayDeque<Token> mTokenStack;
 
     private int mParamOrdinal;
 
@@ -150,6 +149,7 @@ public final class Parser {
         }
         mFrom = from;
         mTokenizer = tokenizer;
+        mTokenStack = new ArrayDeque<Token>(2);
     }
 
     public RelationExpr parseQueryExpr() throws IOException, QueryException {
@@ -266,7 +266,7 @@ public final class Parser {
         final Token first = peekToken();
 
         if (first.type() == T_RBRACE || first.type() == T_SEMI) {
-            return Collections.emptyMap();
+            return Map.of();
         }
 
         Map<String, ProjExpr> map = new LinkedHashMap<>();
@@ -817,21 +817,24 @@ public final class Parser {
      */
     private CallExpr parseCallExpr(List<Token> path) throws IOException {
         consumePeek();
-        List<Expr> args = parseExprs();
+
+        Map<String, Expr> namedArgs = new LinkedHashMap<>();
+        List<Expr> args = parseCallArgs(namedArgs);
+        if (namedArgs.isEmpty()) {
+            namedArgs = Map.of();
+        }
+
         Token next = nextToken();
         if (next.type() != T_RPAREN) {
             throw new QueryException("Right paren expected", next);
         }
-        return resolveCall(path, args);
-    }
 
-    private CallExpr resolveCall(List<Token> path, List<Expr> args) {
         int startPos = path.get(0).startPos();
-        int endPos = path.get(path.size() - 1).endPos();
+        int endPos = next.endPos();
 
         String name = toPath(path, false);
 
-        // FIXME: argTypes, argNames, reason
+        // FIXME: argTypes, namedArgTypes, reason
         FunctionApplier applier = StandardFunctionFinder.THE
             .tryFindFunction(name, null, null, null);
 
@@ -840,11 +843,7 @@ public final class Parser {
             throw new QueryException("Unknown function: " + name, startPos, endPos);
         }
 
-        if (!args.isEmpty()) {
-            endPos = args.get(args.size() - 1).endPos();
-        }
-
-        return CallExpr.make(startPos, endPos, name, args, applier);
+        return CallExpr.make(startPos, endPos, name, args, namedArgs, applier);
     }
 
     private ColumnExpr resolveColumn(List<Token> path, boolean allowWildcards) throws IOException {
@@ -979,36 +978,67 @@ public final class Parser {
     }
 
     /*
-     * Exprs = [ Expr { "," Expr } ]
+     * CallArgs = [ CallArg { "," CallArg } ]
      */
-    private List<Expr> parseExprs() throws IOException {
+    private List<Expr> parseCallArgs(Map<String, Expr> namedArgs) throws IOException {
         if (peekTokenType() == T_RPAREN) {
-            return Collections.emptyList();
+            return List.of();
         }
 
-        Expr first = parseExpr();
+        Expr first = parseCallArg(namedArgs);
 
         if (peekTokenType() != T_COMMA) {
-            return List.of(first);
+            return first == null ? List.of() : List.of(first);
         }
 
         var list = new ArrayList<Expr>();
-        list.add(first);
+
+        if (first != null) {
+            list.add(first);
+        }
 
         while (peekTokenType() == T_COMMA) {
             consumePeek();
-            list.add(parseExpr());
+            Expr expr = parseCallArg(namedArgs);
+            if (expr != null) {
+                list.add(expr);
+            }
         }
 
         return list;
     }
 
-    private Token peekToken() throws IOException {
-        Token t = mNextToken;
-        if (t != null) {
-            return t;
+    /*
+     * CallArg = [ Identifier ':' ] Expr
+     *
+     * @return null if a named arg was parsed instead
+     */
+    private Expr parseCallArg(Map<String, Expr> namedArgs) throws IOException {
+        {
+            Token token = nextToken();
+
+            if (token.type() == T_IDENTIFIER && peekTokenType() == T_COLON) {
+                consumePeek();
+                String name = ((Token.Text) token).mText;
+                if (namedArgs.putIfAbsent(name, parseExpr()) == null) {
+                    return null;
+                }
+                throw new QueryException("Duplicate named argument: " + unescape(name), token);
+            }
+
+            pushbackToken(token);
         }
-        return mNextToken = mTokenizer.next();
+
+        return parseExpr();
+    }
+
+    private Token peekToken() throws IOException {
+        Token t = mTokenStack.peekFirst();
+        if (t == null) {
+            t = mTokenizer.next();
+            mTokenStack.addFirst(t);
+        }
+        return t;
     }
 
     private int peekTokenType() throws IOException {
@@ -1016,25 +1046,18 @@ public final class Parser {
     }
 
     private void consumePeek() {
-        if (mNextToken == null) {
-            throw new AssertionError();
-        }
-        mNextToken = null;
+        mTokenStack.removeFirst();
     }
 
     private Token nextToken() throws IOException {
-        Token t = mNextToken;
+        Token t = mTokenStack.pollFirst();
         if (t != null) {
-            mNextToken = null;
             return t;
         }
         return mTokenizer.next();
     }
 
     private void pushbackToken(Token t) {
-        if (mNextToken != null) {
-            throw new AssertionError();
-        }
-        mNextToken = t;
+        mTokenStack.addFirst(t);
     }
 }

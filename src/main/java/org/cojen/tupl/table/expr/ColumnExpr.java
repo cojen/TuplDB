@@ -132,7 +132,7 @@ public abstract sealed class ColumnExpr extends Expr implements Named {
             throw new QueryException("Column isn't part of the aggregation group or " +
                                      "wrapped by an aggregation function", this);
         }
-        return CallExpr.make(startPos(), endPos(), "first", List.of(this),
+        return CallExpr.make(startPos(), endPos(), "first", List.of(this), Map.of(),
                              new StandardFunctionFinder.first(null));
     }
 

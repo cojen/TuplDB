@@ -18,6 +18,7 @@
 package org.cojen.tupl.table.expr;
 
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -37,17 +38,20 @@ import org.cojen.tupl.table.RowUtils;
  */
 public final class CallExpr extends Expr {
     public static CallExpr make(int startPos, int endPos,
-                                String name, List<Expr> args, FunctionApplier applier)
+                                String name, List<Expr> args, Map<String, Expr> namedArgs,
+                                FunctionApplier applier)
     {
-        return new CallExpr(startPos, endPos, name, args, applier);
+        return new CallExpr(startPos, endPos, name, args, namedArgs, applier);
     }
 
     private final String mName;
     private final List<Expr> mArgs;
+    private final Map<String, Expr> mNamedArgs;
     private final FunctionApplier mOriginalApplier, mApplier;
 
     private CallExpr(int startPos, int endPos,
-                     String name, List<Expr> args, FunctionApplier applier)
+                     String name, List<Expr> args, Map<String, Expr> namedArgs,
+                     FunctionApplier applier)
     {
         super(startPos, endPos);
 
@@ -55,39 +59,33 @@ public final class CallExpr extends Expr {
         mOriginalApplier = applier;
 
         Type[] argTypes;
-        String[] argNames;
-
         {
             int num = args.size();
-
             argTypes = new Type[num];
-            argNames = new String[num];
-
             int i = 0;
             for (Expr arg : args) {
-                argTypes[i] = arg.type();
-                // FIXME: support named arguments
-                argNames[i] = null;
-                i++;
+                argTypes[i++] = arg.type();
             }
-
             assert i == num;
+        }
+
+        Map<String, Type> namedArgTypes;
+        {
+            if (namedArgs.isEmpty()) {
+                namedArgTypes = Map.of();
+            } else {
+                namedArgTypes = new LinkedHashMap<>(namedArgs.size() << 1);
+                namedArgs.forEach((n, e) -> namedArgTypes.put(n, e.type()));
+            }
         }
 
         var reasons = new ArrayList<String>(1);
 
-        validate: {
-            if (!applier.hasNamedParameters()) {
-                for (String p : argNames) {
-                    if (p != null) {
-                        reasons.add("unknown parameter: " + p);
-                        mApplier = null;
-                        break validate;
-                    }
-                }
-            }
-
-            mApplier = applier.validate(argTypes, argNames, reasons::add);
+        if (!applier.hasNamedParameters() && !namedArgs.isEmpty()) {
+            reasons.add("it doesn't define any named parameters");
+            mApplier = null;
+        } else {
+            mApplier = applier.validate(argTypes, namedArgTypes, reasons::add);
         }
 
         if (mApplier != null) {
@@ -111,6 +109,7 @@ public final class CallExpr extends Expr {
         }
 
         mArgs = args;
+        mNamedArgs = namedArgs;
 
         if (applier instanceof FunctionApplier.Aggregated) {
             for (Expr arg : args) {
@@ -258,7 +257,23 @@ public final class CallExpr extends Expr {
             }
         }
 
-        return args == mArgs ? this : new CallExpr(startPos(), endPos(), mName, args, mApplier);
+        Map<String, Expr> namedArgs = mNamedArgs;
+
+        if (!namedArgs.isEmpty()) {
+            for (String name : namedArgs.keySet()) {
+                Expr arg = namedArgs.get(name);
+                Expr asAgg = arg.asAggregate(group);
+                if (arg != asAgg) {
+                    if (namedArgs == mNamedArgs) {
+                        namedArgs = new LinkedHashMap<>(namedArgs);
+                    }
+                    namedArgs.put(name, asAgg);
+                }
+            }
+        }
+
+        return args == mArgs && namedArgs == mNamedArgs ? this
+            : new CallExpr(startPos(), endPos(), mName, args, namedArgs, mApplier);
     }
 
     @Override
@@ -272,16 +287,32 @@ public final class CallExpr extends Expr {
 
         for (int i=0; i<args.size(); i++) {
             Expr arg = args.get(i);
-            Expr asAgg = arg.replace(replacements);
-            if (arg != asAgg) {
+            Expr replacement = arg.replace(replacements);
+            if (arg != replacement) {
                 if (args == mArgs) {
                     args = new ArrayList<>(args);
                 }
-                args.set(i, asAgg);
+                args.set(i, replacement);
             }
         }
 
-        return args == mArgs ? this : new CallExpr(startPos(), endPos(), mName, args, mApplier);
+        Map<String, Expr> namedArgs = mNamedArgs;
+
+        if (!namedArgs.isEmpty()) {
+            for (String name : namedArgs.keySet()) {
+                Expr arg = namedArgs.get(name);
+                Expr replacement = arg.replace(replacements);
+                if (arg != replacement) {
+                    if (namedArgs == mNamedArgs) {
+                        namedArgs = new LinkedHashMap<>(namedArgs);
+                    }
+                    namedArgs.put(name, replacement);
+                }
+            }
+        }
+
+        return args == mArgs && namedArgs == mNamedArgs ? this
+            : new CallExpr(startPos(), endPos(), mName, args, namedArgs, mApplier);
     }
 
     @Override

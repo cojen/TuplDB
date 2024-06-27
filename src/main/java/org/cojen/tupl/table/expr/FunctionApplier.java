@@ -17,6 +17,8 @@
 
 package org.cojen.tupl.table.expr;
 
+import java.util.Map;
+
 import java.util.function.Consumer;
 
 import org.cojen.maker.Field;
@@ -95,12 +97,12 @@ public abstract class FunctionApplier {
      * instance. If any arguments should be converted, directly replace elements of the
      * argTypes array with the desired type.
      *
-     * @param argTypes non-null array of argument types
-     * @param argNames non-null array of optional argument names; same length as argTypes
+     * @param argTypes non-null array of unnamed argument types
+     * @param namedArgTypes non-null map of named argument types
      * @param reasons if validation fails, optionally provide reasons
      * @return the new applier, or else null if validation fails
      */
-    public abstract FunctionApplier validate(Type[] argTypes, String[] argNames,
+    public abstract FunctionApplier validate(Type[] argTypes, Map<String, Type> namedArgTypes,
                                              Consumer<String> reasons);
 
     /**
@@ -372,7 +374,7 @@ public abstract class FunctionApplier {
         }
 
         @Override
-        public NumericalAggregated validate(Type[] argTypes, String[] argNames,
+        public NumericalAggregated validate(Type[] argTypes, Map<String, Type> namedArgTypes,
                                             Consumer<String> reason)
         {
             if (!checkNumArgs(1, 1, argTypes.length, reason)) {

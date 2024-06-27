@@ -17,6 +17,8 @@
 
 package org.cojen.tupl.table.expr;
 
+import java.util.Map;
+
 import java.util.function.Consumer;
 
 /**
@@ -27,12 +29,12 @@ public interface FunctionFinder {
      * Tries to finds a function by the given name and arguments.
      *
      * @param name function name
-     * @param argTypes non-null array of argument types
-     * @param argNames non-null array of optional argument names; same length as argTypes
+     * @param argTypes non-null array of unnamed argument types
+     * @param namedArgTypes non-null map of named argument types
      * @param reason if the function isn't found, optionally provide a reason
      * @return null if not found
      */
     FunctionApplier tryFindFunction(String name,
-                                    Type[] argTypes, String[] argNames,
+                                    Type[] argTypes, Map<String, Type> namedArgTypes,
                                     Consumer<String> reason);
 }
