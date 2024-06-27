@@ -318,6 +318,13 @@ public final class CallExpr extends Expr {
         if (enc.encode(this, K_TYPE)) {
             enc.encodeString(mName);
             enc.encodeExprs(mArgs);
+
+            enc.encodeByte(mNamedArgs.size());
+            for (Map.Entry<String, Expr> e : mNamedArgs.entrySet()) {
+                enc.encodeString(e.getKey());
+                e.getValue().encodeKey(enc);
+            }
+
             enc.encodeReference(mOriginalApplier);
         }
     }
@@ -326,6 +333,7 @@ public final class CallExpr extends Expr {
     public int hashCode() {
         int hash = mName.hashCode();
         hash = hash * 31 + mArgs.hashCode();
+        hash = hash * 31 + mNamedArgs.hashCode();
         hash = hash * 31 + mOriginalApplier.hashCode();
         return hash;
     }
@@ -336,6 +344,7 @@ public final class CallExpr extends Expr {
             obj instanceof CallExpr ce
             && mName.equals(ce.mName)
             && mArgs.equals(ce.mArgs)
+            && mNamedArgs.equals(ce.mNamedArgs)
             && mOriginalApplier.equals(ce.mOriginalApplier);
     }
 
@@ -354,6 +363,15 @@ public final class CallExpr extends Expr {
                 b.append(", ");
             }
             arg.appendTo(b);
+            i++;
+        }
+
+        for (Map.Entry<String, Expr> e : mNamedArgs.entrySet()) {
+            if (i > 0) {
+                b.append(", ");
+            }
+            b.append(e.getKey()).append(':');
+            e.getValue().appendTo(b);
             i++;
         }
 
