@@ -86,7 +86,7 @@ public final class AssignExpr extends WrappedExpr implements Named {
 
     @Override
     public boolean isTrivial() {
-        return true;
+        return mExpr.isTrivial();
     }
 
     @Override
