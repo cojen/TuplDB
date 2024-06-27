@@ -150,7 +150,7 @@ final class MappedQueryExpr extends QueryExpr {
     private static final byte K_TYPE = KeyEncoder.allocType();
 
     @Override
-    protected final void encodeKey(KeyEncoder enc) {
+    protected void encodeKey(KeyEncoder enc) {
         if (enc.encode(this, K_TYPE)) {
             super.doEncodeKey(enc);
         }
@@ -375,7 +375,6 @@ final class MappedQueryExpr extends QueryExpr {
 
     private void addInverseMappingFunctions(ClassMaker cm) {
         TupleType targetType = rowType();
-        int numColumns = targetType.numColumns();
 
         for (ProjExpr pe : mEffectiveProjection) {
             ColumnExpr source;

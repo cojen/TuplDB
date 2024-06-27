@@ -221,11 +221,6 @@ public final class FilterExpr extends BinaryOpExpr {
     }
 
     @Override
-    public Variable makeFilterEval(EvalContext context) {
-        return makeEval(context);
-    }
-
-    @Override
     public boolean canThrowRuntimeException() {
         return mLeft.canThrowRuntimeException() || mRight.canThrowRuntimeException();
     }

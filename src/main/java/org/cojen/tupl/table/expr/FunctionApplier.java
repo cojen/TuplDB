@@ -26,8 +26,6 @@ import org.cojen.maker.Label;
 import org.cojen.maker.MethodMaker;
 import org.cojen.maker.Variable;
 
-import org.cojen.tupl.io.Utils;
-
 /**
  * Generates code to invoke a function.
  *

@@ -17,8 +17,6 @@
 
 package org.cojen.tupl.table.expr;
 
-import org.cojen.tupl.core.TupleKey;
-
 import org.cojen.tupl.table.ColumnInfo;
 import org.cojen.tupl.table.ConvertUtils;
 
@@ -59,15 +57,6 @@ public abstract sealed class Type extends ColumnInfo
     }
 
     /**
-     * Returns a cache key instance by calling encodeKey.
-     */
-    protected final TupleKey makeKey() {
-        var enc = new KeyEncoder();
-        encodeKey(enc);
-        return enc.finish();
-    }
-
-    /**
      * @see Expr#encodeKey
      */
     protected abstract void encodeKey(KeyEncoder enc);
@@ -85,7 +74,7 @@ public abstract sealed class Type extends ColumnInfo
      * @param simple when true, omit full class names
      */
     protected void appendTo(StringBuilder b, boolean simple) {
-        b.append(toString());
+        b.append(this);
     }
 
     protected final String defaultToString() {
@@ -95,7 +84,7 @@ public abstract sealed class Type extends ColumnInfo
     }
 
     /**
-     * Finds a common type which can be converted to without loss or abiguity.
+     * Finds a common type which can be converted to without loss or ambiguity.
      *
      * @param op defined in ColumnFilter; pass -1 if not performing a comparison operation
      * @return null if a common type cannot be inferred or is ambiguous

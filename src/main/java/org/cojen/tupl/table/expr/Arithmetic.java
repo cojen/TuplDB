@@ -82,16 +82,13 @@ final class Arithmetic {
 
     public static final class Bool {
         static Variable eval(int op, Variable left, Variable right) {
-            switch (op) {
-            case T_AND:
-                return left.and(right);
-            case T_OR:
-                return left.or(right);
-            case T_XOR:
-                return left.xor(right);
-            }
-            return null;
-        }        
+            return switch (op) {
+                case T_AND -> left.and(right);
+                case T_OR -> left.or(right);
+                case T_XOR -> left.xor(right);
+                default -> null;
+            };
+        }
     }
 
     public static final class UByte {
@@ -113,6 +110,7 @@ final class Arithmetic {
                 break;
             case T_REM:
                 method = "remainderExact";
+                break;
             case T_AND:
                 return left.and(right);
             case T_OR:
@@ -192,6 +190,7 @@ final class Arithmetic {
                 break;
             case T_REM:
                 method = "remainderExact";
+                break;
             case T_AND:
                 return left.and(right);
             case T_OR:
@@ -271,6 +270,7 @@ final class Arithmetic {
                 break;
             case T_REM:
                 method = "remainderExact";
+                break;
             case T_AND:
                 return left.and(right);
             case T_OR:
@@ -359,6 +359,7 @@ final class Arithmetic {
                 break;
             case T_REM:
                 method = "remainderExact";
+                break;
             case T_AND:
                 return left.and(right);
             case T_OR:
@@ -699,6 +700,7 @@ final class Arithmetic {
                 break;
             case OP_MAX:
                 method = "max";
+                break;
 
              default:
                 return null;

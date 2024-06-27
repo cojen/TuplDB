@@ -898,7 +898,7 @@ public final class Parser {
     /*
      * Path = Identifier { "." Identifier } [ "." | "*" ]
      *
-     * @param exprCheck when true, check if a erroneous path is actually a misplaced expression
+     * @param exprCheck when true, check if an erroneous path is actually a misplaced expression
      */
     private List<Token> parsePath(boolean exprCheck) throws IOException {
         Token first = nextToken();

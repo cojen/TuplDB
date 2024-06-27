@@ -116,7 +116,7 @@ public final class InExpr extends Expr {
     }
 
     @Override
-    public final boolean isConstant() {
+    public boolean isConstant() {
         return mLeft.isConstant() && mRight.isConstant();
     }
 
@@ -126,7 +126,7 @@ public final class InExpr extends Expr {
     }
 
     @Override
-    public final boolean isAccumulating() {
+    public boolean isAccumulating() {
         return mLeft.isAccumulating() || mRight.isAccumulating();
     }
 
@@ -187,11 +187,6 @@ public final class InExpr extends Expr {
                              mLeft.type(), mLeft.makeEval(context),
                              mRight.type(), mRight.makeEval(context),
                              op, pass, fail);
-    }
-
-    @Override
-    public Variable makeFilterEval(EvalContext context) {
-        return makeEval(context);
     }
 
     @Override

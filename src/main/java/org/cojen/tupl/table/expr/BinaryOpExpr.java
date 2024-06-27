@@ -26,7 +26,6 @@ import java.util.Set;
 import java.util.function.Consumer;
 
 import static org.cojen.tupl.table.expr.Token.*;
-import static org.cojen.tupl.table.expr.Type.*;
 
 import org.cojen.maker.Label;
 import org.cojen.maker.MethodMaker;

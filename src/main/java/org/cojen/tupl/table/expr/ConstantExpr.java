@@ -352,15 +352,6 @@ public final class ConstantExpr extends Expr {
     }
 
     @Override
-    public Variable makeFilterEval(EvalContext context) {
-        if (mValue instanceof Boolean b) {
-            return context.methodMaker().var(boolean.class).set(b.booleanValue());
-        } else {
-            throw new IllegalStateException();
-        }
-    }
-
-    @Override
     public boolean canThrowRuntimeException() {
         return false;
     }

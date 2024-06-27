@@ -23,7 +23,6 @@ import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
 
-import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.IdentityHashMap;
 import java.util.List;
@@ -138,7 +137,7 @@ final class AggregatedQueryExpr extends QueryExpr {
     private static final byte K_TYPE = KeyEncoder.allocType();
 
     @Override
-    protected final void encodeKey(KeyEncoder enc) {
+    protected void encodeKey(KeyEncoder enc) {
         if (enc.encode(this, K_TYPE)) {
             super.doEncodeKey(enc);
             enc.encodeInt(mGroupBy);

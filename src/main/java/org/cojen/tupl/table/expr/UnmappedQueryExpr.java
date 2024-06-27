@@ -71,12 +71,7 @@ final class UnmappedQueryExpr extends QueryExpr {
 
             rowFilter = rowFilter.constantsToArguments((ColumnToConstantFilter f) -> {
                 Object value = ((ConstantExpr) f.constant()).value();
-                Integer arg = fArgMap.get(value);
-                if (arg == null) {
-                    arg = maxArgument + fArgMap.size() + 1;
-                    fArgMap.put(value, arg);
-                }
-                return arg;
+                return fArgMap.computeIfAbsent(value, k -> maxArgument + fArgMap.size() + 1);
             });
 
             int size = fArgMap.size();
@@ -126,7 +121,7 @@ final class UnmappedQueryExpr extends QueryExpr {
     private static final byte K_TYPE = KeyEncoder.allocType();
 
     @Override
-    protected final void encodeKey(KeyEncoder enc) {
+    protected void encodeKey(KeyEncoder enc) {
         if (enc.encode(this, K_TYPE)) {
             super.doEncodeKey(enc);
 

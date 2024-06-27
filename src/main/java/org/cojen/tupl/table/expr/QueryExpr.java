@@ -272,10 +272,7 @@ public abstract sealed class QueryExpr extends RelationExpr
                 // Strip away order-by flags in the "from" projection and build an order-by
                 // expression for the mapper/aggregator layer to use.
 
-                for (int i=0; i<fromProjection.size(); i++) {
-                    ProjExpr pe = fromProjection.get(i);
-                    fromProjection.set(i, pe.withNoOrderBy());
-                }
+                fromProjection.replaceAll(ProjExpr::withNoOrderBy);
 
                 var b = new StringBuilder().append('{').append('*');
 

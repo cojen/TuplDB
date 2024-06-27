@@ -21,6 +21,7 @@ import java.lang.reflect.Modifier;
 
 import java.math.BigDecimal;
 
+import java.util.Arrays;
 import java.util.Map;
 
 import java.util.function.Consumer;
@@ -101,9 +102,7 @@ public final class StandardFunctionFinder extends SoftCache<String, Object, Obje
                 }
             }
 
-            for (int i=0; i<argTypes.length; i++) {
-                argTypes[i] = type;
-            }
+            Arrays.fill(argTypes, type);
 
             return new coalesce(type);
         }
@@ -373,8 +372,8 @@ public final class StandardFunctionFinder extends SoftCache<String, Object, Obje
 
         @Override
         protected avg validate(final Type type, Consumer<String> reason) {
-            Class<?> clazz = type.clazz();
             int typeCode = type.plainTypeCode();
+            Class<?> clazz;
 
             switch (typeCode) {
                 case TYPE_UBYTE, TYPE_USHORT, TYPE_UINT, TYPE_ULONG,

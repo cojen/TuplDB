@@ -56,10 +56,6 @@ public final class Column implements Named {
         return mHidden;
     }
 
-    public Column withName(String name) {
-        return name.equals(mName) ? this : new Column(mType, name, mHidden);
-    }
-
     private static final byte K_TYPE = KeyEncoder.allocType();
 
     void encodeKey(KeyEncoder enc) {

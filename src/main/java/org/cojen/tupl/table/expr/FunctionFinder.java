@@ -26,7 +26,7 @@ import java.util.function.Consumer;
  */
 public interface FunctionFinder {
     /**
-     * Tries to finds a function by the given name and arguments.
+     * Tries to find a function by the given name and arguments.
      *
      * @param name function name
      * @param argTypes non-null array of unnamed argument types

@@ -18,7 +18,7 @@
 package org.cojen.tupl.table.expr;
 
 /**
- * Type used by ParamExpr. At runtime, the parameter might might need to be converted, which
+ * Type used by ParamExpr. At runtime, the parameter might need to be converted, which
  * might fail.
  *
  * @author Brian S. O'Neill

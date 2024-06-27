@@ -123,11 +123,6 @@ public final class ParamExpr extends Expr {
     }
 
     @Override
-    public Variable makeFilterEval(EvalContext context) {
-        return ConvertCallSite.make(context.methodMaker(), boolean.class, makeEval(context));
-    }
-
-    @Override
     public boolean canThrowRuntimeException() {
         // Can throw an exception due to a conversion error.
         return mType.clazz() != Object.class;
