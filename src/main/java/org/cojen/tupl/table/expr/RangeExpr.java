@@ -37,7 +37,7 @@ public final class RangeExpr extends Expr {
      * @param start optional
      * @param end optional
      */
-    public static RangeExpr make(int startPos, int endPos, Expr start, Expr end) {
+    public static Expr make(int startPos, int endPos, Expr start, Expr end) {
         if (start != null && end != null) {
             Type type = start.type().commonType(end.type(), -1);
             if (type == null) {
@@ -48,6 +48,32 @@ public final class RangeExpr extends Expr {
         }
 
         Type type = BasicType.make(Range.class, Type.TYPE_REFERENCE);
+
+        constant: {
+            Range value;
+
+            if (start == null) {
+                if (end == null) {
+                    value = new Range(null, null);
+                } else if (end instanceof ConstantExpr cend) {
+                    value = new Range(null, cend.value());
+                } else {
+                    break constant;
+                }
+            } else if (start instanceof ConstantExpr cstart) {
+                if (end == null) {
+                    value = new Range(cstart.value(), null);
+                } else if (end instanceof ConstantExpr cend) {
+                    value = new Range(cstart.value(), cend.value());
+                } else {
+                    break constant;
+                }
+            } else {
+                break constant;
+            }
+
+            return ConstantExpr.make(startPos, endPos, type, value);
+        }
 
         return new RangeExpr(startPos, endPos, type, start, end);
     }
@@ -95,8 +121,7 @@ public final class RangeExpr extends Expr {
 
     @Override
     public boolean isTrivial() {
-        return (mStart == null || mStart instanceof ConstantExpr)
-            && (mEnd == null || mEnd instanceof ConstantExpr);
+        return false;
     }
 
     @Override
@@ -164,31 +189,9 @@ public final class RangeExpr extends Expr {
 
     @Override
     protected Variable doMakeEval(EvalContext context, EvalContext.ResultRef resultRef) {
-        MethodMaker mm = context.methodMaker();
-        var resultVar = context.methodMaker().var(Range.class);
-
-        if (mStart == null) {
-            if (mEnd == null) {
-                return makeConstant(resultVar, null, null);
-            } else if (mEnd instanceof ConstantExpr end) {
-                return makeConstant(resultVar, null, end.value());
-            }
-        } else if (mStart instanceof ConstantExpr start) {
-            if (mEnd == null) {
-                return makeConstant(resultVar, start.value(), null);
-            } else if (mEnd instanceof ConstantExpr end) {
-                return makeConstant(resultVar, start.value(), end.value());
-            }
-        }
-
         Object startVar = mStart == null ? null : mStart.makeEval(context);
         Object endVar = mEnd == null ? null : mEnd.makeEval(context);
-
-        return resultVar.set(mm.var(Range.class).invoke("make", startVar, endVar));
-    }
-
-    private Variable makeConstant(Variable resultVar, Object start, Object end) {
-        return resultVar.setExact(Range.make(start, end));
+        return context.methodMaker().new_(Range.class, startVar, endVar);
     }
 
     @Override

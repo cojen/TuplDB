@@ -91,6 +91,11 @@ public final class ConstantExpr extends Expr {
         return new ConstantExpr(startPos, endPos, double.class, TYPE_DOUBLE, value);
     }
 
+    public static ConstantExpr make(int startPos, int endPos, Type type, Object value) {
+        value = canonicalize(value);
+        return new ConstantExpr(startPos, endPos, type, value);
+    }
+
     private static final Canonicalizer cCanonicalizer = new Canonicalizer();
 
     private static <V> V canonicalize(V value) {

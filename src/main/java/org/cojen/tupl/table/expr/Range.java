@@ -19,8 +19,6 @@ package org.cojen.tupl.table.expr;
 
 import java.util.Objects;
 
-import org.cojen.tupl.util.Canonicalizer;
-
 /**
  * Defines a generic value range.
  *
@@ -28,21 +26,13 @@ import org.cojen.tupl.util.Canonicalizer;
  * @see RangeExpr
  */
 public final class Range {
-    private static final Canonicalizer cCanonicalizer = new Canonicalizer();
+    private final Object mStart, mEnd;
 
     /**
-     * Make a new or shared range instance.
-     *
      * @param start inclusive start boundary; can be null for open range
      * @param end inclusive end boundary; can be null for open range
      */
-    public static Range make(Object start, Object end) {
-        return cCanonicalizer.apply(new Range(start, end));
-    }
-
-    private final Object mStart, mEnd;
-
-    private Range(Object start, Object end) {
+    public Range(Object start, Object end) {
         mStart = start;
         mEnd = end;
     }
