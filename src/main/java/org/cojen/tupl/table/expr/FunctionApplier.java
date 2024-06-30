@@ -185,6 +185,16 @@ public abstract class FunctionApplier {
          * Defines a new field with the given type. Should only be called by a begin method.
          */
         default Field newWorkField(Class<?> type) {
+            return newWorkField(type, false, null);
+        }
+
+        /**
+         * Defines a new field with the given type. Should only be called by a begin method.
+         *
+         * @param final true if the field should be final
+         * @param init optional code to initialize the field in the constructor
+         */
+        default Field newWorkField(Class<?> type, boolean final_, Consumer<Field> init) {
             throw new IllegalStateException();
         }
 

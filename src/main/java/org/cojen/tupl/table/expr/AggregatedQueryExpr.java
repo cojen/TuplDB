@@ -28,8 +28,11 @@ import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Set;
 
+import java.util.function.Consumer;
+
 import org.cojen.maker.ClassMaker;
 import org.cojen.maker.Field;
+import org.cojen.maker.FieldMaker;
 import org.cojen.maker.Label;
 import org.cojen.maker.MethodMaker;
 import org.cojen.maker.Variable;
@@ -327,10 +330,16 @@ final class AggregatedQueryExpr extends QueryExpr {
                 private String mRowNumName, mGroupNumName, mGroupRowNumName;
 
                 @Override
-                public Field newWorkField(Class<?> type) {
+                public Field newWorkField(Class<?> type, boolean final_, Consumer<Field> init) {
                     String name = "w$" + ++mNumWorkFields;
                     MethodMaker mm = methodMaker();
-                    mm.classMaker().addField(type, name).private_();
+                    FieldMaker fm = mm.classMaker().addField(type, name).private_();
+                    if (final_) {
+                        fm.final_();
+                    }
+                    if (init != null) {
+                        init.accept(ctor.field(name));
+                    }
                     return mm.field(name);
                 }
 
