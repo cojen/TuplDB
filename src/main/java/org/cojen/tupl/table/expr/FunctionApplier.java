@@ -113,10 +113,12 @@ public abstract class FunctionApplier {
     }
 
     /**
-     * Returns true if the applied function is plain and yields the same result when given the
+     * Returns true (by default) if the applied function yields the same result when given the
      * same arguments.
      */
-    public abstract boolean isPureFunction();
+    public boolean isPureFunction() {
+        return true;
+    }
 
     /**
      * Returns true if the function needs a projection group.
@@ -162,14 +164,6 @@ public abstract class FunctionApplier {
          * @param resultVar non-null result variable to set
          */
         public abstract void apply(FunctionContext context, Variable resultVar);
-
-        /**
-         * Override and return false if the function isn't pure.
-         */
-        @Override
-        public boolean isPureFunction() {
-            return true;
-        }
 
         /**
          * Override and return true if the function requires a group number or group row number.
@@ -225,11 +219,6 @@ public abstract class FunctionApplier {
     abstract static class Accumulator extends FunctionApplier {
         private Accumulator(Type type) {
             super(type);
-        }
-
-        @Override
-        public final boolean isPureFunction() {
-            return false;
         }
 
         @Override
