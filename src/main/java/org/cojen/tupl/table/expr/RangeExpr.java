@@ -200,6 +200,14 @@ public final class RangeExpr extends Expr {
             || (mEnd != null && mEnd.canThrowRuntimeException());
     }
 
+    public Expr start() {
+        return mStart;
+    }
+
+    public Expr end() {
+        return mEnd;
+    }
+
     private static final byte K_TYPE = KeyEncoder.allocType();
 
     @Override
