@@ -25,6 +25,8 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
+import java.util.concurrent.ThreadLocalRandom;
+
 import java.util.function.Consumer;
 
 import org.cojen.maker.Field;
@@ -139,6 +141,105 @@ public final class StandardFunctionFinder extends SoftCache<String, Object, Obje
             }
 
             done.here();
+        }
+    }
+
+    /**
+     * Defines a function which returns a random number in the range [0.0, 1.0). If one
+     * argument is provided, the range is [0, arg), and if two arguments are provided, the
+     * range is [arg1, arg2).
+     */
+    private static class random extends FunctionApplier.Plain {
+        random(Type type) {
+            super(type);
+        }
+
+        @Override
+        public boolean isPureFunction() {
+            return false;
+        }
+
+        @Override
+        public random validate(Type[] argTypes, Map<String, Type> namedArgTypes,
+                               Consumer<String> reason)
+        {
+            if (!checkNumArgs(0, 2, argTypes.length, reason)) {
+                return null;
+            }
+
+            Type type;
+
+            if (argTypes.length == 0) {
+                type = BasicType.make(double.class, TYPE_DOUBLE);
+            } else {
+                for (Type t : argTypes) {
+                    if (!checkArg(t, reason)) {
+                        return null;
+                    }
+                }
+
+                type = argTypes[0];
+
+                if (argTypes.length == 2) {
+                    type = type.commonType(argTypes[1], -1);
+                    if (type == null) {
+                        reason.accept("no common type");
+                        return null;
+                    }
+                    if (!checkArg(type, reason)) {
+                        return null;
+                    }
+                    Arrays.fill(argTypes, type);
+                }
+            }
+
+            return new random(type);
+        }
+
+        private static boolean checkArg(Type type, Consumer<String> reason) {
+            if (!type.isNumber()) {
+                reason.accept("argument must be a number");
+                return false;
+            }
+
+            if (!type.isPrimitive() || type.plainTypeCode() == TYPE_ULONG) {
+                reason.accept("unsupported argument type");
+                return false;
+            }
+
+            return true;
+        }
+
+        @Override
+        public void apply(FunctionContext context, Variable resultVar) {
+            var rndVar = context.methodMaker().var(ThreadLocalRandom.class).invoke("current");
+
+            List<LazyValue> args = context.args();
+
+            if (args.isEmpty()) {
+                resultVar.set(rndVar.invoke("nextDouble"));
+                return;
+            }
+
+            String methodName = "next" +  switch (type().plainTypeCode()) {
+                case TYPE_UBYTE, TYPE_USHORT, TYPE_BYTE, TYPE_SHORT, TYPE_INT -> "Int";
+                case TYPE_UINT, TYPE_LONG -> "Long";
+                case TYPE_FLOAT -> "Float";
+                case TYPE_DOUBLE -> "Double";
+                default -> throw new AssertionError();
+            };
+
+            var val1 = args.get(0).eval(true);
+
+            Variable rndResultVar;
+            if (args.size() == 1) {
+                rndResultVar = rndVar.invoke(methodName, val1);
+            } else {
+                var val2 = args.get(1).eval(true);
+                rndResultVar = rndVar.invoke(methodName, val1, val2);
+            }
+
+            resultVar.set(rndResultVar.cast(resultVar));
         }
     }
 
