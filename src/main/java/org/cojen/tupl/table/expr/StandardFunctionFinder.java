@@ -277,7 +277,7 @@ public final class StandardFunctionFinder extends SoftCache<String, Object, Obje
     /**
      * Defines an aggregated function which yields the smallest argument in the group.
      */
-    private static class min extends FunctionApplier.NumericalAggregated {
+    private static class min extends FunctionApplier.NullSkipNumericalAggregated {
         min(Type type) {
             super(type);
         }
@@ -296,7 +296,7 @@ public final class StandardFunctionFinder extends SoftCache<String, Object, Obje
     /**
      * Defines an aggregated function which yields the largest argument in the group.
      */
-    private static class max extends FunctionApplier.NumericalAggregated {
+    private static class max extends FunctionApplier.NullSkipNumericalAggregated {
         max(Type type) {
             super(type);
         }
@@ -316,7 +316,7 @@ public final class StandardFunctionFinder extends SoftCache<String, Object, Obje
      * Defines an aggregated function which adds together the evaluated argument for all rows
      * in the group.
      */
-    private static class sum extends FunctionApplier.NumericalAggregated {
+    private static class sum extends FunctionApplier.NullZeroNumericalAggregated {
         sum(Type type) {
             super(type);
         }
@@ -363,7 +363,7 @@ public final class StandardFunctionFinder extends SoftCache<String, Object, Obje
      * Defines an aggregated function computes the average argument value against all rows in
      * the group.
      */
-    private static class avg extends FunctionApplier.NumericalAggregated {
+    private static class avg extends FunctionApplier.NullZeroNumericalAggregated {
         private final Type mOriginalType;
 
         avg(Type type) {
@@ -405,7 +405,7 @@ public final class StandardFunctionFinder extends SoftCache<String, Object, Obje
 
         @Override
         protected Variable eval(LazyValue arg) {
-            Variable value = arg.eval(true);
+            Variable value = super.eval(arg);
             MethodMaker mm = value.methodMaker();
             var converted = mm.var(type().clazz());
             Converter.convertLossy(mm, mOriginalType, value, type(), converted);
@@ -418,10 +418,15 @@ public final class StandardFunctionFinder extends SoftCache<String, Object, Obje
         }
 
         @Override
+        protected boolean requireCountField() {
+            return true;
+        }
+
+        @Override
         public Variable finish(GroupContext context) {
             Variable sum = super.finish(context);
 
-            Variable count = context.groupRowNum();
+            Variable count = countField(context);
             if (type().clazz() == BigDecimal.class) {
                 count = count.methodMaker().var(BigDecimal.class).invoke("valueOf", count);
             } else {

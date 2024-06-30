@@ -261,10 +261,10 @@ public abstract class FunctionApplier {
         public abstract void finished(GroupContext context);
 
         /**
-         * Generate code which branches to the given label if the step method isn't ready to
-         * produce a result.
+         * Generate code which branches to an appropriate label depending on whether the step
+         * method is ready or not.
          */
-        public abstract void check(GroupContext context, Label notReady);
+        public abstract void check(GroupContext context, Label ready, Label notReady);
 
         /**
          * Generate code to produce a result.
@@ -302,10 +302,10 @@ public abstract class FunctionApplier {
     }
 
     /**
-     * Defines an aggregate function which needs one work field.
+     * Defines an aggregate function which needs a simple work field.
      */
     public abstract static class BasicAggregated extends Aggregated {
-        private String mFieldName;
+        protected String mWorkFieldName;
 
         protected BasicAggregated(Type type) {
             super(type);
@@ -313,8 +313,8 @@ public abstract class FunctionApplier {
 
         @Override
         public void begin(GroupContext context) {
-            LazyValue arg = context.args().get(0);
-            mFieldName = context.newWorkField(type().clazz()).set(eval(arg)).name();
+            Variable arg = eval(context.args().get(0));
+            mWorkFieldName = context.newWorkField(type().clazz()).set(arg).name();
         }
 
         @Override
@@ -323,7 +323,7 @@ public abstract class FunctionApplier {
         }
 
         protected final Field workField(GroupContext context) {
-            return context.methodMaker().field(mFieldName);
+            return context.methodMaker().field(mWorkFieldName);
         }
 
         protected Variable eval(LazyValue arg) {
@@ -332,7 +332,7 @@ public abstract class FunctionApplier {
     }
 
     /**
-     * Defines an aggregate function which computes against one work field.
+     * Defines an aggregate function which computes against a simple work field.
      */
     public abstract static class ComputeAggregated extends BasicAggregated {
         protected ComputeAggregated(Type type) {
@@ -341,11 +341,11 @@ public abstract class FunctionApplier {
 
         @Override
         public void accumulate(GroupContext context) {
-            Field field = workField(context);
+            Field workField = workField(context);
             Type type = type();
             Label done = null;
 
-            Variable left = field;
+            Variable left = workField;
 
             if (type.isNullable()) {
                 left = left.get();
@@ -358,16 +358,21 @@ public abstract class FunctionApplier {
             if (type.isNullable()) {
                 Label notNull = context.methodMaker().label();
                 right.ifNe(null, notNull);
-                field.set(null);
+                workField.set(null);
                 done.goto_();
                 notNull.here();
             }
 
-            field.set(compute(type, left, right));
+            workField.set(compute(type, left, right));
 
             if (done != null) {
                 done.here();
             }
+        }
+
+        @Override
+        protected Variable eval(LazyValue arg) {
+            return arg.eval(!type().isNullable());
         }
 
         /**
@@ -377,7 +382,7 @@ public abstract class FunctionApplier {
     }
 
     /**
-     * Defines an aggregate function which performs numerical computation against one work
+     * Defines an aggregate function which performs numerical computation against a simple work
      * field.
      */
     public abstract static class NumericalAggregated extends ComputeAggregated {
@@ -404,5 +409,197 @@ public abstract class FunctionApplier {
         }
 
         protected abstract NumericalAggregated validate(Type type, Consumer<String> reason);
+    }
+
+    /**
+     * Defines an aggregate function which performs numerical computation against a simple work
+     * field, skipping over null values.
+     */
+    public abstract static class NullSkipNumericalAggregated extends NumericalAggregated {
+        // Used to count the number of non-null values.
+        private String mCountFieldName;
+
+        protected NullSkipNumericalAggregated(Type type) {
+            super(type);
+        }
+
+        @Override
+        public void begin(GroupContext context) {
+            if (!nullSkip()) {
+                super.begin(context);
+                return;
+            }
+
+            Field countField;
+            if (requireCountField()) {
+                countField = context.newWorkField(long.class);
+                mCountFieldName = countField.name();
+            } else {
+                countField = null;
+            }
+
+            Variable arg = eval(context.args().get(0));
+            mWorkFieldName = context.newWorkField(type().clazz()).set(arg).name();
+
+            if (countField != null) {
+                MethodMaker mm = context.methodMaker();
+                Label notNull = mm.label();
+                arg.ifNe(null, notNull);
+                countField.set(0L);
+                Label done = mm.label().goto_();
+                notNull.here();
+                countField.set(1L);
+                done.here();
+            }
+        }
+
+        @Override
+        public void accumulate(GroupContext context) {
+            if (!nullSkip()) {
+                super.accumulate(context);
+                return;
+            }
+
+            var workField = workField(context);
+            Variable left = workField.get();
+            Variable right = eval(context.args().get(0));
+
+            MethodMaker mm = context.methodMaker();
+            Label done = mm.label();
+
+            Label hasLeft = mm.label();
+            left.ifNe(null, hasLeft);
+            right.ifEq(null, done);
+            workField.set(right);
+            Label updated = mm.label().goto_();
+            hasLeft.here();
+            right.ifEq(null, done);
+            workField.set(compute(type(), left, right));
+            updated.here();
+            if (mCountFieldName != null) {
+                mm.field(mCountFieldName).inc(1L);
+            }
+
+            done.here();
+        }
+
+        @Override
+        protected Variable eval(LazyValue arg) {
+            return !nullSkip() ? super.eval(arg) : arg.eval(true);
+        }
+
+        /**
+         * Returns true if a field which counts the number of non-null values is needed.
+         */
+        protected boolean requireCountField() {
+            return false;
+        }
+
+        /**
+         * Returns a field which counts the number of non-null values.
+         */
+        protected final Variable countField(GroupContext context) {
+            String name = mCountFieldName;
+            return name == null ? context.groupRowNum() : context.methodMaker().field(name);
+        }
+
+        private boolean nullSkip() {
+            return type().isNullable();
+        }
+    }
+
+    /**
+     * Defines an aggregate function which performs numerical computation against a simple work
+     * field, treating null values as zero.
+     */
+    public abstract static class NullZeroNumericalAggregated extends NumericalAggregated {
+        // Used to count the number of non-null values.
+        private String mCountFieldName;
+
+        protected NullZeroNumericalAggregated(Type type) {
+            super(type);
+        }
+
+        @Override
+        public void begin(GroupContext context) {
+            if (!nullAsZero()) {
+                super.begin(context);
+                return;
+            }
+
+            Field countField;
+            if (requireCountField()) {
+                countField = context.newWorkField(long.class);
+                mCountFieldName = countField.name();
+            } else {
+                countField = null;
+            }
+
+            Type type = type();
+            Field workField = context.newWorkField(type.clazz());
+            mWorkFieldName = workField.name();
+
+            Variable arg = eval(context.args().get(0));
+
+            MethodMaker mm = context.methodMaker();
+            Label notNull = mm.label();
+            arg.ifNe(null, notNull);
+            Arithmetic.zero(workField);
+            if (countField != null) {
+                countField.set(0L);
+            }
+            Label done = mm.label().goto_();
+            notNull.here();
+            workField.set(arg);
+            if (countField != null) {
+                countField.set(1L);
+            }
+            done.here();
+        }
+
+        @Override
+        public void accumulate(GroupContext context) {
+            if (!nullAsZero()) {
+                super.accumulate(context);
+                return;
+            }
+
+            var workField = workField(context);
+            Variable arg = eval(context.args().get(0));
+
+            MethodMaker mm = context.methodMaker();
+            Label done = mm.label();
+            arg.ifEq(null, done);
+            workField.set(compute(type(), workField, arg));
+            if (mCountFieldName != null) {
+                context.methodMaker().field(mCountFieldName).inc(1L);
+            }
+            done.here();
+        }
+
+        @Override
+        protected Variable eval(LazyValue arg) {
+            return !nullAsZero() ? super.eval(arg) : arg.eval(true);
+        }
+
+        /**
+         * Returns true if a field which counts the number of non-null values is needed.
+         */
+        protected boolean requireCountField() {
+            return false;
+        }
+
+        /**
+         * Returns a field which counts the number of non-null values.
+         */
+        protected final Variable countField(GroupContext context) {
+            String name = mCountFieldName;
+            return name == null ? context.groupRowNum() : context.methodMaker().field(name);
+        }
+
+        private boolean nullAsZero() {
+            Type type = type();
+            return type.isNullable() && Arithmetic.canZero(type.clazz());
+        }
     }
 }

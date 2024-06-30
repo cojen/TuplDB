@@ -80,6 +80,33 @@ final class Arithmetic {
         return eval(type, OP_MAX, left, right);
     }
 
+    /**
+     * Generates code which sets a variable to zero or false. If the type isn't supported, the
+     * variable is set to null, and false is returned.
+     */
+    public static boolean zero(Variable v) {
+        Class<?> unboxed = v.unboxedType();
+        if (unboxed != null) {
+            v.set(unboxed == boolean.class ? false : 0);
+            return true;
+        }
+        Class<?> clazz = v.classType();
+        if (clazz == BigInteger.class || clazz == BigDecimal.class) {
+            v.set(v.invoke("ZERO"));
+            return true;
+        }
+        v.clear();
+        return false;
+    }
+
+    /**
+     * Returns true if the given class can be set to zero or false.
+     */
+    public static boolean canZero(Class<?> clazz) {
+        return Variable.unboxedType(clazz) != null ||
+            clazz == BigInteger.class || clazz == BigDecimal.class;
+    }
+
     public static final class Bool {
         static Variable eval(int op, Variable left, Variable right) {
             return switch (op) {
