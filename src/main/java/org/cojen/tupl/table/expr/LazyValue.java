@@ -17,6 +17,7 @@
 
 package org.cojen.tupl.table.expr;
 
+import org.cojen.maker.Label;
 import org.cojen.maker.Variable;
 
 /**
@@ -73,5 +74,21 @@ public class LazyValue {
         }
 
         return var;
+    }
+
+    /**
+     * Generates code which evaluates the (boolean) value for branching to a pass or fail
+     * label. Short-circuit logic is used, and so the value might only be partially evaluated.
+     *
+     * @throws IllegalStateException if unsupported
+     */
+    public final void evalFilter(Label pass, Label fail) {
+        Variable var = mEvaluated;
+        if (var == null) {
+            mExpr.makeFilter(mContext, pass, fail);
+        } else {
+            var.ifTrue(pass);
+            fail.goto_();
+        }
     }
 }

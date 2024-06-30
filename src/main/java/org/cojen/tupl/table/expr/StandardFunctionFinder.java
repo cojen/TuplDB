@@ -145,6 +145,62 @@ public final class StandardFunctionFinder extends SoftCache<String, Object, Obje
     }
 
     /**
+     * Defines a function which returns the second argument when the first argument is true,
+     * else returns the third argument.
+     */
+    private static class iff extends FunctionApplier.Plain {
+        iff(Type type) {
+            super(type);
+        }
+
+        @Override
+        public iff validate(Type[] argTypes, Map<String, Type> namedArgTypes,
+                            Consumer<String> reason)
+        {
+            if (!checkNumArgs(3, 3, argTypes.length, reason)) {
+                return null;
+            }
+
+            Type type = argTypes[0];
+
+            if (!type.isBoolean()) {
+                reason.accept("first argument must be a boolean type");
+                return null;
+            }
+
+            type = argTypes[1].commonType(argTypes[2], -1);
+
+            if (type == null) {
+                reason.accept("no common type");
+                return null;
+            }
+
+            argTypes[1] = type;
+            argTypes[2] = type;
+
+            return new iff(type);
+        }
+
+        @Override
+        public void apply(FunctionContext context, Variable resultVar) {
+            List<LazyValue> args = context.args();
+
+            MethodMaker mm = context.methodMaker();
+            Label pass = mm.label();
+            Label fail = mm.label();
+            Label done = mm.label();
+
+            args.get(0).evalFilter(pass, fail);
+            pass.here();
+            resultVar.set(args.get(1).eval(false));
+            done.goto_();
+            fail.here();
+            resultVar.set(args.get(2).eval(false));
+            done.here();
+        }
+    }
+
+    /**
      * Defines a function which returns a random number in the range [0.0, 1.0). If one
      * argument is provided, the range is [0, arg), and if two arguments are provided, the
      * range is [arg1, arg2).
