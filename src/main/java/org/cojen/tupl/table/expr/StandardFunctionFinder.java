@@ -22,6 +22,7 @@ import java.lang.reflect.Modifier;
 import java.math.BigDecimal;
 
 import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
 
 import java.util.function.Consumer;
@@ -88,7 +89,7 @@ public final class StandardFunctionFinder extends SoftCache<String, Object, Obje
         public coalesce validate(Type[] argTypes, Map<String, Type> namedArgTypes,
                                  Consumer<String> reason)
         {
-            if (!checkNumArgs(0, Integer.MAX_VALUE, argTypes.length, reason)) {
+            if (!checkNumArgs(1, Integer.MAX_VALUE, argTypes.length, reason)) {
                 return null;
             }
 
@@ -108,18 +109,20 @@ public final class StandardFunctionFinder extends SoftCache<String, Object, Obje
         }
 
         @Override
-        public void apply(LazyValue[] args, Variable resultVar) {
+        public void apply(FunctionContext context, Variable resultVar) {
+            List<LazyValue> args = context.args();
+
             if (resultVar.classType().isPrimitive()) {
                 // No arguments will be null, so just return the first one.
-                resultVar.set(args[0].eval(true));
+                resultVar.set(args.get(0).eval(true));
                 return;
             }
 
             MethodMaker mm = resultVar.clear().methodMaker();
             Label done = mm.label();
 
-            for (int i=0; i<args.length; i++) {
-                LazyValue arg = args[i];
+            for (int i=0; i<args.size(); i++) {
+                LazyValue arg = args.get(i);
 
                 if (!arg.isConstant()) {
                     var argVar = arg.eval(i == 0);
@@ -161,9 +164,11 @@ public final class StandardFunctionFinder extends SoftCache<String, Object, Obje
         }
 
         @Override
-        public void begin(GroupContext context, LazyValue[] args) {
-            if (args.length != 0) {
-                LazyValue arg = args[0];
+        public void begin(GroupContext context) {
+            List<LazyValue> args = context.args();
+
+            if (!args.isEmpty()) {
+                LazyValue arg = args.get(0);
                 Expr expr = arg.expr();
                 if (expr.isNullable() || expr.canThrowRuntimeException()) {
                     Field field = context.newWorkField(type().clazz());
@@ -188,11 +193,11 @@ public final class StandardFunctionFinder extends SoftCache<String, Object, Obje
         }
 
         @Override
-        public void accumulate(GroupContext context, LazyValue[] args) {
+        public void accumulate(GroupContext context) {
             if (mFieldName != null) {
                 Field field = context.methodMaker().field(mFieldName);
 
-                LazyValue arg = args[0];
+                LazyValue arg = context.args().get(0);
                 var result = arg.eval(true);
 
                 if (!arg.expr().isNullable()) {
@@ -236,7 +241,7 @@ public final class StandardFunctionFinder extends SoftCache<String, Object, Obje
         }
 
         @Override
-        public void accumulate(GroupContext context, LazyValue[] args) {
+        public void accumulate(GroupContext context) {
         }
     }
 
@@ -264,8 +269,8 @@ public final class StandardFunctionFinder extends SoftCache<String, Object, Obje
         // and stored in the field. This can be expensive if evaluating the arg is expensive.
 
         @Override
-        public void accumulate(GroupContext context, LazyValue[] args) {
-            workField(context).set(args[0].eval(true));
+        public void accumulate(GroupContext context) {
+            workField(context).set(context.args().get(0).eval(true));
         }
     }
 

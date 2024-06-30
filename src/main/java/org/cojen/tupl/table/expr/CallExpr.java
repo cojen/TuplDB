@@ -24,8 +24,9 @@ import java.util.Map;
 import java.util.Set;
 
 import java.util.function.Consumer;
-import java.util.function.BiFunction;
+import java.util.function.Function;
 
+import org.cojen.maker.Field;
 import org.cojen.maker.MethodMaker;
 import org.cojen.maker.Variable;
 
@@ -264,21 +265,21 @@ public final class CallExpr extends Expr {
     @Override
     protected Variable doMakeEval(EvalContext context, EvalContext.ResultRef resultRef) {
         if (mApplier instanceof FunctionApplier.Plain plain) {
-            return withArgs(context, (ctx, args) -> {
+            return withArgs(context, ctx -> {
                 var resultVar = ctx.methodMaker().var(type().clazz());
-                plain.apply(args, resultVar);
+                plain.apply(ctx, resultVar);
                 return resultVar;
             });
         }
 
         if (mApplier instanceof FunctionApplier.Aggregated aggregated) {
-            withArgs(context.beginContext(), (ctx, args) -> {
-                aggregated.begin(ctx, args);
+            withArgs(context.beginContext(), ctx -> {
+                aggregated.begin(ctx);
                 return null;
             });
 
-            withArgs(context.accumContext(), (ctx, args) -> {
-                aggregated.accumulate(ctx, args);
+            withArgs(context.accumContext(), ctx -> {
+                aggregated.accumulate(ctx);
                 return null;
             });
 
@@ -292,23 +293,62 @@ public final class CallExpr extends Expr {
     /**
      * Prepares LazyValue args and passes it to the applier to use.
      */
-    private <V> V withArgs(EvalContext context, BiFunction<EvalContext, LazyValue[], V> applier) {
-        LazyValue[] args = lazyArgs(context);
+    private <V> V withArgs(EvalContext context, Function<FunctionApplier.GroupContext, V> applier) {
+        List<LazyValue> args = mArgs.stream().map(arg -> arg.lazyValue(context)).toList();
+
+        Map<String, LazyValue> namedArgs;
+        if (mNamedArgs.isEmpty()) {
+            namedArgs = Map.of();
+        } else {
+            namedArgs = new LinkedHashMap<>(mNamedArgs.size() << 1);
+            mNamedArgs.forEach((name, expr) -> namedArgs.put(name, expr.lazyValue(context)));
+        }
 
         // Must rollback to a savepoint for lazy/eager evaluation to work properly. Arguments
         // which aren't eagerly evaluated will rollback, forcing the underlying expression to
         // be evaluated again later if used again.
         int savepoint = context.refSavepoint();
 
-        V result = applier.apply(context, args);
+        V result = applier.apply(new FunctionApplier.GroupContext() {
+            @Override
+            public List<LazyValue> args() {
+                return args;
+            }
+
+            @Override
+            public Map<String, LazyValue> namedArgs() {
+                return namedArgs;
+            }
+
+            @Override
+            public MethodMaker methodMaker() {
+                return context.methodMaker();
+            }
+
+            @Override
+            public Field newWorkField(Class<?> type) {
+                return context.newWorkField(type);
+            }
+
+            @Override
+            public Variable rowNum() {
+                return context.rowNum();
+            }
+
+            @Override
+            public Variable groupNum() {
+                return context.groupNum();
+            }
+
+            @Override
+            public Variable groupRowNum() {
+                return context.groupRowNum();
+            }
+        });
 
         context.refRollback(savepoint);
 
         return result;
-    }
-
-    private LazyValue[] lazyArgs(EvalContext context) {
-        return mArgs.stream().map(arg -> arg.lazyValue(context)).toArray(LazyValue[]::new);
     }
 
     private static final byte K_TYPE = KeyEncoder.allocType();

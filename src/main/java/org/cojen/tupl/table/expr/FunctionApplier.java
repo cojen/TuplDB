@@ -17,6 +17,7 @@
 
 package org.cojen.tupl.table.expr;
 
+import java.util.List;
 import java.util.Map;
 
 import java.util.function.Consumer;
@@ -129,6 +130,24 @@ public abstract class FunctionApplier {
         return false;
     }
 
+    public static interface FunctionContext {
+        MethodMaker methodMaker();
+
+        /**
+         * Returns the arguments passed to the function.
+         */
+        default List<LazyValue> args() {
+            throw new IllegalStateException();
+        }
+
+        /**
+         * Returns the named arguments passed to the function.
+         */
+        default Map<String, LazyValue> namedArgs() {
+            throw new IllegalStateException();
+        }
+    }
+
     /**
      * A plain function is a plain function.
      */
@@ -140,10 +159,9 @@ public abstract class FunctionApplier {
         /**
          * Generate code to apply the function.
          *
-         * @param args arguments passed to the function
          * @param resultVar non-null result variable to set
          */
-        public abstract void apply(LazyValue[] args, Variable resultVar);
+        public abstract void apply(FunctionContext context, Variable resultVar);
 
         /**
          * Override and return false if the function isn't pure.
@@ -162,9 +180,7 @@ public abstract class FunctionApplier {
         }
     }
 
-    public static interface GroupContext {
-        MethodMaker methodMaker();
-
+    public static interface GroupContext extends FunctionContext {
         /**
          * Defines a new field with the given type. Should only be called by a begin method.
          */
@@ -211,9 +227,9 @@ public abstract class FunctionApplier {
             return true;
         }
 
-        abstract void begin(GroupContext context, LazyValue[] args);
+        abstract void begin(GroupContext context);
 
-        abstract void accumulate(GroupContext context, LazyValue[] args);
+        abstract void accumulate(GroupContext context);
     }
 
     /**
@@ -229,25 +245,26 @@ public abstract class FunctionApplier {
          * Generate code for the first row in the group. The given context can be called to
          * make and initialize all of the necessary work fields, and the applier instance needs
          * to maintain references to their names.
-         *
-         * @param args arguments passed to the function
          */
         @Override
-        public abstract void begin(GroupContext context, LazyValue[] args);
+        public abstract void begin(GroupContext context);
 
         /**
          * Generate code for each row in the group, other than the first.
-         *
-         * @param args arguments passed to the function
          */
         @Override
-        public abstract void accumulate(GroupContext context, LazyValue[] args);
+        public abstract void accumulate(GroupContext context);
 
         /**
          * Generate code which is called after all rows in the group have been provided.
          */
-        public void finished(GroupContext context) {
-        }
+        public abstract void finished(GroupContext context);
+
+        /**
+         * Generate code which branches to the given label if the step method isn't ready to
+         * produce a result.
+         */
+        public abstract void check(GroupContext context, Label notReady);
 
         /**
          * Generate code to produce a result.
@@ -268,19 +285,15 @@ public abstract class FunctionApplier {
          * Generate code for the first row in the group. The given context can be called to
          * make and initialize all of the necessary work fields, and the applier instance needs
          * to maintain references to their names.
-         *
-         * @param args arguments passed to the function
          */
         @Override
-        public abstract void begin(GroupContext context, LazyValue[] args);
+        public abstract void begin(GroupContext context);
 
         /**
          * Generate code for each row in the group, other than the first.
-         *
-         * @param args arguments passed to the function
          */
         @Override
-        public abstract void accumulate(GroupContext context, LazyValue[] args);
+        public abstract void accumulate(GroupContext context);
 
         /**
          * Generate code for when the group is finished, producing an aggregate result.
@@ -299,8 +312,9 @@ public abstract class FunctionApplier {
         }
 
         @Override
-        public void begin(GroupContext context, LazyValue[] args) {
-            mFieldName = context.newWorkField(type().clazz()).set(eval(args[0])).name();
+        public void begin(GroupContext context) {
+            LazyValue arg = context.args().get(0);
+            mFieldName = context.newWorkField(type().clazz()).set(eval(arg)).name();
         }
 
         @Override
@@ -326,7 +340,7 @@ public abstract class FunctionApplier {
         }
 
         @Override
-        public void accumulate(GroupContext context, LazyValue[] args) {
+        public void accumulate(GroupContext context) {
             Field field = workField(context);
             Type type = type();
             Label done = null;
@@ -339,7 +353,7 @@ public abstract class FunctionApplier {
                 left.ifEq(null, done);
             }
 
-            Variable right = eval(args[0]);
+            Variable right = eval(context.args().get(0));
 
             if (type.isNullable()) {
                 Label notNull = context.methodMaker().label();

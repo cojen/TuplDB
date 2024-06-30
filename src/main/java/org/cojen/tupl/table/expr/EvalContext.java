@@ -50,16 +50,7 @@ class EvalContext implements FunctionApplier.GroupContext {
     }
 
     /**
-     * Defines a new field with the given type. Throws IllegalStateException unless called by a
-     * context suitable for the FunctionApplier.Aggregated.begin method.
-     */
-    @Override
-    public Field newWorkField(Class<?> type) {
-        throw new IllegalStateException();
-    }
-
-    /**
-     * Returns a context to use for the FunctionApplier.Aggregated.begin method. Throws
+     * Returns a context to use for the FunctionApplier Aggregated/Grouped begin method. Throws
      * IllegalStateException when not supported.
      */
     EvalContext beginContext() {
@@ -67,10 +58,26 @@ class EvalContext implements FunctionApplier.GroupContext {
     }
 
     /**
-     * Returns a context to use for the FunctionApplier.Aggregated.accumulate method. Throws
-     * IllegalStateException when not supported.
+     * Returns a context to use for the FunctionApplier Aggregated/Grouped accumulate method.
+     * Throws IllegalStateException when not supported.
      */
     EvalContext accumContext() {
+        throw new IllegalStateException();
+    }
+
+    /**
+     * Returns a context to use for the FunctionApplier Grouped finished method. Throws
+     * IllegalStateException when not supported.
+     */
+    EvalContext finishedContext() {
+        throw new IllegalStateException();
+    }
+
+    /**
+     * Returns a context to use for the FunctionApplier Grouped check method. Throws
+     * IllegalStateException when not supported.
+     */
+    EvalContext checkContext() {
         throw new IllegalStateException();
     }
 
