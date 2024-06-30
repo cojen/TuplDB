@@ -147,7 +147,7 @@ public final class StandardFunctionFinder extends SoftCache<String, Object, Obje
      * non-null results for one argument.
      */
     private static class count extends FunctionApplier.Aggregated {
-        private String mFieldName;
+        private String mCountFieldName;
 
         count(Type type) {
             super(type);
@@ -167,56 +167,43 @@ public final class StandardFunctionFinder extends SoftCache<String, Object, Obje
         public void begin(GroupContext context) {
             List<LazyValue> args = context.args();
 
-            if (!args.isEmpty()) {
-                LazyValue arg = args.get(0);
-                Expr expr = arg.expr();
-                if (expr.isNullable() || expr.canThrowRuntimeException()) {
-                    Field field = context.newWorkField(type().clazz());
-                    mFieldName = field.name();
-
-                    var result = arg.eval(true);
-
-                    if (!arg.expr().isNullable()) {
-                        field.set(1L);
-                    } else {
-                        MethodMaker mm = field.methodMaker();
-                        Label notNull = mm.label();
-                        result.ifNe(null, notNull);
-                        field.set(0L);
-                        Label done = mm.label().goto_();
-                        notNull.here();
-                        field.set(1L);
-                        done.here();
-                    }
-                }
+            LazyValue arg;
+            if (args.isEmpty() || !(arg = args.get(0)).expr().isNullable()) {
+                return;
             }
+
+            Field countField = context.newWorkField(type().clazz());
+            mCountFieldName = countField.name();
+
+            MethodMaker mm = countField.methodMaker();
+            Label notNull = mm.label();
+            arg.eval(true).ifNe(null, notNull);
+            countField.set(0L);
+            Label done = mm.label().goto_();
+            notNull.here();
+            countField.set(1L);
+            done.here();
         }
 
         @Override
         public void accumulate(GroupContext context) {
-            if (mFieldName != null) {
-                Field field = context.methodMaker().field(mFieldName);
-
-                LazyValue arg = context.args().get(0);
-                var result = arg.eval(true);
-
-                if (!arg.expr().isNullable()) {
-                    field.inc(1L);
-                } else {
-                    Label isNull = field.methodMaker().label();
-                    result.ifEq(null, isNull);
-                    field.inc(1L);
-                    isNull.here();
-                }
+            if (mCountFieldName == null) {
+                return;
             }
+            var result = context.args().get(0).eval(true);
+            MethodMaker mm = result.methodMaker();
+            Label isNull = mm.label();
+            result.ifEq(null, isNull);
+            mm.field(mCountFieldName).inc(1L);
+            isNull.here();
         }
 
         @Override
         public Variable finish(GroupContext context) {
-            if (mFieldName == null) {
+            if (mCountFieldName == null) {
                 return context.groupRowNum();
             } else {
-                return context.methodMaker().field(mFieldName);
+                return context.methodMaker().field(mCountFieldName);
             }
         }
     }
