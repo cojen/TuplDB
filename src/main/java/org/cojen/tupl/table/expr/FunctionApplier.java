@@ -27,6 +27,9 @@ import org.cojen.maker.Label;
 import org.cojen.maker.MethodMaker;
 import org.cojen.maker.Variable;
 
+import org.cojen.tupl.table.ColumnInfo;
+import org.cojen.tupl.table.Converter;
+
 /**
  * Generates code to invoke a function.
  *
@@ -423,7 +426,7 @@ public abstract class FunctionApplier {
         }
 
         @Override
-        public void begin(GroupContext context) {
+        public final void begin(GroupContext context) {
             if (!nullSkip()) {
                 super.begin(context);
                 return;
@@ -453,7 +456,7 @@ public abstract class FunctionApplier {
         }
 
         @Override
-        public void accumulate(GroupContext context) {
+        public final void accumulate(GroupContext context) {
             if (!nullSkip()) {
                 super.accumulate(context);
                 return;
@@ -483,7 +486,7 @@ public abstract class FunctionApplier {
         }
 
         @Override
-        protected Variable eval(LazyValue arg) {
+        protected final Variable eval(LazyValue arg) {
             return !nullSkip() ? super.eval(arg) : arg.eval(true);
         }
 
@@ -512,15 +515,18 @@ public abstract class FunctionApplier {
      * field, treating null values as zero.
      */
     public abstract static class NullZeroNumericalAggregated extends NumericalAggregated {
+        private final Type mOriginalType;
+
         // Used to count the number of non-null values.
         private String mCountFieldName;
 
-        protected NullZeroNumericalAggregated(Type type) {
+        protected NullZeroNumericalAggregated(Type type, Type originalType) {
             super(type);
+            mOriginalType = originalType;
         }
 
         @Override
-        public void begin(GroupContext context) {
+        public final void begin(GroupContext context) {
             if (!nullAsZero()) {
                 super.begin(context);
                 return;
@@ -534,8 +540,7 @@ public abstract class FunctionApplier {
                 countField = null;
             }
 
-            Type type = type();
-            Field workField = context.newWorkField(type.clazz());
+            Field workField = context.newWorkField(type().clazz());
             mWorkFieldName = workField.name();
 
             Variable arg = eval(context.args().get(0));
@@ -549,7 +554,7 @@ public abstract class FunctionApplier {
             }
             Label done = mm.label().goto_();
             notNull.here();
-            workField.set(arg);
+            workField.set(convertNonNull(arg));
             if (countField != null) {
                 countField.set(1L);
             }
@@ -557,7 +562,7 @@ public abstract class FunctionApplier {
         }
 
         @Override
-        public void accumulate(GroupContext context) {
+        public final void accumulate(GroupContext context) {
             if (!nullAsZero()) {
                 super.accumulate(context);
                 return;
@@ -569,7 +574,7 @@ public abstract class FunctionApplier {
             MethodMaker mm = context.methodMaker();
             Label done = mm.label();
             arg.ifEq(null, done);
-            workField.set(compute(type(), workField, arg));
+            workField.set(compute(type(), workField, convertNonNull(arg)));
             if (mCountFieldName != null) {
                 context.methodMaker().field(mCountFieldName).inc(1L);
             }
@@ -577,8 +582,26 @@ public abstract class FunctionApplier {
         }
 
         @Override
-        protected Variable eval(LazyValue arg) {
+        protected final Variable eval(LazyValue arg) {
             return !nullAsZero() ? super.eval(arg) : arg.eval(true);
+        }
+
+        /**
+         * Converts a non-null argument value to the work field type.
+         */
+        private Variable convertNonNull(Variable arg) {
+            ColumnInfo srcInfo = mOriginalType;
+            if (srcInfo.isNullable()) {
+                srcInfo = srcInfo.copy();
+                srcInfo.typeCode &= ~Type.TYPE_NULLABLE;
+            }
+
+            MethodMaker mm = arg.methodMaker();
+            var converted = mm.var(type().clazz());
+
+            Converter.convertLossy(mm, srcInfo, arg, type(), converted);
+
+            return converted;
         }
 
         /**
@@ -596,9 +619,11 @@ public abstract class FunctionApplier {
             return name == null ? context.groupRowNum() : context.methodMaker().field(name);
         }
 
+        /**
+         * Returns true if nulls are possible and can be replaced with zero.
+         */
         private boolean nullAsZero() {
-            Type type = type();
-            return type.isNullable() && Arithmetic.canZero(type.clazz());
+            return mOriginalType.isNullable() && Arithmetic.canZero(mOriginalType.clazz());
         }
     }
 }

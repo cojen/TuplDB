@@ -36,7 +36,6 @@ import org.cojen.maker.Variable;
 
 import org.cojen.tupl.io.Utils;
 
-import org.cojen.tupl.table.Converter;
 import org.cojen.tupl.table.SoftCache;
 
 import static org.cojen.tupl.table.expr.Type.*;
@@ -462,7 +461,11 @@ public final class StandardFunctionFinder extends SoftCache<String, Object, Obje
      */
     private static class sum extends FunctionApplier.NullZeroNumericalAggregated {
         sum(Type type) {
-            super(type);
+            this(type, type);
+        }
+
+        private sum(Type type, Type originalType) {
+            super(type, originalType);
         }
 
         @Override
@@ -473,15 +476,15 @@ public final class StandardFunctionFinder extends SoftCache<String, Object, Obje
             switch (typeCode) {
                 case TYPE_UBYTE, TYPE_USHORT, TYPE_UINT -> {
                     typeCode = TYPE_ULONG;
-                    clazz = type.isNullable() ? Long.class : long.class;
+                    clazz = long.class;
                 }
                 case TYPE_BYTE, TYPE_SHORT, TYPE_INT -> {
                     typeCode = TYPE_LONG;
-                    clazz = type.isNullable() ? Long.class : long.class;
+                    clazz = long.class;
                 }
                 case TYPE_FLOAT -> {
                     typeCode = TYPE_DOUBLE;
-                    clazz = type.isNullable() ? Double.class : double.class;
+                    clazz = double.class;
                 }
                 case TYPE_ULONG, TYPE_LONG, TYPE_DOUBLE, TYPE_BIG_INTEGER, TYPE_BIG_DECIMAL -> {
                     // big enough
@@ -492,9 +495,7 @@ public final class StandardFunctionFinder extends SoftCache<String, Object, Obje
                 }
             }
 
-            typeCode |= type.modifiers();
-
-            return new sum(BasicType.make(clazz, typeCode));
+            return new sum(BasicType.make(clazz, typeCode), type);
         }
 
         @Override
@@ -508,15 +509,12 @@ public final class StandardFunctionFinder extends SoftCache<String, Object, Obje
      * the group.
      */
     private static class avg extends FunctionApplier.NullZeroNumericalAggregated {
-        private final Type mOriginalType;
-
         avg(Type type) {
             this(type, type);
         }
 
         private avg(Type type, Type originalType) {
-            super(type);
-            mOriginalType = originalType;
+            super(type, originalType);
         }
 
         @Override
@@ -530,7 +528,7 @@ public final class StandardFunctionFinder extends SoftCache<String, Object, Obje
                      TYPE_FLOAT, TYPE_DOUBLE ->
                 {
                     typeCode = TYPE_DOUBLE;
-                    clazz = type.isNullable() ? Double.class : double.class;
+                    clazz = double.class;
                 }
                 case TYPE_BIG_INTEGER, TYPE_BIG_DECIMAL -> {
                     typeCode = TYPE_BIG_DECIMAL;
@@ -542,18 +540,7 @@ public final class StandardFunctionFinder extends SoftCache<String, Object, Obje
                 }
             }
 
-            typeCode |= type.modifiers();
-
             return new avg(BasicType.make(clazz, typeCode), type);
-        }
-
-        @Override
-        protected Variable eval(LazyValue arg) {
-            Variable value = super.eval(arg);
-            MethodMaker mm = value.methodMaker();
-            var converted = mm.var(type().clazz());
-            Converter.convertLossy(mm, mOriginalType, value, type(), converted);
-            return converted;
         }
 
         @Override
