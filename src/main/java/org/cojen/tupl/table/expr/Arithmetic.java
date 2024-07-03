@@ -316,13 +316,10 @@ final class Arithmetic {
                 return null;
             }
 
-            MethodMaker mm = left.methodMaker();
-            var ivar = mm.var(Integer.class);
+            var uleft = left.invoke("toUnsignedLong", left);
+            var uright = right.invoke("toUnsignedLong", right);
 
-            var uleft = ivar.invoke("toUnsignedLong", left);
-            var uright = ivar.invoke("toUnsignedLong", right);
-
-            return mm.var(UInteger.class).invoke(method, uleft, uright);
+            return left.methodMaker().var(UInteger.class).invoke(method, uleft, uright);
         }
 
         public static int addExact(long x, long y) {
@@ -345,12 +342,12 @@ final class Arithmetic {
             return (int) (x % y);
         }
 
-        public static int min(int x, int y) {
-            return (int) Math.min((long) x, (long) y);
+        public static int min(long x, long y) {
+            return (int) Math.min(x, y);
         }
 
-        public static int max(int x, int y) {
-            return (int) Math.max((long) x, (long) y);
+        public static int max(long x, long y) {
+            return (int) Math.max(x, y);
         }
 
         private static int convert(long r) {
