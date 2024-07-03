@@ -151,7 +151,7 @@ public final class ConstantExpr extends Expr {
             value = canonicalize(value);
             return new ConstantExpr(startPos(), endPos(), type, value);
         } catch (IllegalArgumentException | ArithmeticException e) {
-            throw new QueryException(e.getMessage(), this);
+            throw new QueryException("Cannot convert " + mType + " to " + type, this);
         } catch (Throwable e) {
             throw RowUtils.rethrow(e);
         }
