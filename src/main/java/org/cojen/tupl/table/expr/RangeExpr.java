@@ -38,33 +38,39 @@ public final class RangeExpr extends Expr {
      * @param end optional
      */
     public static Expr make(int startPos, int endPos, Expr start, Expr end) {
-        if (start != null && end != null) {
-            Type type = start.type().commonType(end.type(), -1);
-            if (type == null) {
-                throw new QueryException("No common type for range", startPos, endPos);
+        {
+            Type type = BasicType.make(int.class, Type.TYPE_INT);
+            if (start != null) {
+                start = start.asType(type);
             }
-            start = start.asType(type);
-            end = end.asType(type);
+            if (end != null) {
+                end = end.asType(type);
+            }
         }
 
         Type type = BasicType.make(Range.class, Type.TYPE_REFERENCE);
 
         constant: {
-            Range value;
+            Range range;
 
             if (start == null) {
                 if (end == null) {
-                    value = new Range(null, null);
+                    range = new Range(Long.MIN_VALUE, Long.MAX_VALUE);
                 } else if (end instanceof ConstantExpr cend) {
-                    value = new Range(null, cend.value());
+                    range = new Range(Long.MIN_VALUE, endValue(cend));
                 } else {
                     break constant;
                 }
             } else if (start instanceof ConstantExpr cstart) {
+                long sv = startValue(cstart);
                 if (end == null) {
-                    value = new Range(cstart.value(), null);
+                    range = new Range(sv, Long.MAX_VALUE);
                 } else if (end instanceof ConstantExpr cend) {
-                    value = new Range(cstart.value(), cend.value());
+                    try {
+                        range = new Range(sv, endValue(cend));
+                    } catch (IllegalArgumentException e) {
+                        throw new QueryException(e.getMessage(), startPos, endPos);
+                    }
                 } else {
                     break constant;
                 }
@@ -72,10 +78,20 @@ public final class RangeExpr extends Expr {
                 break constant;
             }
 
-            return ConstantExpr.make(startPos, endPos, type, value);
+            return ConstantExpr.make(startPos, endPos, type, range);
         }
 
         return new RangeExpr(startPos, endPos, type, start, end);
+    }
+
+    private static long startValue(ConstantExpr ce) {
+        Object v = ce.value();
+        return v == null ? Long.MIN_VALUE : ((Number) v).longValue();
+    }
+
+    private static long endValue(ConstantExpr ce) {
+        Object v = ce.value();
+        return v == null ? Long.MAX_VALUE : ((Number) v).longValue();
     }
 
     private final Type mType;

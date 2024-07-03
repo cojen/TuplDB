@@ -17,50 +17,18 @@
 
 package org.cojen.tupl.table.expr;
 
-import java.util.Objects;
-
 /**
  * Defines a generic value range.
  *
+ * @param start inclusive start boundary; use MIN_VALUE for open boundary
+ * @param end inclusive end boundary; use MAX_VALUE for open boundary
  * @author Brian S. O'Neill
  * @see RangeExpr
  */
-public final class Range {
-    private final Object mStart, mEnd;
-
-    /**
-     * @param start inclusive start boundary; can be null for open range
-     * @param end inclusive end boundary; can be null for open range
-     */
-    public Range(Object start, Object end) {
-        mStart = start;
-        mEnd = end;
-    }
-
-    @Override
-    public int hashCode() {
-        int hash = 839613349;
-        if (mStart != null) {
-            hash += mStart.hashCode();
+public record Range(long start, long end) {
+    public Range {
+        if (start > end) {
+            throw new IllegalArgumentException("Range start is greater than the end");
         }
-        if (mEnd != null) {
-            hash = hash * 31 + mEnd.hashCode();
-        }
-        return hash;
-    }
-
-    @Override
-    public boolean equals(Object obj) {
-        return obj == this ||
-            obj instanceof Range range
-            && Objects.deepEquals(mStart, range.mStart) && Objects.deepEquals(mEnd, range.mEnd);
-    }
-
-    @Override
-    public String toString() {
-        if (mStart == null) {
-            return mEnd == null ? ".." : (".." + mEnd);
-        }
-        return mEnd == null ? (mStart + "..") : (mStart + ".." + mEnd);
     }
 }
