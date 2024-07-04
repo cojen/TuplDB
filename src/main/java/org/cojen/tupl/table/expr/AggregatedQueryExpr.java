@@ -274,6 +274,7 @@ final class AggregatedQueryExpr extends QueryExpr {
 
         if (argCount == 0) {
             ctor = cm.addConstructor();
+            ctor.invokeSuperConstructor();
         } else {
             cm.addField(Object[].class, "args").private_().final_();
             ctor = cm.addConstructor(Object[].class, "args");
