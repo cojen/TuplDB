@@ -331,6 +331,11 @@ public final class CallExpr extends Expr {
             }
 
             @Override
+            public Field newWorkField(Class<?> type, boolean final_, Consumer<Field> init) {
+                return context.newWorkField(type, final_, init);
+            }
+
+            @Override
             public Variable rowNum() {
                 return context.rowNum();
             }
