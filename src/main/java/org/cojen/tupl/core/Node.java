@@ -6273,10 +6273,15 @@ final class Node extends Clutch implements DatabaseAccess {
             }
 
             int keyLen;
+            boolean keyFragmented = false;
             try {
                 keyLen = p_byteGet(page, loc++);
-                keyLen = keyLen >= 0 ? (keyLen + 1)
-                    : (((keyLen & 0x3f) << 8) | p_ubyteGet(page, loc++));
+                if (keyLen >= 0) {
+                    keyLen++;
+                } else {
+                    keyFragmented = (keyLen & ENTRY_FRAGMENTED) != 0;
+                    keyLen = ((keyLen & 0x3f) << 8) | p_ubyteGet(page, loc++);
+                }
             } catch (IndexOutOfBoundsException e) {
                 return verifyFailed(level, observer, "Key location out of bounds");
             }
@@ -6292,6 +6297,16 @@ final class Node extends Clutch implements DatabaseAccess {
                 if (result >= 0) {
                     return verifyFailed(level, observer, "Key order: " + result);
                 }
+            }
+
+            if (keyFragmented) {
+                // Not really a large "value", but count it as such anyhow.
+                largeValueCount++;
+                // Obtaining the stats forces pages to be loaded, which performs minimal
+                // verification. If checksums are enabled, then page checksum verification is
+                // performed as a side effect.
+                var stats = new long[2];
+                getDatabase().reconstruct(page, keyLoc + 2, keyLen, stats);
             }
 
             lastKeyLoc = keyLoc;
@@ -6314,6 +6329,11 @@ final class Node extends Clutch implements DatabaseAccess {
                         }
                         if ((header & ENTRY_FRAGMENTED) != 0) {
                             largeValueCount++;
+                            // Obtaining the stats forces pages to be loaded, which performs
+                            // minimal verification. If checksums are enabled, then page
+                            // checksum verification is performed as a side effect.
+                            var stats = new long[2];
+                            getDatabase().reconstruct(page, loc, len, stats);
                         }
                     }
                 } catch (IndexOutOfBoundsException e) {

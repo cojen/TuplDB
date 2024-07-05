@@ -67,7 +67,7 @@ public class BTreeCursor extends CoreValueAccessor implements Cursor {
     byte[] mValue;
 
     boolean mKeyOnly;
-    
+
     // Hashcode is defined by LockManager.
     private int mKeyHash;
 
