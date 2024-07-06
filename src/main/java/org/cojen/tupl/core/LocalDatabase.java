@@ -2826,29 +2826,18 @@ final class LocalDatabase extends CoreDatabase {
         var fls = new FreeListScan();
         Runner.start(fls);
 
-        if (observer == null) {
-            observer = new VerificationObserver();
-        }
-
-        final boolean[] passedRef = {true};
-        final VerificationObserver fobserver = observer;
+        var vo = new VerifyObserver(observer);
 
         scanAllIndexes(ix -> {
             var tree = (Tree) ix;
             Index view = tree.observableView();
-            fobserver.failed = false;
-            boolean keepGoing = tree.verifyTree(view, fobserver);
-            passedRef[0] &= !fobserver.failed;
-            if (keepGoing) {
-                keepGoing = fobserver.indexComplete(view, !fobserver.failed, null);
-            }
-            return keepGoing;
+            return tree.verifyTree(view, vo) && vo.indexComplete(view, true, null);
         });
 
         // Throws an exception if it fails.
         fls.waitFor();
 
-        return passedRef[0];
+        return vo.passed();
     }
 
     private class FreeListScan implements Runnable, LongConsumer {

@@ -64,22 +64,19 @@ abstract class Tree implements Index {
 
     @Override
     public final boolean verify(VerificationObserver observer) throws IOException {
-        if (observer == null) {
-            observer = new VerificationObserver();
-        }
+        var vo = new VerifyObserver(observer);
         Index view = observableView();
-        observer.failed = false;
-        verifyTree(view, observer);
-        boolean passed = !observer.failed;
-        observer.indexComplete(view, passed, null);
-        return passed;
+        if (verifyTree(view, vo)) {
+            vo.indexComplete(view, true, null);
+        }
+        return vo.passed();
     }
 
     /**
      * @param view view to pass to observer
      * @return false if should stop
      */
-    abstract boolean verifyTree(Index view, VerificationObserver observer) throws IOException;
+    abstract boolean verifyTree(Index view, VerifyObserver observer) throws IOException;
 
     /**
      * Count the number of cursors bound to the tree.
