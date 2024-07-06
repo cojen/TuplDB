@@ -5112,7 +5112,14 @@ public class BTreeCursor extends CoreValueAccessor implements Cursor {
             }
         }
 
-        return childNode.verifyTreeNode(level, observer);
+        int result = childNode.verifyTreeNode(level, observer);
+
+        if (result == 2) {
+            // Examine the large fragmented values without holding the latch the whole time.
+            verifyLargeValues();
+        }
+
+        return result > 0;
     }
 
     @SuppressWarnings("fallthrough")
@@ -5237,6 +5244,55 @@ public class BTreeCursor extends CoreValueAccessor implements Cursor {
         }
 
         return true;
+    }
+
+    private void verifyLargeValues() throws IOException {
+        // Simply reading one byte from each page of the value performs minimal verification.
+        // If checksums are enabled, then page checksum verification is performed as a side
+        // effect. For simplicity, all values are accessed, even those which aren't fragmented.
+
+        // TODO: If the fragmented value is very large and sparse, then scanning over the value
+        // in this fashion is very slow. Need to somehow skip over the gaps.
+
+        int pageSize = mTree.pageSize();
+        var buf = new byte[1];
+
+        while (true) {
+            for (long pos = 0, end = valueLength() - 1;;) {
+                if (doValueRead(pos, buf, 0, 1) <= 0) {
+                    break;
+                }
+                if (pos == end) {
+                    break;
+                }
+                pos += pageSize;
+                if (pos > end) {
+                    // Make sure the last page is accessed if the value has inline content,
+                    // although the access might be redundant.
+                    pos = end;
+                }
+            }
+
+            // Advance to the next value, unless none remain.
+
+            CursorFrame frame = frameSharedNotSplit();
+            Node node = frame.mNode;
+            try {
+                int pos = frame.mNodePos;
+                if (pos < 0) {
+                    pos = ~2 - pos; // eq: (~pos) - 2;
+                    if (pos >= node.highestLeafPos()) {
+                        return;
+                    }
+                    frame.mNotFoundKey = null;
+                } else if (pos >= node.highestLeafPos()) {
+                    return;
+                }
+                frame.mNodePos = pos + 2;
+            } finally {
+                node.releaseShared();
+            }
+        }
     }
 
     /**

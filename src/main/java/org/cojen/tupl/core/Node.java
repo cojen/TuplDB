@@ -6183,9 +6183,10 @@ final class Node extends Clutch implements DatabaseAccess {
      *
      * @param level passed to observer
      * @param observer required
-     * @return false if should stop
+     * @return 0 if should stop, 1 if should continue, or 2 if should continue and large
+     * fragmented values were encountered
      */
-    boolean verifyTreeNode(int level, VerifyObserver observer) throws IOException {
+    int verifyTreeNode(int level, VerifyObserver observer) throws IOException {
         observer.heldShared();
         try {
             return verifyTreeNode(level, observer, false);
@@ -6197,8 +6198,10 @@ final class Node extends Clutch implements DatabaseAccess {
     /**
      * @param fix true to ignore the current the garbage and tail segment fields and replace
      * them with the correct values instead
+     * @return 0 if should stop, 1 if should continue, or 2 if should continue and large
+     * fragmented values were encountered
      */
-    private boolean verifyTreeNode(int level, VerifyObserver observer, boolean fix)
+    private int verifyTreeNode(int level, VerifyObserver observer, boolean fix)
         throws IOException
     {
         int type = type() & ~(LOW_EXTREMITY | HIGH_EXTREMITY);
@@ -6251,6 +6254,7 @@ final class Node extends Clutch implements DatabaseAccess {
         int used = TN_HEADER_SIZE;
         int leftTail = TN_HEADER_SIZE;
         int rightTail = pageSize(page); // compute as inclusive
+        int largeKeyCount = 0;
         int largeValueCount = 0;
         int lastKeyLoc = 0;
 
@@ -6302,8 +6306,7 @@ final class Node extends Clutch implements DatabaseAccess {
             }
 
             if (keyFragmented) {
-                // Not really a large "value", but count it as such anyhow.
-                largeValueCount++;
+                largeKeyCount++;
                 // Obtaining the stats forces pages to be loaded, which performs minimal
                 // verification. If checksums are enabled, then page checksum verification is
                 // performed as a side effect.
@@ -6331,11 +6334,6 @@ final class Node extends Clutch implements DatabaseAccess {
                         }
                         if ((header & ENTRY_FRAGMENTED) != 0) {
                             largeValueCount++;
-                            // Obtaining the stats forces pages to be loaded, which performs
-                            // minimal verification. If checksums are enabled, then page
-                            // checksum verification is performed as a side effect.
-                            var stats = new long[2];
-                            getDatabase().reconstruct(page, loc, len, stats);
                         }
                     }
                 } catch (IndexOutOfBoundsException e) {
@@ -6371,10 +6369,15 @@ final class Node extends Clutch implements DatabaseAccess {
         long id = id();
         observer.releaseShared(this);
 
-        return observer.indexNodePassed(id, level, entryCount, freeBytes, largeValueCount);
+        boolean cont = observer.indexNodePassed
+            (id, level, entryCount, freeBytes,
+             // Large keys aren't really large "values", but count them as such anyhow.
+             largeValueCount + largeKeyCount);
+
+        return cont ? (largeValueCount != 0 ? 2 : 1) : 0;
     }
 
-    private boolean verifyFailed(int level, VerifyObserver observer, String message) {
-        return observer.indexNodeFailed(id(), level, message);
+    private int verifyFailed(int level, VerifyObserver observer, String message) {
+        return observer.indexNodeFailed(id(), level, message) ? 1 : 0;
     }
 }
