@@ -612,11 +612,15 @@ public abstract class FunctionApplier {
         }
 
         /**
-         * Returns a field which counts the number of non-null values.
+         * Returns a (long) field which counts the number of non-null values.
          */
         protected final Variable countField(GroupContext context) {
             String name = mCountFieldName;
             return name == null ? context.groupRowNum() : context.methodMaker().field(name);
+        }
+
+        protected final Type originalType() {
+            return mOriginalType;
         }
 
         /**

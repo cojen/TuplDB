@@ -522,17 +522,29 @@ public final class StandardFunctionFinder extends SoftCache<String, Object, Obje
             int typeCode = type.plainTypeCode();
             Class<?> clazz;
 
-            switch (typeCode) {
+            // Note: Result type is nullable when the source is nullable, because the count can
+            // be zero. Division by zero with double can be represented as NaN, but BigDecimal
+            // has no such representation. For consistency, null is used instead.
+
+            switch (type.plainTypeCode()) {
                 case TYPE_UBYTE, TYPE_USHORT, TYPE_UINT, TYPE_ULONG,
                      TYPE_BYTE, TYPE_SHORT, TYPE_INT, TYPE_LONG,
                      TYPE_FLOAT, TYPE_DOUBLE ->
                 {
                     typeCode = TYPE_DOUBLE;
-                    clazz = double.class;
+                    if (type.isNullable()) {
+                        typeCode |= Type.TYPE_NULLABLE;
+                        clazz = Double.class;
+                    } else {
+                        clazz = double.class;
+                    }
                 }
                 case TYPE_BIG_INTEGER, TYPE_BIG_DECIMAL -> {
                     typeCode = TYPE_BIG_DECIMAL;
                     clazz = BigDecimal.class;
+                    if (type.isNullable()) {
+                        typeCode |= Type.TYPE_NULLABLE;
+                    }
                 }
                 default -> {
                     reason.accept("unsupported argument type");
@@ -555,16 +567,37 @@ public final class StandardFunctionFinder extends SoftCache<String, Object, Obje
 
         @Override
         public Variable finish(GroupContext context) {
-            Variable sum = super.finish(context);
+            MethodMaker mm = context.methodMaker();
 
+            Variable sum = super.finish(context);
             Variable count = countField(context);
+            Variable result = mm.var(type().clazz());
+
+            Label done = null;
+
+            if (originalType().isNullable()) {
+                // Handle division by zero.
+                count = count.get();
+                Label notZero = mm.label();
+                count.ifNe(0, notZero);
+                result.set(null);
+                done = mm.label().goto_();
+                notZero.here();
+            }
+
             if (type().clazz() == BigDecimal.class) {
-                count = count.methodMaker().var(BigDecimal.class).invoke("valueOf", count);
+                count = mm.var(BigDecimal.class).invoke("valueOf", count);
             } else {
                 count = count.cast(double.class);
             }
 
-            return Arithmetic.eval(type(), Token.T_DIV, sum, count);
+            result.set(Arithmetic.eval(type(), Token.T_DIV, sum, count));
+
+            if (done != null) {
+                done.here();
+            }
+
+            return result;
         }
     }
 }
