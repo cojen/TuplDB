@@ -44,6 +44,7 @@ import org.cojen.tupl.Hidden;
 import org.cojen.tupl.Nullable;
 import org.cojen.tupl.PrimaryKey;
 import org.cojen.tupl.Row;
+import org.cojen.tupl.Unsigned;
 
 /**
  * 
@@ -442,6 +443,10 @@ public final class TupleType extends Type implements Iterable<Column> {
 
             if (c.type().isNullable()) {
                 mm.addAnnotation(Nullable.class, true);
+            }
+
+            if (c.type().isUnsignedInteger()) {
+                mm.addAnnotation(Unsigned.class, true);
             }
 
             if (c.isHidden()) {
