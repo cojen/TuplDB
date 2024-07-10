@@ -96,15 +96,15 @@ public abstract class FunctionApplier {
 
     /**
      * Validate that the function acceps the given arguments, and returns a new applier
-     * instance. If any arguments should be converted, directly replace elements of the
-     * argTypes array with the desired type.
+     * instance. If any arguments should be converted, directly replace elements of the args
+     * list with the desired type.
      *
-     * @param argTypes non-null array of unnamed argument types
-     * @param namedArgTypes non-null map of named argument types
+     * @param args non-null array of unnamed argument types
+     * @param namedArgs non-null map of named argument types
      * @param reasons if validation fails, optionally provide reasons
      * @return the new applier, or else null if validation fails
      */
-    public abstract FunctionApplier validate(Type[] argTypes, Map<String, Type> namedArgTypes,
+    public abstract FunctionApplier validate(List<Expr> args, Map<String, Expr> namedArgs,
                                              Consumer<String> reasons);
 
     /**
@@ -263,10 +263,9 @@ public abstract class FunctionApplier {
         public abstract void finished(GroupContext context);
 
         /**
-         * Generate code which branches to an appropriate label depending on whether the step
-         * method is ready or not.
+         * Generate code which should return null if the step method has nothing to produce.
          */
-        public abstract void check(GroupContext context, Label ready, Label notReady);
+        public abstract void check(GroupContext context);
 
         /**
          * Generate code to produce a result.
@@ -393,24 +392,25 @@ public abstract class FunctionApplier {
         }
 
         @Override
-        public NumericalAggregated validate(Type[] argTypes, Map<String, Type> namedArgTypes,
-                                            Consumer<String> reason)
+        public FunctionApplier validate(List<Expr> args, Map<String, Expr> namedArgs,
+                                        Consumer<String> reason)
         {
-            if (!checkNumArgs(1, 1, argTypes.length, reason)) {
+            if (!checkNumArgs(1, 1, args.size(), reason)) {
                 return null;
             }
 
-            Type type = argTypes[0];
+            Type type = args.get(0).type();
 
             if (!type.isNumber()) {
                 reason.accept("argument must be a number");
                 return null;
             }
 
-            return validate(type, reason);
+            return validate(type, namedArgs, reason);
         }
 
-        protected abstract NumericalAggregated validate(Type type, Consumer<String> reason);
+        protected abstract FunctionApplier validate(Type type, Map<String, Expr> namedArgs,
+                                                    Consumer<String> reason);
     }
 
     /**

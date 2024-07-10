@@ -46,7 +46,7 @@ import org.cojen.tupl.table.filter.Visitor;
  * @author Brian S. O'Neill
  */
 public abstract sealed class QueryExpr extends RelationExpr
-    permits MappedQueryExpr, UnmappedQueryExpr, AggregatedQueryExpr
+    permits MappedQueryExpr, UnmappedQueryExpr, AggregatedQueryExpr, GroupedQueryExpr
 {
     /**
      * @param from can be null if not selecting from any table at all
@@ -315,10 +315,15 @@ public abstract sealed class QueryExpr extends RelationExpr
         if (groupBy < 0) {
             return MappedQueryExpr.make(-1, -1, type, from, mappedRowFilter, mappedFilter,
                                         projection, maxArgument, mappedOrderBy);
-        } else {
+        }
+
+        if (isAggregating(filter, projection)) {
             return AggregatedQueryExpr.make(-1, -1, type, from, mappedRowFilter, mappedFilter,
                                             projection, groupBy, maxArgument, mappedOrderBy);
         }
+
+        return GroupedQueryExpr.make(-1, -1, type, from, mappedRowFilter, mappedFilter,
+                                     projection, groupBy, maxArgument, mappedOrderBy);
     }
 
     /**
@@ -367,6 +372,58 @@ public abstract sealed class QueryExpr extends RelationExpr
         filter.accept(visitor);
 
         return visitor.hasRepeats;
+    }
+
+    /**
+     * Returns true if using an aggregating expression, or throws an exception if also using a
+     * grouping expression.
+     */
+    private static boolean isAggregating(Expr filter, List<ProjExpr> projection)
+        throws QueryException
+    {
+        int flags = 0;
+
+        if (filter != null) {
+            flags = checkAggregating(filter, flags);
+        }
+
+        if (projection != null) {
+            for (ProjExpr pe : projection) {
+                flags = checkAggregating(pe, flags);
+            }
+        }
+
+        return (flags & 1) != 0;
+    }
+
+    /**
+     * @param flags bit 0: aggregating, bit 1: grouping
+     * @return updated flags
+     */
+    private static int checkAggregating(Expr expr, int flags) throws QueryException {
+        String message;
+
+        check: {
+            if (expr.isAggregating()) {
+                if ((flags & 2) != 0) {
+                    message = "Cannot use an aggregating function when " +
+                        "also using a windowing function";
+                    break check;
+                }
+                flags |= 1;
+            } else if (expr.isGrouping()) {
+                if ((flags & 1) != 0) {
+                    message = "Cannot use a windowing function when " +
+                        "also using an aggregating function";
+                    break check;
+                }
+                flags |= 2;
+            }
+
+            return flags;
+        }
+
+        throw new QueryException(message, expr);
     }
 
     protected final RelationExpr mFrom;

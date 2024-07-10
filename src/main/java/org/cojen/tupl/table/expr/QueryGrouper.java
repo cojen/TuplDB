@@ -17,25 +17,15 @@
 
 package org.cojen.tupl.table.expr;
 
-import java.util.List;
-import java.util.Map;
-
-import java.util.function.Consumer;
+import org.cojen.tupl.Grouper;
 
 /**
  * @author Brian S. O'Neill
+ * @see GroupedQueryExpr
  */
-public interface FunctionFinder {
+public abstract class QueryGrouper<R, T> implements Grouper.Factory<R, T> {
     /**
-     * Tries to find a function by the given name and arguments.
-     *
-     * @param name function name
-     * @param args non-null array of unnamed argument types
-     * @param namedArgs non-null map of named argument types
-     * @param reason if the function isn't found, optionally provide a reason
-     * @return null if not found
+     * Factory method which returns a new or singleton Grouper.Factory instance.
      */
-    FunctionApplier tryFindFunction(String name,
-                                    List<Expr> args, Map<String, Expr> namedArgs,
-                                    Consumer<String> reason);
+    public abstract Grouper.Factory<R, T> factoryFor(Object[] args);
 }

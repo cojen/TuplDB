@@ -21,8 +21,8 @@ import java.lang.reflect.Modifier;
 
 import java.math.BigDecimal;
 
-import java.util.Arrays;
 import java.util.List;
+import java.util.ListIterator;
 import java.util.Map;
 
 import java.util.concurrent.ThreadLocalRandom;
@@ -52,7 +52,7 @@ public final class StandardFunctionFinder extends SoftCache<String, Object, Obje
 
     @Override
     public FunctionApplier tryFindFunction(String name,
-                                           Type[] argTypes, Map<String, Type> namedArgTypes,
+                                           List<Expr> args, Map<String, Expr> namedArgs,
                                            Consumer<String> reason)
     {
         // Note: Only the function name is examined for now. The FunctionApplier.validate
@@ -87,24 +87,27 @@ public final class StandardFunctionFinder extends SoftCache<String, Object, Obje
         }
 
         @Override
-        public coalesce validate(Type[] argTypes, Map<String, Type> namedArgTypes,
+        public coalesce validate(List<Expr> args, Map<String, Expr> namedArgs,
                                  Consumer<String> reason)
         {
-            if (!checkNumArgs(1, Integer.MAX_VALUE, argTypes.length, reason)) {
+            if (!checkNumArgs(1, Integer.MAX_VALUE, args.size(), reason)) {
                 return null;
             }
 
-            Type type = argTypes[0];
+            Type type = args.get(0).type();
 
-            for (int i=1; i<argTypes.length; i++) {
-                type = type.commonType(argTypes[i], -1);
+            for (int i=1; i<args.size(); i++) {
+                type = type.commonType(args.get(i).type(), -1);
                 if (type == null) {
                     reason.accept("no common type");
                     return null;
                 }
             }
 
-            Arrays.fill(argTypes, type);
+            ListIterator<Expr> it = args.listIterator();
+            while (it.hasNext()) {
+                it.set(it.next().asType(type));
+            }
 
             return new coalesce(type);
         }
@@ -153,29 +156,29 @@ public final class StandardFunctionFinder extends SoftCache<String, Object, Obje
         }
 
         @Override
-        public iff validate(Type[] argTypes, Map<String, Type> namedArgTypes,
+        public iff validate(List<Expr> args, Map<String, Expr> namedArgs,
                             Consumer<String> reason)
         {
-            if (!checkNumArgs(3, 3, argTypes.length, reason)) {
+            if (!checkNumArgs(3, 3, args.size(), reason)) {
                 return null;
             }
 
-            Type type = argTypes[0];
+            Type type = args.get(0).type();
 
             if (!type.isBoolean()) {
                 reason.accept("first argument must be a boolean type");
                 return null;
             }
 
-            type = argTypes[1].commonType(argTypes[2], -1);
+            type = args.get(1).type().commonType(args.get(2).type(), -1);
 
             if (type == null) {
                 reason.accept("no common type");
                 return null;
             }
 
-            argTypes[1] = type;
-            argTypes[2] = type;
+            args.set(1, args.get(1).asType(type));
+            args.set(2, args.get(2).asType(type));
 
             return new iff(type);
         }
@@ -215,28 +218,28 @@ public final class StandardFunctionFinder extends SoftCache<String, Object, Obje
         }
 
         @Override
-        public random validate(Type[] argTypes, Map<String, Type> namedArgTypes,
+        public random validate(List<Expr> args, Map<String, Expr> namedArgs,
                                Consumer<String> reason)
         {
-            if (!checkNumArgs(0, 2, argTypes.length, reason)) {
+            if (!checkNumArgs(0, 2, args.size(), reason)) {
                 return null;
             }
 
             Type type;
 
-            if (argTypes.length == 0) {
+            if (args.size() == 0) {
                 type = BasicType.make(double.class, TYPE_DOUBLE);
             } else {
-                for (Type t : argTypes) {
-                    if (!checkArg(t, reason)) {
+                for (Expr arg : args) {
+                    if (!checkArg(arg.type(), reason)) {
                         return null;
                     }
                 }
 
-                type = argTypes[0];
+                type = args.get(0).type();
 
-                if (argTypes.length == 2) {
-                    type = type.commonType(argTypes[1], -1);
+                if (args.size() == 2) {
+                    type = type.commonType(args.get(1).type(), -1);
                     if (type == null) {
                         reason.accept("no common type");
                         return null;
@@ -244,7 +247,10 @@ public final class StandardFunctionFinder extends SoftCache<String, Object, Obje
                     if (!checkArg(type, reason)) {
                         return null;
                     }
-                    Arrays.fill(argTypes, type);
+                    ListIterator<Expr> it = args.listIterator();
+                    while (it.hasNext()) {
+                        it.set(it.next().asType(type));
+                    }
                 }
             }
 
@@ -310,10 +316,10 @@ public final class StandardFunctionFinder extends SoftCache<String, Object, Obje
         }
 
         @Override
-        public count validate(Type[] argTypes, Map<String, Type> namedArgTypes,
+        public count validate(List<Expr> args, Map<String, Expr> namedArgs,
                               Consumer<String> reason)
         {
-            if (!checkNumArgs(0, 1, argTypes.length, reason)) {
+            if (!checkNumArgs(0, 1, args.size(), reason)) {
                 return null;
             }
             return new count(BasicType.make(long.class, Type.TYPE_LONG));
@@ -374,13 +380,13 @@ public final class StandardFunctionFinder extends SoftCache<String, Object, Obje
         }
 
         @Override
-        public first validate(Type[] argTypes, Map<String, Type> namedArgTypes,
+        public first validate(List<Expr> args, Map<String, Expr> namedArgs,
                               Consumer<String> reason)
         {
-            if (!checkNumArgs(1, 1, argTypes.length, reason)) {
+            if (!checkNumArgs(1, 1, args.size(), reason)) {
                 return null;
             }
-            return new first(argTypes[0]);
+            return new first(args.get(0).type());
         }
 
         @Override
@@ -398,13 +404,13 @@ public final class StandardFunctionFinder extends SoftCache<String, Object, Obje
         }
 
         @Override
-        public last validate(Type[] argTypes, Map<String, Type> namedArgTypes,
+        public last validate(List<Expr> args, Map<String, Expr> namedArgs,
                              Consumer<String> reason)
         {
-            if (!checkNumArgs(1, 1, argTypes.length, reason)) {
+            if (!checkNumArgs(1, 1, args.size(), reason)) {
                 return null;
             }
-            return new last(argTypes[0]);
+            return new last(args.get(0).type());
         }
 
         // Note: The Aggregator interface doesn't provide a convenient (or efficient) way of
@@ -426,7 +432,9 @@ public final class StandardFunctionFinder extends SoftCache<String, Object, Obje
         }
 
         @Override
-        protected min validate(Type type, Consumer<String> reason) {
+        protected min validate(Type type, Map<String, Expr> namedArgs,
+                               Consumer<String> reason)
+        {
             return new min(type);
         }
 
@@ -445,7 +453,9 @@ public final class StandardFunctionFinder extends SoftCache<String, Object, Obje
         }
 
         @Override
-        protected max validate(Type type, Consumer<String> reason) {
+        protected max validate(Type type, Map<String, Expr> namedArgs,
+                               Consumer<String> reason)
+        {
             return new max(type);
         }
 
@@ -469,7 +479,9 @@ public final class StandardFunctionFinder extends SoftCache<String, Object, Obje
         }
 
         @Override
-        protected sum validate(Type type, Consumer<String> reason) {
+        protected sum validate(Type type, Map<String, Expr> namedArgs,
+                               Consumer<String> reason)
+        {
             Class<?> clazz = type.clazz();
             int typeCode = type.plainTypeCode();
 
@@ -518,8 +530,16 @@ public final class StandardFunctionFinder extends SoftCache<String, Object, Obje
         }
 
         @Override
-        protected avg validate(final Type type, Consumer<String> reason) {
-            int typeCode = type.plainTypeCode();
+        public boolean hasNamedParameters() {
+            // FIXME: Use something other than hasNamedParameters?
+            return true;
+        }
+
+        @Override
+        protected FunctionApplier validate(final Type type, Map<String, Expr> namedArgs,
+                                           Consumer<String> reason)
+        {
+            int typeCode;
             Class<?> clazz;
 
             // Note: Result type is nullable when the source is nullable, because the count can
@@ -552,7 +572,35 @@ public final class StandardFunctionFinder extends SoftCache<String, Object, Obje
                 }
             }
 
-            return new avg(BasicType.make(clazz, typeCode), type);
+            // FIXME: Common code; only check for specific names; verify types; reject conflicts.
+            String rangeMode = "rows";
+            Expr rangeExpr = namedArgs.get(rangeMode);
+
+            if (!includesCurrent(rangeExpr)) {
+                // Results can be null.
+                typeCode |= Type.TYPE_NULLABLE;
+                if (clazz == double.class) {
+                    clazz = Double.class;
+                }
+            }
+
+            Type resultType = BasicType.make(clazz, typeCode);
+
+            if (rangeExpr != null) {
+                return new StandardWindowFunctions.avg(resultType, type, rangeMode);
+            }
+
+            return new avg(resultType, type);
+        }
+
+        /**
+         * Returns true if the given expression represents a range and is guaranteed to include
+         * the current row of a window frame, which is zero.
+         */
+        private static boolean includesCurrent(Expr expr) {
+            return expr instanceof ConstantExpr c
+                && c.value() instanceof Range r
+                && r.start() <= 0 && 0 <= r.end();
         }
 
         @Override
@@ -598,6 +646,113 @@ public final class StandardFunctionFinder extends SoftCache<String, Object, Obje
             }
 
             return result;
+        }
+    }
+
+    /**
+     * Simple grouped function which yields the source row. Only used for testing and
+     * should be removed or else be hidden and used automatically.
+     */
+    // FIXME: Must be buffered in case another column isn't ready yet.
+    private static class self extends FunctionApplier.Grouped {
+        // FIXME: Define a shared context field for this? I think I need a ready field only
+        // when the projection doesn't have any grouped functions. Consider these cases:
+        // {; }  or  {; a=1}  or  {; a=1, b=grn()}  or  {; a=self(active), b=grn()}
+        private String mReadyFieldName;
+        private String mValueFieldName;
+
+        self(Type type) {
+            super(type);
+        }
+
+        @Override
+        public FunctionApplier validate(List<Expr> args, Map<String, Expr> namedArgs,
+                                        Consumer<String> reasons)
+        {
+            if (!checkNumArgs(1, 1, args.size(), reasons)) {
+                return null;
+            }
+
+            return new self(args.get(0).type());
+        }
+
+        @Override
+        public void begin(GroupContext context) {
+            mReadyFieldName = context.newWorkField(boolean.class).set(true).name();
+            var value = context.args().get(0).eval(true);
+            mValueFieldName = context.newWorkField(type().clazz()).set(value).name();
+        }
+
+        @Override
+        public void accumulate(GroupContext context) {
+            context.methodMaker().field(mReadyFieldName).set(true);
+            var value = context.args().get(0).eval(true);
+            context.methodMaker().field(mValueFieldName).set(value);
+        }
+
+        @Override
+        public void finished(GroupContext context) {
+        }
+
+        @Override
+        public void check(GroupContext context) {
+            MethodMaker mm = context.methodMaker();
+            mm.field(mReadyFieldName).ifFalse(() -> mm.return_(null));
+        }
+
+        @Override
+        public Variable step(GroupContext context) {
+            context.methodMaker().field(mReadyFieldName).set(false);
+            return context.methodMaker().field(mValueFieldName);
+        }
+    }
+
+    /**
+     * Simple grouped function that yields the group row number. Only used for testing and
+     * should be removed eventually.
+     */
+    private static class grn extends FunctionApplier.Grouped {
+        private String mReadyFieldName;
+
+        grn(Type type) {
+            super(type);
+        }
+
+        @Override
+        public FunctionApplier validate(List<Expr> args, Map<String, Expr> namedArgs,
+                                        Consumer<String> reasons)
+        {
+            if (!checkNumArgs(0, 0, args.size(), reasons)) {
+                return null;
+            }
+
+            return new grn(BasicType.make(long.class, Type.TYPE_LONG));
+        }
+
+        @Override
+        public void begin(GroupContext context) {
+            mReadyFieldName = context.newWorkField(boolean.class).set(true).name();
+        }
+
+        @Override
+        public void accumulate(GroupContext context) {
+            context.methodMaker().field(mReadyFieldName).set(true);
+        }
+
+        @Override
+        public void finished(GroupContext context) {
+        }
+
+        @Override
+        public void check(GroupContext context) {
+            MethodMaker mm = context.methodMaker();
+            mm.field(mReadyFieldName).ifFalse(() -> mm.return_(null));
+        }
+
+        @Override
+        public Variable step(GroupContext context) {
+            context.methodMaker().field(mReadyFieldName).set(false);
+            return context.groupRowNum();
         }
     }
 }

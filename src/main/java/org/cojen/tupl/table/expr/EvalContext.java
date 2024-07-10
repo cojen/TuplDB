@@ -21,6 +21,8 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
+import java.util.function.Consumer;
+
 import org.cojen.maker.Field;
 import org.cojen.maker.MethodMaker;
 import org.cojen.maker.Variable;
@@ -74,10 +76,10 @@ class EvalContext implements FunctionApplier.GroupContext {
     }
 
     /**
-     * Returns a context to use for the FunctionApplier Grouped check method. Throws
+     * Passes a context to use for the FunctionApplier Grouped check method. Throws
      * IllegalStateException when not supported.
      */
-    EvalContext checkContext() {
+    void checkContext(Consumer<EvalContext> body) {
         throw new IllegalStateException();
     }
 

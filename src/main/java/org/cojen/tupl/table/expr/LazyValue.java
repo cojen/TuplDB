@@ -35,7 +35,7 @@ public class LazyValue {
         mExpr = expr;
     }
 
-    public Expr expr() {
+    public final Expr expr() {
         return mExpr;
     }
 

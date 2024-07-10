@@ -59,39 +59,13 @@ public final class CallExpr extends Expr {
         mName = name;
         mOriginalApplier = applier;
 
-        Type[] argTypes;
-        {
-            int num = args.size();
-            argTypes = new Type[num];
-            int i = 0;
-            for (Expr arg : args) {
-                argTypes[i++] = arg.type();
-            }
-            assert i == num;
-        }
-
-        Map<String, Type> namedArgTypes;
-        {
-            if (namedArgs.isEmpty()) {
-                namedArgTypes = Map.of();
-            } else {
-                namedArgTypes = new LinkedHashMap<>(namedArgs.size() << 1);
-                namedArgs.forEach((n, e) -> namedArgTypes.put(n, e.type()));
-            }
-        }
-
         var reasons = new ArrayList<String>(1);
 
         if (!applier.hasNamedParameters() && !namedArgs.isEmpty()) {
             reasons.add("it doesn't define any named parameters");
             mApplier = null;
         } else {
-            mApplier = applier.validate(argTypes, namedArgTypes, reasons::add);
-        }
-
-        if (mApplier != null) {
-            // Perform any necessary type conversions to the arguments.
-            args = replaceElements(args, 0, (i, arg) -> arg.asType(argTypes[i]));
+            mApplier = applier.validate(args, namedArgs, reasons::add);
         }
 
         mArgs = args;
@@ -286,8 +260,25 @@ public final class CallExpr extends Expr {
             return aggregated.finish(context);
         }
 
-        // FIXME: Support other function types.
-        throw new UnsupportedOperationException();
+        if (mApplier instanceof FunctionApplier.Grouped grouped) {
+            withArgs(context.beginContext(), ctx -> {
+                grouped.begin(ctx);
+                return null;
+            });
+
+            withArgs(context.accumContext(), ctx -> {
+                grouped.accumulate(ctx);
+                return null;
+            });
+
+            grouped.finished(context.finishedContext());
+
+            context.checkContext(ctx -> grouped.check(ctx));
+
+            return grouped.step(context);
+        }
+
+        throw new IllegalStateException();
     }
 
     /**
