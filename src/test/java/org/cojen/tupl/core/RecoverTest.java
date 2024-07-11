@@ -18,6 +18,7 @@
 package org.cojen.tupl.core;
 
 import java.io.File;
+import java.io.RandomAccessFile;
 
 import java.util.*;
 import java.util.concurrent.TimeUnit;
@@ -1311,5 +1312,42 @@ public class RecoverTest {
         ix2 = db.openIndex("test2");
         ix1.drop();
         ix2.drop();
+    }
+
+    @Test
+    public void corruptHeader() throws Exception {
+        // Test restoration of a corrupt header.
+
+        Index ix = mDb.openIndex("test");
+
+        for (int i=0; i<1000; i++) {
+            byte[] key = ("key-" + i).getBytes();
+            byte[] value = ("value-" + i).getBytes();
+            ix.store(null, key, value);
+        }
+
+        File baseFile = baseFileForTempDatabase(getClass(), mDb);
+        int pageSize = mDb.stats().pageSize;
+        mDb.shutdown();
+
+        // Corrupt the headers.
+        var rnd = new Random(72949814);
+        var raf = new RandomAccessFile(new File(baseFile.getPath() + ".db"), "rw");
+        raf.seek(100);
+        raf.writeInt(rnd.nextInt());
+        raf.seek(600);
+        raf.writeInt(rnd.nextInt());
+        raf.seek(pageSize + 200);
+        raf.writeInt(rnd.nextInt());
+        raf.close();
+
+        mDb = reopenTempDatabase(getClass(), mDb, mConfig);
+        ix = mDb.openIndex("test");
+
+        for (int i=0; i<1000; i++) {
+            byte[] key = ("key-" + i).getBytes();
+            byte[] value = ix.load(null, key);
+            fastAssertArrayEquals(("value-" + i).getBytes(), value);
+        }
     }
 }
