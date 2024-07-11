@@ -85,9 +85,8 @@ final class StoredPageDb extends PageDb {
     | int:  checksum                           |
     | page manager header (140 bytes)          |
     +------------------------------------------+
-    | reserved (84 bytes)                      |
+    | reserved (88 bytes)                      |
     +------------------------------------------+
-    | int:  commit number copy                 |
     | long: database id                        |
     +------------------------------------------+
     | extra data (256 bytes)                   |
@@ -106,7 +105,6 @@ final class StoredPageDb extends PageDb {
     private static final int I_MANAGER_HEADER   = I_CHECKSUM + 4;
     private static final int I_EXTRA_DATA       = 256;
     private static final int I_DATABASE_ID      = I_EXTRA_DATA - 8;
-    private static final int I_COMMIT_NUMBER_C  = I_DATABASE_ID - 4;
 
     private static final int MINIMUM_PAGE_SIZE = 512;
 
@@ -267,10 +265,11 @@ final class StoredPageDb extends PageDb {
                 try {
                     final /*P*/ byte[] header;
                     final int commitNumber;
-                    ChecksumException ex0 = null, ex1 = null;
+                    boolean issues = false;
                     findHeader: {
                         int pageSize0;
                         int commitNumber0, commitNumber1;
+                        CorruptDatabaseException ex0;
 
                         try {
                             header0 = readHeader(0);
@@ -279,14 +278,15 @@ final class StoredPageDb extends PageDb {
                             ex0 = null;
                         } catch (IncompleteRestoreException e) {
                             throw e;
-                        } catch (ChecksumException e) {
+                        } catch (CorruptDatabaseException e) {
                             if (debugListener != null) {
                                 debugListener.notify(EventType.DEBUG, e.toString());
                             }
-                            ex0 = e;
+                            issues = true;
                             header0 = p_null();
                             commitNumber0 = -1;
                             pageSize0 = pageSize;
+                            ex0 = e;
                         }
 
                         if (pageSize0 != pageSize) {
@@ -298,15 +298,15 @@ final class StoredPageDb extends PageDb {
                             commitNumber1 = p_intGetLE(header1, I_COMMIT_NUMBER);
                         } catch (IncompleteRestoreException e) {
                             throw e;
-                        } catch (ChecksumException e) {
+                        } catch (CorruptDatabaseException e) {
                             if (ex0 != null) {
                                 // File is completely unusable.
-                                throw ex0.corrupt();
+                                throw ex0;
                             }
                             if (debugListener != null) {
                                 debugListener.notify(EventType.DEBUG, e.toString());
                             }
-                            ex1 = e;
+                            issues = true;
                             header = header0;
                             commitNumber = commitNumber0;
                             break findHeader;
@@ -337,13 +337,6 @@ final class StoredPageDb extends PageDb {
                         }
                     }
 
-                    if (ex0 != null) {
-                        ex0.verifyCommitNumber(commitNumber);
-                    }
-                    if (ex1 != null) {
-                        ex1.verifyCommitNumber(commitNumber);
-                    }
-
                     mHeaderLatch.acquireExclusive();
                     mCommitNumber = commitNumber;
                     mHeaderLatch.releaseExclusive();
@@ -352,8 +345,6 @@ final class StoredPageDb extends PageDb {
                         debugListener.notify(EventType.DEBUG, "PAGE_SIZE: %1$d", pageSize);
                         debugListener.notify(EventType.DEBUG, "COMMIT_NUMBER: %1$d", commitNumber);
                     }
-
-                    boolean issues = ex0 != null || ex1 != null;
 
                     mPageManager = new PageManager
                         (debugListener, issues, mPageArray, header, I_MANAGER_HEADER);
@@ -1024,7 +1015,6 @@ final class StoredPageDb extends PageDb {
         p_longPutLE(header, I_MAGIC_NUMBER, MAGIC_NUMBER);
         p_intPutLE (header, I_PAGE_SIZE, array.pageSize());
         p_intPutLE (header, I_COMMIT_NUMBER, commitNumber);
-        p_intPutLE (header, I_COMMIT_NUMBER_C, commitNumber);
         p_longPutLE(header, I_DATABASE_ID, mDatabaseId);
 
         // Durably write the new page store header before returning
@@ -1064,33 +1054,6 @@ final class StoredPageDb extends PageDb {
         return checksum;
     }
 
-    private static class ChecksumException extends IOException {
-        private final Integer mCommitNumber;
-
-        /**
-         * @param commitNumber is null if the commit number couldn't be extracted
-         */
-        ChecksumException(String message, Integer commitNumber) {
-            super(message);
-            mCommitNumber = commitNumber;
-        }
-
-        CorruptDatabaseException corrupt() {
-            return new CorruptDatabaseException(getMessage());
-        }
-
-        /**
-         * @param actual the commit number which is considered to be correct
-         */
-        void verifyCommitNumber(int actual) throws CorruptDatabaseException {
-            if (mCommitNumber != null && mCommitNumber == actual + 1) {
-                throw new CorruptDatabaseException
-                    (getMessage() + ", and it has the next commit number (" +
-                     mCommitNumber + " > " + actual + ')');
-            }
-        }
-    }
-
     private /*P*/ byte[] readHeader(int id) throws IOException {
         var header = p_allocPage(directPageSize());
 
@@ -1107,38 +1070,8 @@ final class StoredPageDb extends PageDb {
 
             int newChecksum = setHeaderChecksum(header);
             if (newChecksum != checksum) {
-                String message = "Header checksum mismatch: " + newChecksum + " != " + checksum +
-                    " for page " + id;
-
-                // Try to extract the commit number, comparing it against another copy. If it
-                // matches, then it's likely valid.
-                Integer commitNumber = null;
-                {
-                    int commitNumber0 = p_intGetLE(header, I_COMMIT_NUMBER);
-                    int commitNumber1 = p_intGetLE(header, I_COMMIT_NUMBER_C);
-
-                    if (commitNumber1 == 0 && mPageArray.pageSize() >= MINIMUM_PAGE_SIZE * 2) {
-                        // The commit number copy wasn't originally stored in older versions of
-                        // the database, so try to read a redundant header. Note that it will
-                        // likely take at least 136 years for the commit number to wrap around,
-                        // and so it's unlikely that falsely accepting 0 will cause any issues
-                        // if a preferred commit number copy couldn't be read.
-                        int ix1 = MINIMUM_PAGE_SIZE + I_COMMIT_NUMBER;
-                        var header1 = new byte[ix1 + 4];
-                        try {
-                            mPageArray.readPage(id, header1, 0, header1.length);
-                            commitNumber1 = decodeIntLE(header1, ix1);
-                        } catch (EOFException e) {
-                            // Can ignore because the database is empty.
-                        }
-                    }
-
-                    if (commitNumber0 == commitNumber1) {
-                        commitNumber = commitNumber0;
-                    }
-                }
-
-                throw new ChecksumException(message, commitNumber);
+                throw new CorruptDatabaseException
+                    ("Header checksum mismatch: " + newChecksum + " != " + checksum);
             }
 
             return header;
