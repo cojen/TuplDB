@@ -100,7 +100,9 @@ abstract class ChecksumPageArray extends TransformedPageArray {
     }
 
     static void check(long index, int actualChecksum, Checksum checksum) throws IOException { 
-        if (actualChecksum != (int) checksum.getValue()) {
+        // Note that checksum failures of header pages (0 and 1) are ignored. StoredPageDb
+        // performs an independent check and selects the correct header.
+        if (actualChecksum != (int) checksum.getValue() && index > 1) {
             throw new IOException
                 ("Checksum mismatch: " + Integer.toUnsignedString(actualChecksum, 16) + " != "
                  + Integer.toUnsignedString((int) checksum.getValue(), 16) + "; page=" + index);
