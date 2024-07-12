@@ -35,6 +35,7 @@ import java.util.function.Supplier;
 
 import java.util.zip.Checksum;
 
+import org.cojen.tupl.ChecksumException;
 import org.cojen.tupl.CorruptDatabaseException;
 import org.cojen.tupl.DatabaseException;
 import org.cojen.tupl.IncompleteRestoreException;
@@ -275,7 +276,7 @@ final class StoredPageDb extends PageDb {
                         int headerOffset0, headerOffset1;
                         int commitNumber0, commitNumber1;
                         int pageSize0;
-                        CorruptDatabaseException ex0;
+                        ChecksumException ex0;
 
                         try {
                             header0 = readHeader(0);
@@ -283,9 +284,7 @@ final class StoredPageDb extends PageDb {
                             commitNumber0 = p_intGetLE(header0, I_COMMIT_NUMBER);
                             pageSize0 = p_intGetLE(header0, I_PAGE_SIZE);
                             ex0 = null;
-                        } catch (IncompleteRestoreException e) {
-                            throw e;
-                        } catch (CorruptDatabaseException e) {
+                        } catch (ChecksumException e) {
                             if (debugListener != null) {
                                 debugListener.notify(EventType.DEBUG, e.toString());
                             }
@@ -305,9 +304,7 @@ final class StoredPageDb extends PageDb {
                             header1 = readHeader(1);
                             headerOffset1 = mHeaderOffset;
                             commitNumber1 = p_intGetLE(header1, I_COMMIT_NUMBER);
-                        } catch (IncompleteRestoreException e) {
-                            throw e;
-                        } catch (CorruptDatabaseException e) {
+                        } catch (ChecksumException e) {
                             if (ex0 != null) {
                                 // File is completely unusable.
                                 throw ex0;
@@ -1075,14 +1072,12 @@ final class StoredPageDb extends PageDb {
         mHeaderOffset = 0;
         var header = p_allocPage(directPageSize());
 
-        CorruptDatabaseException ex;
+        ChecksumException ex;
 
         try {
             doReadHeader(header, 0, id);
             return header;
-        } catch (IncompleteRestoreException e) {
-            throw e;
-        } catch (CorruptDatabaseException e) {
+        } catch (ChecksumException e) {
             ex = e;
         } catch (Throwable e) {
             p_delete(header);
@@ -1104,7 +1099,7 @@ final class StoredPageDb extends PageDb {
                 doReadHeader(header, offset, id);
                 mHeaderOffset = offset;
                 return header;
-            } catch (CorruptDatabaseException e) {
+            } catch (ChecksumException e) {
                 // Try another copy.
             } catch (Throwable e) {
                 break;
@@ -1126,12 +1121,12 @@ final class StoredPageDb extends PageDb {
 
         checkMagicNumber(p_longGetLE(header, I_MAGIC_NUMBER));
 
-        int checksum = p_intGetLE(header, I_CHECKSUM);
+        int storedChecksum = p_intGetLE(header, I_CHECKSUM);
 
-        int newChecksum = setHeaderChecksum(header);
-        if (newChecksum != checksum) {
-            throw new CorruptDatabaseException
-                ("Header checksum mismatch: " + newChecksum + " != " + checksum);
+        int computedChecksum = setHeaderChecksum(header);
+
+        if (storedChecksum != computedChecksum) {
+            throw new ChecksumException(id, storedChecksum, computedChecksum);
         }
     }
 

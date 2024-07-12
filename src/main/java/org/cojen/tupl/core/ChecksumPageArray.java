@@ -26,6 +26,8 @@ import java.util.function.Supplier;
 
 import java.util.zip.Checksum;
 
+import org.cojen.tupl.ChecksumException;
+
 import org.cojen.tupl.io.PageArray;
 import org.cojen.tupl.io.Utils;
 
@@ -99,13 +101,11 @@ abstract class ChecksumPageArray extends TransformedPageArray {
         return array == mSource ? this : ChecksumPageArray.open(array, mSupplier);
     }
 
-    static void check(long index, int actualChecksum, Checksum checksum) throws IOException { 
+    static void check(long index, int storedChecksum, Checksum checksum) throws ChecksumException { 
         // Note that checksum failures of header pages (0 and 1) are ignored. StoredPageDb
         // performs an independent check and selects the correct header.
-        if (actualChecksum != (int) checksum.getValue() && index > 1) {
-            throw new IOException
-                ("Checksum mismatch: " + Integer.toUnsignedString(actualChecksum, 16) + " != "
-                 + Integer.toUnsignedString((int) checksum.getValue(), 16) + "; page=" + index);
+        if (storedChecksum != (int) checksum.getValue() && index > 1) {
+            throw new ChecksumException(index, storedChecksum, (int) checksum.getValue());
         }
     }
 
@@ -261,11 +261,11 @@ abstract class ChecksumPageArray extends TransformedPageArray {
             } else {
                 // Assume that the caller has provided a buffer sized to match the direct page.
                 mSource.readPage(index, dst, offset, mAbsPageSize);
-                int actualChecksum = Utils.decodeIntLE(dst, offset + mAbsPageSize - 4);
+                int storedChecksum = Utils.decodeIntLE(dst, offset + mAbsPageSize - 4);
                 Checksum checksum = checksum();
                 checksum.reset();
                 checksum.update(dst, offset, length);
-                check(index, actualChecksum, checksum);
+                check(index, storedChecksum, checksum);
             }
         }
 
@@ -282,11 +282,11 @@ abstract class ChecksumPageArray extends TransformedPageArray {
             } else {
                 // Assume that the caller has provided a buffer sized to match the direct page.
                 mSource.readPage(index, dstPtr, offset, mAbsPageSize);
-                int actualChecksum = UNSAFE.getInt(dstPtr + offset + mAbsPageSize - 4);
+                int storedChecksum = UNSAFE.getInt(dstPtr + offset + mAbsPageSize - 4);
                 Checksum checksum = checksum();
                 checksum.reset();
                 checksum.update(DirectAccess.ref(dstPtr + offset, length));
-                check(index, actualChecksum, checksum);
+                check(index, storedChecksum, checksum);
             }
         }
 
