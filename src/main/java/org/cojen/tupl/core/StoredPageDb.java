@@ -279,15 +279,12 @@ final class StoredPageDb extends PageDb {
                         ChecksumException ex0;
 
                         try {
-                            header0 = readHeader(0);
+                            header0 = readHeader(debugListener, 0);
                             headerOffset0 = mHeaderOffset;
                             commitNumber0 = p_intGetLE(header0, I_COMMIT_NUMBER);
                             pageSize0 = p_intGetLE(header0, I_PAGE_SIZE);
                             ex0 = null;
                         } catch (ChecksumException e) {
-                            if (debugListener != null) {
-                                debugListener.notify(EventType.DEBUG, e.toString());
-                            }
                             issues = true;
                             header0 = p_null();
                             headerOffset0 = 0;
@@ -301,16 +298,13 @@ final class StoredPageDb extends PageDb {
                         }
 
                         try {
-                            header1 = readHeader(1);
+                            header1 = readHeader(debugListener, 1);
                             headerOffset1 = mHeaderOffset;
                             commitNumber1 = p_intGetLE(header1, I_COMMIT_NUMBER);
                         } catch (ChecksumException e) {
                             if (ex0 != null) {
                                 // File is completely unusable.
                                 throw ex0;
-                            }
-                            if (debugListener != null) {
-                                debugListener.notify(EventType.DEBUG, e.toString());
                             }
                             issues = true;
                             header = header0;
@@ -1068,7 +1062,7 @@ final class StoredPageDb extends PageDb {
         return checksum;
     }
 
-    private /*P*/ byte[] readHeader(int id) throws IOException {
+    private /*P*/ byte[] readHeader(EventListener debugListener, int id) throws IOException {
         mHeaderOffset = 0;
         var header = p_allocPage(directPageSize());
 
@@ -1078,6 +1072,9 @@ final class StoredPageDb extends PageDb {
             doReadHeader(header, 0, id);
             return header;
         } catch (ChecksumException e) {
+            if (debugListener != null) {
+                debugListener.notify(EventType.DEBUG, e.toString());
+            }
             ex = e;
         } catch (Throwable e) {
             p_delete(header);
@@ -1100,6 +1097,9 @@ final class StoredPageDb extends PageDb {
                 mHeaderOffset = offset;
                 return header;
             } catch (ChecksumException e) {
+                if (debugListener != null) {
+                    debugListener.notify(EventType.DEBUG, e.toString());
+                }
                 // Try another copy.
             } catch (Throwable e) {
                 break;
