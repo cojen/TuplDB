@@ -350,7 +350,6 @@ final class AggregatedQueryExpr extends QueryExpr {
                     if (name == null) {
                         Field field = newWorkField(long.class);
                         mRowNumName = name = field.name();
-                        ctor.field(name).set(1L);
                         field.inc(1L);
                         accumMaker.field(name).inc(1L);
                     }
@@ -361,9 +360,9 @@ final class AggregatedQueryExpr extends QueryExpr {
                 String groupNumName() {
                     String name = mGroupNumName;
                     if (name == null) {
-                        mGroupNumName = name = newWorkField(long.class).name();
-                        ctor.field(name).set(1L);
-                        accumMaker.field(name).inc(1L);
+                        Field field = newWorkField(long.class);
+                        mGroupNumName = name = field.name();
+                        field.inc(1L);
                     }
                     return name;
                 }
@@ -372,7 +371,9 @@ final class AggregatedQueryExpr extends QueryExpr {
                 String groupRowNumName() {
                     String name = mGroupRowNumName;
                     if (name == null) {
-                        mGroupRowNumName = name = newWorkField(long.class).set(1L).name();
+                        Field field = newWorkField(long.class);
+                        mGroupRowNumName = name = field.name();
+                        field.set(1L);
                         accumMaker.field(name).inc(1L);
                     }
                     return name;
