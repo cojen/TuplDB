@@ -337,7 +337,6 @@ final class GroupedQueryExpr extends QueryExpr {
                     if (name == null) {
                         Field field = newWorkField(long.class);
                         mRowNumName = name = field.name();
-                        ctor.field(name).set(1L);
                         field.inc(1L);
                         accumMaker.field(name).inc(1L);
                     }
@@ -348,9 +347,9 @@ final class GroupedQueryExpr extends QueryExpr {
                 String groupNumName() {
                     String name = mGroupNumName;
                     if (name == null) {
-                        mGroupNumName = name = newWorkField(long.class).name();
-                        ctor.field(name).set(1L);
-                        accumMaker.field(name).inc(1L);
+                        Field field = newWorkField(long.class);
+                        mGroupNumName = name = field.name();
+                        field.inc(1L);
                     }
                     return name;
                 }
@@ -359,7 +358,9 @@ final class GroupedQueryExpr extends QueryExpr {
                 String groupRowNumName() {
                     String name = mGroupRowNumName;
                     if (name == null) {
-                        mGroupRowNumName = name = newWorkField(long.class).set(1L).name();
+                        Field field = newWorkField(long.class);
+                        mGroupRowNumName = name = field.name();
+                        field.set(1L);
                         accumMaker.field(name).inc(1L);
                     }
                     return name;
@@ -419,8 +420,8 @@ final class GroupedQueryExpr extends QueryExpr {
             var argsVar = argCount == 0 ? null : stepMaker.field("args").get();
 
             // FIXME: Lack of sourceRowVar is a problem when some projected columns are just
-            //        plain projected columns. Do they need to be replaced with a special
-            //        function like what AggregatedQueryExpr does?
+            // plain projected columns. Do they need to be replaced with a special function
+            // like what AggregatedQueryExpr does? Yes, and they need buffering too.
             stepContext = new Context(argsVar, null) { // no sourceRowVar
                 Label mCheckLabel = stepMaker.label().here();
 
