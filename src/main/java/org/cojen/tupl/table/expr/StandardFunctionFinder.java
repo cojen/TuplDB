@@ -147,13 +147,13 @@ public final class StandardFunctionFinder extends SoftCache<String, Object, Obje
      * Defines a function which returns the second argument when the first argument is true,
      * else returns the third argument.
      */
-    private static class iff extends FunctionApplier.Plain {
-        iff(Type type) {
+    private static class iif extends FunctionApplier.Plain {
+        iif(Type type) {
             super(type);
         }
 
         @Override
-        public iff validate(Type[] argTypes, Map<String, Type> namedArgTypes,
+        public iif validate(Type[] argTypes, Map<String, Type> namedArgTypes,
                             Consumer<String> reason)
         {
             if (!checkNumArgs(3, 3, argTypes.length, reason)) {
@@ -177,7 +177,7 @@ public final class StandardFunctionFinder extends SoftCache<String, Object, Obje
             argTypes[1] = type;
             argTypes[2] = type;
 
-            return new iff(type);
+            return new iif(type);
         }
 
         @Override
