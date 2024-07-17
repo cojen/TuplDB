@@ -234,6 +234,9 @@ public final class CallExpr extends Expr {
         for (Expr arg : mArgs) {
             arg.gatherEvalColumns(c);
         }
+        for (Expr arg : mNamedArgs.values()) {
+            arg.gatherEvalColumns(c);
+        }
     }
 
     @Override
