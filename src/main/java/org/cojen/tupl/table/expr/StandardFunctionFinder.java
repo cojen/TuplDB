@@ -326,18 +326,21 @@ public final class StandardFunctionFinder extends SoftCache<String, Object, Obje
         }
 
         @Override
-        public void begin(GroupContext context) {
+        public void init(GroupContext context) {
             List<LazyValue> args = context.args();
+            if (!args.isEmpty() && args.get(0).expr().isNullable()) {
+                mCountFieldName = context.newWorkField(type().clazz()).name();
+            }
+        }
 
-            LazyValue arg;
-            if (args.isEmpty() || !(arg = args.get(0)).expr().isNullable()) {
+        @Override
+        public void begin(GroupContext context) {
+            if (mCountFieldName == null) {
                 return;
             }
-
-            Field countField = context.newWorkField(type().clazz());
-            mCountFieldName = countField.name();
-
-            MethodMaker mm = countField.methodMaker();
+            LazyValue arg = context.args().get(0);
+            MethodMaker mm = context.methodMaker();
+            Field countField = mm.field(mCountFieldName);
             Label notNull = mm.label();
             arg.eval(true).ifNe(null, notNull);
             countField.set(0L);
@@ -576,7 +579,7 @@ public final class StandardFunctionFinder extends SoftCache<String, Object, Obje
             String rangeMode = "rows";
             Expr rangeExpr = namedArgs.get(rangeMode);
 
-            if (!includesCurrent(rangeExpr)) {
+            if (rangeExpr != null && !includesCurrent(rangeExpr)) {
                 // Results can be null.
                 typeCode |= Type.TYPE_NULLABLE;
                 if (clazz == double.class) {
@@ -598,9 +601,13 @@ public final class StandardFunctionFinder extends SoftCache<String, Object, Obje
          * the current row of a window frame, which is zero.
          */
         private static boolean includesCurrent(Expr expr) {
-            return expr instanceof ConstantExpr c
-                && c.value() instanceof Range r
-                && r.start() <= 0 && 0 <= r.end();
+            if (expr instanceof ConstantExpr c) {
+                return c.value() instanceof Range r && r.start() <= 0 && 0 <= r.end();
+            } else if (expr instanceof RangeExpr re) {
+                return re.start().isZero() || re.end().isZero();
+            } else {
+                return false;
+            }
         }
 
         @Override
@@ -677,10 +684,14 @@ public final class StandardFunctionFinder extends SoftCache<String, Object, Obje
         }
 
         @Override
+        public void init(GroupContext context) {
+            mReadyFieldName = context.newWorkField(boolean.class).name();
+            mValueFieldName = context.newWorkField(type().clazz()).name();
+        }
+
+        @Override
         public void begin(GroupContext context) {
-            mReadyFieldName = context.newWorkField(boolean.class).set(true).name();
-            var value = context.args().get(0).eval(true);
-            mValueFieldName = context.newWorkField(type().clazz()).set(value).name();
+            accumulate(context);
         }
 
         @Override
@@ -730,8 +741,13 @@ public final class StandardFunctionFinder extends SoftCache<String, Object, Obje
         }
 
         @Override
+        public void init(GroupContext context) {
+            mReadyFieldName = context.newWorkField(boolean.class).name();
+        }
+
+        @Override
         public void begin(GroupContext context) {
-            mReadyFieldName = context.newWorkField(boolean.class).set(true).name();
+            accumulate(context);
         }
 
         @Override

@@ -307,7 +307,59 @@ final class GroupedQueryExpr extends QueryExpr {
         }
 
         Variable beginSourceVar, accumSourceVar, stepTargetVar;
-        Context beginContext, accumContext, finishedContext, stepContext;
+        Context initContext, beginContext, accumContext, finishedContext, stepContext;
+
+        {
+            var argsVar = argCount == 0 ? null : ctor.field("args").get();
+
+            initContext = new Context(argsVar, null) {
+                private int mNumWorkFields;
+                private String mRowNumName, mGroupNumName, mGroupRowNumName;
+
+                @Override
+                public MethodMaker methodMaker() {
+                    return ctor;
+                }
+
+                @Override
+                public FieldMaker newWorkField(Class<?> type) {
+                    String name = "w$" + ++mNumWorkFields;
+                    return methodMaker().classMaker().addField(type, name).private_();
+                }
+
+                @Override
+                String rowNumName() {
+                    String name = mRowNumName;
+                    if (name == null) {
+                        mRowNumName = name = newWorkField(long.class).name();
+                        beginMaker.field(name).inc(1L);
+                        accumMaker.field(name).inc(1L);
+                    }
+                    return name;
+                }
+
+                @Override
+                String groupNumName() {
+                    String name = mGroupNumName;
+                    if (name == null) {
+                        mGroupNumName = name = newWorkField(long.class).name();
+                        beginMaker.field(name).inc(1L);
+                    }
+                    return name;
+                }
+
+                @Override
+                String groupRowNumName() {
+                    String name = mGroupRowNumName;
+                    if (name == null) {
+                        mGroupRowNumName = name = newWorkField(long.class).name();
+                        beginMaker.field(name).set(1L);
+                        accumMaker.field(name).inc(1L);
+                    }
+                    return name;
+                }
+            };
+        }
 
         {
             beginSourceVar = beginMaker.param(0).cast(sourceType);
@@ -318,52 +370,18 @@ final class GroupedQueryExpr extends QueryExpr {
                 private String mRowNumName, mGroupNumName, mGroupRowNumName;
 
                 @Override
-                public Field newWorkField(Class<?> type, boolean final_, Consumer<Field> init) {
-                    String name = "w$" + ++mNumWorkFields;
-                    MethodMaker mm = methodMaker();
-                    FieldMaker fm = mm.classMaker().addField(type, name).private_();
-                    if (final_) {
-                        fm.final_();
-                    }
-                    if (init != null) {
-                        init.accept(ctor.field(name));
-                    }
-                    return mm.field(name);
-                }
-
-                @Override
                 String rowNumName() {
-                    String name = mRowNumName;
-                    if (name == null) {
-                        Field field = newWorkField(long.class);
-                        mRowNumName = name = field.name();
-                        field.inc(1L);
-                        accumMaker.field(name).inc(1L);
-                    }
-                    return name;
+                    return initContext.rowNumName();
                 }
 
                 @Override
                 String groupNumName() {
-                    String name = mGroupNumName;
-                    if (name == null) {
-                        Field field = newWorkField(long.class);
-                        mGroupNumName = name = field.name();
-                        field.inc(1L);
-                    }
-                    return name;
+                    return initContext.groupNumName();
                 }
 
                 @Override
                 String groupRowNumName() {
-                    String name = mGroupRowNumName;
-                    if (name == null) {
-                        Field field = newWorkField(long.class);
-                        mGroupRowNumName = name = field.name();
-                        field.set(1L);
-                        accumMaker.field(name).inc(1L);
-                    }
-                    return name;
+                    return initContext.groupRowNumName();
                 }
             };
         }
@@ -375,17 +393,17 @@ final class GroupedQueryExpr extends QueryExpr {
             accumContext = new Context(argsVar, accumSourceVar) {
                 @Override
                 String rowNumName() {
-                    return beginContext.rowNumName();
+                    return initContext.rowNumName();
                 }
 
                 @Override
                 String groupNumName() {
-                    return beginContext.groupNumName();
+                    return initContext.groupNumName();
                 }
 
                 @Override
                 String groupRowNumName() {
-                    return beginContext.groupRowNumName();
+                    return initContext.groupRowNumName();
                 }
             };
         }
@@ -400,17 +418,17 @@ final class GroupedQueryExpr extends QueryExpr {
                 }
 
                 String rowNumName() {
-                    return beginContext.rowNumName();
+                    return initContext.rowNumName();
                 }
 
                 @Override
                 String groupNumName() {
-                    return beginContext.groupNumName();
+                    return initContext.groupNumName();
                 }
 
                 @Override
                 String groupRowNumName() {
-                    return beginContext.groupRowNumName();
+                    return initContext.groupRowNumName();
                 }
             };
         }
@@ -428,6 +446,11 @@ final class GroupedQueryExpr extends QueryExpr {
                 @Override
                 public MethodMaker methodMaker() {
                     return stepMaker;
+                }
+
+                @Override
+                EvalContext initContext() {
+                    return initContext;
                 }
 
                 @Override
@@ -453,17 +476,17 @@ final class GroupedQueryExpr extends QueryExpr {
 
                 @Override
                 String rowNumName() {
-                    return beginContext.rowNumName();
+                    return initContext.rowNumName();
                 }
 
                 @Override
                 String groupNumName() {
-                    return beginContext.groupNumName();
+                    return initContext.groupNumName();
                 }
 
                 @Override
                 String groupRowNumName() {
-                    return beginContext.groupRowNumName();
+                    return initContext.groupRowNumName();
                 }
             };
         }

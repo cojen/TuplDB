@@ -23,8 +23,8 @@ import java.math.BigInteger;
 /**
  * Defines a growable circular buffer of values, which act upon moving ranges of values known
  * as frames. The implementations of the sum and average methods perform a full calculation
- * over each range rather than performing incremental calculations. Although less efficient, it
- * is more accurate. If the frame is constant, consider performing incremental calculations
+ * over each range rather than performing incremental calculations. Although less efficient,
+ * it's more accurate. If the frame is constant, consider performing incremental calculations
  * instead.
  *
  * @author Brian S. O'Neill
@@ -81,8 +81,9 @@ public final class WindowBuffer<V> extends ValueBuffer<V> {
 
     /**
      * Increment the current row by one. Should only be called when the frame start is
-     * constantly open (< min int). It should be noted that an open range never removes
-     * anything from the buffer, and so a buffer probably shouldn't be used at all.
+     * constantly open (< min int) or is never a constant. It should be noted that an open
+     * range never removes anything from the buffer, and so a buffer probably shouldn't be used
+     * at all.
      */
     public void advance() {
         mStart--;

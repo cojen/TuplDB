@@ -23,6 +23,7 @@ import java.util.Map;
 import java.util.function.Consumer;
 
 import org.cojen.maker.Field;
+import org.cojen.maker.FieldMaker;
 import org.cojen.maker.Label;
 import org.cojen.maker.MethodMaker;
 import org.cojen.maker.Variable;
@@ -179,19 +180,9 @@ public abstract class FunctionApplier {
 
     public static interface GroupContext extends FunctionContext {
         /**
-         * Defines a new field with the given type. Should only be called by a begin method.
+         * Defines a new field with the given type. Should only be called by a init method.
          */
-        default Field newWorkField(Class<?> type) {
-            return newWorkField(type, false, null);
-        }
-
-        /**
-         * Defines a new field with the given type. Should only be called by a begin method.
-         *
-         * @param final true if the field should be final
-         * @param init optional code to initialize the field in the constructor
-         */
-        default Field newWorkField(Class<?> type, boolean final_, Consumer<Field> init) {
+        default FieldMaker newWorkField(Class<?> type) {
             throw new IllegalStateException();
         }
 
@@ -229,6 +220,8 @@ public abstract class FunctionApplier {
             return true;
         }
 
+        abstract void init(GroupContext context);
+
         abstract void begin(GroupContext context);
 
         abstract void accumulate(GroupContext context);
@@ -244,9 +237,15 @@ public abstract class FunctionApplier {
         }
 
         /**
-         * Generate code for the first row in the group. The given context can be called to
-         * make and initialize all of the necessary work fields, and the applier instance needs
-         * to maintain references to their names.
+         * Generate code for the constructor. The given context can be called to make and
+         * initialize all of the necessary work fields, and the applier instance needs to
+         * maintain references to their names.
+         */
+        @Override
+        public abstract void init(GroupContext context);
+
+        /**
+         * Generate code for the first row in the group.
          */
         @Override
         public abstract void begin(GroupContext context);
@@ -283,9 +282,15 @@ public abstract class FunctionApplier {
         }
 
         /**
-         * Generate code for the first row in the group. The given context can be called to
-         * make and initialize all of the necessary work fields, and the applier instance needs
-         * to maintain references to their names.
+         * Generate code for the constructor. The given context can be called to make and
+         * initialize all of the necessary work fields, and the applier instance needs to
+         * maintain references to their names.
+         */
+        @Override
+        public abstract void init(GroupContext context);
+
+        /**
+         * Generate code for the first row in the group.
          */
         @Override
         public abstract void begin(GroupContext context);
@@ -313,9 +318,13 @@ public abstract class FunctionApplier {
         }
 
         @Override
+        public void init(GroupContext context) {
+            mWorkFieldName = context.newWorkField(type().clazz()).name();
+        }
+
+        @Override
         public void begin(GroupContext context) {
-            Variable arg = eval(context.args().get(0));
-            mWorkFieldName = context.newWorkField(type().clazz()).set(arg).name();
+            workField(context).set(eval(context.args().get(0)));
         }
 
         @Override
@@ -426,25 +435,32 @@ public abstract class FunctionApplier {
         }
 
         @Override
+        public final void init(GroupContext context) {
+            if (!nullSkip()) {
+                super.init(context);
+                return;
+            }
+
+            if (requireCountField()) {
+                mCountFieldName = context.newWorkField(long.class).name();
+            }
+
+            mWorkFieldName = context.newWorkField(type().clazz()).name();
+        }
+
+        @Override
         public final void begin(GroupContext context) {
             if (!nullSkip()) {
                 super.begin(context);
                 return;
             }
 
-            Field countField;
-            if (requireCountField()) {
-                countField = context.newWorkField(long.class);
-                mCountFieldName = countField.name();
-            } else {
-                countField = null;
-            }
+            var arg = eval(context.args().get(0));
+            workField(context).set(arg);
 
-            Variable arg = eval(context.args().get(0));
-            mWorkFieldName = context.newWorkField(type().clazz()).set(arg).name();
-
-            if (countField != null) {
+            if (mCountFieldName != null) {
                 MethodMaker mm = context.methodMaker();
+                Field countField = mm.field(mCountFieldName);
                 Label notNull = mm.label();
                 arg.ifNe(null, notNull);
                 countField.set(0L);
@@ -526,26 +542,39 @@ public abstract class FunctionApplier {
         }
 
         @Override
+        public final void init(GroupContext context) {
+            if (!nullAsZero()) {
+                super.init(context);
+                return;
+            }
+
+            if (requireCountField()) {
+                mCountFieldName = context.newWorkField(long.class).name();
+            }
+
+            mWorkFieldName = context.newWorkField(type().clazz()).name();
+        }
+
+        @Override
         public final void begin(GroupContext context) {
             if (!nullAsZero()) {
                 super.begin(context);
                 return;
             }
 
+            MethodMaker mm = context.methodMaker();
+
             Field countField;
-            if (requireCountField()) {
-                countField = context.newWorkField(long.class);
-                mCountFieldName = countField.name();
+            if (mCountFieldName != null) {
+                countField = mm.field(mCountFieldName);
             } else {
                 countField = null;
             }
 
-            Field workField = context.newWorkField(type().clazz());
-            mWorkFieldName = workField.name();
+            Field workField = workField(context);
 
             Variable arg = eval(context.args().get(0));
 
-            MethodMaker mm = context.methodMaker();
             Label notNull = mm.label();
             arg.ifNe(null, notNull);
             Arithmetic.zero(workField);

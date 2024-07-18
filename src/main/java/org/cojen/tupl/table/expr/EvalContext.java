@@ -52,6 +52,14 @@ class EvalContext implements FunctionApplier.GroupContext {
     }
 
     /**
+     * Returns a context to use for the FunctionApplier Aggregated/Grouped init method. Throws
+     * IllegalStateException when not supported.
+     */
+    EvalContext initContext() {
+        throw new IllegalStateException();
+    }
+
+    /**
      * Returns a context to use for the FunctionApplier Aggregated/Grouped begin method. Throws
      * IllegalStateException when not supported.
      */

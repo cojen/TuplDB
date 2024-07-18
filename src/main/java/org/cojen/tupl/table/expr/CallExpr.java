@@ -26,7 +26,7 @@ import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
-import org.cojen.maker.Field;
+import org.cojen.maker.FieldMaker;
 import org.cojen.maker.MethodMaker;
 import org.cojen.maker.Variable;
 
@@ -250,6 +250,11 @@ public final class CallExpr extends Expr {
         }
 
         if (mApplier instanceof FunctionApplier.Aggregated aggregated) {
+            withArgs(context.initContext(), ctx -> {
+                aggregated.init(ctx);
+                return null;
+            });
+
             withArgs(context.beginContext(), ctx -> {
                 aggregated.begin(ctx);
                 return null;
@@ -264,6 +269,11 @@ public final class CallExpr extends Expr {
         }
 
         if (mApplier instanceof FunctionApplier.Grouped grouped) {
+            withArgs(context.initContext(), ctx -> {
+                grouped.init(ctx);
+                return null;
+            });
+
             withArgs(context.beginContext(), ctx -> {
                 grouped.begin(ctx);
                 return null;
@@ -320,13 +330,8 @@ public final class CallExpr extends Expr {
             }
 
             @Override
-            public Field newWorkField(Class<?> type) {
+            public FieldMaker newWorkField(Class<?> type) {
                 return context.newWorkField(type);
-            }
-
-            @Override
-            public Field newWorkField(Class<?> type, boolean final_, Consumer<Field> init) {
-                return context.newWorkField(type, final_, init);
             }
 
             @Override

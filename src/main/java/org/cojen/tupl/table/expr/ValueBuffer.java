@@ -82,6 +82,14 @@ public class ValueBuffer<V> {
     }
 
     /**
+     * Returns a value at the given index, where zero always represents the first value.
+     */
+    public final V get(int index) {
+        V[] values = mValues;
+        return values[(mFirst + index) & (values.length - 1)];
+    }
+
+    /**
      * Remove the given amount of values from the first.
      */
     public final void remove(int amount) {
@@ -90,11 +98,14 @@ public class ValueBuffer<V> {
     }
 
     /**
-     * Returns a value at the given index, where zero always represents the first value.
+     * Removes and returns the first value.
      */
-    public final V get(int index) {
+    public final V removeFirst() {
         V[] values = mValues;
-        return values[(mFirst + index) & (values.length - 1)];
+        int first = mFirst;
+        mFirst = (first + 1) & (values.length - 1);
+        mSize--;
+        return values[first & (values.length - 1)];
     }
 
     /**
@@ -190,14 +201,22 @@ public class ValueBuffer<V> {
             return newValues;
         }
 
+        public final byte get(int index) {
+            byte[] values = mValues;
+            return values[(mFirst + index) & (values.length - 1)];
+        }
+
         public final void remove(int amount) {
             mFirst = (mFirst + amount) & (mValues.length - 1);
             mSize -= amount;
         }
 
-        public final byte get(int index) {
+        public final byte removeFirst() {
             byte[] values = mValues;
-            return values[(mFirst + index) & (values.length - 1)];
+            int first = mFirst;
+            mFirst = (first + 1) & (values.length - 1);
+            mSize--;
+            return values[first & (values.length - 1)];
         }
     }
 
@@ -242,14 +261,22 @@ public class ValueBuffer<V> {
             return newValues;
         }
 
+        public final short get(int index) {
+            short[] values = mValues;
+            return values[(mFirst + index) & (values.length - 1)];
+        }
+
         public final void remove(int amount) {
             mFirst = (mFirst + amount) & (mValues.length - 1);
             mSize -= amount;
         }
 
-        public final short get(int index) {
+        public final short removeFirst() {
             short[] values = mValues;
-            return values[(mFirst + index) & (values.length - 1)];
+            int first = mFirst;
+            mFirst = (first + 1) & (values.length - 1);
+            mSize--;
+            return values[first & (values.length - 1)];
         }
     }
 
@@ -294,14 +321,22 @@ public class ValueBuffer<V> {
             return newValues;
         }
 
+        public final int get(int index) {
+            int[] values = mValues;
+            return values[(mFirst + index) & (values.length - 1)];
+        }
+
         public final void remove(int amount) {
             mFirst = (mFirst + amount) & (mValues.length - 1);
             mSize -= amount;
         }
 
-        public final int get(int index) {
+        public final int removeFirst() {
             int[] values = mValues;
-            return values[(mFirst + index) & (values.length - 1)];
+            int first = mFirst;
+            mFirst = (first + 1) & (values.length - 1);
+            mSize--;
+            return values[first & (values.length - 1)];
         }
     }
 
@@ -346,14 +381,22 @@ public class ValueBuffer<V> {
             return newValues;
         }
 
+        public final long get(int index) {
+            long[] values = mValues;
+            return values[(mFirst + index) & (values.length - 1)];
+        }
+
         public final void remove(int amount) {
             mFirst = (mFirst + amount) & (mValues.length - 1);
             mSize -= amount;
         }
 
-        public final long get(int index) {
+        public final long removeFirst() {
             long[] values = mValues;
-            return values[(mFirst + index) & (values.length - 1)];
+            int first = mFirst;
+            mFirst = (first + 1) & (values.length - 1);
+            mSize--;
+            return values[first & (values.length - 1)];
         }
 
         public final long sum(int from, int num) {
@@ -420,14 +463,22 @@ public class ValueBuffer<V> {
             return newValues;
         }
 
+        public final Long get(int index) {
+            Long[] values = mValues;
+            return values[(mFirst + index) & (values.length - 1)];
+        }
+
         public final void remove(int amount) {
             mFirst = (mFirst + amount) & (mValues.length - 1);
             mSize -= amount;
         }
 
-        public final Long get(int index) {
+        public final Long removeFirst() {
             Long[] values = mValues;
-            return values[(mFirst + index) & (values.length - 1)];
+            int first = mFirst;
+            mFirst = (first + 1) & (values.length - 1);
+            mSize--;
+            return values[first & (values.length - 1)];
         }
 
         public final int count(int from, int num) {
@@ -527,14 +578,22 @@ public class ValueBuffer<V> {
             return newValues;
         }
 
+        public final float get(int index) {
+            float[] values = mValues;
+            return values[(mFirst + index) & (values.length - 1)];
+        }
+
         public final void remove(int amount) {
             mFirst = (mFirst + amount) & (mValues.length - 1);
             mSize -= amount;
         }
 
-        public final float get(int index) {
+        public final float removeFirst() {
             float[] values = mValues;
-            return values[(mFirst + index) & (values.length - 1)];
+            int first = mFirst;
+            mFirst = (first + 1) & (values.length - 1);
+            mSize--;
+            return values[first & (values.length - 1)];
         }
     }
 
@@ -579,14 +638,22 @@ public class ValueBuffer<V> {
             return newValues;
         }
 
+        public final double get(int index) {
+            double[] values = mValues;
+            return values[(mFirst + index) & (values.length - 1)];
+        }
+
         public final void remove(int amount) {
             mFirst = (mFirst + amount) & (mValues.length - 1);
             mSize -= amount;
         }
 
-        public final double get(int index) {
+        public final double removeFirst() {
             double[] values = mValues;
-            return values[(mFirst + index) & (values.length - 1)];
+            int first = mFirst;
+            mFirst = (first + 1) & (values.length - 1);
+            mSize--;
+            return values[first & (values.length - 1)];
         }
 
         public final double sum(int from, int num) {
@@ -653,14 +720,22 @@ public class ValueBuffer<V> {
             return newValues;
         }
 
+        public final Double get(int index) {
+            Double[] values = mValues;
+            return values[(mFirst + index) & (values.length - 1)];
+        }
+
         public final void remove(int amount) {
             mFirst = (mFirst + amount) & (mValues.length - 1);
             mSize -= amount;
         }
 
-        public final Double get(int index) {
+        public final Double removeFirst() {
             Double[] values = mValues;
-            return values[(mFirst + index) & (values.length - 1)];
+            int first = mFirst;
+            mFirst = (first + 1) & (values.length - 1);
+            mSize--;
+            return values[first & (values.length - 1)];
         }
 
         public final int count(int from, int num) {
@@ -760,14 +835,22 @@ public class ValueBuffer<V> {
             return newValues;
         }
 
+        public final BigInteger get(int index) {
+            BigInteger[] values = mValues;
+            return values[(mFirst + index) & (values.length - 1)];
+        }
+
         public final void remove(int amount) {
             mFirst = (mFirst + amount) & (mValues.length - 1);
             mSize -= amount;
         }
 
-        public final BigInteger get(int index) {
+        public final BigInteger removeFirst() {
             BigInteger[] values = mValues;
-            return values[(mFirst + index) & (values.length - 1)];
+            int first = mFirst;
+            mFirst = (first + 1) & (values.length - 1);
+            mSize--;
+            return values[first & (values.length - 1)];
         }
 
         public final int count(int from, int num) {
@@ -867,14 +950,22 @@ public class ValueBuffer<V> {
             return newValues;
         }
 
+        public final BigDecimal get(int index) {
+            BigDecimal[] values = mValues;
+            return values[(mFirst + index) & (values.length - 1)];
+        }
+
         public final void remove(int amount) {
             mFirst = (mFirst + amount) & (mValues.length - 1);
             mSize -= amount;
         }
 
-        public final BigDecimal get(int index) {
+        public final BigDecimal removeFirst() {
             BigDecimal[] values = mValues;
-            return values[(mFirst + index) & (values.length - 1)];
+            int first = mFirst;
+            mFirst = (first + 1) & (values.length - 1);
+            mSize--;
+            return values[first & (values.length - 1)];
         }
 
         public final int count(int from, int num) {

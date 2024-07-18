@@ -25,6 +25,7 @@ import java.util.Map;
 import java.util.function.Consumer;
 
 import org.cojen.maker.Label;
+import org.cojen.maker.FieldMaker;
 import org.cojen.maker.MethodMaker;
 import org.cojen.maker.Variable;
 
@@ -48,11 +49,16 @@ final class StandardWindowFunctions {
         private final Type mOriginalType;
         private final String mArgName;
 
-        // Range start/end, if constant. See the endConstant and startConstant methods.
+        // True if the range start/end is a compile-time or run-time constant.
+        private boolean mIsStartConstant, mIsEndConstant;
+
+        // Is set if the range start/end is a compile-time constant.
         private Long mStartConstant, mEndConstant;
 
-        // References a Range instance. Is null if the start and are both constant.
-        private String mRangeFieldName;
+        // References the start/end of the frame range. Is null if start/end is
+        // compile-constant. The field type is long when the start/end is a runtime constant,
+        // and is a ValueBuffer.OfLong when the start/end is variable.
+        private String mStartFieldName, mEndFieldName;
 
         // References a WindowBuffer instance.
         private String mBufferFieldName;
@@ -77,21 +83,55 @@ final class StandardWindowFunctions {
             throw new AssertionError();
         }
 
-        // FIXME: If the range could extend outside the window, then nulls are possible, so
-        // update the type. Have the avg class do this?
-
         @Override
-        public void begin(GroupContext context) {
-            var valueVar = context.args().get(0).eval(true);
-
+        public void init(GroupContext context) {
             LazyValue rangeVal = context.namedArgs().get(mArgName);
 
-            mStartConstant = startConstant(rangeVal);
-            mEndConstant = endConstant(rangeVal);
+            if (rangeVal.isConstant()) {
+                mIsStartConstant = true;
+                mIsEndConstant = true;
+                var range = (Range) rangeVal.constantValue();
+                mStartConstant = verifyBoundary(range.start());
+                mEndConstant = verifyBoundary(range.end());
+            } else if (rangeVal.expr() instanceof RangeExpr re) {
+                if (re.start().isConstant()) {
+                    mIsStartConstant = true;
+                    if (re.start() instanceof ConstantExpr c) {
+                        mStartConstant = verifyBoundary((Number) c.value());
+                    }
+                }
+                if (re.end().isConstant()) {
+                    mIsEndConstant = true;
+                    if (re.end() instanceof ConstantExpr c) {
+                        mEndConstant = verifyBoundary((Number) c.value());
+                    }
+                }
+            }
 
-            if (mStartConstant == null || mEndConstant == null) {
-                var rangeVar = rangeVal.eval(true);
-                mRangeFieldName = context.newWorkField(Range.class).set(rangeVar).name();
+            MethodMaker mm = context.methodMaker();
+
+            if (mStartConstant == null) {
+                String fieldName;
+                if (mIsStartConstant) {
+                    fieldName = context.newWorkField(long.class).final_().name();
+                    mm.field(fieldName).set(rangeVal.eval(true).invoke("start"));
+                } else {
+                    fieldName = context.newWorkField(ValueBuffer.OfLong.class).final_().name();
+                    mm.field(fieldName).set(mm.new_(ValueBuffer.OfLong.class, 8));
+                }
+                mStartFieldName = fieldName;
+            }
+
+            if (mEndConstant == null) {
+                String fieldName;
+                if (mIsEndConstant) {
+                    fieldName = context.newWorkField(long.class).final_().name();
+                    mm.field(fieldName).set(rangeVal.eval(true).invoke("end"));
+                } else {
+                    fieldName = context.newWorkField(ValueBuffer.OfLong.class).final_().name();
+                    mm.field(fieldName).set(mm.new_(ValueBuffer.OfLong.class, 8));
+                }
+                mEndFieldName = fieldName;
             }
 
             final Class<?> bufferType;
@@ -109,41 +149,64 @@ final class StandardWindowFunctions {
                 }
             }
 
-            var bufferField = context.newWorkField(bufferType, true, f -> {
-                MethodMaker mm = f.methodMaker();
-                Variable bufferVar;
-                if (mStartConstant != null && mEndConstant != null) {
-                    int capacity = WindowBuffer.capacityFor(mStartConstant, mEndConstant);
-                    bufferVar = mm.new_(bufferType, capacity);
-                } else {
-                    var rangeVar = rangeVal.eval(true);
-                    bufferVar = mm.var(WindowBuffer.class).invoke
-                        ("capacityFor", rangeVar.invoke("start"), rangeVar.invoke("end"));
-                }
-                f.set(bufferVar);
-            });
+            FieldMaker bufferFieldMaker = context.newWorkField(bufferType);
+            mBufferFieldName = bufferFieldMaker.name();
+
+            if (mStartConstant != null && mEndConstant != null) {
+                bufferFieldMaker.final_();
+                int capacity = WindowBuffer.capacityFor(mStartConstant, mEndConstant);
+                mm.field(mBufferFieldName).set(mm.new_(bufferType, capacity));
+            }
+
+            mRemainingFieldName = context.newWorkField(long.class).name();
+        }
+
+        @Override
+        public void begin(GroupContext context) {
+            var valueVar = context.args().get(0).eval(true);
+
+            LazyValue rangeVal = context.namedArgs().get(mArgName);
+
+            MethodMaker mm = context.methodMaker();
+
+            if (isStartVariable()) {
+                mm.field(mStartFieldName).invoke("add", rangeVal.eval(true).invoke("start"));
+            }
+
+            if (isEndVariable()) {
+                mm.field(mEndFieldName).invoke("add", rangeVal.eval(true).invoke("end"));
+            }
+
+            var bufferField = mm.field(mBufferFieldName);
+
+            if (mStartConstant == null || mEndConstant == null) {
+                var rangeVar = rangeVal.eval(true);
+                var capacityVar = mm.var(WindowBuffer.class).invoke
+                    ("capacityFor", rangeVar.invoke("start"), rangeVar.invoke("end"));
+                Class<?> bufferType = bufferField.classType();
+                bufferField.set(mm.new_(bufferType, capacityVar));
+            }
 
             bufferField.invoke("begin", valueVar);
-            mBufferFieldName = bufferField.name();
 
             // Set the initial value with the highest bit set to indicate not finished yet.
-            mRemainingFieldName = context.newWorkField(long.class).set((1L << 63) + 1).name();
+            mm.field(mRemainingFieldName).set((1L << 63) + 1);
         }
 
         @Override
         public void accumulate(GroupContext context) {
             var valueVar = context.args().get(0).eval(true);
 
+            LazyValue rangeVal = context.namedArgs().get(mArgName);
+
             MethodMaker mm = context.methodMaker();
 
-            if (mRangeFieldName != null) {
-                LazyValue rangeVal = context.namedArgs().get(mArgName);
-                // If the range is a constant evaluated at run time, then no need to update it.
-                // FIXME: If range is constant, then assign in the constuctor. The
-                // FunctionApplier will need a new "init" method or something.
-                if (!rangeVal.expr().isConstant()) {
-                    mm.field(mRangeFieldName).set(rangeVal.eval(true));
-                }
+            if (isStartVariable()) {
+                mm.field(mStartFieldName).invoke("add", rangeVal.eval(true).invoke("start"));
+            }
+
+            if (isEndVariable()) {
+                mm.field(mEndFieldName).invoke("add", rangeVal.eval(true).invoke("end"));
             }
 
             mm.field(mBufferFieldName).invoke("append", valueVar);
@@ -165,15 +228,13 @@ final class StandardWindowFunctions {
             mm.field(mRemainingFieldName).ifGt(0L, ready);
 
             if (!isOpenEnd()) {
-                var bufferField = mm.field(mBufferFieldName);
-                Variable readyVar;
-                if (mEndConstant != null) {
-                    readyVar = bufferField.invoke("ready", Math.toIntExact(mEndConstant));
+                final Object end;
+                if (mIsEndConstant) {
+                    end = mEndConstant != null ? mEndConstant : mm.field(mEndFieldName);
                 } else {
-                    var rangeVar = mm.field(mRangeFieldName);
-                    readyVar = bufferField.invoke("ready", rangeVar.invoke("end"));
+                    end = mm.field(mEndFieldName).invoke("get", 0);
                 }
-                readyVar.ifTrue(ready);
+                mm.field(mBufferFieldName).invoke("ready", end).ifTrue(ready);
             }
 
             mm.return_(null); // not ready
@@ -184,32 +245,27 @@ final class StandardWindowFunctions {
         public Variable step(GroupContext context) {
             MethodMaker mm = context.methodMaker();
 
-            Variable rangeVar = null;
-            if (mRangeFieldName != null) {
-                rangeVar = mm.field(mRangeFieldName).get();
-            }
-
             var bufferVar = mm.field(mBufferFieldName).get();
 
-            Object start, end;
+            final Object start, end;
 
-            if (mStartConstant != null) {
-                start = mStartConstant;
+            if (mIsStartConstant) {
+                start = mStartConstant != null ? mStartConstant : mm.field(mStartFieldName);
             } else {
-                start = rangeVar.invoke("start");
+                start = mm.field(mStartFieldName).invoke("removeFirst");
             }
 
-            if (mEndConstant != null) {
-                end = mEndConstant;
+            if (mIsEndConstant) {
+                end = mEndConstant != null ? mEndConstant : mm.field(mEndFieldName);
             } else {
-                end = rangeVar.invoke("end");
+                end = mm.field(mEndFieldName).invoke("removeFirst");
             }
 
             var resultVar = bufferVar.invoke("frameAverage", start, end);
 
             mm.field(mRemainingFieldName).inc(-1);
 
-            if (isOpenStart()) {
+            if (isOpenStart() || !mIsStartConstant) {
                 bufferVar.invoke("advance");
             } else if (mStartConstant != null && mStartConstant >= 0) {
                 bufferVar.invoke("advanceAndRemove");
@@ -221,41 +277,19 @@ final class StandardWindowFunctions {
         }
 
         private boolean isOpenStart() {
-            return mStartConstant == Long.MIN_VALUE;
+            return mStartConstant != null && mStartConstant == Long.MIN_VALUE;
         }
 
         private boolean isOpenEnd() {
-            return mEndConstant == Long.MAX_VALUE;
+            return mEndConstant != null && mEndConstant == Long.MAX_VALUE;
         }
 
-        /**
-         * @return null if the range start isn't a constant, Long.MIN_VALUE if open, or else a
-         * 32-bit integer value
-         */
-        private static Long startConstant(LazyValue rangeVal) {
-            if (rangeVal.isConstant()) {
-                return verifyBoundary(((Range) rangeVal.constantValue()).start());
-            }
-            Expr start = ((RangeExpr) rangeVal.expr()).start();
-            if (start instanceof ConstantExpr c) {
-                return verifyBoundary((Long) c.value());
-            }
-            return null;
+        private boolean isStartVariable() {
+            return !mIsStartConstant && mStartConstant == null;
         }
 
-        /**
-         * @return null if the range end isn't a constant, Long.MAX_VALUE if open, or else a
-         * 32-bit integer value
-         */
-        private static Long endConstant(LazyValue rangeVal) {
-            if (rangeVal.isConstant()) {
-                return verifyBoundary(((Range) rangeVal.constantValue()).end());
-            }
-            Expr end = ((RangeExpr) rangeVal.expr()).end();
-            if (end instanceof ConstantExpr c) {
-                return verifyBoundary((Long) c.value());
-            }
-            return null;
+        private boolean isEndVariable() {
+            return !mIsEndConstant && mEndConstant == null;
         }
 
         private static Long verifyBoundary(Long value) {
@@ -263,6 +297,17 @@ final class StandardWindowFunctions {
                 || value == Long.MIN_VALUE || value == Long.MAX_VALUE)
             {
                 return value;
+            }
+            // RangeExpr is responsible for clamping the range.
+            throw new IllegalStateException();
+        }
+
+        private static Long verifyBoundary(Number value) {
+            if (value instanceof Long v) {
+                return verifyBoundary(v);
+            }
+            if (value instanceof Integer v) {
+                return (long)((int) v);
             }
             // RangeExpr is responsible for clamping the range.
             throw new IllegalStateException();
