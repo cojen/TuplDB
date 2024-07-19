@@ -218,6 +218,14 @@ public abstract sealed class Expr
     public abstract Expr asAggregate(Set<String> group);
 
     /**
+     * Returns true if this expression represents a range and is guaranteed to include the
+     * current row of a window frame, which is denoted with a constant value of zero.
+     */
+    public boolean isRangeWithCurrent() {
+        return false;
+    }
+
+    /**
      * Returns this or a replacement expression such that expressions in the given map are
      * replaced.
      *

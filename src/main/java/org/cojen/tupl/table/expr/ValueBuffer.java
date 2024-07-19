@@ -144,6 +144,7 @@ public class ValueBuffer<V> {
      *
      * @param from inclusive first index
      * @param num number of values to sum together
+     * @throws ArithmeticException if overflows
      */
     public final V sum(int from, int num) {
         throw new UnsupportedOperationException();
@@ -155,6 +156,7 @@ public class ValueBuffer<V> {
      *
      * @param from inclusive first index
      * @param num number of values to average together
+     * @throws ArithmeticException if overflows or division by zero cannot be represented
      */
     public final V average(int from, int num) {
         throw new UnsupportedOperationException();
@@ -341,8 +343,8 @@ public class ValueBuffer<V> {
     }
 
     public static class OfLong {
-        private long[] mValues;
-        private int mFirst, mSize;
+        long[] mValues;
+        int mFirst, mSize;
 
         public OfLong(int initialCapacity) {
             initialCapacity = Utils.roundUpPower2(initialCapacity);
@@ -399,7 +401,7 @@ public class ValueBuffer<V> {
             return values[first & (values.length - 1)];
         }
 
-        public final long sum(int from, int num) {
+        public long sum(int from, int num) {
             long[] values = mValues;
             int first = (mFirst + from) & (values.length - 1);
             int end = first + num;
@@ -422,9 +424,34 @@ public class ValueBuffer<V> {
         }
     }
 
+    public static class OfULong extends OfLong {
+        public OfULong(int initialCapacity) {
+            super(initialCapacity);
+        }
+
+        @Override
+        public final long sum(int from, int num) {
+            long[] values = mValues;
+            int first = (mFirst + from) & (values.length - 1);
+            int end = first + num;
+            long sum = 0;
+            if (end > values.length) {
+                while (first < values.length) {
+                    sum = Arithmetic.ULong.addExact(sum, values[first++]);
+                }
+                end -= first;
+                first = 0;
+            }
+            while (first < end) {
+                sum = Arithmetic.ULong.addExact(sum, values[first++]);
+            }
+            return sum;
+        }
+    }
+
     public static class OfLongObj {
-        private Long[] mValues;
-        private int mFirst, mSize;
+        Long[] mValues;
+        int mFirst, mSize;
 
         public OfLongObj(int initialCapacity) {
             initialCapacity = Utils.roundUpPower2(initialCapacity);
@@ -485,7 +512,7 @@ public class ValueBuffer<V> {
             return ValueBuffer.count(mValues, mFirst + from, num);
         }
 
-        public final Long sum(int from, int num) {
+        public long sum(int from, int num) {
             Long[] values = mValues;
             int first = (mFirst + from) & (values.length - 1);
             int end = first + num;
@@ -509,7 +536,7 @@ public class ValueBuffer<V> {
             return sum;
         }
 
-        public final Long average(int from, int num) {
+        public Long average(int from, int num) {
             Long[] values = mValues;
             int first = (mFirst + from) & (values.length - 1);
             int end = first + num;
@@ -530,6 +557,65 @@ public class ValueBuffer<V> {
                 Long addend = values[first++];
                 if (addend != null) {
                     sum = Math.addExact(sum, addend);
+                    count++;
+                }
+            }
+            return count == 0 ? null : (sum / count);
+        }
+    }
+
+    public static class OfULongObj extends OfLongObj {
+        public OfULongObj(int initialCapacity) {
+            super(initialCapacity);
+        }
+
+        @Override
+        public final long sum(int from, int num) {
+            Long[] values = mValues;
+            int first = (mFirst + from) & (values.length - 1);
+            int end = first + num;
+            Long sum = 0L;
+            if (end > values.length) {
+                while (first < values.length) {
+                    Long addend = values[first++];
+                    if (addend != null) {
+                        sum = Arithmetic.ULong.addExact(sum, addend);
+                    }
+                }
+                end -= first;
+                first = 0;
+            }
+            while (first < end) {
+                Long addend = values[first++];
+                if (addend != null) {
+                    sum = Arithmetic.ULong.addExact(sum, addend);
+                }
+            }
+            return sum;
+        }
+
+        @Override
+        public final Long average(int from, int num) {
+            Long[] values = mValues;
+            int first = (mFirst + from) & (values.length - 1);
+            int end = first + num;
+            Long sum = 0L;
+            long count = 0;
+            if (end > values.length) {
+                while (first < values.length) {
+                    Long addend = values[first++];
+                    if (addend != null) {
+                        sum = Arithmetic.ULong.addExact(sum, addend);
+                        count++;
+                    }
+                }
+                end -= first;
+                first = 0;
+            }
+            while (first < end) {
+                Long addend = values[first++];
+                if (addend != null) {
+                    sum = Arithmetic.ULong.addExact(sum, addend);
                     count++;
                 }
             }
@@ -742,7 +828,7 @@ public class ValueBuffer<V> {
             return ValueBuffer.count(mValues, mFirst + from, num);
         }
 
-        public final Double sum(int from, int num) {
+        public final double sum(int from, int num) {
             Double[] values = mValues;
             int first = (mFirst + from) & (values.length - 1);
             int end = first + num;

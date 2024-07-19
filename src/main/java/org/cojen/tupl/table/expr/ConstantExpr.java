@@ -321,6 +321,11 @@ public final class ConstantExpr extends Expr {
     }
 
     @Override
+    public boolean isRangeWithCurrent() {
+        return mValue instanceof Range r && r.start() <= 0 && 0 <= r.end();
+    }
+
+    @Override
     public LazyValue lazyValue(EvalContext context) {
         return new LazyValue(context, this) {
             @Override

@@ -20,6 +20,7 @@ package org.cojen.tupl.table.expr;
 import java.lang.reflect.Modifier;
 
 import java.math.BigDecimal;
+import java.math.BigInteger;
 
 import java.util.List;
 import java.util.ListIterator;
@@ -482,8 +483,14 @@ public final class StandardFunctionFinder extends SoftCache<String, Object, Obje
         }
 
         @Override
-        protected sum validate(Type type, Map<String, Expr> namedArgs,
-                               Consumer<String> reason)
+        public boolean hasNamedParameters() {
+            // FIXME: Use something other than hasNamedParameters?
+            return true;
+        }
+
+        @Override
+        protected FunctionApplier validate(Type type, Map<String, Expr> namedArgs,
+                                           Consumer<String> reason)
         {
             Class<?> clazz = type.clazz();
             int typeCode = type.plainTypeCode();
@@ -501,7 +508,11 @@ public final class StandardFunctionFinder extends SoftCache<String, Object, Obje
                     typeCode = TYPE_DOUBLE;
                     clazz = double.class;
                 }
-                case TYPE_ULONG, TYPE_LONG, TYPE_DOUBLE, TYPE_BIG_INTEGER, TYPE_BIG_DECIMAL -> {
+                case TYPE_ULONG, TYPE_LONG -> {
+                    typeCode = TYPE_BIG_INTEGER;
+                    clazz = BigInteger.class;
+                }
+                case TYPE_DOUBLE, TYPE_BIG_INTEGER, TYPE_BIG_DECIMAL -> {
                     // big enough
                 }
                 default -> {
@@ -510,7 +521,19 @@ public final class StandardFunctionFinder extends SoftCache<String, Object, Obje
                 }
             }
 
-            return new sum(BasicType.make(clazz, typeCode), type);
+            if (!hasFrame(namedArgs)) {
+                return new sum(BasicType.make(clazz, typeCode), type);
+            }
+
+            WindowFunction.Frame frame = accessFrame(namedArgs, true, reason);
+            if (frame == null) {
+                // The reason should have been provided by the accessFrame method.
+                return null;
+            }
+
+            Type resultType = BasicType.make(clazz, typeCode);
+
+            return new StandardWindowFunctions.sum(resultType, type, frame);
         }
 
         @Override
@@ -575,12 +598,18 @@ public final class StandardFunctionFinder extends SoftCache<String, Object, Obje
                 }
             }
 
-            // FIXME: Common code; only check for specific names; verify types; reject conflicts.
-            String rangeMode = "rows";
-            Expr rangeExpr = namedArgs.get(rangeMode);
+            if (!hasFrame(namedArgs)) {
+                return new avg(BasicType.make(clazz, typeCode), type);
+            }
 
-            if (rangeExpr != null && !includesCurrent(rangeExpr)) {
-                // Results can be null.
+            WindowFunction.Frame frame = accessFrame(namedArgs, true, reason);
+            if (frame == null) {
+                // The reason should have been provided by the accessFrame method.
+                return null;
+            }
+
+            if (!frame.includesCurrent()) {
+                // Results can be null because the effective frame count can be zero.
                 typeCode |= Type.TYPE_NULLABLE;
                 if (clazz == double.class) {
                     clazz = Double.class;
@@ -589,25 +618,7 @@ public final class StandardFunctionFinder extends SoftCache<String, Object, Obje
 
             Type resultType = BasicType.make(clazz, typeCode);
 
-            if (rangeExpr != null) {
-                return new StandardWindowFunctions.avg(resultType, type, rangeMode);
-            }
-
-            return new avg(resultType, type);
-        }
-
-        /**
-         * Returns true if the given expression represents a range and is guaranteed to include
-         * the current row of a window frame, which is zero.
-         */
-        private static boolean includesCurrent(Expr expr) {
-            if (expr instanceof ConstantExpr c) {
-                return c.value() instanceof Range r && r.start() <= 0 && 0 <= r.end();
-            } else if (expr instanceof RangeExpr re) {
-                return re.start().isZero() || re.end().isZero();
-            } else {
-                return false;
-            }
+            return new StandardWindowFunctions.avg(resultType, type, frame);
         }
 
         @Override

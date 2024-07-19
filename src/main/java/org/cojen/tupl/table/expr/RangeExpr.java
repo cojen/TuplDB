@@ -180,6 +180,11 @@ public final class RangeExpr extends Expr {
     }
 
     @Override
+    public boolean isRangeWithCurrent() {
+        return mStart.isZero() || mEnd.isZero();
+    }
+
+    @Override
     public Expr replace(Map<Expr, ? extends Expr> replacements) {
         Expr replaced = replacements.get(this);
         if (replaced != null) {

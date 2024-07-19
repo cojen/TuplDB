@@ -96,6 +96,70 @@ public abstract class FunctionApplier {
     }
 
     /**
+     * Returns true if one of the named arguments is "rows", "range", or "groups".
+     */
+    public static boolean hasFrame(Map<String, Expr> namedArgs) {
+        return namedArgs.containsKey("rows")
+            || namedArgs.containsKey("range")
+            || namedArgs.containsKey("groups");
+    }
+
+    /**
+     * Returns a frame object corresponding to the named argument of "rows", "range", or
+     * "groups". If the frame is malformed or if not exactly one is provided, then null is
+     * returned a reason is provided.
+     *
+     * @param strict when true, only one named argument is allowed overall
+     * @param reason if null is returned, a reason is provided
+     */
+    public static WindowFunction.Frame accessFrame(Map<String, Expr> namedArgs, boolean strict,
+                                                   Consumer<String> reason)
+    {
+        check: {
+            String name = "rows";
+            Expr expr = namedArgs.get(name);
+
+            Expr rangeExpr = namedArgs.get("range");
+            if (rangeExpr != null) {
+                if (expr != null) {
+                    break check;
+                }
+                name = "range";
+                expr = rangeExpr;
+            }
+
+            Expr groupsExpr = namedArgs.get("groups");
+            if (groupsExpr != null) {
+                if (expr != null) {
+                    break check;
+                }
+                name = "groups";
+                expr = groupsExpr;
+            }
+
+            if (expr == null) {
+                reason.accept("no frame type is specified");
+                return null;
+            }
+
+            if (expr.type().clazz() != Range.class) {
+                reason.accept("frame type must be a range");
+                return null;
+            }
+
+            if (namedArgs.size() > 1) {
+                reason.accept("unsupported named argument");
+                return null;
+            }
+
+            return new WindowFunction.Frame(name, expr);
+        }
+
+        reason.accept("more than one type of frame is specified");
+        return null;
+    }
+
+    /**
      * Validate that the function acceps the given arguments, and returns a new applier
      * instance. If any arguments should be converted, directly replace elements of the args
      * list with the desired type.
