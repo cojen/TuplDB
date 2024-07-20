@@ -317,13 +317,35 @@ public final class StandardFunctionFinder extends SoftCache<String, Object, Obje
         }
 
         @Override
-        public count validate(List<Expr> args, Map<String, Expr> namedArgs,
-                              Consumer<String> reason)
+        public boolean hasNamedParameters() {
+            // FIXME: Use something other than hasNamedParameters?
+            return true;
+        }
+
+        @Override
+        public FunctionApplier validate(List<Expr> args, Map<String, Expr> namedArgs,
+                                        Consumer<String> reason)
         {
             if (!checkNumArgs(0, 1, args.size(), reason)) {
                 return null;
             }
-            return new count(BasicType.make(long.class, Type.TYPE_LONG));
+
+            Type resultType = BasicType.make(long.class, Type.TYPE_LONG);
+
+            if (!hasFrame(namedArgs)) {
+                return new count(resultType);
+            }
+
+            WindowFunction.Frame frame = accessFrame(namedArgs, true, reason);
+            if (frame == null) {
+                // The reason should have been provided by the accessFrame method.
+                return null;
+            }
+
+            Type originalType = args.get(0).type();
+            Type valueType = originalType;
+
+            return new StandardWindowFunctions.count(resultType, valueType, originalType, frame);
         }
 
         @Override
@@ -489,11 +511,11 @@ public final class StandardFunctionFinder extends SoftCache<String, Object, Obje
         }
 
         @Override
-        protected FunctionApplier validate(Type type, Map<String, Expr> namedArgs,
+        protected FunctionApplier validate(Type originalType, Map<String, Expr> namedArgs,
                                            Consumer<String> reason)
         {
-            Class<?> clazz = type.clazz();
-            int typeCode = type.plainTypeCode();
+            Class<?> clazz = originalType.clazz();
+            int typeCode = originalType.plainTypeCode();
 
             switch (typeCode) {
                 case TYPE_UBYTE, TYPE_USHORT, TYPE_UINT -> {
@@ -521,8 +543,10 @@ public final class StandardFunctionFinder extends SoftCache<String, Object, Obje
                 }
             }
 
+            Type resultType = BasicType.make(clazz, typeCode);
+
             if (!hasFrame(namedArgs)) {
-                return new sum(BasicType.make(clazz, typeCode), type);
+                return new sum(resultType, originalType);
             }
 
             WindowFunction.Frame frame = accessFrame(namedArgs, true, reason);
@@ -531,9 +555,14 @@ public final class StandardFunctionFinder extends SoftCache<String, Object, Obje
                 return null;
             }
 
-            Type resultType = BasicType.make(clazz, typeCode);
+            Type valueType = resultType;
 
-            return new StandardWindowFunctions.sum(resultType, type, frame);
+            if (originalType.isNullable()) {
+                // Nulls must be preserved in the value buffer and not be treated as zero.
+                valueType = valueType.nullable();
+            }
+
+            return new StandardWindowFunctions.sum(resultType, valueType, originalType, frame);
         }
 
         @Override
@@ -562,35 +591,23 @@ public final class StandardFunctionFinder extends SoftCache<String, Object, Obje
         }
 
         @Override
-        protected FunctionApplier validate(final Type type, Map<String, Expr> namedArgs,
+        protected FunctionApplier validate(Type originalType, Map<String, Expr> namedArgs,
                                            Consumer<String> reason)
         {
-            int typeCode;
             Class<?> clazz;
+            int typeCode;
 
-            // Note: Result type is nullable when the source is nullable, because the count can
-            // be zero. Division by zero with double can be represented as NaN, but BigDecimal
-            // has no such representation. For consistency, null is used instead.
-
-            switch (type.plainTypeCode()) {
+            switch (originalType.plainTypeCode()) {
                 case TYPE_UBYTE, TYPE_USHORT, TYPE_UINT, TYPE_ULONG,
                      TYPE_BYTE, TYPE_SHORT, TYPE_INT, TYPE_LONG,
                      TYPE_FLOAT, TYPE_DOUBLE ->
                 {
+                    clazz = double.class;
                     typeCode = TYPE_DOUBLE;
-                    if (type.isNullable()) {
-                        typeCode |= Type.TYPE_NULLABLE;
-                        clazz = Double.class;
-                    } else {
-                        clazz = double.class;
-                    }
                 }
                 case TYPE_BIG_INTEGER, TYPE_BIG_DECIMAL -> {
-                    typeCode = TYPE_BIG_DECIMAL;
                     clazz = BigDecimal.class;
-                    if (type.isNullable()) {
-                        typeCode |= Type.TYPE_NULLABLE;
-                    }
+                    typeCode = TYPE_BIG_DECIMAL;
                 }
                 default -> {
                     reason.accept("unsupported argument type");
@@ -598,8 +615,17 @@ public final class StandardFunctionFinder extends SoftCache<String, Object, Obje
                 }
             }
 
+            Type resultType = BasicType.make(clazz, typeCode);
+
+            if (originalType.isNullable()) {
+                // The result type is nullable when the source is nullable, because the count
+                // can be zero. Division by zero with double can be represented as NaN, but
+                // BigDecimal has no such representation. Null is used for consistency.
+                resultType = resultType.nullable();
+            }
+
             if (!hasFrame(namedArgs)) {
-                return new avg(BasicType.make(clazz, typeCode), type);
+                return new avg(resultType, originalType);
             }
 
             WindowFunction.Frame frame = accessFrame(namedArgs, true, reason);
@@ -608,17 +634,15 @@ public final class StandardFunctionFinder extends SoftCache<String, Object, Obje
                 return null;
             }
 
+            Type valueType = resultType;
+
             if (!frame.includesCurrent()) {
-                // Results can be null because the effective frame count can be zero.
-                typeCode |= Type.TYPE_NULLABLE;
-                if (clazz == double.class) {
-                    clazz = Double.class;
-                }
+                // Results can be null because the effective frame count can be zero. Note that
+                // the value type doesn't need an early conversion to a nullable type.
+                resultType = resultType.nullable();
             }
 
-            Type resultType = BasicType.make(clazz, typeCode);
-
-            return new StandardWindowFunctions.avg(resultType, type, frame);
+            return new StandardWindowFunctions.avg(resultType, valueType, originalType, frame);
         }
 
         @Override

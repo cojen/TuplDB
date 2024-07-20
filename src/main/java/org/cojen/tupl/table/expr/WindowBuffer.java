@@ -33,7 +33,7 @@ public final class WindowBuffer<V> extends ValueBuffer<V> {
     // Range of values that the buffer has, relative to the current row. Inclusive bounds.
     private int mStart, mEnd;
 
-    private WindowBuffer(int initialCapacity) {
+    public WindowBuffer(int initialCapacity) {
         super(initialCapacity);
     }
 
@@ -161,6 +161,13 @@ public final class WindowBuffer<V> extends ValueBuffer<V> {
         throw new UnsupportedOperationException();
     }
 
+    /**
+     * Same as frameAverage except it always returns null instead of NaN when dividing by zero.
+     */
+    public V frameAverageNoNaN(long frameStart, long frameEnd) {
+        throw new UnsupportedOperationException();
+    }
+
     public static final class OfLong extends ValueBuffer.OfLong {
         private int mStart, mEnd;
 
@@ -206,8 +213,6 @@ public final class WindowBuffer<V> extends ValueBuffer<V> {
         }
 
         public int frameCount(long frameStart, long frameEnd) {
-            // Note that the count is less than the buffer size only for ranges that don't
-            // include the current row (which is zero).
             // Note that mStart is always 0 when frameStart is always >= 0.
             frameStart = Math.max(frameStart, mStart);
             frameEnd = Math.min(frameEnd, mEnd);
@@ -237,6 +242,10 @@ public final class WindowBuffer<V> extends ValueBuffer<V> {
             // Note that count can be negative only for ranges that don't include the current
             // row (which is zero).
             return count <= 0 ? null : average((int) (frameStart - start), (int) count);
+        }
+
+        public Long frameAverageNoNaN(long frameStart, long frameEnd) {
+            return frameAverage(frameStart, frameEnd);
         }
     }
 
@@ -316,6 +325,10 @@ public final class WindowBuffer<V> extends ValueBuffer<V> {
             // row (which is zero).
             return count <= 0 ? null : average((int) (frameStart - start), (int) count);
         }
+
+        public Long frameAverageNoNaN(long frameStart, long frameEnd) {
+            return frameAverage(frameStart, frameEnd);
+        }
     }
 
     public static final class OfULong extends ValueBuffer.OfULong {
@@ -363,8 +376,6 @@ public final class WindowBuffer<V> extends ValueBuffer<V> {
         }
 
         public int frameCount(long frameStart, long frameEnd) {
-            // Note that the count is less than the buffer size only for ranges that don't
-            // include the current row (which is zero).
             // Note that mStart is always 0 when frameStart is always >= 0.
             frameStart = Math.max(frameStart, mStart);
             frameEnd = Math.min(frameEnd, mEnd);
@@ -394,6 +405,92 @@ public final class WindowBuffer<V> extends ValueBuffer<V> {
             // Note that count can be negative only for ranges that don't include the current
             // row (which is zero).
             return count <= 0 ? null : average((int) (frameStart - start), (int) count);
+        }
+
+        public Long frameAverageNoNaN(long frameStart, long frameEnd) {
+            return frameAverage(frameStart, frameEnd);
+        }
+    }
+
+    public static final class OfULongObj extends ValueBuffer.OfULongObj {
+        private int mStart, mEnd;
+
+        public OfULongObj(int initialCapacity) {
+            super(initialCapacity);
+        }
+
+        public void begin(Long value) {
+            init(value);
+            mStart = mEnd = 0;
+        }
+
+        public void append(Long value) {
+            add(value);
+            mEnd++;
+        }
+
+        public boolean ready(long frameEnd) {
+            return mEnd >= frameEnd;
+        }
+
+        public void advance() {
+            mStart--;
+            mEnd--;
+        }
+
+        public void advanceAndRemove(long frameStart) {
+            int start = mStart - 1;
+            int end = mEnd - 1;
+            if (frameStart > start) {
+                if (end >= start) {
+                    remove(1);
+                }
+                start++;
+            }
+            mStart = start;
+            mEnd = end;
+        }
+
+        public void advanceAndRemove() {
+            mEnd--;
+            remove(1);
+        }
+
+        public int frameCount(long frameStart, long frameEnd) {
+            // Note that mStart is always 0 when frameStart is always >= 0.
+            int start = mStart;
+            frameStart = Math.max(frameStart, start);
+            frameEnd = Math.min(frameEnd, mEnd);
+            long count = frameEnd - frameStart + 1;
+            // Note that count can be negative only for ranges that don't include the current
+            // row (which is zero).
+            return count <= 0 ? 0 : count((int) (frameStart - start), (int) count);
+        }
+
+        public long frameSum(long frameStart, long frameEnd) {
+            // Note that mStart is always 0 when frameStart is always >= 0.
+            int start = mStart;
+            frameStart = Math.max(frameStart, start);
+            frameEnd = Math.min(frameEnd, mEnd);
+            long count = frameEnd - frameStart + 1;
+            // Note that count can be negative only for ranges that don't include the current
+            // row (which is zero).
+            return count <= 0 ? 0L : sum((int) (frameStart - start), (int) count);
+        }
+
+        public Long frameAverage(long frameStart, long frameEnd) {
+            // Note that mStart is always 0 when frameStart is always >= 0.
+            int start = mStart;
+            frameStart = Math.max(frameStart, start);
+            frameEnd = Math.min(frameEnd, mEnd);
+            long count = frameEnd - frameStart + 1;
+            // Note that count can be negative only for ranges that don't include the current
+            // row (which is zero).
+            return count <= 0 ? null : average((int) (frameStart - start), (int) count);
+        }
+
+        public Long frameAverageNoNaN(long frameStart, long frameEnd) {
+            return frameAverage(frameStart, frameEnd);
         }
     }
 
@@ -442,8 +539,6 @@ public final class WindowBuffer<V> extends ValueBuffer<V> {
         }
 
         public int frameCount(long frameStart, long frameEnd) {
-            // Note that the count is less than the buffer size only for ranges that don't
-            // include the current row (which is zero).
             // Note that mStart is always 0 when frameStart is always >= 0.
             frameStart = Math.max(frameStart, mStart);
             frameEnd = Math.min(frameEnd, mEnd);
@@ -473,6 +568,17 @@ public final class WindowBuffer<V> extends ValueBuffer<V> {
             // Note that count can be negative only for ranges that don't include the current
             // row (which is zero).
             return count <= 0 ? Double.NaN : average((int) (frameStart - start), (int) count);
+        }
+
+        public Double frameAverageNoNaN(long frameStart, long frameEnd) {
+            // Note that mStart is always 0 when frameStart is always >= 0.
+            int start = mStart;
+            frameStart = Math.max(frameStart, start);
+            frameEnd = Math.min(frameEnd, mEnd);
+            long count = frameEnd - frameStart + 1;
+            // Note that count can be negative only for ranges that don't include the current
+            // row (which is zero).
+            return count <= 0 ? null : average((int) (frameStart - start), (int) count);
         }
     }
 
@@ -552,6 +658,10 @@ public final class WindowBuffer<V> extends ValueBuffer<V> {
             // row (which is zero).
             return count <= 0 ? null : average((int) (frameStart - start), (int) count);
         }
+
+        public Double frameAverageNoNaN(long frameStart, long frameEnd) {
+            return frameAverage(frameStart, frameEnd);
+        }
     }
 
     public static final class OfBigInteger extends ValueBuffer.OfBigInteger {
@@ -630,6 +740,10 @@ public final class WindowBuffer<V> extends ValueBuffer<V> {
             // row (which is zero).
             return count <= 0 ? null : average((int) (frameStart - start), (int) count);
         }
+
+        public BigInteger frameAverageNoNaN(long frameStart, long frameEnd) {
+            return frameAverage(frameStart, frameEnd);
+        }
     }
 
     public static final class OfBigDecimal extends ValueBuffer.OfBigDecimal {
@@ -707,6 +821,10 @@ public final class WindowBuffer<V> extends ValueBuffer<V> {
             // Note that count can be negative only for ranges that don't include the current
             // row (which is zero).
             return count <= 0 ? null : average((int) (frameStart - start), (int) count);
+        }
+
+        public BigDecimal frameAverageNoNaN(long frameStart, long frameEnd) {
+            return frameAverage(frameStart, frameEnd);
         }
     }
 }

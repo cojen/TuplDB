@@ -29,6 +29,8 @@ import org.cojen.maker.Variable;
 
 import org.cojen.tupl.table.Converter;
 
+import static org.cojen.tupl.table.expr.Type.*;
+
 /**
  * 
  *
@@ -56,6 +58,7 @@ abstract class WindowFunction extends FunctionApplier.Grouped {
         }
     }
 
+    private final Type mValueType;
     private final Type mOriginalType;
     private final Frame mFrame;
 
@@ -76,8 +79,14 @@ abstract class WindowFunction extends FunctionApplier.Grouped {
     // Tracks the number of remaining values that the step method must produce.
     private String mRemainingFieldName;
 
-    WindowFunction(Type type, Type originalType, Frame frame) {
-        super(type);
+    /**
+     * @param resultType the result type produced by the function
+     * @param valueType the intermediate value type which might need to be buffered
+     * @param originalType the function argument type which was passed into it
+     */
+    WindowFunction(Type resultType, Type valueType, Type originalType, Frame frame) {
+        super(resultType);
+        mValueType = valueType;
         mOriginalType = originalType;
         mFrame = frame;
     }
@@ -209,11 +218,11 @@ abstract class WindowFunction extends FunctionApplier.Grouped {
     private Variable evalArg(GroupContext context) {
         var valueVar = context.args().get(0).eval(true);
 
-        if (!mOriginalType.equals(type())) {
+        if (!mValueType.equals(mOriginalType)) {
             MethodMaker mm = context.methodMaker();
-            var converted = mm.var(type().clazz());
-            Converter.convertLossy(mm, mOriginalType, valueVar, type(), converted);
-            valueVar = converted;
+            var convertedVar = mm.var(mValueType.clazz());
+            Converter.convertLossy(mm, mOriginalType, valueVar, mValueType, convertedVar);
+            valueVar = convertedVar;
         }
 
         return valueVar;
@@ -282,14 +291,46 @@ abstract class WindowFunction extends FunctionApplier.Grouped {
         return resultVar;
     }
 
+    protected final Type valueType() {
+        return mValueType;
+    }
+
     protected final Type originalType() {
         return mOriginalType;
+    }
+
+    protected final Frame frame() {
+        return mFrame;
     }
 
     /**
      * Returns a suitable WindowBuffer class.
      */
-    protected abstract Class<?> bufferType();
+    protected Class<?> bufferType() {
+        int typeCode = mValueType.plainTypeCode();
+        boolean nullable = mValueType.isNullable();
+
+        switch (typeCode) {
+            case TYPE_UBYTE, TYPE_USHORT, TYPE_UINT, TYPE_ULONG -> {
+                return nullable ? WindowBuffer.OfULongObj.class : WindowBuffer.OfULong.class;
+            }
+            case TYPE_BYTE, TYPE_SHORT, TYPE_INT, TYPE_LONG -> {
+                return nullable ? WindowBuffer.OfLongObj.class : WindowBuffer.OfLong.class;
+            }
+            case TYPE_FLOAT, TYPE_DOUBLE -> {
+                return nullable ? WindowBuffer.OfDoubleObj.class : WindowBuffer.OfDouble.class;
+            }
+            case TYPE_BIG_INTEGER -> {
+                return WindowBuffer.OfBigInteger.class;
+            }
+            case TYPE_BIG_DECIMAL -> {
+                return WindowBuffer.OfBigDecimal.class;
+            }
+            default -> {
+                return WindowBuffer.class;
+            }
+        }
+    }
 
     /**
      * Compute a result over the given frame.
@@ -297,6 +338,8 @@ abstract class WindowFunction extends FunctionApplier.Grouped {
      * @param bufferVar refers to a WindowBuffer
      * @param frameStart is a Variable or a constant
      * @param frameEnd is a Variable or a constant
+     * @return a variable with the result type, or it must be trivially convertable to the
+     * result type
      */
     protected abstract Variable compute(Variable bufferVar, Object frameStart, Object frameEnd);
 
