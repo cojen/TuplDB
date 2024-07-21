@@ -67,7 +67,7 @@ final class StandardWindowFunctions {
 
         @Override
         protected Variable compute(Variable bufferVar, Object frameStart, Object frameEnd) {
-            String method = type().isNullable() ? "frameAverageNoNaN" : "frameAverage";
+            String method = type().isNullable() ? "frameAverageOrNull" : "frameAverage";
             return bufferVar.invoke(method, frameStart, frameEnd);
         }
     }

@@ -81,6 +81,46 @@ final class Arithmetic {
     }
 
     /**
+     * Returns the static minimum value for the given type. If type isn't a number or doesn't
+     * have a minimum value, null is returned.
+     */
+    public static Object min(ColumnInfo type) {
+        return switch (type.plainTypeCode()) {
+            case TYPE_UBYTE -> (byte) 0;
+            case TYPE_USHORT -> (short) 0;
+            case TYPE_UINT -> 0;
+            case TYPE_ULONG -> 0L;
+            case TYPE_BYTE -> java.lang.Byte.MIN_VALUE;
+            case TYPE_SHORT -> java.lang.Short.MIN_VALUE;
+            case TYPE_INT -> java.lang.Integer.MIN_VALUE;
+            case TYPE_LONG -> java.lang.Long.MIN_VALUE;
+            case TYPE_FLOAT -> java.lang.Float.MIN_VALUE;
+            case TYPE_DOUBLE -> java.lang.Double.MIN_VALUE;
+            default -> null;
+        };
+    }
+
+    /**
+     * Returns the static maximum value for the given type. If type isn't a number or doesn't
+     * have a maximum value, null is returned.
+     */
+    public static Object max(ColumnInfo type) {
+        return switch (type.plainTypeCode()) {
+            case TYPE_UBYTE -> (byte) ~0;
+            case TYPE_USHORT -> (short) ~0;
+            case TYPE_UINT -> ~0;
+            case TYPE_ULONG -> ~0L;
+            case TYPE_BYTE -> java.lang.Byte.MAX_VALUE;
+            case TYPE_SHORT -> java.lang.Short.MAX_VALUE;
+            case TYPE_INT -> java.lang.Integer.MAX_VALUE;
+            case TYPE_LONG -> java.lang.Long.MAX_VALUE;
+            case TYPE_FLOAT -> java.lang.Float.MAX_VALUE;
+            case TYPE_DOUBLE -> java.lang.Double.MAX_VALUE;
+            default -> null;
+        };
+    }
+
+    /**
      * Generates code which sets a variable to zero or false. If the type isn't supported, the
      * variable is set to null, and false is returned.
      */
@@ -91,8 +131,8 @@ final class Arithmetic {
             return true;
         }
         Class<?> clazz = v.classType();
-        if (clazz == BigInteger.class || clazz == BigDecimal.class) {
-            v.set(v.invoke("ZERO"));
+        if (clazz == java.math.BigInteger.class || clazz == java.math.BigDecimal.class) {
+            v.set(v.field("ZERO"));
             return true;
         }
         v.clear();
@@ -104,7 +144,7 @@ final class Arithmetic {
      */
     public static boolean canZero(Class<?> clazz) {
         return Variable.unboxedType(clazz) != null ||
-            clazz == BigInteger.class || clazz == BigDecimal.class;
+            clazz == java.math.BigInteger.class || clazz == java.math.BigDecimal.class;
     }
 
     public static final class Bool {
@@ -191,7 +231,7 @@ final class Arithmetic {
         }
 
         private static byte convert(int r) {
-            if ((r & 0xff) != 0) {
+            if ((r & ~0xff) != 0) {
                 throw new ArithmeticException("integer overflow");
             }
             return (byte) r;
@@ -271,7 +311,7 @@ final class Arithmetic {
         }
 
         private static short convert(int r) {
-            if ((r & 0xffff) != 0) {
+            if ((r & ~0xffff) != 0) {
                 throw new ArithmeticException("integer overflow");
             }
             return (short) r;
@@ -351,7 +391,7 @@ final class Arithmetic {
         }
 
         private static int convert(long r) {
-            if ((r & 0xffff_ffffL) != 0) {
+            if ((r & ~0xffff_ffffL) != 0) {
                 throw new ArithmeticException("integer overflow");
             }
             return (int) r;

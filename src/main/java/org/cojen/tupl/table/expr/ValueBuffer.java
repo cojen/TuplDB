@@ -17,9 +17,22 @@
 
 package org.cojen.tupl.table.expr;
 
+import java.lang.invoke.MethodHandles;
+
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.math.MathContext;
+
+import java.util.Map;
+
+import java.util.concurrent.ConcurrentHashMap;
+
+import java.util.function.Consumer;
+
+import org.cojen.maker.ClassMaker;
+import org.cojen.maker.Label;
+import org.cojen.maker.MethodMaker;
+import org.cojen.maker.Variable;
 
 import org.cojen.tupl.core.Utils;
 
@@ -29,84 +42,62 @@ import org.cojen.tupl.core.Utils;
  *
  * @author Brian S. O'Neill
  */
-public class ValueBuffer<V> {
-    private V[] mValues;
-    private int mFirst, mSize;
+public abstract class ValueBuffer<V> {
+    private static final Map<Class, Class> mRegistry = new ConcurrentHashMap<>();
+    private static final Map<Class, Class> mUnsignedRegistry = new ConcurrentHashMap<>();
 
     /**
-     * @param initialCapacity must be at least one
+     * Returns a value buffer class suitable for storing the given value type. The class has
+     * one constructor which specifies the initial buffer capacity, and numerical operations
+     * are only supported for numerical value types.
      */
-    @SuppressWarnings("unchecked")
-    public ValueBuffer(int initialCapacity) {
-        initialCapacity = Utils.roundUpPower2(initialCapacity);
-        mValues = (V[]) new Object[initialCapacity];
+    public static Class<?> forType(Type type) {
+        Map<Class, Class> registry = type.isUnsignedInteger() ? mUnsignedRegistry : mRegistry;
+
+        Class<?> clazz = type.clazz();
+        Class<?> bufferClass = registry.get(clazz);
+
+        if (bufferClass == null) {
+            synchronized (registry) {
+                bufferClass = registry.get(clazz);
+                if (bufferClass == null) {
+                    bufferClass = generateClass(type);
+                    registry.put(clazz, bufferClass);
+                }
+            }
+        }
+
+        return bufferClass;
     }
 
-    public final int size() {
-        return mSize;
-    }
+    public abstract int size();
 
     /**
      * Clear and add one value.
      */
-    public final void init(V value) {
-        mValues[0] = value;
-        mFirst = 0;
-        mSize = 1;
-    }
+    public abstract void init(V value);
 
-    public final void clear() {
-        mSize = 0;
-    }
+    public abstract void clear();
 
     /**
      * Add one value to the end.
      */
-    public final void add(V value) {
-        V[] values = mValues;
-        int size = mSize;
-        if (size >= values.length) {
-            mValues = values = expand(values, mFirst);
-            mFirst = 0;
-        }
-        values[(mFirst + size) & (values.length - 1)] = value;
-        mSize = size + 1;
-    }
-
-    @SuppressWarnings("unchecked")
-    private static <V> V[] expand(V[] values, int first) {
-        var newValues = (V[]) new Object[values.length << 1];
-        System.arraycopy(values, first, newValues, 0, values.length - first);
-        System.arraycopy(values, 0, newValues, values.length - first, first);
-        return newValues;
-    }
+    public abstract void add(V value);
 
     /**
      * Returns a value at the given index, where zero always represents the first value.
      */
-    public final V get(int index) {
-        V[] values = mValues;
-        return values[(mFirst + index) & (values.length - 1)];
-    }
+    public abstract V get(int index);
 
     /**
      * Remove the given amount of values from the first.
      */
-    public final void remove(int amount) {
-        mFirst = (mFirst + amount) & (mValues.length - 1);
-        mSize -= amount;
-    }
+    public abstract void remove(int amount);
 
     /**
      * Removes and returns the first value.
      */
-    public final V removeFirst() {
-        V[] values = mValues;
-        int first = mFirst;
-        mFirst = (first + 1) & (values.length - 1);
-        mSize--;
-        return values[first & (values.length - 1)];
-    }
+    public abstract V removeFirst();
 
     /**
      * Returns the count of non-null values over the given range.
@@ -114,11 +105,93 @@ public class ValueBuffer<V> {
      * @param from inclusive first index
      * @param num number of values to count
      */
-    public final int count(int from, int num) {
-        return count(mValues, mFirst + from, num);
+    public abstract int count(int from, int num);
+
+    /**
+     * Returns the minimum value over the given range.
+     *
+     * @param from inclusive first index
+     * @param num number of values to examine
+     */
+    public final V min(int from, int num) {
+        throw new UnsupportedOperationException();
     }
 
-    private static int count(Object[] values, int first, int num) {
+    /**
+     * Returns the minimum value over the given range, treating nulls as low instead of high.
+     *
+     * @param from inclusive first index
+     * @param num number of values to examine
+     */
+    public final V minNL(int from, int num) {
+        throw new UnsupportedOperationException();
+    }
+
+    /**
+     * Returns the maximum value over the given range.
+     *
+     * @param from inclusive first index
+     * @param num number of values to examine
+     */
+    public final V max(int from, int num) {
+        throw new UnsupportedOperationException();
+    }
+
+    /**
+     * Returns the maximum value over the given range, treating nulls as low instead of high.
+     *
+     * @param from inclusive first index
+     * @param num number of values to examine
+     */
+    public final V maxNL(int from, int num) {
+        throw new UnsupportedOperationException();
+    }
+
+    /**
+     * Returns the sum of non-null values over the given range.
+     *
+     * @param from inclusive first index
+     * @param num number of values to sum together
+     * @return a non-null value
+     * @throws ArithmeticException if overflows
+     */
+    public final V sum(int from, int num) {
+        throw new UnsupportedOperationException();
+    }
+
+    /**
+     * Returns the average of non-null values over the given range. If the number is zero, then
+     * an exception is thrown if the return type cannot be null or NaN.
+     *
+     * @param from inclusive first index
+     * @param num number of values to average together
+     * @throws ArithmeticException if overflows, or if division by zero cannot be represented
+     */
+    public final V average(int from, int num) {
+        throw new UnsupportedOperationException();
+    }
+
+    static boolean hasNull(Object[] values, int first, int num) {
+        first &= (values.length - 1);
+        int end = first + num;
+        if (end > values.length) {
+            while (first < values.length) {
+                if (values[first++] == null) {
+                    return true;
+                }
+            }
+            end -= first;
+            first = 0;
+        }
+        while (first < end) {
+            if (values[first++] == null) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    static int count(Object[] values, int first, int num) {
         first &= (values.length - 1);
         int end = first + num;
         int count = 0;
@@ -139,974 +212,350 @@ public class ValueBuffer<V> {
         return count;
     }
 
-    /**
-     * Returns the sum of non-null values over the given range.
-     *
-     * @param from inclusive first index
-     * @param num number of values to sum together
-     * @throws ArithmeticException if overflows
-     */
-    public final V sum(int from, int num) {
-        throw new UnsupportedOperationException();
+    private static Class generateClass(Type type) {
+        Class clazz = type.clazz();
+        Class arrayClass = clazz.arrayType();
+
+        ClassMaker cm = ClassMaker.begin(ValueBuffer.class.getName(), MethodHandles.lookup());
+
+        cm.public_();
+
+        cm.addField(arrayClass, "values").private_();
+        cm.addField(int.class, "first").private_();
+        cm.addField(int.class, "size").private_();
+
+        {
+            MethodMaker mm = cm.addConstructor(int.class).public_();
+            mm.invokeSuperConstructor();
+            var initialCapacityVar = mm.var(Utils.class).invoke("roundUpPower2", mm.param(0));
+            mm.field("values").set(mm.new_(arrayClass, initialCapacityVar));
+        }
+
+        {
+            MethodMaker mm = cm.addMethod(int.class, "size").public_().final_();
+            mm.return_(mm.field("size"));
+        }
+
+        {
+            MethodMaker mm = cm.addMethod(null, "init", clazz).public_().final_();
+            mm.field("values").aset(0, mm.param(0));
+            mm.field("first").set(0);
+            mm.field("size").set(1);
+        }
+
+        {
+            MethodMaker mm = cm.addMethod(null, "clear").public_().final_();
+            mm.field("size").set(0);
+        }
+
+        {
+            MethodMaker mm = cm.addMethod
+                (arrayClass, "expand", arrayClass, int.class).private_().static_();
+            var valuesVar = mm.param(0);
+            var firstVar = mm.param(1);
+            var newValuesVar = mm.new_(arrayClass, valuesVar.alength().shl(1));
+            var sys = mm.var(System.class);
+            var lenVar = valuesVar.alength().sub(firstVar);
+            sys.invoke("arraycopy", valuesVar, firstVar, newValuesVar, 0, lenVar);
+            sys.invoke("arraycopy", valuesVar, 0, newValuesVar, lenVar, firstVar);
+            mm.return_(newValuesVar);
+        }
+
+        {
+            MethodMaker mm = cm.addMethod(null, "add", clazz).public_().final_();
+
+            var valuesField = mm.field("values");
+            var firstField = mm.field("first");
+            var sizeField = mm.field("size");
+
+            var valuesVar = valuesField.get();
+            var sizeVar = sizeField.get();
+
+            sizeVar.ifGe(valuesVar.alength(), () -> {
+                valuesVar.set(mm.invoke("expand", valuesVar, firstField));
+                valuesField.set(valuesVar);
+                firstField.set(0);
+            });
+
+            valuesVar.aset(ixVar(valuesVar, firstField, sizeVar), mm.param(0));
+            sizeField.set(sizeVar.add(1));
+        }
+
+        {
+            MethodMaker mm = cm.addMethod(clazz, "get", int.class).public_().final_();
+            var valuesVar = mm.field("values").get();
+            var firstField = mm.field("first");
+            mm.return_(valuesVar.aget(ixVar(valuesVar, firstField, mm.param(0))));
+        }
+
+        {
+            MethodMaker mm = cm.addMethod(null, "remove", int.class).public_().final_();
+            var amountVar = mm.param(0);
+            var valuesField = mm.field("values");
+            var firstField = mm.field("first");
+            var sizeField = mm.field("size");
+            firstField.set(ixVar(valuesField, firstField, amountVar));
+            sizeField.set(sizeField.sub(amountVar));
+        }
+
+        {
+            MethodMaker mm = cm.addMethod(clazz, "removeFirst").public_().final_();
+            var firstField = mm.field("first");
+            var valuesVar = mm.field("values").get();
+            var firstVar = firstField.get();
+            firstField.set(ixVar(valuesVar, firstVar, 1));
+            mm.field("size").inc(-1);
+            mm.return_(valuesVar.aget(ixVar(valuesVar, firstVar, null)));
+        }
+
+        {
+            MethodMaker mm = cm.addMethod
+                (int.class, "count", int.class, int.class).public_().final_();
+            var fromVar = mm.param(0);
+            var numVar = mm.param(1);
+            if (clazz.isPrimitive()) {
+                mm.return_(numVar);
+            } else {
+                var valuesField = mm.field("values");
+                mm.return_(mm.var(ValueBuffer.class).invoke
+                           ("count", valuesField, mm.field("first").add(fromVar), numVar));
+            }
+        }
+
+        if (type.isNumber()) {
+            addNumericalMethods(cm, type);
+        } else if (!type.isPrimitive()) {
+            cm.extend(ValueBuffer.class);
+        }
+
+        return cm.finish();
     }
 
     /**
-     * Returns the average of non-null values over the given range. If the number is zero, then
-     * an exception is thrown if the return type cannot be null or NaN.
-     *
-     * @param from inclusive first index
-     * @param num number of values to average together
-     * @throws ArithmeticException if overflows or division by zero cannot be represented
+     * @param offset can be null for 0
      */
-    public final V average(int from, int num) {
-        throw new UnsupportedOperationException();
+    private static Variable ixVar(Variable valuesVar, Variable firstVar, Object offset) {
+        if (offset != null) {
+            firstVar = firstVar.add(offset);
+        }
+        return firstVar.and(valuesVar.alength().sub(1));
     }
 
-    public static class OfByte {
-        private byte[] mValues;
-        private int mFirst, mSize;
+    private static void addNumericalMethods(ClassMaker cm, Type type) {
+        Class clazz = type.clazz();
+        Class unboxed = type.unboxedType();
 
-        public OfByte(int initialCapacity) {
-            initialCapacity = Utils.roundUpPower2(initialCapacity);
-            mValues = new byte[initialCapacity];
-        }
+        {
+            MethodMaker mm = cm.addMethod(unboxed, "sum", int.class, int.class).public_().final_();
 
-        public final int size() {
-            return mSize;
-        }
+            var sumVar = mm.var(unboxed);
 
-        public final void init(byte value) {
-            mValues[0] = value;
-            mFirst = 0;
-            mSize = 1;
-        }
-
-        public final void clear() {
-            mSize = 0;
-        }
-
-        public final void add(byte value) {
-            byte[] values = mValues;
-            int size = mSize;
-            if (size >= values.length) {
-                mValues = values = expand(values, mFirst);
-                mFirst = 0;
+            if (!Arithmetic.zero(sumVar)) {
+                throw new AssertionError();
             }
-            values[(mFirst + size) & (values.length - 1)] = value;
-            mSize = size + 1;
+
+            makeLoop(mm, type, true, addendVar -> {
+                sumVar.set(Arithmetic.eval(type, Token.T_PLUS, sumVar, addendVar));
+            });
+
+            mm.return_(sumVar);
         }
 
-        private static byte[] expand(byte[] values, int first) {
-            var newValues = new byte[values.length << 1];
-            System.arraycopy(values, first, newValues, 0, values.length - first);
-            System.arraycopy(values, 0, newValues, values.length - first, first);
-            return newValues;
-        }
+        {
+            MethodMaker mm = cm.addMethod
+                (clazz, "average", int.class, int.class).public_().final_();
 
-        public final byte get(int index) {
-            byte[] values = mValues;
-            return values[(mFirst + index) & (values.length - 1)];
-        }
+            Variable sumVar;
+            Variable countVar;
 
-        public final void remove(int amount) {
-            mFirst = (mFirst + amount) & (mValues.length - 1);
-            mSize -= amount;
-        }
+            if (clazz.isPrimitive()) {
+                // Since there's no nulls, no need to count them up.
+                countVar = mm.param(1);
+                sumVar = mm.invoke("sum", mm.param(0), countVar);
+            } else {
+                sumVar = mm.var(unboxed);
 
-        public final byte removeFirst() {
-            byte[] values = mValues;
-            int first = mFirst;
-            mFirst = (first + 1) & (values.length - 1);
-            mSize--;
-            return values[first & (values.length - 1)];
-        }
-    }
+                if (!Arithmetic.zero(sumVar)) {
+                    throw new AssertionError();
+                }
 
-    public static class OfShort {
-        private short[] mValues;
-        private int mFirst, mSize;
+                countVar = mm.var(int.class).set(0);
 
-        public OfShort(int initialCapacity) {
-            initialCapacity = Utils.roundUpPower2(initialCapacity);
-            mValues = new short[initialCapacity];
-        }
+                makeLoop(mm, type, true, addendVar -> {
+                    sumVar.set(Arithmetic.eval(type, Token.T_PLUS, sumVar, addendVar));
+                    countVar.inc(1);
+                });
 
-        public final int size() {
-            return mSize;
-        }
-
-        public final void init(short value) {
-            mValues[0] = value;
-            mFirst = 0;
-            mSize = 1;
-        }
-
-        public final void clear() {
-            mSize = 0;
-        }
-
-        public final void add(short value) {
-            short[] values = mValues;
-            int size = mSize;
-            if (size >= values.length) {
-                mValues = values = expand(values, mFirst);
-                mFirst = 0;
+                countVar.ifEq(0, () -> mm.return_(null));
             }
-            values[(mFirst + size) & (values.length - 1)] = value;
-            mSize = size + 1;
-        }
 
-        private static short[] expand(short[] values, int first) {
-            var newValues = new short[values.length << 1];
-            System.arraycopy(values, first, newValues, 0, values.length - first);
-            System.arraycopy(values, 0, newValues, values.length - first, first);
-            return newValues;
-        }
+            Variable divisorVar;
 
-        public final short get(int index) {
-            short[] values = mValues;
-            return values[(mFirst + index) & (values.length - 1)];
-        }
-
-        public final void remove(int amount) {
-            mFirst = (mFirst + amount) & (mValues.length - 1);
-            mSize -= amount;
-        }
-
-        public final short removeFirst() {
-            short[] values = mValues;
-            int first = mFirst;
-            mFirst = (first + 1) & (values.length - 1);
-            mSize--;
-            return values[first & (values.length - 1)];
-        }
-    }
-
-    public static class OfInt {
-        private int[] mValues;
-        private int mFirst, mSize;
-
-        public OfInt(int initialCapacity) {
-            initialCapacity = Utils.roundUpPower2(initialCapacity);
-            mValues = new int[initialCapacity];
-        }
-
-        public final int size() {
-            return mSize;
-        }
-
-        public final void init(int value) {
-            mValues[0] = value;
-            mFirst = 0;
-            mSize = 1;
-        }
-
-        public final void clear() {
-            mSize = 0;
-        }
-
-        public final void add(int value) {
-            int[] values = mValues;
-            int size = mSize;
-            if (size >= values.length) {
-                mValues = values = expand(values, mFirst);
-                mFirst = 0;
+            if (clazz == BigDecimal.class) {
+                divisorVar = mm.var(clazz).invoke("valueOf", countVar);
+                mm.return_(sumVar.invoke("divide", divisorVar,
+                                         mm.var(MathContext.class).field("DECIMAL64")));
+            } else {
+                if (clazz == BigInteger.class) {
+                    divisorVar = mm.var(clazz).invoke("valueOf", countVar);
+                } else {
+                    divisorVar = countVar.cast(unboxed);
+                }
+                mm.return_(Arithmetic.eval(type, Token.T_DIV, sumVar, divisorVar));
             }
-            values[(mFirst + size) & (values.length - 1)] = value;
-            mSize = size + 1;
         }
 
-        private static int[] expand(int[] values, int first) {
-            var newValues = new int[values.length << 1];
-            System.arraycopy(values, first, newValues, 0, values.length - first);
-            System.arraycopy(values, 0, newValues, values.length - first, first);
-            return newValues;
+        {
+            MethodMaker mm = cm.addMethod(clazz, "min", int.class, int.class).public_().final_();
+            var minVar = mm.var(clazz);
+
+            if (clazz.isPrimitive()) {
+                minVar.set(Arithmetic.max(type));
+
+                makeLoop(mm, type, true, valueVar -> {
+                    minVar.set(Arithmetic.min(type, minVar, valueVar));
+                });
+            } else {
+                minVar.set(null); // null is the absolute max
+
+                makeLoop(mm, type, true, valueVar -> {
+                    minVar.ifEq(null, () -> minVar.set(valueVar),
+                                () -> minVar.set(Arithmetic.min(type, minVar, valueVar)));
+                });
+            }
+
+            mm.return_(minVar);
         }
 
-        public final int get(int index) {
-            int[] values = mValues;
-            return values[(mFirst + index) & (values.length - 1)];
+        {
+            MethodMaker mm = cm.addMethod(clazz, "maxNL", int.class, int.class).public_().final_();
+            var maxVar = mm.var(clazz);
+
+            if (clazz.isPrimitive()) {
+                maxVar.set(Arithmetic.min(type));
+
+                makeLoop(mm, type, true, valueVar -> {
+                    maxVar.set(Arithmetic.max(type, maxVar, valueVar));
+                });
+            } else {
+                maxVar.set(null); // null is the absolute min
+
+                makeLoop(mm, type, true, valueVar -> {
+                    maxVar.ifEq(null, () -> maxVar.set(valueVar),
+                                () -> maxVar.set(Arithmetic.max(type, maxVar, valueVar)));
+                });
+            }
+
+            mm.return_(maxVar);
         }
 
-        public final void remove(int amount) {
-            mFirst = (mFirst + amount) & (mValues.length - 1);
-            mSize -= amount;
+        {
+            MethodMaker mm = cm.addMethod(clazz, "minNL", int.class, int.class).public_().final_();
+            var minVar = mm.var(clazz);
+            Object maxVal = Arithmetic.max(type);
+
+            if (maxVal == null) {
+                // Need to treat nulls specially because there's no MAX_VALUE.
+                var fromVar = mm.param(0);
+                var numVar = mm.param(1);
+                var valuesVar = mm.field("values").get();
+                mm.var(ValueBuffer.class).invoke
+                    ("hasNull", valuesVar, mm.field("first").add(fromVar), numVar)
+                    .ifTrue(() -> minVar.set(null), // null is the absolute min
+                            () -> minVar.set(mm.invoke("min", fromVar, numVar)));
+            } else if (clazz.isPrimitive()) {
+                minVar.set(mm.invoke("min", mm.param(0), mm.param(1)));
+            } else {
+                minVar.set(maxVal);
+
+                makeLoop(mm, type, false, valueVar -> {
+                    valueVar.ifEq(null, () -> mm.return_(null)); // null is the absolute min
+                    minVar.set(Arithmetic.min(type, minVar, valueVar));
+                });
+            }
+
+            mm.return_(minVar);
         }
 
-        public final int removeFirst() {
-            int[] values = mValues;
-            int first = mFirst;
-            mFirst = (first + 1) & (values.length - 1);
-            mSize--;
-            return values[first & (values.length - 1)];
+        {
+            MethodMaker mm = cm.addMethod(clazz, "max", int.class, int.class).public_().final_();
+            var maxVar = mm.var(clazz);
+            Object minVal = Arithmetic.min(type);
+
+            if (minVal == null) {
+                // Need to treat nulls specially because there's no MIN_VALUE.
+                var fromVar = mm.param(0);
+                var numVar = mm.param(1);
+                var valuesVar = mm.field("values").get();
+                mm.var(ValueBuffer.class).invoke
+                    ("hasNull", valuesVar, mm.field("first").add(fromVar), numVar)
+                    .ifTrue(() -> maxVar.set(null), // null is the absolute max
+                            () -> maxVar.set(mm.invoke("maxNL", fromVar, numVar)));
+            } else if (clazz.isPrimitive()) {
+                maxVar.set(mm.invoke("maxNL", mm.param(0), mm.param(1)));
+            } else {
+                maxVar.set(minVal);
+
+                makeLoop(mm, type, false, valueVar -> {
+                    valueVar.ifEq(null, () -> mm.return_(null)); // null is the absolute max
+                    maxVar.set(Arithmetic.max(type, maxVar, valueVar));
+                });
+            }
+
+            mm.return_(maxVar);
         }
     }
 
-    public static class OfLong {
-        long[] mValues;
-        int mFirst, mSize;
+    /**
+     * @param mm params must be (int from, int num)
+     * @param skipNulls when true, the op never receives null values
+     * @param op accepts a value from the buffer
+     */
+    private static void makeLoop(MethodMaker mm, Type type, boolean skipNulls,
+                                 Consumer<Variable> op)
+    {
+        Class<?> clazz = type.clazz();
 
-        public OfLong(int initialCapacity) {
-            initialCapacity = Utils.roundUpPower2(initialCapacity);
-            mValues = new long[initialCapacity];
-        }
+        var fromVar = mm.param(0);
+        var numVar = mm.param(1);
 
-        public final int size() {
-            return mSize;
-        }
+        var valuesVar = mm.field("values").get();
+        var firstVar = ixVar(valuesVar, mm.field("first"), fromVar);
+        var endVar = firstVar.add(numVar);
 
-        public final void init(long value) {
-            mValues[0] = value;
-            mFirst = 0;
-            mSize = 1;
-        }
+        Label next = mm.label();
+        endVar.ifLe(valuesVar.alength(), next);
 
-        public final void clear() {
-            mSize = 0;
-        }
-
-        public final void add(long value) {
-            long[] values = mValues;
-            int size = mSize;
-            if (size >= values.length) {
-                mValues = values = expand(values, mFirst);
-                mFirst = 0;
+        {
+            Label startLabel = mm.label().here();
+            Label endLabel = mm.label();
+            firstVar.ifGe(valuesVar.alength(), endLabel);
+            var valueVar = valuesVar.aget(firstVar);
+            firstVar.inc(1);
+            if (skipNulls && !clazz.isPrimitive()) {
+                valueVar.ifEq(null, startLabel);
             }
-            values[(mFirst + size) & (values.length - 1)] = value;
-            mSize = size + 1;
+            op.accept(valueVar);
+            startLabel.goto_();
+            endLabel.here();
+            endVar.set(endVar.sub(firstVar));
+            firstVar.set(0);
         }
 
-        private static long[] expand(long[] values, int first) {
-            var newValues = new long[values.length << 1];
-            System.arraycopy(values, first, newValues, 0, values.length - first);
-            System.arraycopy(values, 0, newValues, values.length - first, first);
-            return newValues;
-        }
+        next.here();
 
-        public final long get(int index) {
-            long[] values = mValues;
-            return values[(mFirst + index) & (values.length - 1)];
-        }
-
-        public final void remove(int amount) {
-            mFirst = (mFirst + amount) & (mValues.length - 1);
-            mSize -= amount;
-        }
-
-        public final long removeFirst() {
-            long[] values = mValues;
-            int first = mFirst;
-            mFirst = (first + 1) & (values.length - 1);
-            mSize--;
-            return values[first & (values.length - 1)];
-        }
-
-        public long sum(int from, int num) {
-            long[] values = mValues;
-            int first = (mFirst + from) & (values.length - 1);
-            int end = first + num;
-            long sum = 0;
-            if (end > values.length) {
-                while (first < values.length) {
-                    sum = Math.addExact(sum, values[first++]);
-                }
-                end -= first;
-                first = 0;
+        {
+            Label startLabel = mm.label().here();
+            Label endLabel = mm.label();
+            firstVar.ifGe(endVar, endLabel);
+            var valueVar = valuesVar.aget(firstVar);
+            firstVar.inc(1);
+            if (skipNulls && !clazz.isPrimitive()) {
+                valueVar.ifEq(null, startLabel);
             }
-            while (first < end) {
-                sum = Math.addExact(sum, values[first++]);
-            }
-            return sum;
-        }
-
-        public final long average(int from, int num) {
-            return sum(from, num) / num;
-        }
-    }
-
-    public static class OfULong extends OfLong {
-        public OfULong(int initialCapacity) {
-            super(initialCapacity);
-        }
-
-        @Override
-        public final long sum(int from, int num) {
-            long[] values = mValues;
-            int first = (mFirst + from) & (values.length - 1);
-            int end = first + num;
-            long sum = 0;
-            if (end > values.length) {
-                while (first < values.length) {
-                    sum = Arithmetic.ULong.addExact(sum, values[first++]);
-                }
-                end -= first;
-                first = 0;
-            }
-            while (first < end) {
-                sum = Arithmetic.ULong.addExact(sum, values[first++]);
-            }
-            return sum;
-        }
-    }
-
-    public static class OfLongObj {
-        Long[] mValues;
-        int mFirst, mSize;
-
-        public OfLongObj(int initialCapacity) {
-            initialCapacity = Utils.roundUpPower2(initialCapacity);
-            mValues = new Long[initialCapacity];
-        }
-
-        public final int size() {
-            return mSize;
-        }
-
-        public final void init(Long value) {
-            mValues[0] = value;
-            mFirst = 0;
-            mSize = 1;
-        }
-
-        public final void clear() {
-            mSize = 0;
-        }
-
-        public final void add(Long value) {
-            Long[] values = mValues;
-            int size = mSize;
-            if (size >= values.length) {
-                mValues = values = expand(values, mFirst);
-                mFirst = 0;
-            }
-            values[(mFirst + size) & (values.length - 1)] = value;
-            mSize = size + 1;
-        }
-
-        private static Long[] expand(Long[] values, int first) {
-            var newValues = new Long[values.length << 1];
-            System.arraycopy(values, first, newValues, 0, values.length - first);
-            System.arraycopy(values, 0, newValues, values.length - first, first);
-            return newValues;
-        }
-
-        public final Long get(int index) {
-            Long[] values = mValues;
-            return values[(mFirst + index) & (values.length - 1)];
-        }
-
-        public final void remove(int amount) {
-            mFirst = (mFirst + amount) & (mValues.length - 1);
-            mSize -= amount;
-        }
-
-        public final Long removeFirst() {
-            Long[] values = mValues;
-            int first = mFirst;
-            mFirst = (first + 1) & (values.length - 1);
-            mSize--;
-            return values[first & (values.length - 1)];
-        }
-
-        public final int count(int from, int num) {
-            return ValueBuffer.count(mValues, mFirst + from, num);
-        }
-
-        public long sum(int from, int num) {
-            Long[] values = mValues;
-            int first = (mFirst + from) & (values.length - 1);
-            int end = first + num;
-            Long sum = 0L;
-            if (end > values.length) {
-                while (first < values.length) {
-                    Long addend = values[first++];
-                    if (addend != null) {
-                        sum = Math.addExact(sum, addend);
-                    }
-                }
-                end -= first;
-                first = 0;
-            }
-            while (first < end) {
-                Long addend = values[first++];
-                if (addend != null) {
-                    sum = Math.addExact(sum, addend);
-                }
-            }
-            return sum;
-        }
-
-        public Long average(int from, int num) {
-            Long[] values = mValues;
-            int first = (mFirst + from) & (values.length - 1);
-            int end = first + num;
-            Long sum = 0L;
-            long count = 0;
-            if (end > values.length) {
-                while (first < values.length) {
-                    Long addend = values[first++];
-                    if (addend != null) {
-                        sum = Math.addExact(sum, addend);
-                        count++;
-                    }
-                }
-                end -= first;
-                first = 0;
-            }
-            while (first < end) {
-                Long addend = values[first++];
-                if (addend != null) {
-                    sum = Math.addExact(sum, addend);
-                    count++;
-                }
-            }
-            return count == 0 ? null : (sum / count);
-        }
-    }
-
-    public static class OfULongObj extends OfLongObj {
-        public OfULongObj(int initialCapacity) {
-            super(initialCapacity);
-        }
-
-        @Override
-        public final long sum(int from, int num) {
-            Long[] values = mValues;
-            int first = (mFirst + from) & (values.length - 1);
-            int end = first + num;
-            Long sum = 0L;
-            if (end > values.length) {
-                while (first < values.length) {
-                    Long addend = values[first++];
-                    if (addend != null) {
-                        sum = Arithmetic.ULong.addExact(sum, addend);
-                    }
-                }
-                end -= first;
-                first = 0;
-            }
-            while (first < end) {
-                Long addend = values[first++];
-                if (addend != null) {
-                    sum = Arithmetic.ULong.addExact(sum, addend);
-                }
-            }
-            return sum;
-        }
-
-        @Override
-        public final Long average(int from, int num) {
-            Long[] values = mValues;
-            int first = (mFirst + from) & (values.length - 1);
-            int end = first + num;
-            Long sum = 0L;
-            long count = 0;
-            if (end > values.length) {
-                while (first < values.length) {
-                    Long addend = values[first++];
-                    if (addend != null) {
-                        sum = Arithmetic.ULong.addExact(sum, addend);
-                        count++;
-                    }
-                }
-                end -= first;
-                first = 0;
-            }
-            while (first < end) {
-                Long addend = values[first++];
-                if (addend != null) {
-                    sum = Arithmetic.ULong.addExact(sum, addend);
-                    count++;
-                }
-            }
-            return count == 0 ? null : (sum / count);
-        }
-    }
-
-    public static class OfFloat {
-        private float[] mValues;
-        private int mFirst, mSize;
-
-        public OfFloat(int initialCapacity) {
-            initialCapacity = Utils.roundUpPower2(initialCapacity);
-            mValues = new float[initialCapacity];
-        }
-
-        public final int size() {
-            return mSize;
-        }
-
-        public final void init(float value) {
-            mValues[0] = value;
-            mFirst = 0;
-            mSize = 1;
-        }
-
-        public final void clear() {
-            mSize = 0;
-        }
-
-        public final void add(float value) {
-            float[] values = mValues;
-            int size = mSize;
-            if (size >= values.length) {
-                mValues = values = expand(values, mFirst);
-                mFirst = 0;
-            }
-            values[(mFirst + size) & (values.length - 1)] = value;
-            mSize = size + 1;
-        }
-
-        private static float[] expand(float[] values, int first) {
-            var newValues = new float[values.length << 1];
-            System.arraycopy(values, first, newValues, 0, values.length - first);
-            System.arraycopy(values, 0, newValues, values.length - first, first);
-            return newValues;
-        }
-
-        public final float get(int index) {
-            float[] values = mValues;
-            return values[(mFirst + index) & (values.length - 1)];
-        }
-
-        public final void remove(int amount) {
-            mFirst = (mFirst + amount) & (mValues.length - 1);
-            mSize -= amount;
-        }
-
-        public final float removeFirst() {
-            float[] values = mValues;
-            int first = mFirst;
-            mFirst = (first + 1) & (values.length - 1);
-            mSize--;
-            return values[first & (values.length - 1)];
-        }
-    }
-
-    public static class OfDouble {
-        private double[] mValues;
-        private int mFirst, mSize;
-
-        public OfDouble(int initialCapacity) {
-            initialCapacity = Utils.roundUpPower2(initialCapacity);
-            mValues = new double[initialCapacity];
-        }
-
-        public final int size() {
-            return mSize;
-        }
-
-        public final void init(double value) {
-            mValues[0] = value;
-            mFirst = 0;
-            mSize = 1;
-        }
-
-        public final void clear() {
-            mSize = 0;
-        }
-
-        public final void add(double value) {
-            double[] values = mValues;
-            int size = mSize;
-            if (size >= values.length) {
-                mValues = values = expand(values, mFirst);
-                mFirst = 0;
-            }
-            values[(mFirst + size) & (values.length - 1)] = value;
-            mSize = size + 1;
-        }
-
-        private static double[] expand(double[] values, int first) {
-            var newValues = new double[values.length << 1];
-            System.arraycopy(values, first, newValues, 0, values.length - first);
-            System.arraycopy(values, 0, newValues, values.length - first, first);
-            return newValues;
-        }
-
-        public final double get(int index) {
-            double[] values = mValues;
-            return values[(mFirst + index) & (values.length - 1)];
-        }
-
-        public final void remove(int amount) {
-            mFirst = (mFirst + amount) & (mValues.length - 1);
-            mSize -= amount;
-        }
-
-        public final double removeFirst() {
-            double[] values = mValues;
-            int first = mFirst;
-            mFirst = (first + 1) & (values.length - 1);
-            mSize--;
-            return values[first & (values.length - 1)];
-        }
-
-        public final double sum(int from, int num) {
-            double[] values = mValues;
-            int first = (mFirst + from) & (values.length - 1);
-            int end = first + num;
-            double sum = 0;
-            if (end > values.length) {
-                while (first < values.length) {
-                    sum += values[first++];
-                }
-                end -= first;
-                first = 0;
-            }
-            while (first < end) {
-                sum += values[first++];
-            }
-            return sum;
-        }
-
-        public final double average(int from, int num) {
-            return sum(from, num) / num;
-        }
-    }
-
-    public static class OfDoubleObj {
-        private Double[] mValues;
-        private int mFirst, mSize;
-
-        public OfDoubleObj(int initialCapacity) {
-            initialCapacity = Utils.roundUpPower2(initialCapacity);
-            mValues = new Double[initialCapacity];
-        }
-
-        public final int size() {
-            return mSize;
-        }
-
-        public final void init(Double value) {
-            mValues[0] = value;
-            mFirst = 0;
-            mSize = 1;
-        }
-
-        public final void clear() {
-            mSize = 0;
-        }
-
-        public final void add(Double value) {
-            Double[] values = mValues;
-            int size = mSize;
-            if (size >= values.length) {
-                mValues = values = expand(values, mFirst);
-                mFirst = 0;
-            }
-            values[(mFirst + size) & (values.length - 1)] = value;
-            mSize = size + 1;
-        }
-
-        private static Double[] expand(Double[] values, int first) {
-            var newValues = new Double[values.length << 1];
-            System.arraycopy(values, first, newValues, 0, values.length - first);
-            System.arraycopy(values, 0, newValues, values.length - first, first);
-            return newValues;
-        }
-
-        public final Double get(int index) {
-            Double[] values = mValues;
-            return values[(mFirst + index) & (values.length - 1)];
-        }
-
-        public final void remove(int amount) {
-            mFirst = (mFirst + amount) & (mValues.length - 1);
-            mSize -= amount;
-        }
-
-        public final Double removeFirst() {
-            Double[] values = mValues;
-            int first = mFirst;
-            mFirst = (first + 1) & (values.length - 1);
-            mSize--;
-            return values[first & (values.length - 1)];
-        }
-
-        public final int count(int from, int num) {
-            return ValueBuffer.count(mValues, mFirst + from, num);
-        }
-
-        public final double sum(int from, int num) {
-            Double[] values = mValues;
-            int first = (mFirst + from) & (values.length - 1);
-            int end = first + num;
-            Double sum = 0.0;
-            if (end > values.length) {
-                while (first < values.length) {
-                    Double addend = values[first++];
-                    if (addend != null) {
-                        sum += addend;
-                    }
-                }
-                end -= first;
-                first = 0;
-            }
-            while (first < end) {
-                Double addend = values[first++];
-                if (addend != null) {
-                    sum += addend;
-                }
-            }
-            return sum;
-        }
-
-        public final Double average(int from, int num) {
-            Double[] values = mValues;
-            int first = (mFirst + from) & (values.length - 1);
-            int end = first + num;
-            Double sum = 0.0;
-            int count = 0;
-            if (end > values.length) {
-                while (first < values.length) {
-                    Double addend = values[first++];
-                    if (addend != null) {
-                        sum += addend;
-                        count++;
-                    }
-                }
-                end -= first;
-                first = 0;
-            }
-            while (first < end) {
-                Double addend = values[first++];
-                if (addend != null) {
-                    sum += addend;
-                    count++;
-                }
-            }
-            return count == 0 ? null : (sum / count);
-        }
-    }
-
-    public static class OfBigInteger {
-        private BigInteger[] mValues;
-        private int mFirst, mSize;
-
-        public OfBigInteger(int initialCapacity) {
-            initialCapacity = Utils.roundUpPower2(initialCapacity);
-            mValues = new BigInteger[initialCapacity];
-        }
-
-        public final int size() {
-            return mSize;
-        }
-
-        public final void init(BigInteger value) {
-            mValues[0] = value;
-            mFirst = 0;
-            mSize = 1;
-        }
-
-        public final void clear() {
-            mSize = 0;
-        }
-
-        public final void add(BigInteger value) {
-            BigInteger[] values = mValues;
-            int size = mSize;
-            if (size >= values.length) {
-                mValues = values = expand(values, mFirst);
-                mFirst = 0;
-            }
-            values[(mFirst + size) & (values.length - 1)] = value;
-            mSize = size + 1;
-        }
-
-        private static BigInteger[] expand(BigInteger[] values, int first) {
-            var newValues = new BigInteger[values.length << 1];
-            System.arraycopy(values, first, newValues, 0, values.length - first);
-            System.arraycopy(values, 0, newValues, values.length - first, first);
-            return newValues;
-        }
-
-        public final BigInteger get(int index) {
-            BigInteger[] values = mValues;
-            return values[(mFirst + index) & (values.length - 1)];
-        }
-
-        public final void remove(int amount) {
-            mFirst = (mFirst + amount) & (mValues.length - 1);
-            mSize -= amount;
-        }
-
-        public final BigInteger removeFirst() {
-            BigInteger[] values = mValues;
-            int first = mFirst;
-            mFirst = (first + 1) & (values.length - 1);
-            mSize--;
-            return values[first & (values.length - 1)];
-        }
-
-        public final int count(int from, int num) {
-            return ValueBuffer.count(mValues, mFirst + from, num);
-        }
-
-        public final BigInteger sum(int from, int num) {
-            BigInteger[] values = mValues;
-            int first = (mFirst + from) & (values.length - 1);
-            int end = first + num;
-            BigInteger sum = BigInteger.ZERO;
-            if (end > values.length) {
-                while (first < values.length) {
-                    BigInteger addend = values[first++];
-                    if (addend != null) {
-                        sum = sum.add(addend);
-                    }
-                }
-                end -= first;
-                first = 0;
-            }
-            while (first < end) {
-                BigInteger addend = values[first++];
-                if (addend != null) {
-                    sum = sum.add(addend);
-                }
-            }
-            return sum;
-        }
-
-        public final BigInteger average(int from, int num) {
-            BigInteger[] values = mValues;
-            int first = (mFirst + from) & (values.length - 1);
-            int end = first + num;
-            BigInteger sum = BigInteger.ZERO;
-            long count = 0;
-            if (end > values.length) {
-                while (first < values.length) {
-                    BigInteger addend = values[first++];
-                    if (addend != null) {
-                        sum = sum.add(addend);
-                        count++;
-                    }
-                }
-                end -= first;
-                first = 0;
-            }
-            while (first < end) {
-                BigInteger addend = values[first++];
-                if (addend != null) {
-                    sum = sum.add(addend);
-                    count++;
-                }
-            }
-            return count == 0 ? null : sum.divide(BigInteger.valueOf(count));
-        }
-    }
-
-    public static class OfBigDecimal {
-        private BigDecimal[] mValues;
-        private int mFirst, mSize;
-
-        public OfBigDecimal(int initialCapacity) {
-            initialCapacity = Utils.roundUpPower2(initialCapacity);
-            mValues = new BigDecimal[initialCapacity];
-        }
-
-        public final int size() {
-            return mSize;
-        }
-
-        public final void init(BigDecimal value) {
-            mValues[0] = value;
-            mFirst = 0;
-            mSize = 1;
-        }
-
-        public final void clear() {
-            mSize = 0;
-        }
-
-        public final void add(BigDecimal value) {
-            BigDecimal[] values = mValues;
-            int size = mSize;
-            if (size >= values.length) {
-                mValues = values = expand(values, mFirst);
-                mFirst = 0;
-            }
-            values[(mFirst + size) & (values.length - 1)] = value;
-            mSize = size + 1;
-        }
-
-        private static BigDecimal[] expand(BigDecimal[] values, int first) {
-            var newValues = new BigDecimal[values.length << 1];
-            System.arraycopy(values, first, newValues, 0, values.length - first);
-            System.arraycopy(values, 0, newValues, values.length - first, first);
-            return newValues;
-        }
-
-        public final BigDecimal get(int index) {
-            BigDecimal[] values = mValues;
-            return values[(mFirst + index) & (values.length - 1)];
-        }
-
-        public final void remove(int amount) {
-            mFirst = (mFirst + amount) & (mValues.length - 1);
-            mSize -= amount;
-        }
-
-        public final BigDecimal removeFirst() {
-            BigDecimal[] values = mValues;
-            int first = mFirst;
-            mFirst = (first + 1) & (values.length - 1);
-            mSize--;
-            return values[first & (values.length - 1)];
-        }
-
-        public final int count(int from, int num) {
-            return ValueBuffer.count(mValues, mFirst + from, num);
-        }
-
-        public final BigDecimal sum(int from, int num) {
-            BigDecimal[] values = mValues;
-            int first = (mFirst + from) & (values.length - 1);
-            int end = first + num;
-            BigDecimal sum = BigDecimal.ZERO;
-            if (end > values.length) {
-                while (first < values.length) {
-                    BigDecimal addend = values[first++];
-                    if (addend != null) {
-                        sum = sum.add(addend);
-                    }
-                }
-                end -= first;
-                first = 0;
-            }
-            while (first < end) {
-                BigDecimal addend = values[first++];
-                if (addend != null) {
-                    sum = sum.add(addend);
-                }
-            }
-            return sum;
-        }
-
-        public final BigDecimal average(int from, int num) {
-            BigDecimal[] values = mValues;
-            int first = (mFirst + from) & (values.length - 1);
-            int end = first + num;
-            BigDecimal sum = BigDecimal.ZERO;
-            long count = 0;
-            if (end > values.length) {
-                while (first < values.length) {
-                    BigDecimal addend = values[first++];
-                    if (addend != null) {
-                        sum = sum.add(addend);
-                        count++;
-                    }
-                }
-                end -= first;
-                first = 0;
-            }
-            while (first < end) {
-                BigDecimal addend = values[first++];
-                if (addend != null) {
-                    sum = sum.add(addend);
-                    count++;
-                }
-            }
-            return count == 0 ? null : sum.divide(BigDecimal.valueOf(count), MathContext.DECIMAL64);
+            op.accept(valueVar);
+            startLabel.goto_();
+            endLabel.here();
         }
     }
 }

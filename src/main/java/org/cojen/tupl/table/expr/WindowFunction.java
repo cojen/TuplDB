@@ -132,8 +132,10 @@ abstract class WindowFunction extends FunctionApplier.Grouped {
                 fieldName = context.newWorkField(long.class).final_().name();
                 mm.field(fieldName).set(rangeVal.eval(true).invoke("start"));
             } else {
-                fieldName = context.newWorkField(ValueBuffer.OfLong.class).final_().name();
-                mm.field(fieldName).set(mm.new_(ValueBuffer.OfLong.class, 8));
+                Type valueType = BasicType.make(long.class, Type.TYPE_LONG);
+                Class<?> bufferType = ValueBuffer.forType(valueType);
+                fieldName = context.newWorkField(bufferType).final_().name();
+                mm.field(fieldName).set(mm.new_(bufferType, 8));
             }
             mStartFieldName = fieldName;
         }
@@ -144,8 +146,10 @@ abstract class WindowFunction extends FunctionApplier.Grouped {
                 fieldName = context.newWorkField(long.class).final_().name();
                 mm.field(fieldName).set(rangeVal.eval(true).invoke("end"));
             } else {
-                fieldName = context.newWorkField(ValueBuffer.OfLong.class).final_().name();
-                mm.field(fieldName).set(mm.new_(ValueBuffer.OfLong.class, 8));
+                Type valueType = BasicType.make(long.class, Type.TYPE_LONG);
+                Class<?> bufferType = ValueBuffer.forType(valueType);
+                fieldName = context.newWorkField(bufferType).final_().name();
+                mm.field(fieldName).set(mm.new_(bufferType, 8));
             }
             mEndFieldName = fieldName;
         }
@@ -307,29 +311,7 @@ abstract class WindowFunction extends FunctionApplier.Grouped {
      * Returns a suitable WindowBuffer class.
      */
     protected Class<?> bufferType() {
-        int typeCode = mValueType.plainTypeCode();
-        boolean nullable = mValueType.isNullable();
-
-        switch (typeCode) {
-            case TYPE_UBYTE, TYPE_USHORT, TYPE_UINT, TYPE_ULONG -> {
-                return nullable ? WindowBuffer.OfULongObj.class : WindowBuffer.OfULong.class;
-            }
-            case TYPE_BYTE, TYPE_SHORT, TYPE_INT, TYPE_LONG -> {
-                return nullable ? WindowBuffer.OfLongObj.class : WindowBuffer.OfLong.class;
-            }
-            case TYPE_FLOAT, TYPE_DOUBLE -> {
-                return nullable ? WindowBuffer.OfDoubleObj.class : WindowBuffer.OfDouble.class;
-            }
-            case TYPE_BIG_INTEGER -> {
-                return WindowBuffer.OfBigInteger.class;
-            }
-            case TYPE_BIG_DECIMAL -> {
-                return WindowBuffer.OfBigDecimal.class;
-            }
-            default -> {
-                return WindowBuffer.class;
-            }
-        }
+        return WindowBuffer.forType(mValueType);
     }
 
     /**
