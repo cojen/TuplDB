@@ -458,10 +458,33 @@ public final class StandardFunctionFinder extends SoftCache<String, Object, Obje
         }
 
         @Override
-        protected min validate(Type type, Map<String, Expr> namedArgs,
-                               Consumer<String> reason)
+        public boolean hasNamedParameters() {
+            // FIXME: Use something other than hasNamedParameters?
+            return true;
+        }
+
+        @Override
+        protected FunctionApplier validate(Type type, Map<String, Expr> namedArgs,
+                                           Consumer<String> reason)
         {
-            return new min(type);
+            if (!hasFrame(namedArgs)) {
+                return new min(type);
+            }
+
+            WindowFunction.Frame frame = accessFrame(namedArgs, true, reason);
+            if (frame == null) {
+                // The reason should have been provided by the accessFrame method.
+                return null;
+            }
+
+            Type resultType = type;
+
+            if (!frame.includesCurrent()) {
+                // The frame might go out of bounds, and so the affected values should be null.
+                resultType = resultType.nullable();
+            }
+
+            return new StandardWindowFunctions.min(resultType, type, type, frame);
         }
 
         @Override
@@ -479,10 +502,33 @@ public final class StandardFunctionFinder extends SoftCache<String, Object, Obje
         }
 
         @Override
-        protected max validate(Type type, Map<String, Expr> namedArgs,
-                               Consumer<String> reason)
+        public boolean hasNamedParameters() {
+            // FIXME: Use something other than hasNamedParameters?
+            return true;
+        }
+
+        @Override
+        protected FunctionApplier validate(Type type, Map<String, Expr> namedArgs,
+                                           Consumer<String> reason)
         {
-            return new max(type);
+            if (!hasFrame(namedArgs)) {
+                return new max(type);
+            }
+
+            WindowFunction.Frame frame = accessFrame(namedArgs, true, reason);
+            if (frame == null) {
+                // The reason should have been provided by the accessFrame method.
+                return null;
+            }
+
+            Type resultType = type;
+
+            if (!frame.includesCurrent()) {
+                // The frame might go out of bounds, and so the affected values should be null.
+                resultType = resultType.nullable();
+            }
+
+            return new StandardWindowFunctions.max(resultType, type, type, frame);
         }
 
         @Override

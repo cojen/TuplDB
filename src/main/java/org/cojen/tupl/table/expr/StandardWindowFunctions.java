@@ -30,6 +30,48 @@ import org.cojen.maker.Variable;
  */
 final class StandardWindowFunctions {
     /**
+     * Defines a window function which computes a moving minimum.
+     */
+    static final class min extends WindowFunction {
+        min(Type resultType, Type valueType, Type originalType, Frame frame) {
+            super(resultType, valueType, originalType, frame);
+        }
+
+        @Override
+        protected Variable compute(Variable bufferVar, Object frameStart, Object frameEnd) {
+            String method;
+            if (originalType().isNullLow()) {
+                method = type().isNullable() ? "frameMinOrNullNL" : "frameMinNL";
+            } else {
+                method = type().isNullable() ? "frameMinOrNull" : "frameMin";
+            }
+
+            return bufferVar.invoke(method, frameStart, frameEnd);
+        }
+    }
+
+    /**
+     * Defines a window function which computes a moving maximum.
+     */
+    static final class max extends WindowFunction {
+        max(Type resultType, Type valueType, Type originalType, Frame frame) {
+            super(resultType, valueType, originalType, frame);
+        }
+
+        @Override
+        protected Variable compute(Variable bufferVar, Object frameStart, Object frameEnd) {
+            String method;
+            if (originalType().isNullLow()) {
+                method = type().isNullable() ? "frameMaxOrNullNL" : "frameMaxNL";
+            } else {
+                method = type().isNullable() ? "frameMaxOrNull" : "frameMax";
+            }
+
+            return bufferVar.invoke(method, frameStart, frameEnd);
+        }
+    }
+
+    /**
      * Defines a window function which computes a moving count.
      */
     static final class count extends WindowFunction {
