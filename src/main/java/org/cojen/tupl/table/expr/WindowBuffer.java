@@ -110,8 +110,8 @@ public abstract class WindowBuffer<V> extends ValueBuffer<V> {
 
     /**
      * Increment the current row by one, and remove a value if possible. If the frame start is
-     * constantly greater or equal to zero, then the zero-arg variant of this method should be
-     * called.
+     * constantly greater than or equal to zero, then the zero-arg variant of this method
+     * should be called.
      *
      * @param frameStart inclusive frame start, relative to the current row (which is zero)
      */
@@ -120,7 +120,7 @@ public abstract class WindowBuffer<V> extends ValueBuffer<V> {
     /**
      * Increment the current row by one, and remove a value. This is a simplified variant of
      * the advanceAndRemove method which should only be called when the frame start is
-     * constantly greater or equal to zero.
+     * constantly greater than or equal to zero.
      */
     public abstract void advanceAndRemove();
 

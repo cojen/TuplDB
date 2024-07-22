@@ -244,19 +244,37 @@ abstract class WindowFunction extends FunctionApplier.Grouped {
         MethodMaker mm = context.methodMaker();
 
         Label ready = mm.label();
-        mm.field(mRemainingFieldName).ifGt(0L, ready);
+        Label notReady = null;
+
+        var remainingVar = mm.field(mRemainingFieldName).get();
+        remainingVar.ifGt(0L, ready);
 
         if (!isOpenEnd()) {
+            if (mEndConstant == null || mEndConstant < 0) {
+                // Prevent the remaining amount from decrementing below zero. This check isn't
+                // necessary when the end is known to always include the current row because
+                // the the buffer ready check is sufficient. As long as there's something in
+                // the buffer, then the remaining amount must be at least one.
+                notReady = mm.label();
+                remainingVar.and(~(1L << 63)).ifEq(0, notReady);
+            }
+
             final Object end;
             if (mIsEndConstant) {
                 end = mEndConstant != null ? mEndConstant : mm.field(mEndFieldName);
             } else {
                 end = mm.field(mEndFieldName).invoke("get", 0);
             }
+
             mm.field(mBufferFieldName).invoke("ready", end).ifTrue(ready);
         }
 
+        if (notReady != null) {
+            notReady.here();
+        }
+
         mm.return_(null); // not ready
+
         ready.here();
     }
 
