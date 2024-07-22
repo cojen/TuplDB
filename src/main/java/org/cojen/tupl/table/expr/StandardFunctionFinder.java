@@ -406,13 +406,32 @@ public final class StandardFunctionFinder extends SoftCache<String, Object, Obje
         }
 
         @Override
-        public first validate(List<Expr> args, Map<String, Expr> namedArgs,
-                              Consumer<String> reason)
+        public boolean hasNamedParameters() {
+            // FIXME: Use something other than hasNamedParameters?
+            return true;
+        }
+
+        @Override
+        public FunctionApplier validate(List<Expr> args, Map<String, Expr> namedArgs,
+                                        Consumer<String> reason)
         {
             if (!checkNumArgs(1, 1, args.size(), reason)) {
                 return null;
             }
-            return new first(args.get(0).type());
+
+            Type type = args.get(0).type();
+
+            if (!hasFrame(namedArgs)) {
+                return new first(type);
+            }
+
+            WindowFunction.Frame frame = accessFrame(namedArgs, true, reason);
+            if (frame == null) {
+                // The reason should have been provided by the accessFrame method.
+                return null;
+            }
+
+            return new StandardWindowFunctions.first(type, type, type, frame);
         }
 
         @Override
@@ -430,13 +449,32 @@ public final class StandardFunctionFinder extends SoftCache<String, Object, Obje
         }
 
         @Override
-        public last validate(List<Expr> args, Map<String, Expr> namedArgs,
-                             Consumer<String> reason)
+        public boolean hasNamedParameters() {
+            // FIXME: Use something other than hasNamedParameters?
+            return true;
+        }
+
+        @Override
+        public FunctionApplier validate(List<Expr> args, Map<String, Expr> namedArgs,
+                                        Consumer<String> reason)
         {
             if (!checkNumArgs(1, 1, args.size(), reason)) {
                 return null;
             }
-            return new last(args.get(0).type());
+
+            Type type = args.get(0).type();
+
+            if (!hasFrame(namedArgs)) {
+                return new last(type);
+            }
+
+            WindowFunction.Frame frame = accessFrame(namedArgs, true, reason);
+            if (frame == null) {
+                // The reason should have been provided by the accessFrame method.
+                return null;
+            }
+
+            return new StandardWindowFunctions.last(type, type, type, frame);
         }
 
         // Note: The Aggregator interface doesn't provide a convenient (or efficient) way of

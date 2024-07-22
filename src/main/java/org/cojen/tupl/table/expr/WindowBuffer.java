@@ -24,10 +24,14 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 import java.util.function.BiFunction;
+import java.util.function.Function;
 
 import org.cojen.maker.ClassMaker;
+import org.cojen.maker.Label;
 import org.cojen.maker.MethodMaker;
 import org.cojen.maker.Variable;
+
+import org.cojen.tupl.table.Converter;
 
 /**
  * Defines a growable circular buffer of values, which act upon moving ranges of values known
@@ -133,6 +137,40 @@ public abstract class WindowBuffer<V> extends ValueBuffer<V> {
      * @param frameEnd inclusive frame end, relative to the current row (which is zero)
      */
     public abstract int frameCount(long frameStart, long frameEnd);
+
+    /**
+     * Returns a value at the given frame position. If the position is outside the effective
+     * frame range, then a suitable default value is returned. See Converter.setDefault.
+     *
+     * @param framePos frame position relative to the current row (which is zero)
+     */
+    public abstract V frameGet(long framePos);
+
+    /**
+     * Returns a value at the given frame position. Returns null if the position outside the
+     * effective frame range.
+     *
+     * @param framePos frame position relative to the current row (which is zero)
+     */
+    public abstract V frameGetOrNull(long framePos);
+
+    /**
+     * Returns a value at the given frame position. If the position is outside the effective
+     * frame range, then first available value is returned. The caller is responsible for
+     * assuming that the buffer has at least one value.
+     *
+     * @param framePos frame position relative to the current row (which is zero)
+     */
+    public abstract V frameGetOrFirst(long framePos);
+
+    /**
+     * Returns a value at the given frame position. If the position is outside the effective
+     * frame range, then first available value is returned. The caller is responsible for
+     * assuming that the buffer has at least one value.
+     *
+     * @param framePos frame position relative to the current row (which is zero)
+     */
+    public abstract V frameGetOrLast(long framePos);
 
     /**
      * Returns the minimum value over the given range. If the effective range is empty, then
@@ -340,6 +378,49 @@ public abstract class WindowBuffer<V> extends ValueBuffer<V> {
             makeFrameCode(mm, 0, "count");
         }
 
+        {
+            MethodMaker mm = cm.addMethod(clazz, "frameGet", long.class).public_().final_();
+            makeFrameGet(mm, "get");
+            var emptyResultVar = mm.var(clazz);
+            Converter.setDefault(mm, type, emptyResultVar);
+            mm.return_(emptyResultVar);
+        }
+
+        {
+            Class boxed = type.boxedType();
+            MethodMaker mm = cm.addMethod(boxed, "frameGetOrNull", long.class).public_().final_();
+            makeFrameGet(mm, "get");
+            mm.return_(null);
+        }
+
+        {
+            MethodMaker mm = cm.addMethod(clazz, "frameGetOrFirst", long.class).public_().final_();
+
+            /*
+            long index = framePos - this.start;
+            index = Math.max(0, index);
+            return get((int) index);
+            */
+
+            var indexVar = mm.param(0).sub(mm.field("start"));
+            indexVar.set(mm.var(Math.class).invoke("max", 0L, indexVar));
+            mm.return_(mm.invoke("get", indexVar.cast(int.class)));
+        }
+
+        {
+            MethodMaker mm = cm.addMethod(clazz, "frameGetOrLast", long.class).public_().final_();
+
+            /*
+            framePos = Math.min(framePos, this.end);
+            long index = framePos - this.start;
+            return get((int) index);
+            */
+
+            var framePosVar = mm.var(Math.class).invoke("min", mm.param(0), mm.field("end"));
+            var indexVar = framePosVar.sub(mm.field("start"));
+            mm.return_(mm.invoke("get", indexVar.cast(int.class)));
+        }
+
         if (type.isNumber()) {
             addNumericalMethods(cm, type);
         }
@@ -521,5 +602,36 @@ public abstract class WindowBuffer<V> extends ValueBuffer<V> {
 
         mm.return_(op.apply(fromVar, numVar));
     }
-}
 
+    /**
+     * @param mm params must be (long framePos)
+     * @param method accepts an int "index" variable and computes a result to be returned,
+     * unless the result would be empty
+     */
+    private static void makeFrameGet(MethodMaker mm, String method) {
+        makeFrameGet(mm, indexVar -> mm.invoke(method, indexVar));
+    }
+
+    /**
+     * @param mm params must be (long framePos)
+     * @param op accepts an int "index" variable and computes a result to be returned, unless
+     * the result would be empty
+     */
+    private static void makeFrameGet(MethodMaker mm, Function<Variable, Variable> op) {
+        /*
+          long index = framePos - this.start;
+          if (index >= 0 && framePos <= this.end) {
+              return <op>((int) index);
+          }
+          empty...
+        */
+
+        var framePosVar = mm.param(0);
+        var indexVar = framePosVar.sub(mm.field("start"));
+        Label empty = mm.label();
+        indexVar.ifLt(0, empty);
+        framePosVar.ifGt(mm.field("end"), empty);
+        mm.return_(op.apply(indexVar.cast(int.class)));
+        empty.here();
+    }
+}

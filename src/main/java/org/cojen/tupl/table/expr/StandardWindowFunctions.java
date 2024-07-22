@@ -30,6 +30,34 @@ import org.cojen.maker.Variable;
  */
 final class StandardWindowFunctions {
     /**
+     * Defines a window function which produces the first value in the window.
+     */
+    static final class first extends WindowFunction {
+        first(Type resultType, Type valueType, Type originalType, Frame frame) {
+            super(resultType, valueType, originalType, frame);
+        }
+
+        @Override
+        protected Variable compute(Variable bufferVar, Object frameStart, Object frameEnd) {
+            return bufferVar.invoke("frameGetOrFirst", frameStart);
+        }
+    }
+
+    /**
+     * Defines a window function which produces the last value in the window.
+     */
+    static final class last extends WindowFunction {
+        last(Type resultType, Type valueType, Type originalType, Frame frame) {
+            super(resultType, valueType, originalType, frame);
+        }
+
+        @Override
+        protected Variable compute(Variable bufferVar, Object frameStart, Object frameEnd) {
+            return bufferVar.invoke("frameGetOrLast", frameEnd);
+        }
+    }
+
+    /**
      * Defines a window function which computes a moving minimum.
      */
     static final class min extends WindowFunction {
