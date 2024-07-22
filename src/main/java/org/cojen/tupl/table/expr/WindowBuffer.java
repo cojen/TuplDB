@@ -135,8 +135,9 @@ public abstract class WindowBuffer<V> extends ValueBuffer<V> {
     public abstract int frameCount(long frameStart, long frameEnd);
 
     /**
-     * Returns the minimum value over the given range. If possible, returns null if the
-     * effective range is empty.
+     * Returns the minimum value over the given range. If the effective range is empty, then
+     * null is returned if permitted. If the result cannot be null, then the maximum numerical
+     * value is returned when the effective range is empty.
      *
      * @param frameStart inclusive frame start, relative to the current row (which is zero)
      * @param frameEnd inclusive frame end, relative to the current row (which is zero)
@@ -179,8 +180,9 @@ public abstract class WindowBuffer<V> extends ValueBuffer<V> {
     }
 
     /**
-     * Returns the maximum value over the given range. If possible, returns null if the
-     * effective range is empty.
+     * Returns the maximum value over the given range. If the effective range is empty, then
+     * null is returned if permitted. If the result cannot be null, then the minimum numerical
+     * value is returned when the effective range is empty.
      *
      * @param frameStart inclusive frame start, relative to the current row (which is zero)
      * @param frameEnd inclusive frame end, relative to the current row (which is zero)
@@ -295,6 +297,19 @@ public abstract class WindowBuffer<V> extends ValueBuffer<V> {
 
         {
             MethodMaker mm = cm.addMethod(null, "advanceAndRemove", long.class).public_().final_();
+
+            /*
+              int start = this.start - 1;
+              int end = this.end - 1;
+              if (frameStart > start) {
+                  if (end >= start) {
+                      remove(1);
+                  }
+                  start++;
+              }
+              this.start = start;
+              this.end = end;
+            */
 
             var frameStartVar = mm.param(0);
 
@@ -472,6 +487,19 @@ public abstract class WindowBuffer<V> extends ValueBuffer<V> {
     private static void makeFrameCode(MethodMaker mm, Object emptyResult,
                                       BiFunction<Variable, Variable, Variable> op)
     {
+        /*
+          int start = this.start;
+          frameStart = Math.max(frameStart, start);
+          frameEnd = Math.min(frameEnd, this.end);
+          long count = frameEnd - frameStart + 1;
+          if (count <= 0) {
+              return <emptyResult>;
+          }
+          int from = (int) (frameStart - start);
+          int num = (int) count;
+          return <op>(from, num);
+        */
+
         var frameStartVar = mm.param(0);
         var frameEndVar = mm.param(1);
 

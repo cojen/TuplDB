@@ -514,6 +514,28 @@ public abstract class ValueBuffer<V> {
     private static void makeLoop(MethodMaker mm, Type type, boolean skipNulls,
                                  Consumer<Variable> op)
     {
+        /*
+          <type>[] values = this.values;
+          int first = (this.first + from) & (values.length - 1); // see ixVar
+          int end = first + num;
+          if (end > values.length) {
+              while (first < values.length) {
+                  <type> value = values[first++];
+                  if (!skipNulls || value != null) {
+                      <op>(value)
+                  }
+              }
+              end -= first;
+              first = 0;
+          }
+          while (first < end) {
+              <type> value = values[first++];
+              if (!skipNulls || value != null) {
+                  <op>(value)
+              }
+          }
+        */
+
         Class<?> clazz = type.clazz();
 
         var fromVar = mm.param(0);
