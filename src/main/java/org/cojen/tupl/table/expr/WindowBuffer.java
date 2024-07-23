@@ -157,7 +157,7 @@ public abstract class WindowBuffer<V> extends ValueBuffer<V> {
     /**
      * Returns a value at the given frame position. If the position is outside the effective
      * frame range, then first available value is returned. The caller is responsible for
-     * assuming that the buffer has at least one value.
+     * ensuring that the buffer has at least one value.
      *
      * @param framePos frame position relative to the current row (which is zero)
      */
@@ -166,11 +166,19 @@ public abstract class WindowBuffer<V> extends ValueBuffer<V> {
     /**
      * Returns a value at the given frame position. If the position is outside the effective
      * frame range, then first available value is returned. The caller is responsible for
-     * assuming that the buffer has at least one value.
+     * ensuring that the buffer has at least one value.
      *
      * @param framePos frame position relative to the current row (which is zero)
      */
     public abstract V frameGetOrLast(long framePos);
+
+    /**
+     * Returns a value at the current row position. The caller is responsible for ensuring that
+     * the buffer has a current row value.
+     *
+     * @param framePos frame position relative to the current row (which is zero)
+     */
+    public abstract V frameCurrent();
 
     /**
      * Returns the minimum value over the given range. If the effective range is empty, then
@@ -397,9 +405,9 @@ public abstract class WindowBuffer<V> extends ValueBuffer<V> {
             MethodMaker mm = cm.addMethod(clazz, "frameGetOrFirst", long.class).public_().final_();
 
             /*
-            long index = framePos - this.start;
-            index = Math.max(0, index);
-            return get((int) index);
+              long index = framePos - this.start;
+              index = Math.max(0, index);
+              return get((int) index);
             */
 
             var indexVar = mm.param(0).sub(mm.field("start"));
@@ -411,14 +419,19 @@ public abstract class WindowBuffer<V> extends ValueBuffer<V> {
             MethodMaker mm = cm.addMethod(clazz, "frameGetOrLast", long.class).public_().final_();
 
             /*
-            framePos = Math.min(framePos, this.end);
-            long index = framePos - this.start;
-            return get((int) index);
+              framePos = Math.min(framePos, this.end);
+              long index = framePos - this.start;
+              return get((int) index);
             */
 
             var framePosVar = mm.var(Math.class).invoke("min", mm.param(0), mm.field("end"));
             var indexVar = framePosVar.sub(mm.field("start"));
             mm.return_(mm.invoke("get", indexVar.cast(int.class)));
+        }
+
+        {
+            MethodMaker mm = cm.addMethod(clazz, "frameCurrent").public_().final_();
+            mm.return_(mm.invoke("get", mm.field("start").neg().cast(int.class)));
         }
 
         if (type.isNumber()) {

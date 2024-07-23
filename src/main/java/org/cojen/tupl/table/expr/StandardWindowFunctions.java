@@ -30,7 +30,7 @@ import org.cojen.maker.Variable;
  */
 final class StandardWindowFunctions {
     /**
-     * Defines a window function which produces the first value in the window.
+     * Defines a window function which produces the first value in the moving window.
      */
     static final class first extends WindowFunction {
         first(Type resultType, Type valueType, Type originalType, Frame frame) {
@@ -39,12 +39,16 @@ final class StandardWindowFunctions {
 
         @Override
         protected Variable compute(Variable bufferVar, Object frameStart, Object frameEnd) {
-            return bufferVar.invoke("frameGetOrFirst", frameStart);
+            if (frameStart instanceof Long v && v == 0L) {
+                return bufferVar.invoke("frameCurrent");
+            } else {
+                return bufferVar.invoke("frameGetOrFirst", frameStart);
+            }
         }
     }
 
     /**
-     * Defines a window function which produces the last value in the window.
+     * Defines a window function which produces the last value in the moving window.
      */
     static final class last extends WindowFunction {
         last(Type resultType, Type valueType, Type originalType, Frame frame) {
@@ -53,7 +57,11 @@ final class StandardWindowFunctions {
 
         @Override
         protected Variable compute(Variable bufferVar, Object frameStart, Object frameEnd) {
-            return bufferVar.invoke("frameGetOrLast", frameEnd);
+            if (frameEnd instanceof Long v && v == 0L) {
+                return bufferVar.invoke("frameCurrent");
+            } else {
+                return bufferVar.invoke("frameGetOrLast", frameEnd);
+            }
         }
     }
 
