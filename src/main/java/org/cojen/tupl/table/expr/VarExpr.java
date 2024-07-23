@@ -17,6 +17,7 @@
 
 package org.cojen.tupl.table.expr;
 
+import java.util.Map;
 import java.util.Set;
 
 import java.util.function.Consumer;
@@ -129,6 +130,15 @@ public final class VarExpr extends Expr implements Named {
                                      "wrapped by an aggregation function", this);
         }
         return this;
+    }
+
+    @Override
+    public VarExpr asWindow(Map<ColumnExpr, AssignExpr> newAssignments) {
+        AssignExpr assign = mAssign.asWindow(newAssignments);
+        if (assign == mAssign) {
+            return this;
+        }
+        return new VarExpr(startPos(), endPos(), assign);
     }
 
     @Override

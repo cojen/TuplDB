@@ -214,6 +214,21 @@ public final class CallExpr extends Expr {
     }
 
     @Override
+    public CallExpr asWindow(Map<ColumnExpr, AssignExpr> newAssignments) {
+        if (mApplier instanceof FunctionApplier.Grouped) {
+            return this;
+        }
+
+        List<Expr> args = replaceElements(mArgs, 0, (i, arg) -> arg.asWindow(newAssignments));
+
+        Map<String, Expr> namedArgs = replaceValues
+            (mNamedArgs, (k, arg) -> arg.asWindow(newAssignments));
+
+        return args == mArgs && namedArgs == mNamedArgs ? this
+            : new CallExpr(startPos(), endPos(), mName, args, namedArgs, mApplier);
+    }
+
+    @Override
     public Expr replace(Map<Expr, ? extends Expr> replacements) {
         Expr replaced = replacements.get(this);
         if (replaced != null) {

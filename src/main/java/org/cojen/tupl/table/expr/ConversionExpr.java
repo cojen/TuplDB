@@ -70,6 +70,12 @@ public final class ConversionExpr extends WrappedExpr {
     }
 
     @Override
+    public ConversionExpr asWindow(Map<ColumnExpr, AssignExpr> newAssignments) {
+        Expr expr = mExpr.asWindow(newAssignments);
+        return expr == mExpr ? this : new ConversionExpr(startPos(), endPos(), expr, mType);
+    }
+
+    @Override
     public Expr replace(Map<Expr, ? extends Expr> replacements) {
         Expr replaced = replacements.get(this);
         if (replaced != null) {

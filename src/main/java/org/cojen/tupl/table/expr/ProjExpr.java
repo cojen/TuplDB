@@ -42,9 +42,6 @@ public final class ProjExpr extends WrappedExpr implements Named {
      * @param expr expected to be AssignExpr, ColumnExpr, or VarExpr
      */
     public static ProjExpr make(int startPos, int endPos, Expr expr, int flags) {
-        if (!(expr instanceof Named)) {
-            throw new IllegalArgumentException();
-        }
         if (expr.isConstant()) {
             // No need to order it.
             flags = flags & ~(F_ORDER_BY | F_DESCENDING | F_NULL_LOW);
@@ -66,6 +63,9 @@ public final class ProjExpr extends WrappedExpr implements Named {
      */
     private ProjExpr(int startPos, int endPos, Expr expr, int flags) {
         super(startPos, endPos, expr);
+        if (!(expr instanceof Named)) {
+            throw new IllegalArgumentException();
+        }
         mFlags = flags;
     }
 
@@ -143,6 +143,12 @@ public final class ProjExpr extends WrappedExpr implements Named {
     @Override
     public ProjExpr asAggregate(Set<String> group) {
         Expr expr = mExpr.asAggregate(group);
+        return expr == mExpr ? this : new ProjExpr(startPos(), endPos(), expr, mFlags);
+    }
+
+    @Override
+    public ProjExpr asWindow(Map<ColumnExpr, AssignExpr> newAssignments) {
+        Expr expr = mExpr.asWindow(newAssignments);
         return expr == mExpr ? this : new ProjExpr(startPos(), endPos(), expr, mFlags);
     }
 

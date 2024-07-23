@@ -321,6 +321,11 @@ public final class ConstantExpr extends Expr {
     }
 
     @Override
+    public ConstantExpr asWindow(Map<ColumnExpr, AssignExpr> newAssignments) {
+        return this;
+    }
+
+    @Override
     public boolean isRangeWithCurrent() {
         return mValue instanceof Range r && r.start() <= 0 && 0 <= r.end();
     }

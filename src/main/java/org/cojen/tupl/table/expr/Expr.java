@@ -212,10 +212,19 @@ public abstract sealed class Expr
 
     /**
      * Return this or a replacement expression such that all direct column accesses are wrapped
-     * by the "last" aggregation function. A QueryException is thrown if any column which needs
+     * by the "first" aggregation function. A QueryException is thrown if any column which needs
      * to be wrapped isn't in the specified group.
      */
     public abstract Expr asAggregate(Set<String> group);
+
+    /**
+     * Return this or a replacement expression such that all direct column accesses are wrapped
+     * by the "first" window function over a frame consisting of just the current row.
+     *
+     * @param newAssignments is updated to store ColumnExpr to AssignExpr replacements; matching
+     * ColumnExpr instances should be replaced with VarExpr instances instead
+     */
+    public abstract Expr asWindow(Map<ColumnExpr, AssignExpr> newAssignments);
 
     /**
      * Returns true if this expression represents a range and is guaranteed to include the

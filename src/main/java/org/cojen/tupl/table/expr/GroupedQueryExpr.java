@@ -23,6 +23,7 @@ import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
 
+import java.util.HashMap;
 import java.util.IdentityHashMap;
 import java.util.List;
 
@@ -56,6 +57,8 @@ import org.cojen.tupl.table.filter.TrueFilter;
  * @see QueryExpr#make
  */
 final class GroupedQueryExpr extends QueryExpr {
+    // FIXME: Doesn't work properly with this query: {;} -- it never stops
+
     /**
      * @param filter can be null if rowFilter is TrueFilter
      * @param projection not null
@@ -68,6 +71,15 @@ final class GroupedQueryExpr extends QueryExpr {
                                  List<ProjExpr> projection, int groupBy,
                                  int maxArgument, String orderBy)
     {
+        var newAssignments = new HashMap<ColumnExpr, AssignExpr>();
+
+        if (filter != null) {
+            filter = filter.asWindow(newAssignments);
+        }
+
+        projection = replaceElements(projection, groupBy,
+                                     (i, proj) -> proj.asWindow(newAssignments));
+
         return new GroupedQueryExpr(startPos, endPos, type, from, rowFilter, filter,
                                     projection, groupBy, maxArgument, orderBy);
     }

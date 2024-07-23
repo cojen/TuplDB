@@ -526,6 +526,12 @@ public abstract sealed class QueryExpr extends RelationExpr
     }
 
     @Override
+    public QueryExpr asWindow(Map<ColumnExpr, AssignExpr> newAssignments) {
+        // FIXME: asWindow
+        throw null;
+    }
+
+    @Override
     public Expr replace(Map<Expr, ? extends Expr> replacements) {
         // FIXME: replace
         throw null;

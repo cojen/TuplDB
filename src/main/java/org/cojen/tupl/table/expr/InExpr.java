@@ -146,6 +146,16 @@ public final class InExpr extends Expr {
     }
 
     @Override
+    public InExpr asWindow(Map<ColumnExpr, AssignExpr> newAssignments) {
+        Expr left = mLeft.asWindow(newAssignments);
+        Expr right = mRight.asWindow(newAssignments);
+        if (left == mLeft && right == mRight) {
+            return this;
+        }
+        return new InExpr(startPos(), endPos(), left, right, mNot);
+    }
+
+    @Override
     public Expr replace(Map<Expr, ? extends Expr> replacements) {
         Expr replaced = replacements.get(this);
         if (replaced != null) {

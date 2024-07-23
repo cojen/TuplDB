@@ -34,8 +34,8 @@ import org.cojen.maker.Variable;
  */
 public final class RangeExpr extends Expr {
     /**
-     * @param start optional
-     * @param end optional
+     * @param startPos optional
+     * @param endPos optional
      */
     public static Expr make(int startPos, int endPos, Expr start, Expr end) {
         {
@@ -82,6 +82,27 @@ public final class RangeExpr extends Expr {
         }
 
         return new RangeExpr(startPos, endPos, type, start, end);
+    }
+
+    /**
+     * Makes a constant range expression.
+     *
+     * @param start inclusive start boundary; use MIN_VALUE for open boundary
+     * @param end inclusive end boundary; use MAX_VALUE for open boundary
+     */
+    public static Expr constant(long start, long end) {
+        return constant(new Range(start, end));
+    }
+
+    /**
+     * Makes a constant range expression.
+     *
+     * @param start inclusive start boundary; use MIN_VALUE for open boundary
+     * @param end inclusive end boundary; use MAX_VALUE for open boundary
+     */
+    public static Expr constant(Range range) {
+        Type type = BasicType.make(Range.class, Type.TYPE_REFERENCE);
+        return ConstantExpr.make(-1, -1, type, range);
     }
 
     private static long startValue(ConstantExpr ce) {
@@ -173,6 +194,16 @@ public final class RangeExpr extends Expr {
     public Expr asAggregate(Set<String> group) {
         Expr start = mStart == null ? null : mStart.asAggregate(group);
         Expr end = mEnd == null ? null : mEnd.asAggregate(group);
+        if (start == mStart && end == mEnd) {
+            return this;
+        }
+        return new RangeExpr(startPos(), endPos(), mType, start, end);
+    }
+
+    @Override
+    public Expr asWindow(Map<ColumnExpr, AssignExpr> newAssignments) {
+        Expr start = mStart == null ? null : mStart.asWindow(newAssignments);
+        Expr end = mEnd == null ? null : mEnd.asWindow(newAssignments);
         if (start == mStart && end == mEnd) {
             return this;
         }

@@ -284,6 +284,16 @@ public sealed class BinaryOpExpr extends Expr permits FilterExpr {
     }
 
     @Override
+    public Expr asWindow(Map<ColumnExpr, AssignExpr> newAssignments) {
+        Expr left = mLeft.asWindow(newAssignments);
+        Expr right = mRight.asWindow(newAssignments);
+        if (left == mLeft && right == mRight) {
+            return this;
+        }
+        return new BinaryOpExpr(startPos(), endPos(), mType, mOp, left, right);
+    }
+
+    @Override
     public Expr replace(Map<Expr, ? extends Expr> replacements) {
         Expr replaced = replacements.get(this);
         if (replaced != null) {

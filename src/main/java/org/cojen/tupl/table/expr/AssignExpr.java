@@ -60,6 +60,12 @@ public final class AssignExpr extends WrappedExpr implements Named {
     }
 
     @Override
+    public AssignExpr asWindow(Map<ColumnExpr, AssignExpr> newAssignments) {
+        Expr expr = mExpr.asWindow(newAssignments);
+        return expr == mExpr ? this : new AssignExpr(startPos(), endPos(), mName, expr);
+    }
+
+    @Override
     public Expr replace(Map<Expr, ? extends Expr> replacements) {
         Expr replaced = replacements.get(this);
         if (replaced != null) {

@@ -137,6 +137,28 @@ public abstract sealed class ColumnExpr extends Expr implements Named {
     }
 
     @Override
+    public Expr asWindow(Map<ColumnExpr, AssignExpr> newAssignments) {
+        AssignExpr assign = newAssignments.get(this);
+
+        if (assign != null) {
+            return VarExpr.make(startPos(), endPos(), assign);
+        }
+
+        Expr expr = CallExpr.make(startPos(), endPos(), "first", List.of(this),
+                                  Map.of("rows", RangeExpr.constant(0, 0)),
+                                  new StandardFunctionFinder.first(null));
+
+        // Wrap the call in an AssignExpr expression for two reasons. First, the column might
+        // be directly referenced by ProjExpr, and so it needs a name. Second, by storing the
+        // AssignExpr in the newAssignments map future references to the column can be replaced
+        // with a VarExpr (see above), reducing duplicate window function work.
+        
+        assign = AssignExpr.make(startPos(), endPos(), name(), expr);
+        newAssignments.put(this, assign);
+        return assign;
+    }
+
+    @Override
     public final boolean canThrowRuntimeException() {
         return false;
     }

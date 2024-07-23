@@ -17,6 +17,7 @@
 
 package org.cojen.tupl.table.expr;
 
+import java.util.Map;
 import java.util.Set;
 
 import org.cojen.tupl.Table;
@@ -120,6 +121,11 @@ public final class TableExpr extends RelationExpr {
 
     @Override
     public Expr asAggregate(Set<String> group) {
+        return this;
+    }
+
+    @Override
+    public Expr asWindow(Map<ColumnExpr, AssignExpr> newAssignments) {
         return this;
     }
 

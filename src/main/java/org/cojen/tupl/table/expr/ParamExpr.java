@@ -17,6 +17,7 @@
 
 package org.cojen.tupl.table.expr;
 
+import java.util.Map;
 import java.util.Set;
 
 import java.util.function.Consumer;
@@ -99,6 +100,11 @@ public final class ParamExpr extends Expr {
 
     @Override
     public ParamExpr asAggregate(Set<String> group) {
+        return this;
+    }
+
+    @Override
+    public ParamExpr asWindow(Map<ColumnExpr, AssignExpr> newAssignments) {
         return this;
     }
 
