@@ -1,7 +1,5 @@
 [![Maven Central](https://img.shields.io/maven-central/v/org.cojen/tupl.svg?label=Maven%20Central)](https://search.maven.org/search?q=g:%22org.cojen%22%20AND%20a:%22tupl%22)
 
-The Unnamed Persistence Library
-
 Tupl is a high-performance, concurrent, transactional, scalable, low-level embedded database. Features include record-level locking, upgradable locks, deadlock detection, cursors, hot backups, striped files, encryption, replication, compression, nested transaction scopes, direct lock control, sorting, views, filters, transforms, unions, intersections, and full memory mapped support.
 
 * [Javadocs](https://tupl.cojen.org/javadoc/org.cojen.tupl/org/cojen/tupl/package-summary.html)
