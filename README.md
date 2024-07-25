@@ -1,14 +1,14 @@
 [![Maven Central](https://img.shields.io/maven-central/v/org.cojen/tupl.svg?label=Maven%20Central)](https://search.maven.org/search?q=g:%22org.cojen%22%20AND%20a:%22tupl%22)
 
-Tupl is a high-performance, concurrent, transactional, scalable, low-level embedded database. Features include record-level locking, upgradable locks, deadlock detection, cursors, hot backups, striped files, encryption, replication, compression, nested transaction scopes, direct lock control, sorting, views, filters, transforms, unions, intersections, and full memory mapped support.
+TuplDB is a high-performance, concurrent, transactional, scalable, low-level embedded database. Features include record-level locking, upgradable locks, deadlock detection, cursors, hot backups, striped files, encryption, replication, compression, nested transaction scopes, direct lock control, sorting, views, filters, transforms, unions, intersections, and full memory mapped support.
 
 * [Javadocs](https://tupl.cojen.org/javadoc/org.cojen.tupl/org/cojen/tupl/package-summary.html)
-* [FAQ](https://github.com/cojen/Tupl/wiki/FAQ)
-* [Replication](https://github.com/cojen/Tupl/wiki/Replication)
+* [FAQ](https://github.com/cojen/TuplDB/wiki/FAQ)
+* [Replication](https://github.com/cojen/TuplDB/wiki/Replication)
 
-Tupl can be used directly, or it can be used for implementing a high-level database. Tupl is
+TuplDB can be used directly, or it can be used for implementing a high-level database. TuplDB is
 powerful enough for supporting all the requirements of relational SQL databases as well as
-NoSQL databases. Because Tupl doesn't impose any structure or encoding for data, a high-level
+NoSQL databases. Because TuplDB doesn't impose any structure or encoding for data, a high-level
 database is free to implement the most efficient format it requires.
 
 The main entry point is the [Database](https://tupl.cojen.org/javadoc/org.cojen.tupl/org/cojen/tupl/Database.html) class. Here is a simple example for opening a non-durable database:
@@ -43,7 +43,7 @@ pages, and the default page size is 4096 bytes.
 Basic operations
 ----------------
 
-A Tupl database manages a collection of [indexes](https://tupl.cojen.org/javadoc/org.cojen.tupl/org/cojen/tupl/Index.html), which are ordered mappings of `byte[]` keys to `byte[]` values.
+A TuplDB instance manages a collection of [indexes](https://tupl.cojen.org/javadoc/org.cojen.tupl/org/cojen/tupl/Index.html), which are ordered mappings of `byte[]` keys to `byte[]` values.
 
 ```java
 Database db = ...
