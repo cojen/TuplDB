@@ -4,13 +4,13 @@
   <groupId>org.cojen</groupId>
   <artifactId>tupl</artifactId>
   <packaging>jar</packaging>
-  <name>Tupl</name>
+  <name>TuplDB</name>
  <version>1.9.0</version>
   <description>
-    The Unnamed Persistence Library.
+    TuplDB is a high-performance, concurrent, transactional, scalable, low-level embedded database.
   </description>
 
-  <url>https://github.com/cojen/Tupl</url>
+  <url>https://github.com/cojen/TuplDB</url>
 
   <inceptionYear>2011</inceptionYear>
 
@@ -36,9 +36,9 @@
   </developers>
 
   <scm>
-    <connection>scm:git:https://github.com/cojen/Tupl.git</connection>
-    <developerConnection>scm:git:ssh://git@github.com:cojen/Tupl.git</developerConnection>
-    <url>https://github.com/cojen/Tupl</url>
+    <connection>scm:git:https://github.com/cojen/TuplDB.git</connection>
+    <developerConnection>scm:git:ssh://git@github.com:cojen/TuplDB.git</developerConnection>
+    <url>https://github.com/cojen/TuplDB</url>
   </scm>
 
   <distributionManagement>
@@ -53,7 +53,7 @@
   </distributionManagement>
 
   <issueManagement>
-    <url>https://github.com/cojen/Tupl/issues</url>
+    <url>https://github.com/cojen/TuplDB/issues</url>
     <system>GitHub Issues</system>
   </issueManagement>
 
