@@ -16,6 +16,6 @@
  */
 
 /**
- * See {@link org.cojen.tupl.Database} to get started with Tupl.
+ * See {@link org.cojen.tupl.Database} to get started with TuplDB.
  */
 package org.cojen.tupl;

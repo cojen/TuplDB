@@ -435,7 +435,7 @@ public class EnduranceTest {
         mIx = mDb.openIndex("test");
 
         int numWorkers = 5;
-        // First populate Tupl so we have data exceeding the cache size
+        // First populate TuplDB so we have data exceeding the cache size
         Random random = ThreadLocalRandom.current();
         for (int i=0; i<150_000; i++) {
             byte[] key = randomStr(random, 10, 100);

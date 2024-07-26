@@ -54,7 +54,7 @@ loadScripts(document, 'script');</script>
 <div class="table-header col-last">Description</div>
 <div class="col-first even-row-color"><a href="#org.cojen.tupl">org.cojen.tupl</a></div>
 <div class="col-last even-row-color">
-<div class="block">See <a href="../Database.html" title="interface in org.cojen.tupl"><code>Database</code></a> to get started with Tupl.</div>
+<div class="block">See <a href="../Database.html" title="interface in org.cojen.tupl"><code>Database</code></a> to get started with TuplDB.</div>
 </div>
 </div>
 <section class="class-uses">
@@ -74,126 +74,132 @@ loadScripts(document, 'script');</script>
  it.</div>
 </div>
 <div class="col-first odd-row-color"><code>class&nbsp;</code></div>
-<div class="col-second odd-row-color"><code><a href="../ClosedIndexException.html" class="type-name-link" title="class in org.cojen.tupl">ClosedIndexException</a></code></div>
+<div class="col-second odd-row-color"><code><a href="../ChecksumException.html" class="type-name-link" title="class in org.cojen.tupl">ChecksumException</a></code></div>
 <div class="col-last odd-row-color">
+<div class="block">Thrown when a page of data from the database is detected as being corrupt because the
+ stored checksum doesn't match what was freshly computed.</div>
+</div>
+<div class="col-first even-row-color"><code>class&nbsp;</code></div>
+<div class="col-second even-row-color"><code><a href="../ClosedIndexException.html" class="type-name-link" title="class in org.cojen.tupl">ClosedIndexException</a></code></div>
+<div class="col-last even-row-color">
 <div class="block">Thrown when attempting to access or modify the contents of an index through a closed
  reference.</div>
 </div>
-<div class="col-first even-row-color"><code>class&nbsp;</code></div>
-<div class="col-second even-row-color"><code><a href="../ConfirmationFailureException.html" class="type-name-link" title="class in org.cojen.tupl">ConfirmationFailureException</a></code></div>
-<div class="col-last even-row-color">
+<div class="col-first odd-row-color"><code>class&nbsp;</code></div>
+<div class="col-second odd-row-color"><code><a href="../ConfirmationFailureException.html" class="type-name-link" title="class in org.cojen.tupl">ConfirmationFailureException</a></code></div>
+<div class="col-last odd-row-color">
 <div class="block">Thrown when replication cannot be confirmed.</div>
 </div>
-<div class="col-first odd-row-color"><code>class&nbsp;</code></div>
-<div class="col-second odd-row-color"><code><a href="../ConfirmationInterruptedException.html" class="type-name-link" title="class in org.cojen.tupl">ConfirmationInterruptedException</a></code></div>
-<div class="col-last odd-row-color">
+<div class="col-first even-row-color"><code>class&nbsp;</code></div>
+<div class="col-second even-row-color"><code><a href="../ConfirmationInterruptedException.html" class="type-name-link" title="class in org.cojen.tupl">ConfirmationInterruptedException</a></code></div>
+<div class="col-last even-row-color">
 <div class="block">Thrown when replication confirmation was interrupted by another thread.</div>
 </div>
-<div class="col-first even-row-color"><code>class&nbsp;</code></div>
-<div class="col-second even-row-color"><code><a href="../ConfirmationTimeoutException.html" class="type-name-link" title="class in org.cojen.tupl">ConfirmationTimeoutException</a></code></div>
-<div class="col-last even-row-color">
+<div class="col-first odd-row-color"><code>class&nbsp;</code></div>
+<div class="col-second odd-row-color"><code><a href="../ConfirmationTimeoutException.html" class="type-name-link" title="class in org.cojen.tupl">ConfirmationTimeoutException</a></code></div>
+<div class="col-last odd-row-color">
 <div class="block">Thrown when replication confirmation timed out.</div>
 </div>
-<div class="col-first odd-row-color"><code>class&nbsp;</code></div>
-<div class="col-second odd-row-color"><code><a href="../CorruptDatabaseException.html" class="type-name-link" title="class in org.cojen.tupl">CorruptDatabaseException</a></code></div>
-<div class="col-last odd-row-color">
+<div class="col-first even-row-color"><code>class&nbsp;</code></div>
+<div class="col-second even-row-color"><code><a href="../CorruptDatabaseException.html" class="type-name-link" title="class in org.cojen.tupl">CorruptDatabaseException</a></code></div>
+<div class="col-last even-row-color">
 <div class="block">Thrown when the internal structure of the <a href="../Database.html" title="interface in org.cojen.tupl"><code>database</code></a> is
  corrupt.</div>
 </div>
-<div class="col-first even-row-color"><code>class&nbsp;</code></div>
-<div class="col-second even-row-color"><code><a href="../DatabaseFullException.html" class="type-name-link" title="class in org.cojen.tupl">DatabaseFullException</a></code></div>
-<div class="col-last even-row-color">
+<div class="col-first odd-row-color"><code>class&nbsp;</code></div>
+<div class="col-second odd-row-color"><code><a href="../DatabaseFullException.html" class="type-name-link" title="class in org.cojen.tupl">DatabaseFullException</a></code></div>
+<div class="col-last odd-row-color">
 <div class="block">Thrown when database is full and no more data can be stored into it.</div>
 </div>
-<div class="col-first odd-row-color"><code>class&nbsp;</code></div>
-<div class="col-second odd-row-color"><code><a href="../DeadlockException.html" class="type-name-link" title="class in org.cojen.tupl">DeadlockException</a></code></div>
-<div class="col-last odd-row-color">
+<div class="col-first even-row-color"><code>class&nbsp;</code></div>
+<div class="col-second even-row-color"><code><a href="../DeadlockException.html" class="type-name-link" title="class in org.cojen.tupl">DeadlockException</a></code></div>
+<div class="col-last even-row-color">
 <div class="block">Thrown when a lock request by a <a href="../Transaction.html" title="interface in org.cojen.tupl">transaction</a> timed out due to a
  deadlock, or a trivial deadlock was quickly detected.</div>
 </div>
-<div class="col-first even-row-color"><code>class&nbsp;</code></div>
-<div class="col-second even-row-color"><code><a href="../DeletedIndexException.html" class="type-name-link" title="class in org.cojen.tupl">DeletedIndexException</a></code></div>
-<div class="col-last even-row-color">
+<div class="col-first odd-row-color"><code>class&nbsp;</code></div>
+<div class="col-second odd-row-color"><code><a href="../DeletedIndexException.html" class="type-name-link" title="class in org.cojen.tupl">DeletedIndexException</a></code></div>
+<div class="col-last odd-row-color">
 <div class="block">Thrown when attempting to access or modify the contents of an index which was deleted.</div>
 </div>
-<div class="col-first odd-row-color"><code>class&nbsp;</code></div>
-<div class="col-second odd-row-color"><code><a href="../IllegalUpgradeException.html" class="type-name-link" title="class in org.cojen.tupl">IllegalUpgradeException</a></code></div>
-<div class="col-last odd-row-color">
+<div class="col-first even-row-color"><code>class&nbsp;</code></div>
+<div class="col-second even-row-color"><code><a href="../IllegalUpgradeException.html" class="type-name-link" title="class in org.cojen.tupl">IllegalUpgradeException</a></code></div>
+<div class="col-last even-row-color">
 <div class="block">Thrown when attempting to acquire an upgradable or exclusive lock when a
  shared lock is already held.</div>
 </div>
-<div class="col-first even-row-color"><code>class&nbsp;</code></div>
-<div class="col-second even-row-color"><code><a href="../IncompleteRestoreException.html" class="type-name-link" title="class in org.cojen.tupl">IncompleteRestoreException</a></code></div>
-<div class="col-last even-row-color">
+<div class="col-first odd-row-color"><code>class&nbsp;</code></div>
+<div class="col-second odd-row-color"><code><a href="../IncompleteRestoreException.html" class="type-name-link" title="class in org.cojen.tupl">IncompleteRestoreException</a></code></div>
+<div class="col-last odd-row-color">
 <div class="block">Thrown when opening a database which wasn't completely <a href="../Database.html#restoreFromSnapshot(org.cojen.tupl.DatabaseConfig,java.io.InputStream)">restored</a>.</div>
 </div>
-<div class="col-first odd-row-color"><code>class&nbsp;</code></div>
-<div class="col-second odd-row-color"><code><a href="../InvalidTransactionException.html" class="type-name-link" title="class in org.cojen.tupl">InvalidTransactionException</a></code></div>
-<div class="col-last odd-row-color">
+<div class="col-first even-row-color"><code>class&nbsp;</code></div>
+<div class="col-second even-row-color"><code><a href="../InvalidTransactionException.html" class="type-name-link" title="class in org.cojen.tupl">InvalidTransactionException</a></code></div>
+<div class="col-last even-row-color">
 <div class="block">Thrown when acting upon a broken transaction instance.</div>
 </div>
-<div class="col-first even-row-color"><code>class&nbsp;</code></div>
-<div class="col-second even-row-color"><code><a href="../LargeKeyException.html" class="type-name-link" title="class in org.cojen.tupl">LargeKeyException</a></code></div>
-<div class="col-last even-row-color">
+<div class="col-first odd-row-color"><code>class&nbsp;</code></div>
+<div class="col-second odd-row-color"><code><a href="../LargeKeyException.html" class="type-name-link" title="class in org.cojen.tupl">LargeKeyException</a></code></div>
+<div class="col-last odd-row-color">
 <div class="block">Thrown when attempting to load a key which cannot fit into memory.</div>
 </div>
-<div class="col-first odd-row-color"><code>class&nbsp;</code></div>
-<div class="col-second odd-row-color"><code><a href="../LargeValueException.html" class="type-name-link" title="class in org.cojen.tupl">LargeValueException</a></code></div>
-<div class="col-last odd-row-color">
+<div class="col-first even-row-color"><code>class&nbsp;</code></div>
+<div class="col-second even-row-color"><code><a href="../LargeValueException.html" class="type-name-link" title="class in org.cojen.tupl">LargeValueException</a></code></div>
+<div class="col-last even-row-color">
 <div class="block">Thrown when attempting to load a value which cannot fit into memory.</div>
 </div>
-<div class="col-first even-row-color"><code>class&nbsp;</code></div>
-<div class="col-second even-row-color"><code><a href="../LockFailureException.html" class="type-name-link" title="class in org.cojen.tupl">LockFailureException</a></code></div>
-<div class="col-last even-row-color">
+<div class="col-first odd-row-color"><code>class&nbsp;</code></div>
+<div class="col-second odd-row-color"><code><a href="../LockFailureException.html" class="type-name-link" title="class in org.cojen.tupl">LockFailureException</a></code></div>
+<div class="col-last odd-row-color">
 <div class="block">Thrown when a lock request by a <a href="../Transaction.html" title="interface in org.cojen.tupl">transaction</a> failed.</div>
 </div>
-<div class="col-first odd-row-color"><code>class&nbsp;</code></div>
-<div class="col-second odd-row-color"><code><a href="../LockInterruptedException.html" class="type-name-link" title="class in org.cojen.tupl">LockInterruptedException</a></code></div>
-<div class="col-last odd-row-color">
+<div class="col-first even-row-color"><code>class&nbsp;</code></div>
+<div class="col-second even-row-color"><code><a href="../LockInterruptedException.html" class="type-name-link" title="class in org.cojen.tupl">LockInterruptedException</a></code></div>
+<div class="col-last even-row-color">
 <div class="block">Thrown when a lock request by a <a href="../Transaction.html" title="interface in org.cojen.tupl">transaction</a> was
  interrupted by another thread.</div>
 </div>
-<div class="col-first even-row-color"><code>class&nbsp;</code></div>
-<div class="col-second even-row-color"><code><a href="../LockTimeoutException.html" class="type-name-link" title="class in org.cojen.tupl">LockTimeoutException</a></code></div>
-<div class="col-last even-row-color">
+<div class="col-first odd-row-color"><code>class&nbsp;</code></div>
+<div class="col-second odd-row-color"><code><a href="../LockTimeoutException.html" class="type-name-link" title="class in org.cojen.tupl">LockTimeoutException</a></code></div>
+<div class="col-last odd-row-color">
 <div class="block">Thrown when a lock request by a <a href="../Transaction.html" title="interface in org.cojen.tupl">transaction</a> timed out.</div>
 </div>
-<div class="col-first odd-row-color"><code>class&nbsp;</code></div>
-<div class="col-second odd-row-color"><code><a href="../NoSuchRowException.html" class="type-name-link" title="class in org.cojen.tupl">NoSuchRowException</a></code></div>
-<div class="col-last odd-row-color">
+<div class="col-first even-row-color"><code>class&nbsp;</code></div>
+<div class="col-second even-row-color"><code><a href="../NoSuchRowException.html" class="type-name-link" title="class in org.cojen.tupl">NoSuchRowException</a></code></div>
+<div class="col-last even-row-color">
 <div class="block">Thrown when attempting to read or write against a nonexistent row which was expected to
  exist.</div>
 </div>
-<div class="col-first even-row-color"><code>class&nbsp;</code></div>
-<div class="col-second even-row-color"><code><a href="../NoSuchValueException.html" class="type-name-link" title="class in org.cojen.tupl">NoSuchValueException</a></code></div>
-<div class="col-last even-row-color">
+<div class="col-first odd-row-color"><code>class&nbsp;</code></div>
+<div class="col-second odd-row-color"><code><a href="../NoSuchValueException.html" class="type-name-link" title="class in org.cojen.tupl">NoSuchValueException</a></code></div>
+<div class="col-last odd-row-color">
 <div class="block">Thrown when reading from an accessor <a href="../ValueAccessor.html#newValueInputStream(long)">stream</a>,
  for a value which doesn't exist.</div>
 </div>
-<div class="col-first odd-row-color"><code>class&nbsp;</code></div>
-<div class="col-second odd-row-color"><code><a href="../UniqueConstraintException.html" class="type-name-link" title="class in org.cojen.tupl">UniqueConstraintException</a></code></div>
-<div class="col-last odd-row-color">
+<div class="col-first even-row-color"><code>class&nbsp;</code></div>
+<div class="col-second even-row-color"><code><a href="../UniqueConstraintException.html" class="type-name-link" title="class in org.cojen.tupl">UniqueConstraintException</a></code></div>
+<div class="col-last even-row-color">
 <div class="block">Thrown when a row store operation would create a conflicting key.</div>
 </div>
-<div class="col-first even-row-color"><code>class&nbsp;</code></div>
-<div class="col-second even-row-color"><code><a href="../UnmodifiableReplicaException.html" class="type-name-link" title="class in org.cojen.tupl">UnmodifiableReplicaException</a></code></div>
-<div class="col-last even-row-color">
+<div class="col-first odd-row-color"><code>class&nbsp;</code></div>
+<div class="col-second odd-row-color"><code><a href="../UnmodifiableReplicaException.html" class="type-name-link" title="class in org.cojen.tupl">UnmodifiableReplicaException</a></code></div>
+<div class="col-last odd-row-color">
 <div class="block">Thrown when attempting to make changes to a read-only replica.</div>
 </div>
-<div class="col-first odd-row-color"><code>class&nbsp;</code></div>
-<div class="col-second odd-row-color"><code><a href="../UnmodifiableViewException.html" class="type-name-link" title="class in org.cojen.tupl">UnmodifiableViewException</a></code></div>
-<div class="col-last odd-row-color">
+<div class="col-first even-row-color"><code>class&nbsp;</code></div>
+<div class="col-second even-row-color"><code><a href="../UnmodifiableViewException.html" class="type-name-link" title="class in org.cojen.tupl">UnmodifiableViewException</a></code></div>
+<div class="col-last even-row-color">
 <div class="block">Thrown when attempting to make a change to an index or view which doesn't
  permit modifications.</div>
 </div>
-<div class="col-first even-row-color"><code>class&nbsp;</code></div>
-<div class="col-second even-row-color"><code><a href="../ViewConstraintException.html" class="type-name-link" title="class in org.cojen.tupl">ViewConstraintException</a></code></div>
-<div class="col-last even-row-color">
+<div class="col-first odd-row-color"><code>class&nbsp;</code></div>
+<div class="col-second odd-row-color"><code><a href="../ViewConstraintException.html" class="type-name-link" title="class in org.cojen.tupl">ViewConstraintException</a></code></div>
+<div class="col-last odd-row-color">
 <div class="block">Thrown when attempting to perform an illegal view alteration.</div>
 </div>
-<div class="col-first odd-row-color"><code>class&nbsp;</code></div>
-<div class="col-second odd-row-color"><code><a href="../WriteFailureException.html" class="type-name-link" title="class in org.cojen.tupl">WriteFailureException</a></code></div>
-<div class="col-last odd-row-color">
+<div class="col-first even-row-color"><code>class&nbsp;</code></div>
+<div class="col-second even-row-color"><code><a href="../WriteFailureException.html" class="type-name-link" title="class in org.cojen.tupl">WriteFailureException</a></code></div>
+<div class="col-last even-row-color">
 <div class="block">Thrown when writing to the underlying storage device failed.</div>
 </div>
 </div>

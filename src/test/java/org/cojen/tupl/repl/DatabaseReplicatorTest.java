@@ -200,7 +200,7 @@ public class DatabaseReplicatorTest {
                 break;
             } catch (UnmodifiableReplicaException e) {
                 // Test is load sensitive and leadership is sometimes lost.
-                // https://github.com/cojen/Tupl/issues/70
+                // https://github.com/cojen/TuplDB/issues/70
                 if (i <= 0) {
                     throw e;
                 }
