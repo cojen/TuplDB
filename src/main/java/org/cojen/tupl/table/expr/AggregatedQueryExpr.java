@@ -89,7 +89,7 @@ final class AggregatedQueryExpr extends QueryExpr {
                                        projection, groupBy, maxArgument, orderBy);
     }
 
-    private final int mGroupBy;
+    private final int mNumGroupBy;
     private final Expr mFilter;
     private final String mOrderBy;
 
@@ -100,7 +100,7 @@ final class AggregatedQueryExpr extends QueryExpr {
     {
         super(startPos, endPos, type, from, rowFilter, projection, maxArgument);
 
-        mGroupBy = groupBy;
+        mNumGroupBy = groupBy;
         mFilter = filter;
         mOrderBy = orderBy;
     }
@@ -141,7 +141,7 @@ final class AggregatedQueryExpr extends QueryExpr {
     protected void encodeKey(KeyEncoder enc) {
         if (enc.encode(this, K_TYPE)) {
             super.doEncodeKey(enc);
-            enc.encodeInt(mGroupBy);
+            enc.encodeInt(mNumGroupBy);
         }
     }
 
@@ -467,16 +467,14 @@ final class AggregatedQueryExpr extends QueryExpr {
         // TODO: This is too eager -- it's not checking canThrowRuntimeException, and it's not
         // checking if any downstream expressions exist.
         IdentityHashMap<AssignExpr, Variable> projectedVars = null;
-        if (mProjection != null) {
-            for (int i=mGroupBy; i<mProjection.size(); i++) {
-                ProjExpr pe = mProjection.get(i);
-                if (pe.wrapped() instanceof AssignExpr ae) {
-                    Variable v = pe.makeEval(finishContext);
-                    if (projectedVars == null) {
-                        projectedVars = new IdentityHashMap<>();
-                    }
-                    projectedVars.put(ae, v);
+        for (int i=mNumGroupBy; i<mProjection.size(); i++) {
+            ProjExpr pe = mProjection.get(i);
+            if (pe.wrapped() instanceof AssignExpr ae) {
+                Variable v = pe.makeEval(finishContext);
+                if (projectedVars == null) {
+                    projectedVars = new IdentityHashMap<>();
                 }
+                projectedVars.put(ae, v);
             }
         }
 
@@ -489,7 +487,7 @@ final class AggregatedQueryExpr extends QueryExpr {
             pass.here();
         }
 
-        for (int i=mGroupBy; i<mProjection.size(); i++) {
+        for (int i=mNumGroupBy; i<mProjection.size(); i++) {
             ProjExpr pe = mProjection.get(i);
             if (pe.shouldExclude()) {
                 continue;
