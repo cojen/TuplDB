@@ -77,14 +77,14 @@ final class GroupedQueryExpr extends QueryExpr {
             filter = filter.asWindow(newAssignments);
         }
 
-        projection = replaceElements(projection, groupBy,
+        projection = replaceElements(projection, 0,
                                      (i, proj) -> proj.asWindow(newAssignments));
 
         return new GroupedQueryExpr(startPos, endPos, type, from, rowFilter, filter,
                                     projection, groupBy, maxArgument, orderBy);
     }
 
-    private final int mGroupBy;
+    private final int mNumGroupBy;
     private final Expr mFilter;
     private final String mOrderBy;
 
@@ -95,7 +95,7 @@ final class GroupedQueryExpr extends QueryExpr {
     {
         super(startPos, endPos, type, from, rowFilter, projection, maxArgument);
 
-        mGroupBy = groupBy;
+        mNumGroupBy = groupBy;
         mFilter = filter;
         mOrderBy = orderBy;
     }
@@ -136,7 +136,7 @@ final class GroupedQueryExpr extends QueryExpr {
     protected void encodeKey(KeyEncoder enc) {
         if (enc.encode(this, K_TYPE)) {
             super.doEncodeKey(enc);
-            enc.encodeInt(mGroupBy);
+            enc.encodeInt(mNumGroupBy);
         }
     }
 
@@ -158,12 +158,15 @@ final class GroupedQueryExpr extends QueryExpr {
 
         QueryGrouper qg = cCache.obtain(makeKey(), this);
 
+        String groupBySpec = groupBySpec();
+        String groupOrderBySpec = groupOrderBySpec();
+
         Class targetClass = rowTypeClass();
 
         int argCount = maxArgument();
 
         if (argCount == 0) {
-            Table table = source.table().group("", "", // FIXME: groupBy and orderBy
+            Table table = source.table().group(groupBySpec, groupOrderBySpec,
                                                targetClass, qg.factoryFor(RowUtils.NO_ARGS));
             if (mOrderBy != null) {
                 table = table.view(mOrderBy);
@@ -182,6 +185,31 @@ final class GroupedQueryExpr extends QueryExpr {
         return new WithView(source, argCount, targetClass, qa, mOrderBy);
         */
         throw null;
+    }
+
+    private String groupBySpec() {
+        var b = new StringBuilder();
+
+        for (int i=0; i<mNumGroupBy; i++) {
+            mProjection.get(i).appendToOrderBySpec(b);
+        }
+
+        return b.isEmpty() ? "" : b.toString().intern();
+    }
+
+    private String groupOrderBySpec() {
+        // FIXME: Doesn't work when ProjExpr wraps a AssignExpr or VarExpr.
+
+        var b = new StringBuilder();
+
+        for (int i=mNumGroupBy; i<mProjection.size(); i++) {
+            ProjExpr pe = mProjection.get(i);
+            if (pe.hasOrderBy()) {
+                pe.appendToOrderBySpec(b);
+            }
+        }
+
+        return b.isEmpty() ? "" : b.toString().intern();
     }
 
     private QueryGrouper makeQueryGrouper() {
@@ -449,9 +477,6 @@ final class GroupedQueryExpr extends QueryExpr {
             stepTargetVar = stepMaker.param(0).cast(targetType);
             var argsVar = argCount == 0 ? null : stepMaker.field("args").get();
 
-            // FIXME: Lack of sourceRowVar is a problem when some projected columns are just
-            // plain projected columns. Do they need to be replaced with a special function
-            // like what AggregatedQueryExpr does? Yes, and they need buffering too.
             stepContext = new Context(argsVar, null) { // no sourceRowVar
                 Label mCheckLabel = stepMaker.label().here();
 
@@ -509,16 +534,14 @@ final class GroupedQueryExpr extends QueryExpr {
         // TODO: This is too eager -- it's not checking canThrowRuntimeException, and it's not
         // checking if any downstream expressions exist.
         IdentityHashMap<AssignExpr, Variable> projectedVars = null;
-        if (mProjection != null) {
-            for (int i=mGroupBy; i<mProjection.size(); i++) {
-                ProjExpr pe = mProjection.get(i);
-                if (pe.wrapped() instanceof AssignExpr ae) {
-                    Variable v = pe.makeEval(stepContext);
-                    if (projectedVars == null) {
-                        projectedVars = new IdentityHashMap<>();
-                    }
-                    projectedVars.put(ae, v);
+        for (int i=0; i<mProjection.size(); i++) {
+            ProjExpr pe = mProjection.get(i);
+            if (pe.wrapped() instanceof AssignExpr ae) {
+                Variable v = pe.makeEval(stepContext);
+                if (projectedVars == null) {
+                    projectedVars = new IdentityHashMap<>();
                 }
+                projectedVars.put(ae, v);
             }
         }
 
@@ -531,7 +554,7 @@ final class GroupedQueryExpr extends QueryExpr {
             pass.here();
         }
 
-        for (int i=mGroupBy; i<mProjection.size(); i++) {
+        for (int i=0; i<mProjection.size(); i++) {
             ProjExpr pe = mProjection.get(i);
             if (pe.shouldExclude()) {
                 continue;

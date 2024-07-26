@@ -129,6 +129,14 @@ public final class ProjExpr extends WrappedExpr implements Named {
         return (typeCode & ~mask) | (mFlags & mask);
     }
 
+    public void appendToOrderBySpec(StringBuilder b) {
+        b.append(hasDescending() ? '-' : '+');
+        if (hasNullLow()) {
+            b.append('!');
+        }
+        b.append(name());
+    }
+
     @Override
     public String name() {
         return ((Named) mExpr).name();
