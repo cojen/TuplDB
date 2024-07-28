@@ -80,7 +80,7 @@ public final class TupleType extends Type implements Iterable<Column> {
                     if (pe.hasNullLow()) {
                         b.append('!');
                     }
-                    name = b.toString();
+                    name = b.append(name).toString();
                 }
 
                 primaryKey[i] = name;
