@@ -276,10 +276,11 @@ public abstract sealed class QueryExpr extends RelationExpr
 
                 var b = new StringBuilder().append('{').append('*');
 
-                for (ProjExpr pe : projection) {
-                    if (pe.hasOrderBy()) {
+                for (int i=0; i<projection.size(); i++) {
+                    ProjExpr pe = projection.get(i);
+                    if (i < groupBy || pe.hasOrderBy()) {
                         b.append(", ");
-                        pe.appendTo(b, true);
+                        pe.appendTo(b, true, true);
                     }
                 }
 
