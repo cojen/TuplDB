@@ -91,12 +91,14 @@ public abstract sealed class QueryExpr extends RelationExpr
                     projection = new ArrayList<>(projection);
                 }
 
+                pe = pe.withNoExclude();
+
                 String name = pe.name();
                 fromProjMap.put(name, pe);
 
                 ColumnExpr col = ColumnExpr.make
                     (-1, -1, fromRowType, Column.make(pe.type(), name, false));
-                projection.set(i, ProjExpr.make(-1, -1, col, 0));
+                projection.set(i, ProjExpr.make(-1, -1, col, pe.flags()));
 
                 if (!(wrapped instanceof AssignExpr assign)) {
                     continue;
@@ -173,8 +175,8 @@ public abstract sealed class QueryExpr extends RelationExpr
         }
 
         // Split the filter such that the unmapped part can be pushed down. The remaining
-        // mapped part must be handled by a Mapper or Aggregator. The unmapped part is
-        // guaranteed to have no ExprFilters. If it did, UnmappedQueryExpr would produce a
+        // mapped part must be handled by a Mapper, Aggregator, or Grouper. The unmapped part
+        // is guaranteed to have no ExprFilters. If it did, UnmappedQueryExpr would produce a
         // broken query string.
         RowFilter unmappedRowFilter, mappedRowFilter;
         Expr mappedFilter;
@@ -249,7 +251,7 @@ public abstract sealed class QueryExpr extends RelationExpr
 
             // Projected columns which were initially excluded must be projected too. Also
             // determine if any columns are ordered, for possibly performing sorting at the
-            // mapper/aggregator layer.
+            // mapper/aggregator/grouper layer.
 
             boolean hasOrderBy = false;
             boolean orderByDerived = false;
@@ -270,7 +272,7 @@ public abstract sealed class QueryExpr extends RelationExpr
 
             if (orderByDerived || (hasOrderBy && mappedRowFilter != TrueFilter.THE)) {
                 // Strip away order-by flags in the "from" projection and build an order-by
-                // expression for the mapper/aggregator layer to use.
+                // expression for the mapper/aggregator/grouper layer to use.
 
                 fromProjection.replaceAll(ProjExpr::withNoOrderBy);
 
@@ -296,7 +298,7 @@ public abstract sealed class QueryExpr extends RelationExpr
             return from;
         }
 
-        // A Mapper or Aggregator is required.
+        // A Mapper, Aggregator, or Grouper is required.
 
         TupleType rowType;
 
