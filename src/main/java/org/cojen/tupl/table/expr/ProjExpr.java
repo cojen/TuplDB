@@ -289,15 +289,15 @@ public final class ProjExpr extends WrappedExpr implements Named {
 
     @Override
     public void appendTo(StringBuilder b) {
-        appendTo(b, false, false);
+        appendTo(b, false);
     }
 
-    void appendTo(StringBuilder b, boolean nameOnly, boolean orderBy) {
+    void appendTo(StringBuilder b, boolean nameOnly) {
         if (hasExclude()) {
             b.append('~');
         }
 
-        if (orderBy || hasOrderBy()) {
+        if (hasOrderBy()) {
             b.append(hasDescending() ? '-' : '+');
             if (hasNullLow()) {
                 b.append('!');

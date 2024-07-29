@@ -71,6 +71,31 @@ final class GroupedQueryExpr extends QueryExpr {
                                  List<ProjExpr> projection, int groupBy,
                                  int maxArgument, String orderBy)
     {
+        String groupBySpec, groupOrderBySpec;
+
+        {
+            var b = new StringBuilder();
+            for (int i=0; i<groupBy; i++) {
+                projection.get(i).appendToOrderBySpec(b);
+            }
+            groupBySpec = b.isEmpty() ? "" : b.toString().intern();
+
+            b.setLength(0);
+
+            for (int i=groupBy; i<projection.size(); i++) {
+                ProjExpr pe = projection.get(i);
+                if (pe.isGrouping()) {
+                    break;
+                }
+                if (pe.hasOrderBy()) {
+                    pe.appendToOrderBySpec(b);
+                }
+            }
+
+            groupOrderBySpec = b.isEmpty() ? "" : b.toString().intern();
+
+        }
+
         var newAssignments = new HashMap<ColumnExpr, AssignExpr>();
 
         if (filter != null) {
@@ -81,23 +106,29 @@ final class GroupedQueryExpr extends QueryExpr {
                                      (i, proj) -> proj.asWindow(newAssignments));
 
         return new GroupedQueryExpr(startPos, endPos, type, from, rowFilter, filter,
-                                    projection, groupBy, maxArgument, orderBy);
+                                    projection, groupBy, maxArgument, orderBy,
+                                    groupBySpec, groupOrderBySpec);
     }
 
     private final int mNumGroupBy;
     private final Expr mFilter;
     private final String mOrderBy;
+    private final String mGroupBySpec;
+    private final String mGroupOrderBySpec;
 
     private GroupedQueryExpr(int startPos, int endPos, RelationType type,
                              RelationExpr from, RowFilter rowFilter, Expr filter,
                              List<ProjExpr> projection, int groupBy,
-                             int maxArgument, String orderBy)
+                             int maxArgument, String orderBy,
+                             String groupBySpec, String groupOrderBySpec)
     {
         super(startPos, endPos, type, from, rowFilter, projection, maxArgument);
 
         mNumGroupBy = groupBy;
         mFilter = filter;
         mOrderBy = orderBy;
+        mGroupBySpec = groupBySpec;
+        mGroupOrderBySpec = groupOrderBySpec;
     }
 
     @Override
@@ -158,15 +189,12 @@ final class GroupedQueryExpr extends QueryExpr {
 
         QueryGrouper qg = cCache.obtain(makeKey(), this);
 
-        String groupBySpec = groupBySpec();
-        String groupOrderBySpec = groupOrderBySpec();
-
         Class targetClass = rowTypeClass();
 
         int argCount = maxArgument();
 
         if (argCount == 0) {
-            Table table = source.table().group(groupBySpec, groupOrderBySpec,
+            Table table = source.table().group(mGroupBySpec, mGroupOrderBySpec,
                                                targetClass, qg.factoryFor(RowUtils.NO_ARGS));
             if (mOrderBy != null) {
                 table = table.view(mOrderBy);
@@ -185,31 +213,6 @@ final class GroupedQueryExpr extends QueryExpr {
         return new WithView(source, argCount, targetClass, qa, mOrderBy);
         */
         throw null;
-    }
-
-    private String groupBySpec() {
-        var b = new StringBuilder();
-
-        for (int i=0; i<mNumGroupBy; i++) {
-            mProjection.get(i).appendToOrderBySpec(b);
-        }
-
-        return b.isEmpty() ? "" : b.toString().intern();
-    }
-
-    private String groupOrderBySpec() {
-        // FIXME: Doesn't work when ProjExpr wraps a AssignExpr or VarExpr.
-
-        var b = new StringBuilder();
-
-        for (int i=mNumGroupBy; i<mProjection.size(); i++) {
-            ProjExpr pe = mProjection.get(i);
-            if (pe.hasOrderBy()) {
-                pe.appendToOrderBySpec(b);
-            }
-        }
-
-        return b.isEmpty() ? "" : b.toString().intern();
     }
 
     private QueryGrouper makeQueryGrouper() {

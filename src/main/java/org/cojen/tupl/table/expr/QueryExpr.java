@@ -78,8 +78,16 @@ public abstract sealed class QueryExpr extends RelationExpr
             Map<String, ProjExpr> fromProjMap = null;
             Map<Expr, ColumnExpr> replacements = null;
 
-            for (int i=0; i<groupBy; i++) {
+            // The loop could just stop when groupBy is reached, but going further allows
+            // ordering within the group to be examined too. Stop as soon as a projection is
+            // reached which performs an actual grouping operation.
+            for (int i=0; i<projection.size(); i++) {
                 ProjExpr pe = projection.get(i);
+                if (pe.isGrouping()) {
+                    assert i > groupBy;
+                    break;
+                }
+
                 Expr wrapped = pe.wrapped();
                 if (wrapped instanceof ColumnExpr) {
                     continue;
@@ -97,8 +105,8 @@ public abstract sealed class QueryExpr extends RelationExpr
                 fromProjMap.put(name, pe);
 
                 ColumnExpr col = ColumnExpr.make
-                    (-1, -1, fromRowType, Column.make(pe.type(), name, false));
-                projection.set(i, ProjExpr.make(-1, -1, col, pe.flags()));
+                    (pe.startPos(), pe.endPos(), fromRowType, Column.make(pe.type(), name, false));
+                projection.set(i, ProjExpr.make(pe.startPos(), pe.endPos(), col, pe.flags()));
 
                 if (!(wrapped instanceof AssignExpr assign)) {
                     continue;
@@ -125,7 +133,7 @@ public abstract sealed class QueryExpr extends RelationExpr
                 addColumns(fromRowType, fromProjMap, filter);
             }
 
-            for (int i=groupBy; i<projection.size(); i++) {
+            for (int i=0; i<projection.size(); i++) {
                 ProjExpr pe = projection.get(i).replace(replacements);
                 projection.set(i, pe);
                 addColumns(fromRowType, fromProjMap, pe);
@@ -255,16 +263,25 @@ public abstract sealed class QueryExpr extends RelationExpr
 
             boolean hasOrderBy = false;
             boolean orderByDerived = false;
+            boolean isGrouping = false;
 
-            for (ProjExpr pe : projection) {
+            for (int i=0; i<projection.size(); i++) {
+                ProjExpr pe = projection.get(i);
+
                 if (pe.hasExclude()) {
                     int flags = pe.flags() & ~ProjExpr.F_EXCLUDE;
                     pe.gatherEvalColumns(fromType, fromProjMap, flags, fromProjection::add);
                 }
 
+                // Once the first grouping projection is reached, it and all remaining
+                // projections are treated as derived if they're also ordered. The conversion
+                // to a derived projection is performed by the AggregatedQueryExpr and
+                // GroupedQueryExpr make methods.
+                isGrouping |= pe.isGrouping();
+
                 if (pe.hasOrderBy()) {
                     hasOrderBy = true;
-                    if (pe.sourceColumn() == null) {
+                    if (pe.sourceColumn() == null || isGrouping) {
                         orderByDerived = true;
                     }
                 }
@@ -278,11 +295,10 @@ public abstract sealed class QueryExpr extends RelationExpr
 
                 var b = new StringBuilder().append('{').append('*');
 
-                for (int i=0; i<projection.size(); i++) {
-                    ProjExpr pe = projection.get(i);
-                    if (i < groupBy || pe.hasOrderBy()) {
+                for (ProjExpr pe : projection) {
+                    if (pe.hasOrderBy()) {
                         b.append(", ");
-                        pe.appendTo(b, true, true);
+                        pe.appendTo(b, true);
                     }
                 }
 
