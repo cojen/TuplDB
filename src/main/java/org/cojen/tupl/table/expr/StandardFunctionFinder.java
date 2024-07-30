@@ -98,7 +98,7 @@ public final class StandardFunctionFinder extends SoftCache<String, Object, Obje
             Type type = args.get(0).type();
 
             for (int i=1; i<args.size(); i++) {
-                type = type.commonType(args.get(i).type(), -1);
+                type = type.commonTypeLenient(args.get(i).type());
                 if (type == null) {
                     reason.accept("no common type");
                     return null;
@@ -171,7 +171,7 @@ public final class StandardFunctionFinder extends SoftCache<String, Object, Obje
                 return null;
             }
 
-            type = args.get(1).type().commonType(args.get(2).type(), -1);
+            type = args.get(1).type().commonTypeLenient(args.get(2).type());
 
             if (type == null) {
                 reason.accept("no common type");
@@ -240,7 +240,7 @@ public final class StandardFunctionFinder extends SoftCache<String, Object, Obje
                 type = args.get(0).type();
 
                 if (args.size() == 2) {
-                    type = type.commonType(args.get(1).type(), -1);
+                    type = type.commonTypeStrict(args.get(1).type());
                     if (type == null) {
                         reason.accept("no common type");
                         return null;

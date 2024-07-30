@@ -54,7 +54,7 @@ abstract sealed class WrappedExpr extends Expr
     }
 
     @Override
-    public final boolean isNullable() {
+    public boolean isNullable() {
         return mExpr.isNullable();
     }
 

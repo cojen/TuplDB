@@ -987,8 +987,8 @@ public final class Parser {
 
         Expr first = parseCallArg(namedArgs);
 
-        if (peekTokenType() != T_COMMA) {
-            return first == null ? List.of() : List.of(first);
+        if (peekTokenType() != T_COMMA && first == null) {
+            return List.of();
         }
 
         var list = new ArrayList<Expr>();

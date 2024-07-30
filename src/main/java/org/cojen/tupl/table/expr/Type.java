@@ -20,6 +20,8 @@ package org.cojen.tupl.table.expr;
 import org.cojen.tupl.table.ColumnInfo;
 import org.cojen.tupl.table.ConvertUtils;
 
+import org.cojen.tupl.table.filter.ColumnFilter;
+
 /**
  * 
  *
@@ -84,16 +86,33 @@ public abstract sealed class Type extends ColumnInfo
     }
 
     /**
+     * Finds a common type which can be converted to without loss or ambiguity. The common type
+     * might end up being a string, following lenient rules.
+     *
+     * @return null if a common type cannot be inferred or is ambiguous
+     */
+    public Type commonTypeLenient(Type type) {
+        return commonType(type, ColumnFilter.OP_EQ);
+    }
+
+    /**
      * Finds a common type which can be converted to without loss or ambiguity.
      *
-     * @param op defined in ColumnFilter; pass -1 if not performing a comparison operation
+     * @return null if a common type cannot be inferred or is ambiguous
+     */
+    public Type commonTypeStrict(Type type) {
+        return commonType(type, -1);
+    }
+
+    /**
+     * Finds a common type which can be converted to without loss or ambiguity.
+     *
+     * @param op defined in ColumnFilter; pass -1 if not performing a comparison operation and
+     * the common type must obey strict rules
      * @return null if a common type cannot be inferred or is ambiguous
      */
     public Type commonType(Type type, int op) {
-        if (type == AnyType.THE) {
-            return this;
-        }
-        if (type == NullType.THE) {
+        if (type == AnyType.THE || type == NullType.THE) {
             return this.nullable();
         }
 

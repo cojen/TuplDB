@@ -24,6 +24,7 @@ import org.cojen.maker.MethodMaker;
 import org.cojen.maker.Variable;
 
 import org.cojen.tupl.table.Converter;
+import org.cojen.tupl.table.ConvertCallSite;
 
 /**
  * 
@@ -64,6 +65,11 @@ public final class ConversionExpr extends WrappedExpr {
     }
 
     @Override
+    public boolean isNullable() {
+        return mType.isNullable();
+    }
+
+    @Override
     public ConversionExpr asAggregate(Set<String> group) {
         Expr expr = mExpr.asAggregate(group);
         return expr == mExpr ? this : new ConversionExpr(startPos(), endPos(), expr, mType);
@@ -88,9 +94,20 @@ public final class ConversionExpr extends WrappedExpr {
     @Override
     protected Variable doMakeEval(EvalContext context, EvalContext.ResultRef resultRef) {
         MethodMaker mm = context.methodMaker();
-        var dstVar = mm.var(mType.clazz());
-        String name = mExpr instanceof Named n ? n.name() : null;
-        Converter.convertExact(mm, name, mExpr.type(), mExpr.makeEval(context), mType, dstVar);
+
+        Type srcType = mExpr.type();
+        Variable srcVar = mExpr.makeEval(context);
+
+        Variable dstVar;
+
+        if (srcType == AnyType.THE) {
+            dstVar = ConvertCallSite.make(mm, mType.clazz(), srcVar);
+        } else {
+            dstVar = mm.var(mType.clazz());
+            String name = mExpr instanceof Named n ? n.name() : null;
+            Converter.convertExact(mm, name, srcType, srcVar, mType, dstVar);
+        }
+
         return dstVar;
     }
 

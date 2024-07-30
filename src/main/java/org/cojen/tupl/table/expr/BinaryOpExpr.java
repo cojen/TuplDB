@@ -112,7 +112,7 @@ public sealed class BinaryOpExpr extends Expr permits FilterExpr {
                 value = true;
             } else {
                 if ((op == T_EQ || op == T_NE) &&
-                    ((left.isConstant() && right.isConstant()) ||
+                    ((left instanceof ConstantExpr && right instanceof ConstantExpr) ||
                      falseNullComparison(originalLeft, originalRight)))
                 {
                     value = false;
