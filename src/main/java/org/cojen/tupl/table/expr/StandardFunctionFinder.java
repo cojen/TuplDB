@@ -342,7 +342,7 @@ public final class StandardFunctionFinder extends SoftCache<String, Object, Obje
                 return null;
             }
 
-            Type originalType = args.get(0).type();
+            Type originalType = args.isEmpty() ? BasicType.BOOLEAN : args.get(0).type();
             Type valueType = originalType;
 
             return new StandardWindowFunctions.count(resultType, valueType, originalType, frame);

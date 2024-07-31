@@ -220,6 +220,13 @@ public abstract class ValueBuffer<V> {
 
         cm.public_();
 
+        boolean addBridges = false;
+
+        if (!type.isNumber() && !type.isPrimitive()) {
+            cm.extend(ValueBuffer.class);
+            addBridges = true;
+        }
+
         cm.addField(arrayClass, "values").private_();
         cm.addField(int.class, "first").private_();
         cm.addField(int.class, "size").private_();
@@ -286,6 +293,11 @@ public abstract class ValueBuffer<V> {
             var valuesVar = mm.field("values").get();
             var firstField = mm.field("first");
             mm.return_(valuesVar.aget(ixVar(valuesVar, firstField, mm.param(0))));
+
+            if (addBridges) {
+                mm = cm.addMethod(Object.class, "get", int.class).public_().final_().bridge();
+                mm.return_(mm.this_().invoke(clazz, "get", null, mm.param(0)));
+            }
         }
 
         {
@@ -306,6 +318,11 @@ public abstract class ValueBuffer<V> {
             firstField.set(ixVar(valuesVar, firstVar, 1));
             mm.field("size").inc(-1);
             mm.return_(valuesVar.aget(ixVar(valuesVar, firstVar, null)));
+
+            if (addBridges) {
+                mm = cm.addMethod(Object.class, "removeFirst").public_().final_().bridge();
+                mm.return_(mm.this_().invoke(clazz, "removeFirst", null));
+            }
         }
 
         {
@@ -324,8 +341,6 @@ public abstract class ValueBuffer<V> {
 
         if (type.isNumber()) {
             addNumericalMethods(cm, type);
-        } else if (!type.isPrimitive()) {
-            cm.extend(ValueBuffer.class);
         }
 
         return cm.finish();

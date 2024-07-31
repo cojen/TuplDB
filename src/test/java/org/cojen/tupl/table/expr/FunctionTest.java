@@ -157,6 +157,13 @@ public class FunctionTest {
             assertTrue(e.getMessage().contains("must be a number"));
         }
 
+        try {
+            Parser.parse(IdentityTable.THE, "{v = random(99999999999999999999999999999)}");
+            fail();
+        } catch (QueryException e) {
+            assertTrue(e.getMessage().contains("unsupported argument type"));
+        }
+
         CompiledQuery q = parse
             ("{a = random(), b = random(), " + 
              "c = random(100), d = random(1000L), e = random(10f), f = random(-100, 10d) " +
@@ -186,6 +193,54 @@ public class FunctionTest {
             double f = row.get_double("f");
             assertTrue(rowStr, -100d <= f && f < 10d);
         }
+
+        q = parse("{a = random(? + 0) - 100}").makeCompiledQuery();
+
+        try (Scanner s = q.newScanner(null, 100)) {
+            var row = (Row) s.row();
+            var rowStr = row.toString();
+            int a = row.get_int("a");
+            assertTrue(rowStr, -100 <= a && a < 0);
+        }
+    }
+
+    @Test
+    public void count() throws Exception {
+        try {
+            Parser.parse(IdentityTable.THE, "{v = count(1, 2)}");
+            fail();
+        } catch (QueryException e) {
+            assertTrue(e.getMessage().contains("at most 1 argument"));
+        }
+
+        try {
+            Parser.parse(IdentityTable.THE, "{v = count()}");
+            fail();
+        } catch (QueryException e) {
+            assertTrue(e.getMessage().contains("requires grouping"));
+        }
+
+        verify("{; v = count()}", "{v=1}");
+
+        Table<TestRow> table = fill(4);
+
+        verify(table, "{; v = count()}", "{v=4}");
+        verify(table, "{; v = count(name)}", "{v=4}");
+        verify(table, "{; v = count(value)}", "{v=2}");
+        verify(table, "{value; v = count()}",
+               "{value=value-1, v=1}", "{value=value-3, v=1}", "{value=null, v=2}");
+        verify(table, "{value; +v = count(value)}",
+               "{value=null, v=0}", "{value=value-1, v=1}", "{value=value-3, v=1}");
+
+        verify(table, "{value; v = count(value, rows:..)}",
+               "{value=value-1, v=1}", "{value=value-3, v=1}",
+               "{value=null, v=0}", "{value=null, v=0}");
+
+        verify(table, "{id = (id + 1) / 2; v = count(coalesce(value, 'hello'), rows:..0)}",
+               "{id=1, v=1}", "{id=1, v=2}", "{id=2, v=1}", "{id=2, v=2}");
+
+        verify(table, "{id = (id + 1) / 2; v = count(rows:0..)}",
+               "{id=1, v=2}", "{id=1, v=1}", "{id=2, v=2}", "{id=2, v=1}");
     }
 
     private static RelationExpr parse(String query) {

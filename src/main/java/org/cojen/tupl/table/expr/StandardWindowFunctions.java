@@ -116,6 +116,18 @@ final class StandardWindowFunctions {
         }
 
         @Override
+        protected Variable evalArg(GroupContext context) {
+            if (context.args().isEmpty()) {
+                // TODO: Filling a buffer with "true" values isn't terribly efficient. Instead,
+                // use a simple counter value. It might be possible to implement a WindowBuffer
+                // which does this.
+                return context.methodMaker().var(boolean.class).set(true);
+            } else {
+                return super.evalArg(context);
+            }
+        }
+
+        @Override
         protected Variable compute(Variable bufferVar, Object frameStart, Object frameEnd) {
             return bufferVar.invoke("frameCount", frameStart, frameEnd);
         }

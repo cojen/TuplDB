@@ -219,7 +219,7 @@ abstract class WindowFunction extends FunctionApplier.Grouped {
         mm.field(mRemainingFieldName).inc(1);
     }
 
-    private Variable evalArg(GroupContext context) {
+    protected Variable evalArg(GroupContext context) {
         var valueVar = context.args().get(0).eval(true);
 
         if (!mValueType.equals(mOriginalType)) {
