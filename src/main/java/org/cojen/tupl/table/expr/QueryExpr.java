@@ -84,7 +84,7 @@ public abstract sealed class QueryExpr extends RelationExpr
             for (int i=0; i<projection.size(); i++) {
                 ProjExpr pe = projection.get(i);
                 if (pe.isGrouping()) {
-                    assert i > groupBy;
+                    assert i >= groupBy;
                     break;
                 }
 
