@@ -91,7 +91,7 @@ public abstract sealed class Type extends ColumnInfo
      *
      * @return null if a common type cannot be inferred or is ambiguous
      */
-    public Type commonTypeLenient(Type type) {
+    public final Type commonTypeLenient(Type type) {
         return commonType(type, ColumnFilter.OP_EQ);
     }
 
@@ -100,7 +100,7 @@ public abstract sealed class Type extends ColumnInfo
      *
      * @return null if a common type cannot be inferred or is ambiguous
      */
-    public Type commonTypeStrict(Type type) {
+    public final Type commonTypeStrict(Type type) {
         return commonType(type, -1);
     }
 

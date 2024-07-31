@@ -24,6 +24,7 @@ import org.cojen.tupl.Database;
 import org.cojen.tupl.DatabaseConfig;
 import org.cojen.tupl.Nullable;
 import org.cojen.tupl.PrimaryKey;
+import org.cojen.tupl.Row;
 import org.cojen.tupl.Scanner;
 import org.cojen.tupl.Table;
 
@@ -95,6 +96,98 @@ public class FunctionTest {
         verify(table, "{v = coalesce(value, ?)}", new Object[] {123}, "{v=value-1}", "{v=123}");
     }
 
+    @Test
+    public void iif() throws Exception {
+        try {
+            Parser.parse(IdentityTable.THE, "{v = iif(1)}");
+            fail();
+        } catch (QueryException e) {
+            assertTrue(e.getMessage().contains("exactly 3 arguments"));
+        }
+
+        try {
+            Parser.parse(IdentityTable.THE, "{v = iif(1, 2, 3)}");
+            fail();
+        } catch (QueryException e) {
+            assertTrue(e.getMessage().contains("boolean type"));
+        }
+
+        try {
+            Parser.parse(IdentityTable.THE, "{v = iif(true, 2, false)}");
+            fail();
+        } catch (QueryException e) {
+            assertTrue(e.getMessage().contains("no common type"));
+        }
+
+        verify("{v = iif(true, 'hello', 'world')}", "{v=hello}");
+        verify("{v = iif(false, 'hello', 'world')}", "{v=world}");
+        verify("{v = iif(1 + 2 == 3, 10, 'world')}", "{v=10}");
+        verify("{v = iif(1 + 2 == 3, null, 'world')}", "{v=null}");
+        verify("{v = iif(1 + 2 == 3, 5, null) + 1}", "{v=6}");
+        verify("{v = iif(1 + 2 == 3, null, 5) + 1}", "{v=null}");
+        verify("{a=1} iif(1 + 2 == 3, 5, 6) == 5", "{a=1}");
+        verify("{a=1} iif(1 + 2 != 3, 5, 6) == 5");
+
+        verify("{v = iif(true, ? + 10, ? + 20)}", new Object[] {1, 2}, "{v=11}");
+        verify("{v = iif(false, ? + 10, ? + 20)}", new Object[] {1, 2}, "{v=22}");
+        verify("{v = iif(? == true, ? + 10, ? + 20)}", new Object[] {true, 1, 2}, "{v=11}");
+        verify("{v = iif(? == false, ? + 10, ? + 20)}", new Object[] {true, 1, 2}, "{v=22}");
+
+        Table<TestRow> table = fill(2);
+
+        verify(table, "{id, v = iif(value == null, 'hello', value)}",
+               "{id=1, v=value-1}", "{id=2, v=hello}");
+        verify(table, "{id, +v = iif(value == null, 'hello', value)}",
+               "{id=2, v=hello}", "{id=1, v=value-1}");
+    }
+
+    @Test
+    public void random() throws Exception {
+        try {
+            Parser.parse(IdentityTable.THE, "{v = random(1, 2, 3)}");
+            fail();
+        } catch (QueryException e) {
+            assertTrue(e.getMessage().contains("at most 2 arguments"));
+        }
+
+        try {
+            Parser.parse(IdentityTable.THE, "{v = random(1, true)}");
+            fail();
+        } catch (QueryException e) {
+            assertTrue(e.getMessage().contains("must be a number"));
+        }
+
+        CompiledQuery q = parse
+            ("{a = random(), b = random(), " + 
+             "c = random(100), d = random(1000L), e = random(10f), f = random(-100, 10d) " +
+             "}")
+            .makeCompiledQuery();
+
+        try (Scanner s = q.newScanner(null)) {
+            var row = (Row) s.row();
+            var rowStr = row.toString();
+
+            double a = row.get_double("a");
+            double b = row.get_double("b");
+
+            assertTrue(rowStr, a != b); // extremely likely to be true
+            assertTrue(rowStr, 0.0 <= a && a < 1.0);
+            assertTrue(rowStr, 0.0 <= b && b < 1.0);
+
+            int c = row.get_int("c");
+            assertTrue(rowStr, 0 <= c && c < 100);
+
+            long d = row.get_long("d");
+            assertTrue(rowStr, 0 <= d && d < 1000);
+
+            float e = row.get_float("e");
+            assertTrue(rowStr, 0 <= e && e < 10f);
+
+            double f = row.get_double("f");
+            assertTrue(rowStr, -100d <= f && f < 10d);
+        }
+    }
+
     private static RelationExpr parse(String query) {
         return parse(IdentityTable.THE, query);
     }
@@ -135,7 +228,7 @@ public class FunctionTest {
             for (Object row = s.row(); row != null; row = s.step(row)) {
                 String rowStr = row.toString();
                 if (i < expect.length) {
-                    assertEquals(rowStr, expect[i++]);
+                    assertEquals(expect[i++], rowStr);
                 } else {
                     fail("too many rows: " + rowStr);
                 }
