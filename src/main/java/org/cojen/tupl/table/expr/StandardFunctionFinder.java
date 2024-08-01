@@ -402,7 +402,7 @@ public final class StandardFunctionFinder extends SoftCache<String, Object, Obje
      */
     static class first extends FunctionApplier.BasicAggregated {
         first(Type type) {
-            super(type);
+            super(type, type);
         }
 
         @Override
@@ -445,7 +445,7 @@ public final class StandardFunctionFinder extends SoftCache<String, Object, Obje
      */
     private static class last extends FunctionApplier.BasicAggregated {
         last(Type type) {
-            super(type);
+            super(type, type);
         }
 
         @Override
@@ -492,7 +492,7 @@ public final class StandardFunctionFinder extends SoftCache<String, Object, Obje
      */
     private static class min extends FunctionApplier.NullSkipNumericalAggregated {
         min(Type type) {
-            super(type);
+            super(type, type);
         }
 
         @Override
@@ -536,7 +536,7 @@ public final class StandardFunctionFinder extends SoftCache<String, Object, Obje
      */
     private static class max extends FunctionApplier.NullSkipNumericalAggregated {
         max(Type type) {
-            super(type);
+            super(type, type);
         }
 
         @Override

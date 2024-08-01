@@ -375,10 +375,13 @@ public abstract class FunctionApplier {
      * Defines an aggregate function which needs a simple work field.
      */
     public abstract static class BasicAggregated extends Aggregated {
+        protected final Type mOriginalType;
+
         protected String mWorkFieldName;
 
-        protected BasicAggregated(Type type) {
+        protected BasicAggregated(Type type, Type originalType) {
             super(type);
+            mOriginalType = originalType;
         }
 
         @Override
@@ -388,7 +391,7 @@ public abstract class FunctionApplier {
 
         @Override
         public void begin(GroupContext context) {
-            workField(context).set(eval(context.args().get(0)));
+            workField(context).set(convert(eval(context.args().get(0))));
         }
 
         @Override
@@ -403,14 +406,51 @@ public abstract class FunctionApplier {
         protected Variable eval(LazyValue arg) {
             return arg.eval(true);
         }
+
+        /**
+         * Converts a value to the work field type. The original variable is returned if no
+         * conversion is necessary.
+         */
+        protected Variable convert(Variable value) {
+            if (type().clazz() == value.classType()) {
+                return value;
+            }
+            MethodMaker mm = value.methodMaker();
+            var converted = mm.var(type().clazz());
+            Converter.convertLossy(mm, mOriginalType, value, type(), converted);
+            return converted;
+        }
+
+        /**
+         * Converts a non-null value to the work field type. The original variable is returned
+         * if no conversion is necessary.
+         */
+        protected Variable convertNonNull(Variable value) {
+            if (type().clazz() == value.classType()) {
+                return value;
+            }
+
+            ColumnInfo srcInfo = mOriginalType;
+            if (srcInfo.isNullable()) {
+                srcInfo = srcInfo.copy();
+                srcInfo.typeCode &= ~Type.TYPE_NULLABLE;
+            }
+
+            MethodMaker mm = value.methodMaker();
+            var converted = mm.var(type().clazz());
+
+            Converter.convertLossy(mm, srcInfo, value, type(), converted);
+
+            return converted;
+        }
     }
 
     /**
      * Defines an aggregate function which computes against a simple work field.
      */
     public abstract static class ComputeAggregated extends BasicAggregated {
-        protected ComputeAggregated(Type type) {
-            super(type);
+        protected ComputeAggregated(Type type, Type originalType) {
+            super(type, originalType);
         }
 
         @Override
@@ -437,7 +477,7 @@ public abstract class FunctionApplier {
                 notNull.here();
             }
 
-            workField.set(compute(type, left, right));
+            workField.set(compute(type, convertNonNull(left), convertNonNull(right)));
 
             if (done != null) {
                 done.here();
@@ -460,8 +500,8 @@ public abstract class FunctionApplier {
      * field.
      */
     public abstract static class NumericalAggregated extends ComputeAggregated {
-        protected NumericalAggregated(Type type) {
-            super(type);
+        protected NumericalAggregated(Type type, Type originalType) {
+            super(type, originalType);
         }
 
         @Override
@@ -494,8 +534,8 @@ public abstract class FunctionApplier {
         // Used to count the number of non-null values.
         private String mCountFieldName;
 
-        protected NullSkipNumericalAggregated(Type type) {
-            super(type);
+        protected NullSkipNumericalAggregated(Type type, Type originalType) {
+            super(type, originalType);
         }
 
         @Override
@@ -519,7 +559,7 @@ public abstract class FunctionApplier {
                 return;
             }
 
-            var arg = eval(context.args().get(0));
+            var arg = convert(eval(context.args().get(0)));
             workField(context).set(arg);
 
             if (mCountFieldName != null) {
@@ -544,7 +584,7 @@ public abstract class FunctionApplier {
 
             var workField = workField(context);
             Variable left = workField.get();
-            Variable right = eval(context.args().get(0));
+            Variable right = convert(eval(context.args().get(0)));
 
             MethodMaker mm = context.methodMaker();
             Label done = mm.label();
@@ -595,14 +635,11 @@ public abstract class FunctionApplier {
      * field, treating null values as zero.
      */
     public abstract static class NullZeroNumericalAggregated extends NumericalAggregated {
-        private final Type mOriginalType;
-
         // Used to count the number of non-null values.
         private String mCountFieldName;
 
         protected NullZeroNumericalAggregated(Type type, Type originalType) {
-            super(type);
-            mOriginalType = originalType;
+            super(type, originalType);
         }
 
         @Override
@@ -677,24 +714,6 @@ public abstract class FunctionApplier {
         @Override
         protected final Variable eval(LazyValue arg) {
             return !nullAsZero() ? super.eval(arg) : arg.eval(true);
-        }
-
-        /**
-         * Converts a non-null argument value to the work field type.
-         */
-        private Variable convertNonNull(Variable arg) {
-            ColumnInfo srcInfo = mOriginalType;
-            if (srcInfo.isNullable()) {
-                srcInfo = srcInfo.copy();
-                srcInfo.typeCode &= ~Type.TYPE_NULLABLE;
-            }
-
-            MethodMaker mm = arg.methodMaker();
-            var converted = mm.var(type().clazz());
-
-            Converter.convertLossy(mm, srcInfo, arg, type(), converted);
-
-            return converted;
         }
 
         /**

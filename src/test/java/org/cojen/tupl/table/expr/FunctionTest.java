@@ -17,6 +17,9 @@
 
 package org.cojen.tupl.table.expr;
 
+import java.math.BigDecimal;
+import java.math.BigInteger;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -30,6 +33,7 @@ import org.cojen.tupl.PrimaryKey;
 import org.cojen.tupl.Row;
 import org.cojen.tupl.Scanner;
 import org.cojen.tupl.Table;
+import org.cojen.tupl.Unsigned;
 
 import org.cojen.tupl.table.IdentityTable;
 
@@ -52,6 +56,56 @@ public class FunctionTest {
         }
     }
 
+    private static RelationExpr parse(String query) {
+        return parse(IdentityTable.THE, query);
+    }
+
+    private static RelationExpr parse(Table table, String query) {
+        return Parser.parse(table, query);
+    }
+
+    private static void verify(String query, String... expect) throws Exception {
+        verify(parse(query), expect);
+    }
+
+    private static void verify(String query, Object[] args, String... expect) throws Exception {
+        verify(parse(query), args, expect);
+    }
+
+    private static void verify(Table table, String query, String... expect) throws Exception {
+        verify(parse(table, query), expect);
+    }
+
+    private static void verify(Table table, String query, Object[] args, String... expect)
+        throws Exception
+    {
+        verify(parse(table, query), args, expect);
+    }
+
+    private static void verify(RelationExpr expr, String... expect) throws Exception {
+        verify(expr, new Object[0], expect);
+    }
+
+    @SuppressWarnings("unchecked")
+    private static void verify(RelationExpr expr, Object[] args, String... expect)
+        throws Exception
+    {
+        int i = 0;
+
+        try (Scanner s = expr.makeCompiledQuery().newScanner(null, args)) {
+            for (Object row = s.row(); row != null; row = s.step(row)) {
+                String rowStr = row.toString();
+                if (i < expect.length) {
+                    assertEquals(expect[i++], rowStr);
+                } else {
+                    fail("too many rows: " + rowStr);
+                }
+            }
+        }
+
+        assertTrue("not enough rows", i == expect.length);
+    }
+
     @PrimaryKey("id")
     public static interface TestRow {
         long id();
@@ -66,6 +120,30 @@ public class FunctionTest {
         @Nullable
         String value();
         void value(String v);
+    }
+
+    /*
+     * {id=1, num=20, name=name-1, value=value-1}
+     * {id=2, num=10, name=name-2, value=null}
+     * {id=3, num=40, name=name-3, value=value-3}
+     * {id=4, num=30, name=name-4, value=null}
+     * ...
+     */
+    private Table<TestRow> fill(int num) throws Exception {
+        Database db = Database.open(new DatabaseConfig());
+        dbs.add(db);
+        Table<TestRow> table = db.openTable(TestRow.class);
+
+        for (int i=1; i<=num; i++) {
+            var row = table.newRow();
+            row.id(i);
+            row.num(((i & 1) == 0 ? (i - 1) : (i + 1)) * 10);
+            row.name("name-" + i);
+            row.value((i & 1) == 0 ? null : ("value-" + i));
+            table.insert(null, row);
+        }
+
+        return table;
     }
 
     @Test
@@ -454,78 +532,300 @@ public class FunctionTest {
                "{value=null, v=10}");
     }
 
-    private static RelationExpr parse(String query) {
-        return parse(IdentityTable.THE, query);
-    }
+    @PrimaryKey("id")
+    public static interface SumRow {
+        long id();
+        void id(long id);
 
-    private static RelationExpr parse(Table table, String query) {
-        return Parser.parse(table, query);
-    }
+        int group();
+        void group(int v);
 
-    private static void verify(String query, String... expect) throws Exception {
-        verify(parse(query), expect);
-    }
+        byte v1();
+        void v1(byte v);
 
-    private static void verify(String query, Object[] args, String... expect) throws Exception {
-        verify(parse(query), args, expect);
-    }
+        @Unsigned
+        byte v2();
+        void v2(byte v);
 
-    private static void verify(Table table, String query, String... expect) throws Exception {
-        verify(parse(table, query), expect);
-    }
+        short v3();
+        void v3(short v);
 
-    private static void verify(Table table, String query, Object[] args, String... expect)
-        throws Exception
-    {
-        verify(parse(table, query), args, expect);
-    }
+        @Unsigned
+        short v4();
+        void v4(short v);
 
-    private static void verify(RelationExpr expr, String... expect) throws Exception {
-        verify(expr, new Object[0], expect);
-    }
+        int v5();
+        void v5(int v);
 
-    @SuppressWarnings("unchecked")
-    private static void verify(RelationExpr expr, Object[] args, String... expect)
-        throws Exception
-    {
-        int i = 0;
+        @Unsigned
+        int v6();
+        void v6(int v);
 
-        try (Scanner s = expr.makeCompiledQuery().newScanner(null, args)) {
-            for (Object row = s.row(); row != null; row = s.step(row)) {
-                String rowStr = row.toString();
-                if (i < expect.length) {
-                    assertEquals(expect[i++], rowStr);
-                } else {
-                    fail("too many rows: " + rowStr);
-                }
-            }
-        }
+        long v7();
+        void v7(long v);
 
-        assertTrue("not enough rows", i == expect.length);
+        @Unsigned
+        long v8();
+        void v8(long v);
+
+        float v9();
+        void v9(float v);
+
+        double v10();
+        void v10(double v);
+
+        @Nullable
+        Long v11();
+        void v11(Long v);
+
+        BigInteger v12();
+        void v12(BigInteger v);
+
+        BigDecimal v13();
+        void v13(BigDecimal v);
     }
 
     /*
-     * {id=1, num=20, name=name-1, value=value-1}
-     * {id=2, num=10, name=name-2, value=null}
-     * {id=3, num=40, name=name-3, value=value-3}
-     * {id=4, num=30, name=name-4, value=null}
+     * {id=1, group=1, v1=1, v2=2, ...}
+     * {id=2, group=1, v1=2, v2=4, ...}
+     * {id=3, group=1, v1=3, v2=6, ...}
+     * {id=4, group=2, v1=4, v2=8, ...}
+     * {id=5, group=2, v1=5, v2=10, ...}
+     * {id=6, group=2, v1=6, v2=12, ...}
      * ...
      */
-    private Table<TestRow> fill(int num) throws Exception {
+    private Table<SumRow> fillSum(int num) throws Exception {
         Database db = Database.open(new DatabaseConfig());
         dbs.add(db);
-        Table<TestRow> table = db.openTable(TestRow.class);
+        Table<SumRow> table = db.openTable(SumRow.class);
 
         for (int i=1; i<=num; i++) {
             var row = table.newRow();
             row.id(i);
-            row.num(((i & 1) == 0 ? (i - 1) : (i + 1)) * 10);
-            row.name("name-" + i);
-            row.value((i & 1) == 0 ? null : ("value-" + i));
+            row.group(((i - 1) / 3) + 1);
+
+            long n = i;
+
+            row.v1((byte) n); n <<= 1;
+            row.v2((byte) n); n <<= 1;
+            row.v3((short) n); n <<= 1;
+            row.v4((short) n); n <<= 1;
+            row.v5((int) n); n <<= 1;
+            row.v6((int) n); n <<= 1;
+            row.v7(n); n <<= 1;
+            row.v8(n); n <<= 1;
+            row.v9((float) n); n <<= 1;
+            row.v10((double) n); n <<= 1;
+            row.v11(n); n <<= 1;
+            row.v12(BigInteger.valueOf(n)); n <<= 1;
+            row.v13(BigDecimal.valueOf(n)); n <<= 1;
+
             table.insert(null, row);
         }
 
         return table;
     }
 
+    @Test
+    public void countSumAvg() throws Exception {
+        try {
+            Parser.parse(IdentityTable.THE, "{v = sum()}");
+            fail();
+        } catch (QueryException e) {
+            assertTrue(e.getMessage().contains("exactly 1 argument"));
+        }
+
+        try {
+            Parser.parse(IdentityTable.THE, "{v = sum(1)}");
+            fail();
+        } catch (QueryException e) {
+            assertTrue(e.getMessage().contains("requires grouping"));
+        }
+
+        Table<SumRow> table = fillSum(6);
+
+        {
+            String query = "{; " +
+                "c1 = count(v1), s1 = sum(v1), a1 = avg(v1), " +
+                "c2 = count(v2), s2 = sum(v2), a2 = avg(v2), " +
+                "c3 = count(v3), s3 = sum(v3), a3 = avg(v3), " +
+                "c4 = count(v4), s4 = sum(v4), a4 = avg(v4), " +
+                "c5 = count(v5), s5 = sum(v5), a5 = avg(v5), " +
+                "c6 = count(v6), s6 = sum(v6), a6 = avg(v6), " +
+                "c7 = count(v7), s7 = sum(v7), a7 = avg(v7), " +
+                "c8 = count(v8), s8 = sum(v8), a8 = avg(v8), " +
+                "c9 = count(v9), s9 = sum(v9), a9 = avg(v9), " +
+                "c10 = count(v10), s10 = sum(v10), a10 = avg(v10), " +
+                "c11 = count(v11), s11 = sum(v11), a11 = avg(v11), " +
+                "c12 = count(v12), s12 = sum(v12), a12 = avg(v12), " +
+                "c13 = count(v13), s13 = sum(v13), a13 = avg(v13)  " +
+                "}";
+
+            RelationExpr expr = parse(table, query);
+
+            Row row = null;
+            try (Scanner s = expr.makeCompiledQuery().newScanner(null)) {
+                row = (Row) s.row();
+                assertNull(s.step());
+            }
+
+            for (int i=1; i<=13; i++) {
+                assertEquals(6, row.get_int("c" + i));
+
+                int sum = row.get_int("s" + i);
+                assertEquals(21 * (1 << (i - 1)), sum);
+
+                double avg = row.get_double("a" + i);
+                assertTrue(sum / 6.0 == avg);
+            }
+        }
+
+        {
+            String query = "{group; " +
+                "c1 = count(v1), s1 = sum(v1), a1 = avg(v1), " +
+                "c2 = count(v2), s2 = sum(v2), a2 = avg(v2), " +
+                "c3 = count(v3), s3 = sum(v3), a3 = avg(v3), " +
+                "c4 = count(v4), s4 = sum(v4), a4 = avg(v4), " +
+                "c5 = count(v5), s5 = sum(v5), a5 = avg(v5), " +
+                "c6 = count(v6), s6 = sum(v6), a6 = avg(v6), " +
+                "c7 = count(v7), s7 = sum(v7), a7 = avg(v7), " +
+                "c8 = count(v8), s8 = sum(v8), a8 = avg(v8), " +
+                "c9 = count(v9), s9 = sum(v9), a9 = avg(v9), " +
+                "c10 = count(v10), s10 = sum(v10), a10 = avg(v10), " +
+                "c11 = count(v11), s11 = sum(v11), a11 = avg(v11), " +
+                "c12 = count(v12), s12 = sum(v12), a12 = avg(v12), " +
+                "c13 = count(v13), s13 = sum(v13), a13 = avg(v13)  " +
+                "}";
+
+            RelationExpr expr = parse(table, query);
+
+            Row row1 = null, row2 = null;
+            try (Scanner s = expr.makeCompiledQuery().newScanner(null)) {
+                row1 = (Row) s.row();
+                row2 = (Row) s.step();
+                assertNull(s.step());
+            }
+
+            assertEquals(1, row1.get_int("group"));
+            assertEquals(2, row2.get_int("group"));
+
+            for (int i=1; i<=13; i++) {
+                assertEquals(3, row1.get_int("c" + i));
+
+                int sum = row1.get_int("s" + i);
+                assertEquals(6 * (1 << (i - 1)), sum);
+
+                double avg = row1.get_double("a" + i);
+                assertTrue(sum / 3.0 == avg);
+            }
+
+            for (int i=1; i<=13; i++) {
+                assertEquals(3, row2.get_int("c" + i));
+
+                int sum = row2.get_int("s" + i);
+                assertEquals(15 * (1 << (i - 1)), sum);
+
+                double avg = row2.get_double("a" + i);
+                assertTrue(sum / 3.0 == avg);
+            }
+        }
+
+        {
+            String query = "{group; " +
+                "c1 = count(v1, rows:..0), s1 = sum(v1, rows:..0), a1 = avg(v1, rows:..0), " +
+                "c2 = count(v2, rows:..0), s2 = sum(v2, rows:..0), a2 = avg(v2, rows:..0), " +
+                "c3 = count(v3, rows:..0), s3 = sum(v3, rows:..0), a3 = avg(v3, rows:..0), " +
+                "c4 = count(v4, rows:..0), s4 = sum(v4, rows:..0), a4 = avg(v4, rows:..0), " +
+                "c5 = count(v5, rows:..0), s5 = sum(v5, rows:..0), a5 = avg(v5, rows:..0), " +
+                "c6 = count(v6, rows:..0), s6 = sum(v6, rows:..0), a6 = avg(v6, rows:..0), " +
+                "c7 = count(v7, rows:..0), s7 = sum(v7, rows:..0), a7 = avg(v7, rows:..0), " +
+                "c8 = count(v8, rows:..0), s8 = sum(v8, rows:..0), a8 = avg(v8, rows:..0), " +
+                "c9 = count(v9, rows:..0), s9 = sum(v9, rows:..0), a9 = avg(v9, rows:..0), " +
+                "c10 = count(v10, rows:..0), s10 = sum(v10, rows:..0), a10 = avg(v10, rows:..0), " +
+                "c11 = count(v11, rows:..0), s11 = sum(v11, rows:..0), a11 = avg(v11, rows:..0), " +
+                "c12 = count(v12, rows:..0), s12 = sum(v12, rows:..0), a12 = avg(v12, rows:..0), " +
+                "c13 = count(v13, rows:..0), s13 = sum(v13, rows:..0), a13 = avg(v13, rows:..0)  " +
+                "}";
+
+            RelationExpr expr = parse(table, query);
+
+            Row row1 = null, row2 = null, row3 = null, row4 = null, row5 = null, row6 = null;
+            try (Scanner s = expr.makeCompiledQuery().newScanner(null)) {
+                row1 = (Row) s.row();
+                row2 = (Row) s.step();
+                row3 = (Row) s.step();
+                row4 = (Row) s.step();
+                row5 = (Row) s.step();
+                row6 = (Row) s.step();
+                assertNull(s.step());
+            }
+
+            assertEquals(1, row1.get_int("group"));
+            assertEquals(1, row2.get_int("group"));
+            assertEquals(1, row3.get_int("group"));
+            assertEquals(2, row4.get_int("group"));
+            assertEquals(2, row5.get_int("group"));
+            assertEquals(2, row6.get_int("group"));
+
+            for (int i=1; i<=13; i++) {
+                assertEquals(1, row1.get_int("c" + i));
+
+                int sum = row1.get_int("s" + i);
+                assertEquals(1 * (1 << (i - 1)), sum);
+
+                double avg = row1.get_double("a" + i);
+                assertTrue(sum / 1.0 == avg);
+            }
+
+            for (int i=1; i<=13; i++) {
+                assertEquals(2, row2.get_int("c" + i));
+
+                int sum = row2.get_int("s" + i);
+                assertEquals(3 * (1 << (i - 1)), sum);
+
+                double avg = row2.get_double("a" + i);
+                assertTrue(sum / 2.0 == avg);
+            }
+
+            for (int i=1; i<=13; i++) {
+                assertEquals(3, row3.get_int("c" + i));
+
+                int sum = row3.get_int("s" + i);
+                assertEquals(6 * (1 << (i - 1)), sum);
+
+                double avg = row3.get_double("a" + i);
+                assertTrue(sum / 3.0 == avg);
+            }
+
+            for (int i=1; i<=13; i++) {
+                assertEquals(1, row4.get_int("c" + i));
+
+                int sum = row4.get_int("s" + i);
+                assertEquals(4 * (1 << (i - 1)), sum);
+
+                double avg = row4.get_double("a" + i);
+                assertTrue(sum / 1.0 == avg);
+            }
+
+            for (int i=1; i<=13; i++) {
+                assertEquals(2, row5.get_int("c" + i));
+
+                int sum = row5.get_int("s" + i);
+                assertEquals(9 * (1 << (i - 1)), sum);
+
+                double avg = row5.get_double("a" + i);
+                assertTrue(sum / 2.0 == avg);
+            }
+
+            for (int i=1; i<=13; i++) {
+                assertEquals(3, row6.get_int("c" + i));
+
+                int sum = row6.get_int("s" + i);
+                assertEquals(15 * (1 << (i - 1)), sum);
+
+                double avg = row6.get_double("a" + i);
+                assertTrue(sum / 3.0 == avg);
+            }
+        }
+    }
 }
