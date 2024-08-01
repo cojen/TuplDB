@@ -45,6 +45,9 @@ public class FunctionTest {
         long id();
         void id(long id);
 
+        int num();
+        void num(int v);
+
         String name();
         void name(String v);
 
@@ -243,6 +246,202 @@ public class FunctionTest {
                "{id=1, v=2}", "{id=1, v=1}", "{id=2, v=2}", "{id=2, v=1}");
     }
 
+    @Test
+    public void first() throws Exception {
+        try {
+            Parser.parse(IdentityTable.THE, "{v = first()}");
+            fail();
+        } catch (QueryException e) {
+            assertTrue(e.getMessage().contains("exactly 1 argument"));
+        }
+
+        try {
+            Parser.parse(IdentityTable.THE, "{v = first(1)}");
+            fail();
+        } catch (QueryException e) {
+            assertTrue(e.getMessage().contains("requires grouping"));
+        }
+
+        Table<TestRow> table = fill(4);
+
+        verify(table, "{; v = first(name)}", "{v=name-1}");
+
+        verify(table, "{value; v = first(name)}",
+               "{value=value-1, v=name-1}",
+               "{value=value-3, v=name-3}",
+               "{value=null, v=name-2}");
+
+        verify(table, "{-value; v = first(name)}",
+               "{value=null, v=name-2}",
+               "{value=value-3, v=name-3}",
+               "{value=value-1, v=name-1}");
+
+        verify(table, "{value; v = first(name, rows:0..)}",
+               "{value=value-1, v=name-1}",
+               "{value=value-3, v=name-3}",
+               "{value=null, v=name-2}",
+               "{value=null, v=name-4}");
+
+        verify(table, "{value; v = first(name, rows:..0)}",
+               "{value=value-1, v=name-1}",
+               "{value=value-3, v=name-3}",
+               "{value=null, v=name-2}",
+               "{value=null, v=name-2}");
+    }
+
+    @Test
+    public void last() throws Exception {
+        try {
+            Parser.parse(IdentityTable.THE, "{v = last()}");
+            fail();
+        } catch (QueryException e) {
+            assertTrue(e.getMessage().contains("exactly 1 argument"));
+        }
+
+        try {
+            Parser.parse(IdentityTable.THE, "{v = last(1)}");
+            fail();
+        } catch (QueryException e) {
+            assertTrue(e.getMessage().contains("requires grouping"));
+        }
+
+        Table<TestRow> table = fill(4);
+
+        verify(table, "{; v = last(name)}", "{v=name-4}");
+
+        verify(table, "{value; v = last(name)}",
+               "{value=value-1, v=name-1}",
+               "{value=value-3, v=name-3}",
+               "{value=null, v=name-4}");
+
+        verify(table, "{-value; v = last(name)}",
+               "{value=null, v=name-4}",
+               "{value=value-3, v=name-3}",
+               "{value=value-1, v=name-1}");
+
+        verify(table, "{value; v = last(name, rows:0..)}",
+               "{value=value-1, v=name-1}",
+               "{value=value-3, v=name-3}",
+               "{value=null, v=name-4}",
+               "{value=null, v=name-4}");
+
+        verify(table, "{value; v = last(name, rows:..0)}",
+               "{value=value-1, v=name-1}",
+               "{value=value-3, v=name-3}",
+               "{value=null, v=name-2}",
+               "{value=null, v=name-4}");
+    }
+
+    @Test
+    public void min() throws Exception {
+        try {
+            Parser.parse(IdentityTable.THE, "{v = min()}");
+            fail();
+        } catch (QueryException e) {
+            assertTrue(e.getMessage().contains("exactly 1 argument"));
+        }
+
+        try {
+            Parser.parse(IdentityTable.THE, "{v = min(1)}");
+            fail();
+        } catch (QueryException e) {
+            assertTrue(e.getMessage().contains("requires grouping"));
+        }
+
+        Table<TestRow> table = fill(4);
+
+        verify(table, "{; v = min(num)}", "{v=10}");
+
+        verify(table, "{value; v = min(num)}",
+               "{value=value-1, v=20}",
+               "{value=value-3, v=40}",
+               "{value=null, v=10}");
+
+        verify(table, "{-value; v = min(num)}",
+               "{value=null, v=10}",
+               "{value=value-3, v=40}",
+               "{value=value-1, v=20}");
+
+        verify(table, "{value; v = min(num, rows:0..)}",
+               "{value=value-1, v=20}",
+               "{value=value-3, v=40}",
+               "{value=null, v=10}",
+               "{value=null, v=30}");
+
+        verify(table, "{value; v = min(num, rows:..0)}",
+               "{value=value-1, v=20}",
+               "{value=value-3, v=40}",
+               "{value=null, v=10}",
+               "{value=null, v=10}");
+
+        verify(table, "{value; v = min(num, rows:1..1)}",
+               "{value=value-1, v=null}",
+               "{value=value-3, v=null}",
+               "{value=null, v=30}",
+               "{value=null, v=null}");
+
+        verify(table, "{value; v = min(num, rows:-1..-1)}",
+               "{value=value-1, v=null}",
+               "{value=value-3, v=null}",
+               "{value=null, v=null}",
+               "{value=null, v=10}");
+    }
+
+    @Test
+    public void max() throws Exception {
+        try {
+            Parser.parse(IdentityTable.THE, "{v = max()}");
+            fail();
+        } catch (QueryException e) {
+            assertTrue(e.getMessage().contains("exactly 1 argument"));
+        }
+
+        try {
+            Parser.parse(IdentityTable.THE, "{v = max(1)}");
+            fail();
+        } catch (QueryException e) {
+            assertTrue(e.getMessage().contains("requires grouping"));
+        }
+
+        Table<TestRow> table = fill(4);
+
+        verify(table, "{; v = max(num)}", "{v=40}");
+
+        verify(table, "{value; v = max(num)}",
+               "{value=value-1, v=20}",
+               "{value=value-3, v=40}",
+               "{value=null, v=30}");
+
+        verify(table, "{-value; v = max(num)}",
+               "{value=null, v=30}",
+               "{value=value-3, v=40}",
+               "{value=value-1, v=20}");
+
+        verify(table, "{value; v = max(num, rows:0..)}",
+               "{value=value-1, v=20}",
+               "{value=value-3, v=40}",
+               "{value=null, v=30}",
+               "{value=null, v=30}");
+
+        verify(table, "{value; v = max(num, rows:..0)}",
+               "{value=value-1, v=20}",
+               "{value=value-3, v=40}",
+               "{value=null, v=10}",
+               "{value=null, v=30}");
+
+        verify(table, "{value; v = max(num, rows:1..1)}",
+               "{value=value-1, v=null}",
+               "{value=value-3, v=null}",
+               "{value=null, v=30}",
+               "{value=null, v=null}");
+
+        verify(table, "{value; v = max(num, rows:-1..-1)}",
+               "{value=value-1, v=null}",
+               "{value=value-3, v=null}",
+               "{value=null, v=null}",
+               "{value=null, v=10}");
+    }
+
     private static RelationExpr parse(String query) {
         return parse(IdentityTable.THE, query);
     }
@@ -294,10 +493,10 @@ public class FunctionTest {
     }
 
     /*
-     * {id=1, name=name-1, value=value-1}
-     * {id=2, name=name-2, value=null}
-     * {id=3, name=name-3, value=value-3}
-     * {id=4, name=name-4, value=null}
+     * {id=1, num=20, name=name-1, value=value-1}
+     * {id=2, num=10, name=name-2, value=null}
+     * {id=3, num=40, name=name-3, value=value-3}
+     * {id=4, num=30, name=name-4, value=null}
      * ...
      */
     private static Table<TestRow> fill(int num) throws Exception {
@@ -307,8 +506,9 @@ public class FunctionTest {
         for (int i=1; i<=num; i++) {
             var row = table.newRow();
             row.id(i);
+            row.num(((i & 1) == 0 ? (i - 1) : (i + 1)) * 10);
             row.name("name-" + i);
-            row.value((i & 1) == 0 ? null : ("value-" + i)); 
+            row.value((i & 1) == 0 ? null : ("value-" + i));
             table.insert(null, row);
         }
 
