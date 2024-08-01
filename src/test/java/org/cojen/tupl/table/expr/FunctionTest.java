@@ -17,6 +17,9 @@
 
 package org.cojen.tupl.table.expr;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import org.junit.*;
 import static org.junit.Assert.*;
 
@@ -38,6 +41,15 @@ import org.cojen.tupl.table.IdentityTable;
 public class FunctionTest {
     public static void main(String[] args) throws Exception {
         org.junit.runner.JUnitCore.main(FunctionTest.class.getName());
+    }
+
+    private List<Database> dbs = new ArrayList<>();
+
+    @After
+    public void teardown() throws Exception {
+        for (Database db : dbs) {
+            db.close();
+        }
     }
 
     @PrimaryKey("id")
@@ -499,8 +511,9 @@ public class FunctionTest {
      * {id=4, num=30, name=name-4, value=null}
      * ...
      */
-    private static Table<TestRow> fill(int num) throws Exception {
+    private Table<TestRow> fill(int num) throws Exception {
         Database db = Database.open(new DatabaseConfig());
+        dbs.add(db);
         Table<TestRow> table = db.openTable(TestRow.class);
 
         for (int i=1; i<=num; i++) {
