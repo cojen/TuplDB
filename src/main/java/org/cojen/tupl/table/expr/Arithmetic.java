@@ -37,9 +37,9 @@ import java.lang.Long;
  * @author Brian S. O'Neill
  */
 final class Arithmetic {
-    // Define operations which aren't defined by token. Must not collide with any arithmetic
-    // operations defined in the Token class, or else the switch statements won't compile.
-    private static final int OP_MIN = 17, OP_MAX = 18;
+    // Operations which aren't defined by the Token class, which must not collide with any
+    // Token arithmetic operations, or else the switch statements won't compile.
+    static final int OP_MIN = 17, OP_MAX = 18;
 
     /**
      * Evaluate an operation against two variables, of the same type, non-null, and return a
@@ -81,8 +81,8 @@ final class Arithmetic {
     }
 
     /**
-     * Returns the static minimum value for the given type. If type isn't a number or doesn't
-     * have a minimum value, null is returned.
+     * Returns the static minimum value for the given type. If the type isn't a number or
+     * doesn't have a minimum value, null is returned.
      */
     public static Object min(ColumnInfo type) {
         return switch (type.plainTypeCode()) {
@@ -101,8 +101,8 @@ final class Arithmetic {
     }
 
     /**
-     * Returns the static maximum value for the given type. If type isn't a number or doesn't
-     * have a maximum value, null is returned.
+     * Returns the static maximum value for the given type. If the type isn't a number or
+     * doesn't have a maximum value, null is returned.
      */
     public static Object max(ColumnInfo type) {
         return switch (type.plainTypeCode()) {
