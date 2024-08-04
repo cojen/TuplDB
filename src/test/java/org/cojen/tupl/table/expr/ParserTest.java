@@ -79,6 +79,11 @@ public class ParserTest {
         parseFail("{1 + sum(1)}", "must be assigned");
         parseFail("{sum(1)}", "must be assigned");
         parseFail("{foo(1)}", "Unknown function");
+        parseFail("{q=0xq}", "Right brace expected");
+        parseFail("{q=0b2}", "Right brace expected");
+        parseFail("{q=0x.fg}", "Right brace expected");
+        parseFail("{q=0.0L}", "Right brace expected");
+        parseFail("{\u270b}", "Identifier expected");
     }
 
     private void parseFail(String queryStr, String message) {
@@ -102,8 +107,9 @@ public class ParserTest {
     public void basic() throws Exception {
         passQuery("{}");
         passQuery("{*}");
-        passQuery("{*, ~a}", "{b, c\u1f600}");
-        passQuery("{*, ~ a}", "{b, c\u1f600}");
+        passQuery("{*, ~a}", "{b, c\u1f600, \u1e00}");
+        passQuery("{*, ~ a}", "{b, c\u1f600, \u1e00}");
+        passQuery("{\u1e00}", "{\u1e00}");
         passQuery("{+a}");
         passQuery("{+ a}", "{+a}");
         passQuery("{*, +a}");
@@ -118,6 +124,40 @@ public class ParserTest {
         passQuery("?2 < a", "a > ?2");
 
         passQuery("true || false", "{*}");
+
+        passQuery("`a` == `b`", "a == b");
+    }
+
+    @Test
+    public void literals() throws Exception {
+        passQueryNoSpec("{q='\\0'}", "{q = \"\0\"}");
+        passQueryNoSpec("{q='\\b'}", "{q = \"\b\"}");
+        passQueryNoSpec("{q='\\t'}", "{q = \"\t\"}");
+        passQueryNoSpec("{q='\\n'}", "{q = \"\n\"}");
+        passQueryNoSpec("{q='\\f'}", "{q = \"\f\"}");
+        passQueryNoSpec("{q='\\r'}", "{q = \"\r\"}");
+        passQueryNoSpec("{q='\\\\'}", "{q = \"\\\"}");
+        passQueryNoSpec("{q='\\''}", "{q = \"\'\"}");
+        passQueryNoSpec("{q='\\\"'}", "{q = '\"'}");
+        passQueryNoSpec("{q='\\`'}", "{q = \"`\"}");
+        passQueryNoSpec("{q='\\Q'}", "{q = \"\\Q\"}");
+
+        passQueryNoSpec("{q='\r'}", "{q = \"\r\"}");
+        passQueryNoSpec("{q='\r\n'}", "{q = \"\n\"}");
+
+        passQueryNoSpec("{q=.1}", "{q = 0.1}");
+        passQueryNoSpec("{q=0xff, r=0X_f}", "{q = 255, r = 15}");
+        passQueryNoSpec("{q=0b101, r=0B_10}", "{q = 5, r = 2}");
+        passQueryNoSpec("{q=1e2}", "{q = 100.0}");
+        passQueryNoSpec("{q=1e+2}", "{q = 100.0}");
+        passQueryNoSpec("{q=1e-2}", "{q = 0.01}");
+        passQueryNoSpec("{q=0x1e-2}", "{q = 30 - 2}");
+        passQueryNoSpec("{q=0x1.0}", "{q = 1.0}");
+        passQueryNoSpec("{q=100g}", "{q = 100}");
+        passQueryNoSpec("{q=0xfG}", "{q = 15}");
+        passQueryNoSpec("{q=100.0g}", "{q = 100.0}");
+        passQueryNoSpec("{q=0.1G}", "{q = 0.1}");
+        passQueryNoSpec("{q=0.1d}", "{q = 0.1}");
     }
 
     private void passQuery(String queryStr) throws Exception {
@@ -127,6 +167,12 @@ public class ParserTest {
     private void passQuery(String queryStr, String expect) throws Exception {
         RelationExpr expr = Parser.parse(mTable, queryStr);
         assertEquals(expect, expr.querySpec(mTable.rowType()).toString());
+    }
+
+    private void passQueryNoSpec(String queryStr, String expect) throws Exception {
+        RelationExpr expr = Parser.parse(mTable, queryStr);
+        String exprStr = expr.toString();
+        assertTrue(exprStr, exprStr.endsWith(expect));
     }
 
     @PrimaryKey("a")
@@ -139,5 +185,8 @@ public class ParserTest {
 
         boolean c\u1f600();
         void c\u1f600(boolean c);
+
+        boolean \u1e00();
+        void \u1e00(boolean c);
     }
 }

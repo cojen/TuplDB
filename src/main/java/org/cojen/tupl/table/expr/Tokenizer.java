@@ -434,7 +434,7 @@ final class Tokenizer {
             if (bin) {
                 prefix = 'b';
             } else if (hex) {
-                prefix = 'h';
+                prefix = 'x';
             } else {
                 throw new AssertionError();
             }
@@ -457,8 +457,8 @@ final class Tokenizer {
 
             case 'l', 'L' -> {
                 if (fp) {
-                    suffix = 0;
                     unread(suffix);
+                    suffix = 0;
                 } else {
                     suffix = 'l';
                 }
@@ -466,8 +466,8 @@ final class Tokenizer {
 
             case 'g', 'G' -> {
                 if (fp && (bin || hex)) {
-                    suffix = 0;
                     unread(suffix);
+                    suffix = 0;
                 } else {
                     suffix = 'g';
                 }
