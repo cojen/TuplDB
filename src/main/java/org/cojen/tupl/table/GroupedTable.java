@@ -82,10 +82,10 @@ public abstract class GroupedTable<S, T> extends AbstractMappedTable<S, T>
 
         var key = new FactoryKey(source.rowType(), groupBy, orderBy,
                                  targetType, factory.getClass());
+        MethodHandle mh = cFactoryCache.obtain(key, source);
 
         try {
-            return (GroupedTable<S, T>) cFactoryCache.obtain(key, source)
-                .invokeExact(source, factory);
+            return (GroupedTable<S, T>) mh.invokeExact(mh, source, factory);
         } catch (Throwable e) {
             throw RowUtils.rethrow(e);
         }
@@ -94,7 +94,7 @@ public abstract class GroupedTable<S, T> extends AbstractMappedTable<S, T>
     /**
      * MethodHandle signature:
      *
-     *  GroupedTable<S, T> make(Table<S> source, Grouper.Factory<S, T>)
+     *  GroupedTable<S, T> make(MethodHandle self, Table<S> source, Grouper.Factory<S, T>)
      */
     private static MethodHandle makeTableFactory(FactoryKey key, Table<?> source) {
         Class<?> sourceType = key.sourceType();
@@ -125,36 +125,32 @@ public abstract class GroupedTable<S, T> extends AbstractMappedTable<S, T>
             (GroupedTable.class, targetType, "grouped").final_()
             .extend(GroupedTable.class).implement(TableBasicsMaker.find(targetType));
 
+        // Keep a reference to the MethodHandle instance, to prevent it from being garbage
+        // collected as long as references to the generated table instances still exist.
+        cm.addField(Object.class, "_").private_().final_();
+
         {
-            MethodMaker ctor = cm.addConstructor(Table.class, Grouper.Factory.class).private_();
+            MethodMaker ctor = cm.addConstructor
+                (MethodHandle.class, Table.class, Grouper.Factory.class).private_();
+
+            ctor.field("_").set(ctor.param(0));
+
             // Note: By using a QueryFactoryCache instance created here, all generated
             // GroupedTable instances will refer to the exact same cache.
             var cacheVar = ctor.var(QueryFactoryCache.class).setExact(new QueryFactoryCache());
             ctor.invokeSuperConstructor
-                (cacheVar, ctor.param(0), groupBySpec, orderBySpec, ctor.param(1));
+                (cacheVar, ctor.param(1), groupBySpec, orderBySpec, ctor.param(2));
         }
-
-        // Keep a reference to the MethodHandle instance, to prevent it from being garbage
-        // collected as long as the generated table class still exists.
-        cm.addField(Object.class, "_").static_().private_();
 
         MethodHandles.Lookup lookup = cm.finishLookup();
         Class<?> tableClass = lookup.lookupClass();
 
         MethodMaker mm = MethodMaker.begin
-            (lookup, GroupedTable.class, null, Table.class, Grouper.Factory.class);
-        mm.return_(mm.new_(tableClass, mm.param(0), mm.param(1)));
+            (lookup, GroupedTable.class, null,
+             MethodHandle.class, Table.class, Grouper.Factory.class);
+        mm.return_(mm.new_(tableClass, mm.param(0), mm.param(1), mm.param(2)));
 
-        MethodHandle mh = mm.finish();
-
-        try {
-            // Assign the singleton reference.
-            lookup.findStaticVarHandle(tableClass, "_", Object.class).set(mh);
-        } catch (Throwable e) {
-            throw RowUtils.rethrow(e);
-        }
-
-        return mh;
+        return mm.finish();
     }
 
     private final QueryFactoryCache mQueryFactoryCache;

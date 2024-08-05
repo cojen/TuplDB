@@ -80,10 +80,10 @@ public abstract class AggregatedTable<S, T> extends WrappedTable<S, T>
         Objects.requireNonNull(targetType);
 
         var key = new FactoryKey(source.rowType(), targetType, factory.getClass());
+        MethodHandle mh = cFactoryCache.obtain(key, source);
 
         try {
-            return (AggregatedTable<S, T>) cFactoryCache.obtain(key, source)
-                .invokeExact(source, factory);
+            return (AggregatedTable<S, T>) mh.invokeExact(mh, source, factory);
         } catch (Throwable e) {
             throw RowUtils.rethrow(e);
         }
@@ -92,7 +92,7 @@ public abstract class AggregatedTable<S, T> extends WrappedTable<S, T>
     /**
      * MethodHandle signature:
      *
-     *  AggregatedTable<S, T> make(Table<S> source, Aggregator.Factory<S, T>)
+     *  AggregatedTable<S, T> make(MethodHandle self, Table<S> source, Aggregator.Factory<S, T>)
      */
     private static MethodHandle makeTableFactory(FactoryKey key, Table<?> source) {
         Class<?> sourceType = key.sourceType();
@@ -123,17 +123,21 @@ public abstract class AggregatedTable<S, T> extends WrappedTable<S, T>
             (AggregatedTable.class, targetType, "aggregated").final_()
             .extend(AggregatedTable.class).implement(TableBasicsMaker.find(targetType));
 
+        // Keep a reference to the MethodHandle instance, to prevent it from being garbage
+        // collected as long as references to the generated table instances still exist.
+        cm.addField(Object.class, "_").private_().final_();
+
         {
-            MethodMaker ctor = cm.addConstructor(Table.class, Aggregator.Factory.class).private_();
+            MethodMaker ctor = cm.addConstructor
+                (MethodHandle.class, Table.class, Aggregator.Factory.class).private_();
+
+            ctor.field("_").set(ctor.param(0));
+
             // Note: By using a QueryFactoryCache instance created here, all generated
             // AggregatedTable instances will refer to the exact same cache.
             var cacheVar = ctor.var(QueryFactoryCache.class).setExact(new QueryFactoryCache());
-            ctor.invokeSuperConstructor(cacheVar, ctor.param(0), ctor.param(1));
+            ctor.invokeSuperConstructor(cacheVar, ctor.param(1), ctor.param(2));
         }
-
-        // Keep a reference to the MethodHandle instance, to prevent it from being garbage
-        // collected as long as the generated table class still exists.
-        cm.addField(Object.class, "_").static_().private_();
 
         // Add the compareSourceRows method.
         {
@@ -237,19 +241,11 @@ public abstract class AggregatedTable<S, T> extends WrappedTable<S, T>
         Class<?> tableClass = lookup.lookupClass();
 
         MethodMaker mm = MethodMaker.begin
-            (lookup, AggregatedTable.class, null, Table.class, Aggregator.Factory.class);
-        mm.return_(mm.new_(tableClass, mm.param(0), mm.param(1)));
+            (lookup, AggregatedTable.class, null,
+             MethodHandle.class, Table.class, Aggregator.Factory.class);
+        mm.return_(mm.new_(tableClass, mm.param(0), mm.param(1), mm.param(2)));
 
-        MethodHandle mh = mm.finish();
-
-        try {
-            // Assign the singleton reference.
-            lookup.findStaticVarHandle(tableClass, "_", Object.class).set(mh);
-        } catch (Throwable e) {
-            throw RowUtils.rethrow(e);
-        }
-
-        return mh;
+        return mm.finish();
     }
 
     private static String queryString(Collection<ColumnInfo> columns) {

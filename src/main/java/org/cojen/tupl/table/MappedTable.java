@@ -88,16 +88,19 @@ public abstract class MappedTable<S, T> extends AbstractMappedTable<S, T>
         Objects.requireNonNull(targetType);
 
         var key = new FactoryKey(source.rowType(), targetType, mapper.getClass());
+        MethodHandle mh = cFactoryCache.obtain(key, null);
 
         try {
-            return (MappedTable<S, T>) cFactoryCache.obtain(key, null).invokeExact(source, mapper);
+            return (MappedTable<S, T>) mh.invokeExact(mh, source, mapper);
         } catch (Throwable e) {
             throw RowUtils.rethrow(e);
         }
     }
 
     /**
-     * MethodHandle signature: MappedTable<S, T> make(Table<S> source, Mapper<S, T> mapper)
+     * MethodHandle signature:
+     *
+     * MappedTable<S, T> make(MethodHandle self, Table<S> source, Mapper<S, T> mapper)
      */
     private static MethodHandle makeTableFactory(FactoryKey key) {
         Class<?> targetType = key.targetType();
@@ -107,17 +110,21 @@ public abstract class MappedTable<S, T> extends AbstractMappedTable<S, T>
             (MappedTable.class, targetType, "mapped").final_()
             .extend(MappedTable.class).implement(TableBasicsMaker.find(targetType));
 
+        // Keep a reference to the MethodHandle instance, to prevent it from being garbage
+        // collected as long as references to the generated table instances still exist.
+        tableMaker.addField(Object.class, "_").private_().final_();
+
         {
-            MethodMaker ctor = tableMaker.addConstructor(Table.class, Mapper.class).private_();
+            MethodMaker ctor = tableMaker.addConstructor
+                (MethodHandle.class, Table.class, Mapper.class).private_();
+
+            ctor.field("_").set(ctor.param(0));
+
             // Note: By using a QueryFactoryCache instance created here, all generated
             // MappedTable instances will refer to the exact same cache.
             var cacheVar = ctor.var(QueryFactoryCache.class).setExact(new QueryFactoryCache());
-            ctor.invokeSuperConstructor(cacheVar, ctor.param(0), ctor.param(1));
+            ctor.invokeSuperConstructor(cacheVar, ctor.param(1), ctor.param(2));
         }
-
-        // Keep a reference to the MethodHandle instance, to prevent it from being garbage
-        // collected as long as the generated table class still exists.
-        tableMaker.addField(Object.class, "_").static_().private_();
 
         addMarkValuesUnset(key, info, tableMaker);
 
@@ -125,19 +132,10 @@ public abstract class MappedTable<S, T> extends AbstractMappedTable<S, T>
         Class<?> tableClass = lookup.lookupClass();
 
         MethodMaker mm = MethodMaker.begin
-            (lookup, MappedTable.class, null, Table.class, Mapper.class);
-        mm.return_(mm.new_(tableClass, mm.param(0), mm.param(1)));
+            (lookup, MappedTable.class, null, MethodHandle.class, Table.class, Mapper.class);
+        mm.return_(mm.new_(tableClass, mm.param(0), mm.param(1), mm.param(2)));
 
-        MethodHandle mh = mm.finish();
-
-        try {
-            // Assign the singleton reference.
-            lookup.findStaticVarHandle(tableClass, "_", Object.class).set(mh);
-        } catch (Throwable e) {
-            throw RowUtils.rethrow(e);
-        }
-
-        return mh;
+        return mm.finish();
     }
 
     private static void addMarkValuesUnset(FactoryKey key, RowInfo targetInfo, ClassMaker cm) {
