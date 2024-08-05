@@ -257,8 +257,9 @@ public class BinaryOpTest {
         } else if (expect instanceof BigDecimal bd) {
             BigDecimal result = row.getBigDecimal("v");
             if (!expect.equals(result)) {
-                BigDecimal diff = result.subtract((BigDecimal) expect).abs();
-                assertTrue("" + diff, diff.compareTo(BigDecimal.valueOf(0.00001)) < 0);
+                BigDecimal diff = result.subtract((BigDecimal) expect);
+                BigDecimal ratio = diff.divide(result, MathContext.DECIMAL64).abs();
+                assertTrue("" + ratio, ratio.compareTo(BigDecimal.valueOf(0.00001)) < 0);
             }
         } else if (expect == null) {
             assertNotNull(expectException);
