@@ -159,7 +159,7 @@ public class ColumnInfo implements Cloneable {
         return isUnsigned(typeCode);
     }
 
-    static boolean isUnsigned(int typeCode) {
+    public static boolean isUnsigned(int typeCode) {
         return plainTypeCode(typeCode) < 0b01000;
     }
 
@@ -167,7 +167,7 @@ public class ColumnInfo implements Cloneable {
         return isUnsignedInteger(typeCode);
     }
 
-    static boolean isUnsignedInteger(int typeCode) {
+    public static boolean isUnsignedInteger(int typeCode) {
         return isUnsigned(typeCode) && plainTypeCode(typeCode) != TYPE_BOOLEAN;
     }
 

@@ -545,7 +545,7 @@ final class Arithmetic {
 
         public static byte subtractExact(byte x, byte y) {
             byte r = (byte) (x - y);
-            if (((x ^ r) & (y ^ r)) < 0) {
+            if (((x ^ y) & (x ^ r)) < 0) {
                 throw new ArithmeticException("integer overflow");
             }
             return r;
@@ -626,7 +626,7 @@ final class Arithmetic {
 
         public static short subtractExact(short x, short y) {
             short r = (short) (x - y);
-            if (((x ^ r) & (y ^ r)) < 0) {
+            if (((x ^ y) & (x ^ r)) < 0) {
                 throw new ArithmeticException("integer overflow");
             }
             return r;

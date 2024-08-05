@@ -314,7 +314,7 @@ public class ArithmeticTest {
         verifyOverflow("add", (byte) 100, (byte) 100);
 
         verify("sub", (byte) 20, (byte) 10, (byte) 10);
-        verifyOverflow("sub", (byte) 10, (byte) 20);
+        verify("sub", (byte) 10, (byte) 20, (byte) -10);
 
         verify("mul", (byte) 10, (byte) 5, (byte) 50);
         verifyOverflow("mul", (byte) 100, (byte) 2);
@@ -349,7 +349,7 @@ public class ArithmeticTest {
         verifyOverflow("add", (short) 20000, (short) 20000);
 
         verify("sub", (short) 20, (short) 10, (short) 10);
-        verifyOverflow("sub", (short) 10, (short) 20);
+        verify("sub", (short) 10, (short) 20, (short) -10);
 
         verify("mul", (short) 100, (short) 200, (short) 20000);
         verifyOverflow("mul", (short) 200, (short) 200);

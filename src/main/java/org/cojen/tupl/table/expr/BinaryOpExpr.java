@@ -37,10 +37,6 @@ import org.cojen.maker.Variable;
  * @author Brian S. O'Neill
  */
 public sealed class BinaryOpExpr extends Expr permits FilterExpr {
-    public static Expr make(Token t, Expr left, Expr right) {
-        return make(left.startPos(), right.endPos(), t.type(), left, right);
-    }
-
     /**
      * @param op token type code
      */
@@ -362,8 +358,7 @@ public sealed class BinaryOpExpr extends Expr permits FilterExpr {
             return resulVar;
         }
 
-        // TODO: More detail: what is the type?
-        throw new QueryException("Unsupported operation for type", this);
+        throw new QueryException("Unsupported operation for type " + type(), this);
     }
 
     @Override
