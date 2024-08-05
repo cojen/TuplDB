@@ -30,6 +30,7 @@ import org.cojen.tupl.Database;
 import org.cojen.tupl.DatabaseConfig;
 import org.cojen.tupl.PrimaryKey;
 import org.cojen.tupl.Row;
+import org.cojen.tupl.Scanner;
 import org.cojen.tupl.Table;
 import org.cojen.tupl.Unsigned;
 
@@ -218,7 +219,9 @@ public class BinaryOpTest {
 
         Row row;
         try {
-            row = derived.newScanner(null).row();
+            try (Scanner<Row> s = derived.newScanner(null)) {
+                row = s.row();
+            }
         } catch (ArithmeticException e) {
             if ((mode1 == 2) != (mode2 == 2)) {
                 // Parameter conversion error, which is only possible when given just one
