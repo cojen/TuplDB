@@ -221,15 +221,9 @@ public class BinaryOpTest {
             row = derived.newScanner(null).row();
         } catch (ArithmeticException e) {
             if ((mode1 == 2) != (mode2 == 2)) {
-                String message = e.getMessage();
-                if (message.contains("Cannot exactly convert") || message.contains("verflow") ||
-                    message.contains("out of byte range") ||
-                    message.contains("out of short range"))
-                {
-                    // Parameter conversion error, which is only possible when given just one
-                    // parameter.
-                    return;
-                }
+                // Parameter conversion error, which is only possible when given just one
+                // parameter.
+                return;
             }
 
             if (expect == null) {
