@@ -604,6 +604,7 @@ public abstract sealed class QueryExpr extends RelationExpr
     }
 
     protected final void doEncodeKey(KeyEncoder enc) {
+        enc.encodeClass(rowTypeClass());
         mFrom.encodeKey(enc);
         enc.encodeString(mRowFilter.toString());
         enc.encodeExprs(mProjection);
