@@ -34,6 +34,8 @@ import org.cojen.tupl.Scanner;
 import org.cojen.tupl.Table;
 import org.cojen.tupl.Unsigned;
 
+import org.cojen.tupl.table.IdentityTable;
+
 import static org.cojen.tupl.table.expr.Token.*;
 import static org.cojen.tupl.table.expr.Type.*;
 
@@ -103,7 +105,9 @@ public class BinaryOpTest {
 
     @After
     public void teardown() throws Exception {
-        mDb.close();
+        if (mDb != null) {
+            mDb.close();
+        }
     }
 
     @Test
@@ -424,5 +428,145 @@ public class BinaryOpTest {
             return bd;
         }
         return BigDecimal.valueOf(((Number) value).longValue());
+    }
+
+    @Test
+    public void broken() throws Exception {
+        try {
+            Parser.parse(IdentityTable.THE, "true < 0");
+            fail();
+        } catch (QueryException e) {
+            assertTrue(e.getMessage().contains("No common type"));
+        }
+
+        try {
+            Parser.parse(IdentityTable.THE, "0 && 1");
+            fail();
+        } catch (QueryException e) {
+            assertTrue(e.getMessage().contains("Boolean operation not allowed"));
+        }
+
+        try {
+            Parser.parse(IdentityTable.THE, "'a' & 'b'");
+            fail();
+        } catch (QueryException e) {
+            assertTrue(e.getMessage().contains("Bitwise operation not allowed"));
+        }
+    }
+
+    @PrimaryKey({"a", "b"})
+    public static interface LogicRow extends Row {
+        int a();
+        void a(int a);
+
+        boolean b();
+        void b(boolean b);
+    }
+
+    @Test
+    public void logic() throws Exception {
+        mDb = Database.open(new DatabaseConfig().directPageAccess(false));
+        Table<LogicRow> table = mDb.openTable(LogicRow.class);
+
+        {
+            LogicRow row = table.newRow();
+            row.a(0); row.b(false);
+            table.insert(null, row);
+            row.a(0); row.b(true);
+            table.insert(null, row);
+            row.a(1); row.b(false);
+            table.insert(null, row);
+            row.a(1); row.b(true);
+            table.insert(null, row);
+        }
+
+        verify(table, "{v = (a != 0) && b}", false, false, false, true);
+        verify(table, "{v = (a != 0) && (b == true)}", false, false, false, true);
+        verify(table, "{v = (a > 0) && (b != false)}", false, false, false, true);
+
+        verify(table, "{v = (a != 0) & b}", false, false, false, true);
+        verify(table, "{v = (a != 0) & (b == true)}", false, false, false, true);
+        verify(table, "{v = (a > 0) & (b != false)}", false, false, false, true);
+
+        verify(table, "{v = (a != 0) || b}", false, true, true, true);
+        verify(table, "{v = (a != 0) || (b == true)}", false, true, true, true);
+        verify(table, "{v = (a > 0) || (b != false)}", false, true, true, true);
+
+        verify(table, "{v = (a != 0) | b}", false, true, true, true);
+        verify(table, "{v = (a != 0) | (b == true)}", false, true, true, true);
+        verify(table, "{v = (a > 0) | (b != false)}", false, true, true, true);
+
+        verify(table, "{v = (a != 0) ^ b}", false, true, true, false);
+        verify(table, "{v = (a != 0) ^ (b == true)}", false, true, true, false);
+        verify(table, "{v = (a > 0) ^ (b != false)}", false, true, true, false);
+
+        verify(table, "{v = (a != 0) != b}", false, true, true, false);
+        verify(table, "{v = (a != 0) != (b == true)}", false, true, true, false);
+        verify(table, "{v = (a > 0) != (b != false)}", false, true, true, false);
+
+        verify(table, "{v = (a != 0) == b}", true, false, false, true);
+        verify(table, "{v = (a != 0) == (b == true)}", true, false, false, true);
+        verify(table, "{v = (a > 0) == (b != false)}", true, false, false, true);
+
+        verify(table, "{v = b < true}", true, false, true, false);
+        verify(table, "{v = b <= true}", true, true, true, true);
+        verify(table, "{v = b > true}", false, false, false, false);
+        verify(table, "{v = b >= true}", false, true, false, true);
+
+        verify(table, "{v = true < b}", false, false, false, false);
+        verify(table, "{v = true <= b}", false, true, false, true);
+        verify(table, "{v = true > b}", true, false, true, false);
+        verify(table, "{v = true >= b}", true, true, true, true);
+    }
+
+    @Test
+    public void constant() throws Exception {
+        mDb = Database.open(new DatabaseConfig().directPageAccess(false));
+        Table<LogicRow> table = mDb.openTable(LogicRow.class);
+
+        {
+            LogicRow row = table.newRow();
+            row.a(0); row.b(false);
+            table.insert(null, row);
+        }
+
+        verify(table, "{v = a == a}", true);
+        verify(table, "{v = a >= a}", true);
+        verify(table, "{v = a <= a}", true);
+        verify(table, "{v = a != a}", false);
+        verify(table, "{v = a > a}", false);
+        verify(table, "{v = a < a}", false);
+
+        verify(table, "{v = 0 == 1}", false);
+        verify(table, "{v = 0 != 1}", true);
+
+        verify(table, "{v = a == null}", false);
+        verify(table, "{v = null == a}", false);
+        verify(table, "{v = true == (a == null)}", false);
+        verify(table, "{v = true == (null == a)}", false);
+    }
+
+    private static void verify(Table<? extends Row> table, String query, boolean... results)
+        throws Exception
+    {
+        int i = 0;
+
+        try (Scanner<Row> s = table.derive(query).newScanner(null)) {
+            for (Row row = s.row(); row != null; row = s.step(row)) {
+                boolean v = row.get_boolean("v");
+                assertEquals(results[i++], v);
+            }
+        }
+
+        assertEquals(results.length, i);
+    }
+
+    @SuppressWarnings("unchecked")
+    private static void dump(Table table, String query) throws Exception {
+        try (Scanner s = table.derive(query).newScanner(null)) {
+            for (Object row = s.row(); row != null; row = s.step(row)) {
+                System.out.println(row);
+            }
+        }
     }
 }

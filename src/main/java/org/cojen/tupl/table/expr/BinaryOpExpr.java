@@ -200,7 +200,7 @@ public sealed class BinaryOpExpr extends Expr permits FilterExpr {
     private static QueryException fail(String message, int op, Expr left, Expr right) {
         var b = new StringBuilder(message).append(" for: ");
         append(b, op, left, right);
-        throw new QueryException(b.toString(), left.startPos(), right.endPos());
+        return new QueryException(b.toString(), left.startPos(), right.endPos());
     }
 
     protected final Type mType;
