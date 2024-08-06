@@ -248,6 +248,11 @@ public abstract class ValueBuffer<V> {
             mm.field("values").aset(0, mm.param(0));
             mm.field("first").set(0);
             mm.field("size").set(1);
+
+            if (addBridges) {
+                mm = cm.addMethod(null, "init", Object.class).public_().final_().bridge();
+                mm.this_().invoke(void.class, "init", null, mm.param(0).cast(clazz));
+            }
         }
 
         {
@@ -279,13 +284,18 @@ public abstract class ValueBuffer<V> {
             var sizeVar = sizeField.get();
 
             sizeVar.ifGe(valuesVar.alength(), () -> {
-                valuesVar.set(mm.invoke("expand", valuesVar, firstField));
+                valuesVar.set(valuesVar.methodMaker().invoke("expand", valuesVar, firstField));
                 valuesField.set(valuesVar);
                 firstField.set(0);
             });
 
             valuesVar.aset(ixVar(valuesVar, firstField, sizeVar), mm.param(0));
             sizeField.set(sizeVar.add(1));
+
+            if (addBridges) {
+                mm = cm.addMethod(null, "add", Object.class).public_().final_().bridge();
+                mm.this_().invoke(void.class, "add", null, mm.param(0).cast(clazz));
+            }
         }
 
         {
