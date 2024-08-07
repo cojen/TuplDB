@@ -129,17 +129,16 @@ public abstract class GroupedTable<S, T> extends AbstractMappedTable<S, T>
         // collected as long as references to the generated table instances still exist.
         cm.addField(Object.class, "_").private_().final_();
 
+        // All GroupedTable instances will refer to the exact same cache.
+        cm.addField(QueryFactoryCache.class, "cache").private_().static_().final_()
+            .initExact(new QueryFactoryCache());
+
         {
             MethodMaker ctor = cm.addConstructor
                 (MethodHandle.class, Table.class, Grouper.Factory.class).private_();
-
             ctor.field("_").set(ctor.param(0));
-
-            // Note: By using a QueryFactoryCache instance created here, all generated
-            // GroupedTable instances will refer to the exact same cache.
-            var cacheVar = ctor.var(QueryFactoryCache.class).setExact(new QueryFactoryCache());
             ctor.invokeSuperConstructor
-                (cacheVar, ctor.param(1), groupBySpec, orderBySpec, ctor.param(2));
+                (ctor.field("cache"), ctor.param(1), groupBySpec, orderBySpec, ctor.param(2));
         }
 
         MethodHandles.Lookup lookup = cm.finishLookup();

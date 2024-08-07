@@ -127,16 +127,15 @@ public abstract class AggregatedTable<S, T> extends WrappedTable<S, T>
         // collected as long as references to the generated table instances still exist.
         cm.addField(Object.class, "_").private_().final_();
 
+        // All AggregatedTable instances will refer to the exact same cache.
+        cm.addField(QueryFactoryCache.class, "cache").private_().static_().final_()
+            .initExact(new QueryFactoryCache());
+
         {
             MethodMaker ctor = cm.addConstructor
                 (MethodHandle.class, Table.class, Aggregator.Factory.class).private_();
-
             ctor.field("_").set(ctor.param(0));
-
-            // Note: By using a QueryFactoryCache instance created here, all generated
-            // AggregatedTable instances will refer to the exact same cache.
-            var cacheVar = ctor.var(QueryFactoryCache.class).setExact(new QueryFactoryCache());
-            ctor.invokeSuperConstructor(cacheVar, ctor.param(1), ctor.param(2));
+            ctor.invokeSuperConstructor(ctor.field("cache"), ctor.param(1), ctor.param(2));
         }
 
         // Add the compareSourceRows method.
