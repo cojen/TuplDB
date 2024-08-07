@@ -72,11 +72,8 @@ public final class CallExpr extends Expr {
         mNamedArgs = namedArgs;
 
         if (applier instanceof FunctionApplier.Aggregated) {
-            for (Expr arg : args) {
-                if (arg.isAccumulating()) {
-                    reasons.add("depends on an expression which accumulates group results");
-                    break;
-                }
+            if (isAccumulating(args) || isAccumulating(namedArgs.values())) {
+                reasons.add("depends on an expression which accumulates group results");
             }
         }
 
@@ -97,6 +94,15 @@ public final class CallExpr extends Expr {
 
             throw new QueryException(b.toString(), this);
         }
+    }
+
+    private static boolean isAccumulating(Iterable<Expr> args) {
+        for (Expr arg : args) {
+            if (arg.isAccumulating()) {
+                return true;
+            }
+        }
+        return false;
     }
 
     @Override

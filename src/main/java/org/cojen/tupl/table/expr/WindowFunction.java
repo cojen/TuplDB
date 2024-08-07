@@ -92,11 +92,15 @@ abstract class WindowFunction extends FunctionApplier.Grouped {
     }
 
     @Override
+    public final boolean hasNamedParameters() {
+        return true;
+    }
+
+    @Override
     public FunctionApplier validate(List<Expr> args, Map<String, Expr> namedArgs,
                                     Consumer<String> reasons)
     {
-        // Should have been validated before being constructed.
-        throw new AssertionError();
+        return this;
     }
 
     @Override
