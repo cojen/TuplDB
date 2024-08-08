@@ -204,6 +204,68 @@ public class WindowFunctionTest {
 
             verify(expect, query);
         }
+
+        {
+            Object[][] expect = {
+                // a, v1, v2, v3, v4,  v5
+                {1,    1, -3,  0, -4,  0},
+                {1,    0,  0, -2,  0,  0},
+                {1,    0,  0, -6,  0,  4},
+                {1,    2,  3,  0, -3,  0},
+                {1,    3,  0,  0,  0,  0},
+                {2,    8,  0,  0, -6,  0},
+                {2,    4,  0, -6,  0,  0},
+                {2,    8,  0,  0, -5,  0},
+                {2,    7,  0,  0,  0,  0},
+                {2,    0,  0, -7,  0,  8},
+                {3,    6,  0, -7,  0,  0},
+                {3,    6,  0, -7,  0,  0},
+                {3,    7,  0,  0, -3,  0},
+                {3,   10,  0, -7,  0,  0},
+                {3,   12,  0,  0,  0,  0},
+                {4,    5,  0,  0, -14, 0},
+                {4,    0,  0, -7,  0,  0},
+                {4,    0,  0, -17, 0,  0},
+                {4,    4,  0,  0,  0,  0},
+                {4,    5,  0,  0, -7,  0},
+            };
+
+            String query = "{a; v1 = sum(d, rows:c..b), v2 = sum(b, rows:d..c), " +
+                "v3 = sum(c, rows:b..d), v4 = sum(c, rows:d..b), v5 = sum(d, rows:b..c)}";
+
+            verify2(expect, query);
+        }
+
+        {
+            Object[][] expect = {
+                // a, v1, v2, v3, v4, v5
+                {1, 0.3333333333333333, -3.0, null, -1.3333333333333333, null},
+                {1, null, null, -1.0, null, null},
+                {1, null, null, -1.2, null, 0.8},
+                {1, 0.5, 3.0, null, -0.75, null},
+                {1, 0.75, null, null, null, null},
+                {2, 1.6, null, null, -1.5, null},
+                {2, 2.0, null, -2.0, null, null},
+                {2, 2.0, null, null, -2.5, null},
+                {2, 1.75, null, null, null, null},
+                {2, null, null, -1.4, null, 2.0},
+                {3, 2.0, null, -3.5, null, null},
+                {3, 2.0, null, -3.5, null, null},
+                {3, 2.3333333333333335, null, null, -1.5, null},
+                {3, 2.5, null, -3.5, null, null},
+                {3, 2.4, null, null, null, null},
+                {4, 1.25, null, null, -3.5, null},
+                {4, 0.0, null, -3.5, null, null},
+                {4, null, null, -3.4, null, null},
+                {4, 0.8, null, null, null, null},
+                {4, 1.25, null, null, -3.5, null},
+            };
+
+            String query = "{a; v1 = avg(d, rows:c..b), v2 = avg(b, rows:d..c), " +
+                "v3 = avg(c, rows:b..d), v4 = avg(c, rows:d..b), v5 = avg(d, rows:b..c)}";
+
+            verify3(expect, query);
+        }
     }
 
     private void verify(Object[][] expect, String query) throws Exception {
@@ -224,24 +286,39 @@ public class WindowFunctionTest {
         assertEquals(i, expect.length);
     }
 
-    private void dump(String query) throws Exception {
+   private void verify2(Object[][] expect, String query) throws Exception {
+        int i = 0;
+
         try (Scanner<Row> s = mTable.derive(query).newScanner(null)) {
             for (Row row = s.row(); row != null; row = s.step(row)) {
-                //System.out.println(row);
-
-                String str = "{" +
-                    row.get_long("a") + ", " +
-                    //"b=" + row.get_int("b") + ", " +
-                    "min=" + row.getInteger("min") + ", " +
-                    "max=" + row.getInteger("max") + ", " +
-                    "sum=" + row.get_long("sum") + ", " +
-                    "cnt=" + row.get_int("cnt") + ", " +
-                    "avg=" + row.getDouble("avg") + "},";
-
-                //str = str + " " + row.get_int("s") + ".." + "0";
-
-                System.out.println(str);
+                Object[] expectRow = expect[i++];
+                assertEquals(expectRow[0], row.get_int("a"));
+                assertEquals(expectRow[1], row.get_int("v1"));
+                assertEquals(expectRow[2], row.get_int("v2"));
+                assertEquals(expectRow[3], row.get_int("v3"));
+                assertEquals(expectRow[4], row.get_int("v4"));
+                assertEquals(expectRow[5], row.get_int("v5"));
             }
         }
+
+        assertEquals(i, expect.length);
+    }
+
+   private void verify3(Object[][] expect, String query) throws Exception {
+        int i = 0;
+
+        try (Scanner<Row> s = mTable.derive(query).newScanner(null)) {
+            for (Row row = s.row(); row != null; row = s.step(row)) {
+                Object[] expectRow = expect[i++];
+                assertEquals(expectRow[0], row.get_int("a"));
+                assertEquals(expectRow[1], row.getDouble("v1"));
+                assertEquals(expectRow[2], row.getDouble("v2"));
+                assertEquals(expectRow[3], row.getDouble("v3"));
+                assertEquals(expectRow[4], row.getDouble("v4"));
+                assertEquals(expectRow[5], row.getDouble("v5"));
+            }
+        }
+
+        assertEquals(i, expect.length);
     }
 }

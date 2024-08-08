@@ -26,9 +26,4 @@ package org.cojen.tupl.table.expr;
  * @see RangeExpr
  */
 public record Range(long start, long end) {
-    public Range {
-        if (start > end) {
-            throw new IllegalArgumentException("Range start is greater than the end");
-        }
-    }
 }
