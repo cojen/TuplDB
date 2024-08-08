@@ -140,10 +140,12 @@ public abstract sealed class QueryExpr extends RelationExpr
             }
 
             var fromProjList = new ArrayList<ProjExpr>(fromProjMap.values());
-            var fromType = RelationType.make(TupleType.make(fromProjList, 0),
-                                             from.type().cardinality());
-            from = MappedQueryExpr.make(-1, -1, fromType, from, TrueFilter.THE, null,
-                                        fromProjList, 0, null);
+
+            // Note that the make method of this class is called instead of calling
+            // MappedQueryExpr.make directly. This ensures that any intermediate projection
+            // steps are properly applied. Without this, all of the from columns would be
+            // unnecessarily projected.
+            from = make(-1, -1, from, null, fromProjList, -1);
         }
 
         final TupleType fromType = from.rowType();
