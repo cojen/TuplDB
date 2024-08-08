@@ -229,6 +229,52 @@ public final class RangeExpr extends Expr {
         return new RangeExpr(startPos(), endPos(), mType, start, end);
     }
 
+    public static final class Lazy extends LazyValue {
+        private Variable mEvaluatedStart, mEvaluatedEnd;
+
+        Lazy(EvalContext context, RangeExpr expr) {
+            super(context, expr);
+        }
+
+        @Override
+        public RangeExpr expr() {
+            return (RangeExpr) super.expr();
+        }
+
+        /**
+         * Evaluates just the range start value.
+         *
+         * @param eager when true, the value is guaranteed to be evaluated for all execution
+         * paths
+         */
+        public final Variable evalStart(boolean eager) {
+            Variable var = mEvaluatedStart;
+            if (var == null) {
+                mEvaluatedStart = var = doEval(expr().mStart, eager);
+            }
+            return var;
+        }
+
+        /**
+         * Evaluates just the range end value.
+         *
+         * @param eager when true, the value is guaranteed to be evaluated for all execution
+         * paths
+         */
+        public final Variable evalEnd(boolean eager) {
+            Variable var = mEvaluatedEnd;
+            if (var == null) {
+                mEvaluatedEnd = var = doEval(expr().mEnd, eager);
+            }
+            return var;
+        }
+    }
+
+    @Override
+    public LazyValue lazyValue(EvalContext context) {
+        return new Lazy(context, this);
+    }
+
     @Override
     public void gatherEvalColumns(Consumer<Column> c) {
         if (mStart != null) {

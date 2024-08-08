@@ -35,7 +35,7 @@ public class LazyValue {
         mExpr = expr;
     }
 
-    public final Expr expr() {
+    public Expr expr() {
         return mExpr;
     }
 
@@ -60,19 +60,9 @@ public class LazyValue {
      */
     public final Variable eval(boolean eager) {
         Variable var = mEvaluated;
-
         if (var == null) {
-            EvalContext context = mContext;
-            if (!eager) {
-                var = mExpr.makeEval(context);
-            } else {
-                int savepoint = context.refSavepoint();
-                var = mExpr.makeEval(context);
-                context.refCommit(savepoint);
-            }
-            mEvaluated = var;
+            mEvaluated = var = doEval(mExpr, eager);
         }
-
         return var;
     }
 
@@ -89,6 +79,18 @@ public class LazyValue {
         } else {
             var.ifTrue(pass);
             fail.goto_();
+        }
+    }
+
+    protected Variable doEval(Expr expr, boolean eager) {
+        EvalContext context = mContext;
+        if (!eager) {
+            return expr.makeEval(context);
+        } else {
+            int savepoint = context.refSavepoint();
+            Variable result = expr.makeEval(context);
+            context.refCommit(savepoint);
+            return result;
         }
     }
 }

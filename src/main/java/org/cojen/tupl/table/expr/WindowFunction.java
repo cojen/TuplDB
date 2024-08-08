@@ -49,6 +49,14 @@ abstract class WindowFunction extends FunctionApplier.Grouped {
             return context.namedArgs().get(argName);
         }
 
+        Variable evalRangeStart(GroupContext context) {
+            return ((RangeExpr.Lazy) rangeVal(context)).evalStart(true);
+        }
+
+        Variable evalRangeEnd(GroupContext context) {
+            return ((RangeExpr.Lazy) rangeVal(context)).evalEnd(true);
+        }
+
         /**
          * Returns true if the range and is guaranteed to include the current row of a window
          * frame, which is denoted with a constant value of zero.
@@ -134,7 +142,7 @@ abstract class WindowFunction extends FunctionApplier.Grouped {
             String fieldName;
             if (mIsStartConstant) {
                 fieldName = context.newWorkField(long.class).final_().name();
-                mm.field(fieldName).set(rangeVal.eval(true).invoke("start"));
+                mm.field(fieldName).set(mFrame.evalRangeStart(context));
             } else {
                 Type valueType = BasicType.make(long.class, Type.TYPE_LONG);
                 Class<?> bufferType = ValueBuffer.forType(valueType);
@@ -148,7 +156,7 @@ abstract class WindowFunction extends FunctionApplier.Grouped {
             String fieldName;
             if (mIsEndConstant) {
                 fieldName = context.newWorkField(long.class).final_().name();
-                mm.field(fieldName).set(rangeVal.eval(true).invoke("end"));
+                mm.field(fieldName).set(mFrame.evalRangeEnd(context));
             } else {
                 Type valueType = BasicType.make(long.class, Type.TYPE_LONG);
                 Class<?> bufferType = ValueBuffer.forType(valueType);
@@ -175,24 +183,22 @@ abstract class WindowFunction extends FunctionApplier.Grouped {
     public void begin(GroupContext context) {
         var valueVar = evalArg(context);
 
-        LazyValue rangeVal = mFrame.rangeVal(context);
-
         MethodMaker mm = context.methodMaker();
 
         if (isStartVariable()) {
-            mm.field(mStartFieldName).invoke("add", rangeVal.eval(true).invoke("start"));
+            mm.field(mStartFieldName).invoke("add", mFrame.evalRangeStart(context));
         }
 
         if (isEndVariable()) {
-            mm.field(mEndFieldName).invoke("add", rangeVal.eval(true).invoke("end"));
+            mm.field(mEndFieldName).invoke("add", mFrame.evalRangeEnd(context));
         }
 
         var bufferField = mm.field(mBufferFieldName);
 
         if (mStartConstant == null || mEndConstant == null) {
-            var rangeVar = rangeVal.eval(true);
-            var capacityVar = mm.var(WindowBuffer.class).invoke
-                ("capacityFor", rangeVar.invoke("start"), rangeVar.invoke("end"));
+            var startVar = mFrame.evalRangeStart(context);
+            var endVar = mFrame.evalRangeEnd(context);
+            var capacityVar = mm.var(WindowBuffer.class).invoke("capacityFor", startVar, endVar);
             Class<?> bufferType = bufferField.classType();
             bufferField.set(mm.new_(bufferType, capacityVar));
         }
@@ -207,16 +213,14 @@ abstract class WindowFunction extends FunctionApplier.Grouped {
     public void accumulate(GroupContext context) {
         var valueVar = evalArg(context);
 
-        LazyValue rangeVal = mFrame.rangeVal(context);
-
         MethodMaker mm = context.methodMaker();
 
         if (isStartVariable()) {
-            mm.field(mStartFieldName).invoke("add", rangeVal.eval(true).invoke("start"));
+            mm.field(mStartFieldName).invoke("add", mFrame.evalRangeStart(context));
         }
 
         if (isEndVariable()) {
-            mm.field(mEndFieldName).invoke("add", rangeVal.eval(true).invoke("end"));
+            mm.field(mEndFieldName).invoke("add", mFrame.evalRangeEnd(context));
         }
 
         mm.field(mBufferFieldName).invoke("append", valueVar);

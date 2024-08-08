@@ -167,7 +167,7 @@ public class WindowFunctionTest {
             };
 
             String query = "{a; ~e = iif(d >= 0, d, -d), " +
-                "min = min(b, rows:0..e), max = max(b, rows:0..e), " +
+                "min = min(b, rows:iif(true, 0, 0)..e), max = max(b, rows:0..e), " +
                 "sum = sum(b, rows:0..e), cnt = count(b, rows:0..e), avg = avg(b, rows:0..e)}";
 
             verify(expect, query);
@@ -199,7 +199,7 @@ public class WindowFunctionTest {
             };
 
             String query = "{a; ~s = iif(c <= 0, c, -c), " +
-                "min = min(b, rows:s..0), max = max(b, rows:s..0), " +
+                "min = min(b, rows:s..iif(true, 0, 0)), max = max(b, rows:s..0), " +
                 "sum = sum(b, rows:s..0), cnt = count(b, rows:s..0), avg = avg(b, rows:s..0)}";
 
             verify(expect, query);
