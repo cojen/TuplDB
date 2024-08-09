@@ -57,8 +57,6 @@ import org.cojen.tupl.table.filter.TrueFilter;
  * @see QueryExpr#make
  */
 final class GroupedQueryExpr extends QueryExpr {
-    // FIXME: Doesn't work properly with this query: {;} -- it never stops
-
     /**
      * @param filter can be null if rowFilter is TrueFilter
      * @param projection not null
@@ -531,11 +529,38 @@ final class GroupedQueryExpr extends QueryExpr {
             };
         }
 
+        boolean isGrouping = mFilter == null ? false : mFilter.isGrouping();
+
+        if (!isGrouping) {
+            for (ProjExpr pe : mProjection) {
+                if (pe.isGrouping()) {
+                    isGrouping = true;
+                    break;
+                }
+            }
+        }
+
+        if (!isGrouping) {
+            // If the filter or projection doesn't actually depend on a grouping function, then
+            // the grouper never stops producing results. Add a field which tracks when the
+            // begin/accumulate/step methods are called and step once per source row.
+            String ready = initContext.newWorkField(boolean.class).name();
+            beginMaker.field(ready).set(true);
+            accumMaker.field(ready).set(true);
+            Label isReady = stepMaker.label();
+            var readyVar = stepMaker.field(ready);
+            readyVar.ifTrue(isReady);
+            stepMaker.return_(null);
+            isReady.here();
+            readyVar.set(false);
+        }
+
         // Eagerly evaluate AssignExprs. The result might be needed by downstream expressions,
         // the filter, or it might throw an exception. In the unlikely case that none of these
         // conditions are met, then the AssignExprs can be evaluated after filtering.
         // TODO: This is too eager -- it's not checking canThrowRuntimeException, and it's not
-        // checking if any downstream expressions exist.
+        // checking if any downstream expressions exist. If any projections are dropped, then
+        // the isGrouping check above need to be revised or else grouper might never stop.
         IdentityHashMap<AssignExpr, Variable> projectedVars = null;
         for (int i=0; i<mProjection.size(); i++) {
             ProjExpr pe = mProjection.get(i);

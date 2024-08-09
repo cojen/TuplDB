@@ -268,6 +268,39 @@ public class WindowFunctionTest {
         }
     }
 
+    @Test
+    public void noGrouping() throws Exception {
+        fill();
+
+        {
+            String query = "{;}";
+
+            int num = 0;
+            try (Scanner<Row> s = mTable.derive(query).newScanner(null)) {
+                for (Row row = s.row(); row != null; row = s.step(row)) {
+                    assertEquals("{}", row.toString());
+                    num++;
+                }
+            }
+
+            assertEquals(20, num);
+        }
+
+        {
+            String query = "{; q = 1, ~b = random()} iif(b == 0, true, true)";
+
+            int num = 0;
+            try (Scanner<Row> s = mTable.derive(query).newScanner(null)) {
+                for (Row row = s.row(); row != null; row = s.step(row)) {
+                    assertEquals("{q=1}", row.toString());
+                    num++;
+                }
+            }
+
+            assertEquals(20, num);
+        }
+    }
+
     private void verify(Object[][] expect, String query) throws Exception {
         int i = 0;
 
