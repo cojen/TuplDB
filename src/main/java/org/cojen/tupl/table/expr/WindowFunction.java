@@ -119,19 +119,19 @@ abstract class WindowFunction extends FunctionApplier.Grouped {
             mIsStartConstant = true;
             mIsEndConstant = true;
             var range = (Range) rangeVal.constantValue();
-            mStartConstant = verifyBoundary(range.start());
-            mEndConstant = verifyBoundary(range.end());
+            mStartConstant = range.start_long();
+            mEndConstant = range.end_long();
         } else if (rangeVal.expr() instanceof RangeExpr re) {
             if (re.start().isConstant()) {
                 mIsStartConstant = true;
                 if (re.start() instanceof ConstantExpr c) {
-                    mStartConstant = verifyBoundary((Number) c.value());
+                    mStartConstant = Range.make((Number) c.value(), null).start_long();
                 }
             }
             if (re.end().isConstant()) {
                 mIsEndConstant = true;
                 if (re.end() instanceof ConstantExpr c) {
-                    mEndConstant = verifyBoundary((Number) c.value());
+                    mEndConstant = Range.make(null, (Number) c.value()).end_long();
                 }
             }
         }
@@ -365,26 +365,5 @@ abstract class WindowFunction extends FunctionApplier.Grouped {
 
     private boolean isEndVariable() {
         return !mIsEndConstant && mEndConstant == null;
-    }
-
-    private static Long verifyBoundary(Long value) {
-        if ((Integer.MIN_VALUE <= value && value <= Integer.MAX_VALUE)
-            || value == Long.MIN_VALUE || value == Long.MAX_VALUE)
-        {
-            return value;
-        }
-        // RangeExpr is responsible for clamping the range.
-        throw new IllegalStateException();
-    }
-
-    private static Long verifyBoundary(Number value) {
-        if (value instanceof Long v) {
-            return verifyBoundary(v);
-        }
-        if (value instanceof Integer v) {
-            return (long)((int) v);
-        }
-        // RangeExpr is responsible for clamping the range.
-        throw new IllegalStateException();
     }
 }

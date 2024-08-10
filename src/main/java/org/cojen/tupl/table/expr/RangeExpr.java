@@ -55,22 +55,17 @@ public final class RangeExpr extends Expr {
 
             if (start == null) {
                 if (end == null) {
-                    range = new Range(Long.MIN_VALUE, Long.MAX_VALUE);
+                    range = Range.open();
                 } else if (end instanceof ConstantExpr cend) {
-                    range = new Range(Long.MIN_VALUE, endValue(cend));
+                    range = Range.make(null, (Number) cend.value());
                 } else {
                     break constant;
                 }
             } else if (start instanceof ConstantExpr cstart) {
-                long sv = startValue(cstart);
                 if (end == null) {
-                    range = new Range(sv, Long.MAX_VALUE);
+                    range = Range.make((Number) cstart.value(), null);
                 } else if (end instanceof ConstantExpr cend) {
-                    try {
-                        range = new Range(sv, endValue(cend));
-                    } catch (IllegalArgumentException e) {
-                        throw new QueryException(e.getMessage(), startPos, endPos);
-                    }
+                    range = Range.make((Number) cstart.value(), (Number) cend.value());
                 } else {
                     break constant;
                 }
@@ -86,33 +81,10 @@ public final class RangeExpr extends Expr {
 
     /**
      * Makes a constant range expression.
-     *
-     * @param start inclusive start boundary; use MIN_VALUE for open boundary
-     * @param end inclusive end boundary; use MAX_VALUE for open boundary
-     */
-    public static Expr constant(long start, long end) {
-        return constant(new Range(start, end));
-    }
-
-    /**
-     * Makes a constant range expression.
-     *
-     * @param start inclusive start boundary; use MIN_VALUE for open boundary
-     * @param end inclusive end boundary; use MAX_VALUE for open boundary
      */
     public static Expr constant(Range range) {
         Type type = BasicType.make(Range.class, Type.TYPE_REFERENCE);
         return ConstantExpr.make(-1, -1, type, range);
-    }
-
-    private static long startValue(ConstantExpr ce) {
-        Object v = ce.value();
-        return v == null ? Long.MIN_VALUE : ((Number) v).longValue();
-    }
-
-    private static long endValue(ConstantExpr ce) {
-        Object v = ce.value();
-        return v == null ? Long.MAX_VALUE : ((Number) v).longValue();
     }
 
     private final Type mType;

@@ -145,7 +145,7 @@ public abstract sealed class ColumnExpr extends Expr implements Named {
         }
 
         Expr expr = CallExpr.make(startPos(), endPos(), "first", List.of(this),
-                                  Map.of("rows", RangeExpr.constant(0, 0)),
+                                  Map.of("rows", RangeExpr.constant(Range.zero())),
                                   new StandardFunctionFinder.first(null));
 
         // Wrap the call in an AssignExpr expression for two reasons. First, the column might
