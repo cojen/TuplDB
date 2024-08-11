@@ -351,7 +351,6 @@ final class LocalDatabase extends CoreDatabase {
         launcher.mBasicMode = true;
         var db = new LocalDatabase(launcher, false);
         tfm.register(file, db);
-        db.mCheckpointer.start(false);
         return db.mRegistry;
     }
 
