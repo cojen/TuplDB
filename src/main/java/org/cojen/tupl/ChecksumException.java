@@ -29,10 +29,7 @@ public class ChecksumException extends CorruptDatabaseException {
     private final long mStored, mComputed;
 
     public ChecksumException(long pageId, int storedChecksum, int computedChecksum) {
-        this("Checksum mismatch for page " + pageId + ": " +
-             Integer.toUnsignedString(storedChecksum, 16) + " != " +
-             Integer.toUnsignedString(computedChecksum, 16),
-             storedChecksum, computedChecksum);
+        this(pageId, storedChecksum & 0xffff_ffffL, computedChecksum & 0xffff_ffffL);
     }
 
     public ChecksumException(long pageId, long storedChecksum, long computedChecksum) {
