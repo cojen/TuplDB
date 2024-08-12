@@ -316,9 +316,8 @@ public final class Parser {
                             break addProjection;
                         }
 
-                        if (wildcards == null || wildcards.remove(name) == null) {
-                            throw new QueryException
-                                ("Excluded projection not found: " + unescape(name), expr);
+                        if (wildcards != null) {
+                            wildcards.remove(name);
                         }
 
                         if (!expr.hasOrderBy()) {

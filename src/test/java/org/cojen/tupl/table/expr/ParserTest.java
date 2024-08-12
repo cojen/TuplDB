@@ -69,10 +69,8 @@ public class ParserTest {
         parseFail("a inx", "Unexpected trailing");
         parseFail("a<=?a", "Malformed argument number");
         parseFail("a<=?999999999999999999999999999999999999", "Malformed argument number");
-        parseFail("{~a, -a}", "Excluded projection not found");
         parseFail("{~*}", "Wildcard disallowed");
         parseFail("{~!a}", "Cannot convert double to boolean");
-        parseFail("{~a}", "Excluded projection not found");
         parseFail("a<=?0", "at least one");
         parseFail("()!)", "Identifier expected");
         parseFail("{1}", "must be assigned");
@@ -126,6 +124,11 @@ public class ParserTest {
         passQuery("true || false", "{*}");
 
         passQuery("`a` == `b`", "a == b");
+
+        passQuery("{~a, -a}", "{-a}");
+        passQuery("{~a}", "{}");
+        passQuery("{~-a}", "{-a}"); // FIXME: should expect the original
+        passQuery("{~+a}", "{+a}"); // FIXME: should expect the original
     }
 
     @Test
