@@ -144,11 +144,11 @@ public class TestUtils {
         return tempFilesFor(context).newTempBaseFile();
     }
 
-    public static void deleteTempDatabase(Class context, Database db) {
+    public static void deleteTempDatabase(Class context, Database db) throws IOException {
         tempFilesFor(context).deleteTempDatabase(db);
     }
 
-    public static void deleteTempDatabases(Class context) {
+    public static void deleteTempDatabases(Class context) throws IOException {
         TempFiles files = removeTempFilesFor(context);
         if (files != null) {
             files.deleteTempDatabases();
@@ -162,7 +162,7 @@ public class TestUtils {
         }
     }
 
-    public static void closeTempDatabases(Class context) {
+    public static void closeTempDatabases(Class context) throws IOException {
         TempFiles files = cTempFiles.get(context);
         if (files != null) {
             files.closeTempDatabases();
@@ -182,7 +182,7 @@ public class TestUtils {
         return cTempFiles.remove(context);
     }
 
-    public static void deleteRecursively(File file) {
+    public static void deleteRecursively(File file) throws IOException {
         if (file.isDirectory()) {
             File[] dirs = file.listFiles();
             if (dirs != null) {
@@ -192,24 +192,19 @@ public class TestUtils {
             }
         }
 
-        if (file.exists()) {
-            file.delete();
-        }
+        Utils.delete(file);
     }
 
-    private static void deleteDbFiles(File baseFile) {
+    private static void deleteDbFiles(File baseFile) throws IOException {
         deleteDbFile(baseFile, ".db");
         deleteDbFile(baseFile, ".lock");
         deleteDbFile(baseFile, ".primer");
-        try {
-            Utils.deleteNumberedFiles(baseFile, ".redo.");
-        } catch (IOException e) {
-        }
+        Utils.deleteNumberedFiles(baseFile, ".redo.");
     }
 
-    private static void deleteDbFile(File baseFile, String suffix) {
+    private static void deleteDbFile(File baseFile, String suffix) throws IOException {
         var f = new File(baseFile.getParentFile(), baseFile.getName() + suffix);
-        f.delete();
+        Utils.delete(f);
     }
 
     public static byte[] randomStr(Random rnd, int size) {
@@ -641,15 +636,12 @@ public class TestUtils {
             return baseFile;
         }
 
-        void deleteTempDatabase(Database db) {
+        void deleteTempDatabase(Database db) throws IOException {
             if (db == null) {
                 return;
             }
 
-            try {
-                db.close();
-            } catch (IOException e) {
-            }
+            db.close();
 
             File baseFile;
             synchronized (this) {
@@ -662,16 +654,13 @@ public class TestUtils {
             }
         }
 
-        synchronized void closeTempDatabases() {
+        synchronized void closeTempDatabases() throws IOException {
             for (Database db : mTempDatabases.keySet()) {
-                try {
-                    db.close();
-                } catch (IOException e) {
-                }
+                db.close();
             }
         }
 
-        synchronized void deleteTempDatabases() {
+        synchronized void deleteTempDatabases() throws IOException {
             closeTempDatabases();
 
             for (File baseFile : mTempBaseFiles) {

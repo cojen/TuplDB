@@ -132,6 +132,7 @@ final class FileTermLog extends Latch implements TermLog {
      */
     static TermLog newTerm(Caches caches, Worker worker, File base, long prevTerm, long term,
                            long startPosition, long commitPosition)
+        throws IOException
     {
         if (base != null) {
             base = checkBase(base);
@@ -154,6 +155,7 @@ final class FileTermLog extends Latch implements TermLog {
     static TermLog openTerm(Caches caches, Worker worker, File base, long prevTerm, long term,
                             long startPosition, long commitPosition, long highestPosition,
                             List<String> segmentFileNames)
+        throws IOException
     {
         base = checkBase(base);
 
@@ -202,6 +204,7 @@ final class FileTermLog extends Latch implements TermLog {
     private FileTermLog(Caches caches, Worker worker, File base, long prevTerm, long term,
                         long startPosition, final long commitPosition, final long highestPosition,
                         List<String> segmentFileNames)
+        throws IOException
     {
         if (term < 0) {
             throw new IllegalArgumentException("Illegal term: " + term);
@@ -326,7 +329,11 @@ final class FileTermLog extends Latch implements TermLog {
             if (seg.endPosition() <= mLogStartPosition
                 || seg.mStartPosition >= mLogHighestPosition)
             {
-                seg.file().delete();
+                try {
+                    Utils.delete(seg.file());
+                } catch (IOException e) {
+                    throw Utils.rethrow(e);
+                }
                 mSegments.remove(seg);
             }
             return true;
@@ -2215,10 +2222,7 @@ final class FileTermLog extends Latch implements TermLog {
                 }
 
                 if (io == null) {
-                    File file = file();
-                    if (file != null) {
-                        file.delete();
-                    }
+                    Utils.delete(file());
                     return;
                 }
 

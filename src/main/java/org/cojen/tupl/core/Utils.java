@@ -809,15 +809,6 @@ public class Utils extends org.cojen.tupl.io.Utils {
     }
 
     /**
-     * @throws IOException if unable to delete the file
-     */
-    public static void delete(File file) throws IOException {
-        if (!file.delete() && file.exists()) {
-            throw new IOException("Unable to delete file: " + file);
-        }
-    }
-
-    /**
      * Deletes all the files in reverse order. This is a safer way of deleting redo log files,
      * in case of a failure. The log will appear to be truncated instead of corrupt.
      */

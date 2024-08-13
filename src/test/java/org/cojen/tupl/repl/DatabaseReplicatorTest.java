@@ -538,7 +538,11 @@ public class DatabaseReplicatorTest {
         baseFile.getParentFile().listFiles(file -> {
             String name = file.getName();
             if (name.startsWith(prefix) && !name.endsWith(".db")) {
-                file.delete();
+                try {
+                    Utils.delete(file);
+                } catch (IOException e) {
+                    throw Utils.rethrow(e);
+                }
             }
             return false;
         });

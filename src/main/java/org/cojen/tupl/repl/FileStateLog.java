@@ -247,7 +247,7 @@ final class FileStateLog extends Latch implements StateLog {
                     }
                     if (term > highestTerm) {
                         // Delete all terms higher than the highest.
-                        new File(parentFile, name).delete();
+                        Utils.delete(new File(parentFile, name));
                     } else {
                         List<String> termNames = termFileNames.get(term);
                         if (termNames == null) {

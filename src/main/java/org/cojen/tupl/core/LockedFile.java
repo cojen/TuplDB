@@ -97,7 +97,17 @@ final class LockedFile implements Closeable {
      */
     IOException delete(String path, IOException ex) {
         ex = Utils.closeQuietly(ex, this);
-        new File(path).delete();
+
+        try {
+            Utils.delete(new File(path));
+        } catch (IOException e) {
+            if (ex == null) {
+                ex = e;
+            } else {
+                ex.addSuppressed(e);
+            }
+        }
+
         return ex;
     }
 }

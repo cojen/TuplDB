@@ -250,7 +250,11 @@ final class RedoLog extends RedoWriter {
             FileIO.dirSync(file);
         } catch (IOException e) {
             closeQuietly(fout);
-            file.delete();
+            try {
+                Utils.delete(file);
+            } catch (IOException e2) {
+                e.addSuppressed(e2);
+            }
             throw WriteFailureException.from(e);
         }
 

@@ -917,7 +917,11 @@ final class LocalDatabase extends CoreDatabase {
             closeQuietly(this);
 
             // Clean up the mess by deleting the lock file if it was just created.
-            deleteLockFile(attemptCreate, null);
+            IOException ex = deleteLockFile(attemptCreate, null);
+
+            if (ex != null) {
+                e.addSuppressed(ex);
+            }
 
             throw e;
         }
@@ -1121,6 +1125,7 @@ final class LocalDatabase extends CoreDatabase {
                 }
             } finally {
                 if (!mReadOnly) {
+                    // No need to check if the delete failed.
                     primer.delete();
                 }
             }
@@ -1155,6 +1160,7 @@ final class LocalDatabase extends CoreDatabase {
                         }
                     } catch (IOException e) {
                         fout.close();
+                        // No need to check if the delete failed.
                         primer.delete();
                     }
                 } catch (IOException e) {
