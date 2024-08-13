@@ -54,6 +54,7 @@ public class JoinParserTest {
 
         pass("{rowC.cValue, *} rowC.cValue == ?1", "{rowC.cValue, joinAB, rowC} rowC.cValue == ?1");
         pass("{*, ~joinAB} rowC.cValue == ?1", "{rowC} rowC.cValue == ?1");
+        pass("{~joinAB, *} rowC.cValue == ?1", "rowC.cValue == ?1");
 
         pass("{joinAB.rowA.*} rowC.cValue == ?1",
              "{joinAB.rowA.aValue, joinAB.rowA.id} rowC.cValue == ?1");
@@ -64,7 +65,6 @@ public class JoinParserTest {
         parseFail("* == ?", "Wildcard disallowed");
         parseFail("rowC.cValue.* == ?", "disallowed");
         parseFail("{joinAB.rowA.id.*} rowC.cValue == ?1", "disallowed for scalar column");
-        parseFail("{~joinAB, *} rowC.cValue == ?1", "projection not found");
         parseFail("{~joinAB.rowA.*}", "Cannot exclude by wildcard");
     }
 

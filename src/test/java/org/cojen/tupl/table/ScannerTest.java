@@ -74,21 +74,9 @@ public class ScannerTest {
 
         verify(table.newScanner(null, "{*}"), 1, 5, "id", "name", "path", "state");
 
-        try {
-            verify(table.newScanner(null, "{~id, *}"), 1, 5, "name", "path", "state");
-        } catch (QueryException e) {
-            assertTrue(e.getMessage().contains("Excluded projection not found"));
-            assertEquals(1, e.startPos());
-            assertEquals(4, e.endPos());
-        }
+        verify(table.newScanner(null, "{~id, *}"), 1, 5, "id", "name", "path", "state");
 
-        try {
-            verify(table.newScanner(null, "{~name, *, ~state}"), 1, 5, "id", "path");
-        } catch (QueryException e) {
-            assertTrue(e.getMessage().contains("Excluded projection not found"));
-            assertEquals(1, e.startPos());
-            assertEquals(6, e.endPos());
-        }
+        verify(table.newScanner(null, "{~name, *, ~state}"), 1, 5, "id", "name", "path");
 
         verify(table.newScanner(null, "{} name == ?", "name-3"), 3, 3);
         verify(table.newScanner(null, "{path} name == ?", "name-3"), 3, 3, "path");
@@ -184,12 +172,7 @@ public class ScannerTest {
 
         verify(ix.newScanner(null, "{*}"), 1, 5, "id", "name", "path", "state");
 
-        try {
-            ix.newScanner(null, "{~id, *}");
-            fail();
-        } catch (IllegalArgumentException e) {
-            assertTrue(e.getMessage().contains("projection not found"));
-        }
+        verify(ix.newScanner(null, "{~id, *}"), 1, 5, "id", "name", "path", "state");
 
         try {
             ix.newScanner(null, "{*, ~id, ~id}");
@@ -260,7 +243,7 @@ public class ScannerTest {
                     case "path" -> row.path();
                     case "state" -> row.state();
                     }
-                    fail(name);
+                    fail("" + row + ", " + name);
                 } catch (UnsetColumnException e) {
                     // Expected.
                 }
