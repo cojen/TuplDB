@@ -951,7 +951,7 @@ public final class RowStore {
             // With NO_REDO, need a checkpoint to ensure durability. If the database is closed
             // before it finishes, the whole backfill process starts over when the database is
             // later reopened.
-            mDatabase.checkpoint();
+            mDatabase.checkpointIfEnabled();
         }
     }
 

@@ -2322,13 +2322,7 @@ final class LocalDatabase extends CoreDatabase {
             if (pageCount > 0) {
                 pageCount = mPageDb.allocatePages(pageCount);
                 if (pageCount > 0) {
-                    try {
-                        forceCheckpoint();
-                    } catch (Throwable e) {
-                        rethrowIfRecoverable(e);
-                        closeQuietly(this, e);
-                        throw e;
-                    }
+                    forceCheckpoint();
                 }
                 return pageCount * pageSize;
             }
@@ -2678,13 +2672,62 @@ final class LocalDatabase extends CoreDatabase {
 
     @Override
     public void checkpoint() throws IOException {
-        try {
-            checkpoint(0, 0);
-        } catch (Throwable e) {
-            rethrowIfRecoverable(e);
-            closeQuietly(this, e);
-            throw e;
+        checkpoint(0, 0, 0);
+    }
+
+    @Override
+    public boolean checkpointIfEnabled() throws IOException {
+        return mCheckpointer != null && mCheckpointer.isEnabled() && checkpoint(0, 0, 0);
+    }
+
+    @Override
+    boolean checkpoint(long sizeThreshold, long delayThresholdNanos) throws IOException {
+        return checkpoint(0, sizeThreshold, delayThresholdNanos);
+    }
+
+    private boolean forceCheckpoint() throws IOException {
+        return checkpoint(1, 0, 0);
+    }
+
+    /**
+     * @param force 0: no force, 1: force if not closed, -1: force even if closed
+     */
+    private boolean checkpoint(int force, long sizeThreshold, long delayThresholdNanos)
+        throws IOException
+    {
+        while (!isClosed() && !isCacheOnly() && mCheckpointer != null) {
+            // Checkpoint lock ensures consistent state between page store and logs.
+            mCheckpointLock.lock();
+            try {
+                return doCheckpoint(force, sizeThreshold, delayThresholdNanos);
+            } catch (Throwable e) {
+                if (!isRecoverable(e)) {
+                    // Panic.
+                    closeQuietly(this, e);
+                    throw e;
+                }
+
+                try {
+                    cleanupMasterUndoLog();
+                } catch (Throwable e2) {
+                    // Panic.
+                    closeQuietly(this, e2);
+                    suppress(e2, e);
+                    throw e2;
+                }
+
+                // Retry and don't rethrow if leadership was lost.
+                if (!(e instanceof UnmodifiableReplicaException)) {
+                    throw e;
+                }
+            } finally {
+                mCheckpointLock.unlock();
+            }
+
+            Thread.yield();
         }
+
+        return false;
     }
 
     @Override
@@ -6145,55 +6188,6 @@ final class LocalDatabase extends CoreDatabase {
         return mEventListener;
     }
 
-    @Override
-    void checkpoint(long sizeThreshold, long delayThresholdNanos) throws IOException {
-        checkpoint(0, sizeThreshold, delayThresholdNanos);
-    }
-
-    private void forceCheckpoint() throws IOException {
-        checkpoint(1, 0, 0);
-    }
-
-    /**
-     * @param force 0: no force, 1: force if not closed, -1: force even if closed
-     */
-    private void checkpoint(int force, long sizeThreshold, long delayThresholdNanos)
-        throws IOException
-    {
-        while (!isClosed() && !isCacheOnly() && mCheckpointer != null) {
-            // Checkpoint lock ensures consistent state between page store and logs.
-            mCheckpointLock.lock();
-            try {
-                doCheckpoint(force, sizeThreshold, delayThresholdNanos);
-                return;
-            } catch (Throwable e) {
-                if (!isRecoverable(e)) {
-                    // Panic.
-                    closeQuietly(this, e);
-                    throw e;
-                }
-
-                try {
-                    cleanupMasterUndoLog();
-                } catch (Throwable e2) {
-                    // Panic.
-                    closeQuietly(this, e2);
-                    suppress(e2, e);
-                    throw e2;
-                }
-
-                // Retry and don't rethrow if leadership was lost.
-                if (!(e instanceof UnmodifiableReplicaException)) {
-                    throw e;
-                }
-            } finally {
-                mCheckpointLock.unlock();
-            }
-
-            Thread.yield();
-        }
-    }
-
     /**
      * Caller must hold mCheckpointLock.
      */
@@ -6299,11 +6293,11 @@ final class LocalDatabase extends CoreDatabase {
      *
      * @param force 0: no force, 1: force if not closed, -1: force even if closed
      */
-    private void doCheckpoint(int force, long sizeThreshold, long delayThresholdNanos)
+    private boolean doCheckpoint(int force, long sizeThreshold, long delayThresholdNanos)
         throws IOException
     {
         if (force >= 0 && isClosed()) {
-            return;
+            return false;
         }
 
         // Now's a good time to clean things up.
@@ -6334,7 +6328,7 @@ final class LocalDatabase extends CoreDatabase {
                 // Thresholds not met for a full checkpoint, but fully sync the redo log
                 // for durability. Don't reset mLastCheckpointStartNanos.
                 flush(2); // flush and sync metadata
-                return;
+                return false;
             }
 
             // Thresholds for a checkpoint are met, but it might not be necessary.
@@ -6375,7 +6369,7 @@ final class LocalDatabase extends CoreDatabase {
                 // Do reset mLastCheckpointStartNanos because thresholds were met.
                 flush(2); // flush and sync metadata
                 mLastCheckpointDurationNanos = 0;
-                return;
+                return false;
             }
         }
 
@@ -6583,6 +6577,8 @@ final class LocalDatabase extends CoreDatabase {
                                   "Checkpoint completed in %1$1.3f seconds",
                                   duration, TimeUnit.SECONDS);
         }
+
+        return true;
     }
 
     /**

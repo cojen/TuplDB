@@ -269,6 +269,13 @@ final class Checkpointer extends Latch implements Runnable {
     }
 
     /**
+     * Returns true if automatic checkpoints are currently enabled.
+     */
+    boolean isEnabled() {
+        return mRateNanos >= 0 && isStarted() && !isSuspended();
+    }
+
+    /**
      * Expected to only be implemented by the NodeGroup class.
      */
     static interface DirtySet {
