@@ -947,4 +947,62 @@ public class WindowBufferTest {
         assertEquals(values.length, valuePos);
         assertEquals(results.length, resultPos);
     }
+
+    @Test
+    public void findGroup() throws Exception {
+        mValueType = BasicType.make(double.class, Type.TYPE_DOUBLE);
+        Class<?> bufferClass = WindowBuffer.forType(mValueType);
+        Class<?> valueClass = mValueType.clazz();
+
+        Object buffer = bufferClass.getConstructor(int.class).newInstance(8);
+
+        var beginMethod = bufferClass.getMethod("begin", valueClass);
+        var appendMethod = bufferClass.getMethod("append", valueClass);
+        var advanceMethod = bufferClass.getMethod("advance");
+        var findStartMethod = bufferClass.getMethod("findGroupStart", long.class);
+        var findEndMethod = bufferClass.getMethod("findGroupEnd", long.class);
+        var frameGetMethod = bufferClass.getMethod("frameGet", long.class);
+
+        {
+            double[] values = {
+                1.5, 2.0, 2.0, 2.5, 3.0, 3.0, 3.5, 4.0, 4.0, 4.5
+            };
+
+            beginMethod.invoke(buffer, values[0]);
+            for (int i=1; i<values.length; i++) {
+                appendMethod.invoke(buffer, values[i]);
+            }
+        }
+
+        for (int i=0; i<4; i++) {
+            advanceMethod.invoke(buffer);
+        }
+
+        assertEquals(3.0, frameGetMethod.invoke(buffer, 0L));
+        assertEquals(3.0, frameGetMethod.invoke(buffer, 1L));
+
+        {
+            long[] starts = {-4, -4, -3, -1, 0, 2, 3, 5, 5};
+            double[] values = {1.5, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5, 4.5};
+
+            for (int i = -4; i <= 4; i++) {
+                long pos = (long) findStartMethod.invoke(buffer, (long) i);
+                assertEquals(starts[i + 4], pos);
+                double value = (double) frameGetMethod.invoke(buffer, pos);
+                assertTrue(values[i + 4] == value);
+            }
+        }
+
+        {
+            long[] ends = {5, 5, 4, 2, 1, -1, -2, -4, -4};
+            double[] values = {4.5, 4.5, 4.0, 3.5, 3.0, 2.5, 2.0, 1.5, 1.5};
+
+            for (int i = 4; i >= -4; i--) {
+                long pos = (long) findEndMethod.invoke(buffer, (long) i);
+                assertEquals(ends[4 - i], pos);
+                double value = (double) frameGetMethod.invoke(buffer, pos);
+                assertTrue(values[4 - i] == value);
+            }
+        }
+    }
 }

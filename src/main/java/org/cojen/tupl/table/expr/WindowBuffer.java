@@ -19,6 +19,8 @@ package org.cojen.tupl.table.expr;
 
 import java.lang.invoke.MethodHandles;
 
+import java.math.BigDecimal;
+
 import java.util.Map;
 
 import java.util.concurrent.ConcurrentHashMap;
@@ -129,6 +131,84 @@ public abstract class WindowBuffer<V> extends ValueBuffer<V> {
     public abstract void advanceAndRemove();
 
     // FIXME: Define advanceAndRemoveGet variants, to be used with incremental modes.
+
+    /**
+     * Finds a frame row position relative to the current row by counting groups. A group is
+     * defined by a cluster of rows which have the same value. The returned position references
+     * the first row of the starting group.
+     *
+     * <p>Note: To work correctly, the buffered values must be grouped by value.
+     *
+     * @param delta Number of groups to skip relative to the current row. The delta is
+     * typically less than or equal to zero, but any value is allowed.
+     * @return a frame position relative to the current row (which is zero)
+     */
+    public abstract long findGroupStart(long delta);
+
+    /**
+     * Finds a frame row position relative to the current row by counting groups. A group is
+     * defined by a cluster of rows which have the same value. The returned position references
+     * the last row of the ending group.
+     *
+     * <p>Note: To work correctly, the buffered values must be grouped by value.
+     *
+     * @param delta Number of groups to skip relative to the current row. The delta is
+     * typically greater than or equal to zero, but any value is allowed.
+     * @return a frame position relative to the current row (which is zero)
+     */
+    public abstract long findGroupEnd(long delta);
+
+    /**
+     * Finds a frame row position whose value matches the current row value plus a delta value.
+     * The returned position is the lowest whose value is greater than or equal to the
+     * calculated range start value.
+     *
+     * <p>Note: To work correctly, the buffered values must have an ascending order.
+     *
+     * @param delta The range start value is calculated as the current value plus the delta.
+     * The delta is typically less than zero, but any value is allowed.
+     * @return a frame position relative to the current row (which is zero)
+     */
+    //public abstract long findRangeStartAsc(V delta);
+
+    /**
+     * Finds a frame row position whose value matches the current row value plus a delta value.
+     * The returned position is the highest whose value is less than or equal to the calculated
+     * range end value.
+     *
+     * <p>Note: To work correctly, the buffered values must have an ascending order.
+     *
+     * @param delta The range end value is calculated as the current value plus the delta. The
+     * delta is typically greater than zero, but any value is allowed.
+     * @return a frame position relative to the current row (which is zero)
+     */
+    //public abstract long findRangeEndAsc(V delta);
+
+    /**
+     * Finds a frame row position whose value matches the current row value plus a delta value.
+     * The returned position is the lowest whose value is less than or equal to the calculated
+     * range start value.
+     *
+     * <p>Note: To work correctly, the buffered values must have a descending order.
+     *
+     * @param delta The range start value is calculated as the current value minus the delta.
+     * The delta is typically less than zero, but any value is allowed.
+     * @return a frame position relative to the current row (which is zero)
+     */
+    //public abstract long findRangeStartDesc(V delta);
+
+    /**
+     * Finds a frame row position whose value matches the current row value plus a delta value.
+     * The returned position is the highest whose value is greater than or equal to the
+     * calculated range end value.
+     *
+     * <p>Note: To work correctly, the buffered values must have a descending order.
+     *
+     * @param delta The range end value is calculated as the current value minus the delta. The
+     * delta is typically greater than zero, but any value is allowed.
+     * @return a frame position relative to the current row (which is zero)
+     */
+    //public abstract long findRangeEndDesc(V delta);
 
     /**
      * Returns the number of non-null values which are available over the given range.
@@ -337,8 +417,8 @@ public abstract class WindowBuffer<V> extends ValueBuffer<V> {
 
         {
             MethodMaker mm = cm.addMethod(null, "advance").public_().final_();
-            mm.field("start").inc(-1);
-            mm.field("end").inc(-1);
+            mm.field("start").dec(1);
+            mm.field("end").dec(1);
         }
 
         {
@@ -376,8 +456,20 @@ public abstract class WindowBuffer<V> extends ValueBuffer<V> {
 
         {
             MethodMaker mm = cm.addMethod(null, "advanceAndRemove").public_().final_();
-            mm.field("end").inc(-1);
+            mm.field("end").dec(1);
             mm.invoke("remove", 1);
+        }
+
+        {
+            MethodMaker mm = cm.addMethod
+                (long.class, "findGroupStart", long.class).public_().final_();
+            makeFindGroup(type, mm, true);
+        }
+
+        {
+            MethodMaker mm = cm.addMethod
+                (long.class, "findGroupEnd", long.class).public_().final_();
+            makeFindGroup(type, mm, false);
         }
 
         {
@@ -439,6 +531,206 @@ public abstract class WindowBuffer<V> extends ValueBuffer<V> {
         }
 
         return cm.finish();
+    }
+
+    private static void makeFindGroup(Type type, MethodMaker mm, boolean forStart) {
+        final var deltaVar = mm.param(0);
+        final var posVar = mm.var(long.class).set(0);
+        final var startVar = mm.field("start").get();
+
+        /*
+          <op> is <= if forStart, >= if for end
+          if (delta <op> 0) {
+              // ...
+          } else {
+              // ...
+          }
+        */
+
+        final Class<?> clazz = type.clazz();
+        final var valueVar = mm.var(clazz);
+        final var prevVar = mm.var(clazz);
+        final var nextVar = mm.var(clazz);
+
+        if (forStart) {
+            deltaVar.ifLe(0, () -> {
+                Label begin = mm.label();
+                makeFindGroupPrev(posVar, startVar, begin, valueVar, prevVar);
+                /*
+                  delta++;
+                  if (delta > 0) {
+                      return pos + 1;
+                  }
+                  value = prev;
+                */
+                deltaVar.inc(1);
+                deltaVar.ifGt(0, () -> mm.return_(posVar.add(1)));
+                valueVar.set(prevVar);
+                begin.goto_();
+            },
+            () -> { // else
+                var endVar = mm.field("end").get();
+                Label begin = mm.label();
+                makeFindGroupNext(posVar, startVar, endVar, begin, valueVar, nextVar);
+                /*
+                  delta--;
+                  if (delta <= 0) {
+                      return pos;
+                  }
+                  value = next;
+                */
+                deltaVar.dec(1);
+                deltaVar.ifLe(0, () -> mm.return_(posVar));
+                valueVar.set(nextVar);
+                begin.goto_();
+            });
+        } else {
+            deltaVar.ifGe(0, () -> {
+                var endVar = mm.field("end").get();
+                Label begin = mm.label();
+                makeFindGroupNext(posVar, startVar, endVar, begin, valueVar, nextVar);
+                /*
+                  delta--;
+                  if (delta < 0) {
+                      return pos - 1;
+                  }
+                  value = next;
+                */
+                deltaVar.dec(1);
+                deltaVar.ifLt(0, () -> mm.return_(posVar.sub(1)));
+                valueVar.set(nextVar);
+                begin.goto_();
+            },
+            () -> { // else
+                Label begin = mm.label();
+                makeFindGroupPrev(posVar, startVar, begin, valueVar, prevVar);
+                /*
+                  delta++;
+                  if (delta >= 0) {
+                      return pos;
+                  }
+                  value = prev;
+                */
+                deltaVar.inc(1);
+                deltaVar.ifGe(0, () -> mm.return_(posVar));
+                valueVar.set(prevVar);
+                begin.goto_();
+            });
+        }
+    }
+
+    /**
+     * @param posVar type is long
+     * @param startVar type is long
+     * @param begin is positioned by this method
+     * @param valueVar type is V
+     * @param prevVar type is V
+     */
+    private static void makeFindGroupPrev(Variable posVar, Variable startVar,
+                                          Label begin, Variable valueVar, Variable prevVar)
+    {
+        MethodMaker mm = posVar.methodMaker();
+
+        /*
+          long index = pos - start;
+          if (index < 0) {
+              return start;
+          }
+          value = get((int) index);
+          begin: while (true) {
+              pos--;
+              index = pos - start;
+              if (index < 0) {
+                  return start;
+              }
+              prev = get((int) index);
+              if (prev == value) {
+                  continue begin;
+              }
+              ...
+        */
+
+        var indexVar = posVar.sub(startVar);
+        Label inBounds = mm.label();
+        indexVar.ifGe(0, inBounds);
+        mm.return_(startVar);
+        inBounds.here();
+        valueVar.set(mm.invoke("get", indexVar.cast(int.class)));
+        begin.here();
+        posVar.dec(1);
+        indexVar.set(posVar.sub(startVar));
+        inBounds = mm.label();
+        indexVar.ifGe(0, inBounds);
+        mm.return_(startVar);
+        inBounds.here();
+        prevVar.set(mm.invoke("get", indexVar.cast(int.class)));
+        makeFindGroupCompare(prevVar, valueVar, begin);
+    }
+
+    /**
+     * @param posVar type is long
+     * @param startVar type is long
+     * @param endVar type is long
+     * @param valueVar type is V
+     * @param nextVar type is V
+     */
+    private static void makeFindGroupNext(Variable posVar, Variable startVar, Variable endVar,
+                                          Label begin, Variable valueVar, Variable nextVar)
+    {
+        MethodMaker mm = posVar.methodMaker();
+
+        /*
+          if (pos > end) {
+              return end;
+          }
+          V value = get((int) (pos - start));
+          begin: while (true) {
+              pos++;
+              if (pos > end) {
+                  return end;
+              }
+              V next = get((int) (pos - start));
+              if (next == value) {
+                  continue begin;
+              }
+              ...
+        */
+
+        Label inBounds = mm.label();
+        posVar.ifLe(endVar, inBounds);
+        mm.return_(endVar);
+        inBounds.here();
+        valueVar.set(mm.invoke("get", posVar.sub(startVar).cast(int.class)));
+        begin.here();
+        posVar.inc(1);
+        inBounds = mm.label();
+        posVar.ifLe(endVar, inBounds);
+        mm.return_(endVar);
+        inBounds.here();
+        nextVar.set(mm.invoke("get", posVar.sub(startVar).cast(int.class)));
+        makeFindGroupCompare(nextVar, valueVar, begin);
+    }
+
+    /**
+     * @param a type is V
+     * @param b type is V
+     * @param equal branch here when the values are equal
+     */
+    private static void makeFindGroupCompare(Variable a, Variable b, Label equal) {
+        Class<?> clazz = a.classType();
+
+        if (clazz.isPrimitive()) {
+            a.ifEq(b, equal);
+            return;
+        }
+
+        a.ifEq(null, () -> b.ifEq(null, equal), () -> {
+            if (clazz == BigDecimal.class) {
+                a.invoke("compareTo", b).ifEq(0, equal);
+            } else {
+                a.invoke("equals", b).ifTrue(equal);
+            }
+        });
     }
 
     private static void addNumericalMethods(ClassMaker cm, Type type) {
