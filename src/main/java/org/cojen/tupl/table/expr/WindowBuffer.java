@@ -633,7 +633,7 @@ public abstract class WindowBuffer<V> extends ValueBuffer<V> {
 
         /*
           long index = pos - start;
-          if (index < 0) {
+          if (index <= 0) {
               return start;
           }
           value = get((int) index);
@@ -652,7 +652,7 @@ public abstract class WindowBuffer<V> extends ValueBuffer<V> {
 
         var indexVar = posVar.sub(startVar);
         Label inBounds = mm.label();
-        indexVar.ifGe(0, inBounds);
+        indexVar.ifGt(0, inBounds);
         mm.return_(startVar);
         inBounds.here();
         valueVar.set(mm.invoke("get", indexVar.cast(int.class)));
@@ -680,7 +680,7 @@ public abstract class WindowBuffer<V> extends ValueBuffer<V> {
         MethodMaker mm = posVar.methodMaker();
 
         /*
-          if (pos > end) {
+          if (pos >= end) {
               return end;
           }
           V value = get((int) (pos - start));
@@ -697,7 +697,7 @@ public abstract class WindowBuffer<V> extends ValueBuffer<V> {
         */
 
         Label inBounds = mm.label();
-        posVar.ifLe(endVar, inBounds);
+        posVar.ifLt(endVar, inBounds);
         mm.return_(endVar);
         inBounds.here();
         valueVar.set(mm.invoke("get", posVar.sub(startVar).cast(int.class)));
