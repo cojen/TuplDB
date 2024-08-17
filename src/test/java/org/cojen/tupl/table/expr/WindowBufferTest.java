@@ -1005,4 +1005,128 @@ public class WindowBufferTest {
             }
         }
     }
+
+    @Test
+    public void findRangeAscending() throws Exception {
+        mValueType = BasicType.make(double.class, Type.TYPE_DOUBLE);
+        Class<?> bufferClass = WindowBuffer.forType(mValueType);
+        Class<?> valueClass = mValueType.clazz();
+
+        Object buffer = bufferClass.getConstructor(int.class).newInstance(8);
+
+        var beginMethod = bufferClass.getMethod("begin", valueClass);
+        var appendMethod = bufferClass.getMethod("append", valueClass);
+        var advanceMethod = bufferClass.getMethod("advance");
+        var findStartMethod = bufferClass.getMethod("findRangeStartAsc", double.class);
+        var findEndMethod = bufferClass.getMethod("findRangeEndAsc", double.class);
+        var frameGetMethod = bufferClass.getMethod("frameGet", long.class);
+
+        double[] values = {
+            1.5, 2.0, 2.0, 2.5, 3.0, 3.0, 3.5, 4.0, 4.0, 4.5
+        };
+
+        beginMethod.invoke(buffer, values[0]);
+        for (int i=1; i<values.length; i++) {
+            appendMethod.invoke(buffer, values[i]);
+        }
+
+        for (int i=0; i<4; i++) {
+            advanceMethod.invoke(buffer);
+        }
+
+        assertEquals(3.0, frameGetMethod.invoke(buffer, 0L));
+        assertEquals(3.0, frameGetMethod.invoke(buffer, 1L));
+
+        for (double delta = -2.0; delta <= 2.0; delta += 0.25) {
+            double find = 3.0 + delta;
+            long pos = (long) findStartMethod.invoke(buffer, delta);
+            if (pos == Long.MAX_VALUE) {
+                assertTrue(find > values[values.length - 1]);
+            } else {
+                double value = (double) frameGetMethod.invoke(buffer, pos);
+                assertTrue(value >= find);
+                if (pos >= -3) {
+                    double prev = (double) frameGetMethod.invoke(buffer, pos - 1);
+                    assertTrue(prev < find);
+                }
+            }
+        }
+
+        for (double delta = -2.0; delta <= 2.0; delta += 0.25) {
+            double find = 3.0 + delta;
+            long pos = (long) findEndMethod.invoke(buffer, delta);
+            if (pos == Long.MIN_VALUE) {
+                assertTrue(find < values[0]);
+            } else {
+                double value = (double) frameGetMethod.invoke(buffer, pos);
+                assertTrue(value <= find);
+                if (pos <= 4) {
+                    double next = (double) frameGetMethod.invoke(buffer, pos + 1);
+                    assertTrue(next > find);
+                }
+            }
+        }
+    }
+
+    @Test
+    public void findRangeDescending() throws Exception {
+        mValueType = BasicType.make(double.class, Type.TYPE_DOUBLE);
+        Class<?> bufferClass = WindowBuffer.forType(mValueType);
+        Class<?> valueClass = mValueType.clazz();
+
+        Object buffer = bufferClass.getConstructor(int.class).newInstance(8);
+
+        var beginMethod = bufferClass.getMethod("begin", valueClass);
+        var appendMethod = bufferClass.getMethod("append", valueClass);
+        var advanceMethod = bufferClass.getMethod("advance");
+        var findStartMethod = bufferClass.getMethod("findRangeStartDesc", double.class);
+        var findEndMethod = bufferClass.getMethod("findRangeEndDesc", double.class);
+        var frameGetMethod = bufferClass.getMethod("frameGet", long.class);
+
+        double[] values = {
+            4.5, 4.0, 4.0, 3.5, 3.0, 3.0, 2.5, 2.0, 2.0, 1.5
+        };
+
+        beginMethod.invoke(buffer, values[0]);
+        for (int i=1; i<values.length; i++) {
+            appendMethod.invoke(buffer, values[i]);
+        }
+
+        for (int i=0; i<4; i++) {
+            advanceMethod.invoke(buffer);
+        }
+
+        assertEquals(3.0, frameGetMethod.invoke(buffer, 0L));
+        assertEquals(3.0, frameGetMethod.invoke(buffer, 1L));
+
+        for (double delta = -2.0; delta <= 2.0; delta += 0.25) {
+            double find = 3.0 + delta;
+            long pos = (long) findStartMethod.invoke(buffer, delta);
+            if (pos == Long.MAX_VALUE) {
+                assertTrue(find < values[values.length - 1]);
+            } else {
+                double value = (double) frameGetMethod.invoke(buffer, pos);
+                assertTrue(value <= find);
+                if (pos >= -3) {
+                    double prev = (double) frameGetMethod.invoke(buffer, pos - 1);
+                    assertTrue(prev > find);
+                }
+            }
+        }
+
+        for (double delta = -2.0; delta <= 2.0; delta += 0.25) {
+            double find = 3.0 + delta;
+            long pos = (long) findEndMethod.invoke(buffer, delta);
+            if (pos == Long.MIN_VALUE) {
+                assertTrue(find > values[0]);
+            } else {
+                double value = (double) frameGetMethod.invoke(buffer, pos);
+                assertTrue(value >= find);
+                if (pos <= 4) {
+                    double next = (double) frameGetMethod.invoke(buffer, pos + 1);
+                    assertTrue(next < find);
+                }
+            }
+        }
+    }
 }

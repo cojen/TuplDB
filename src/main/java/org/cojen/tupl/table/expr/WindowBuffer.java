@@ -33,7 +33,10 @@ import org.cojen.maker.Label;
 import org.cojen.maker.MethodMaker;
 import org.cojen.maker.Variable;
 
+import org.cojen.tupl.table.CompareUtils;
 import org.cojen.tupl.table.Converter;
+
+import static org.cojen.tupl.table.filter.ColumnFilter.*;
 
 /**
  * Defines a growable circular buffer of values, which act upon moving ranges of values known
@@ -167,9 +170,10 @@ public abstract class WindowBuffer<V> extends ValueBuffer<V> {
      *
      * @param delta The range start value is calculated as the current value plus the delta.
      * The delta is typically less than zero, but any value is allowed.
-     * @return a frame position relative to the current row (which is zero)
+     * @return a frame position relative to the current row (which is zero), or MAX_VALUE if
+     * out of bounds (effective range is empty)
      */
-    //public abstract long findRangeStartAsc(V delta);
+    public abstract long findRangeStartAsc(V delta);
 
     /**
      * Finds a frame row position whose value matches the current row value plus a delta value.
@@ -180,9 +184,10 @@ public abstract class WindowBuffer<V> extends ValueBuffer<V> {
      *
      * @param delta The range end value is calculated as the current value plus the delta. The
      * delta is typically greater than zero, but any value is allowed.
-     * @return a frame position relative to the current row (which is zero)
+     * @return a frame position relative to the current row (which is zero), or MIN_VALUE if
+     * out of bounds (effective range is empty)
      */
-    //public abstract long findRangeEndAsc(V delta);
+    public abstract long findRangeEndAsc(V delta);
 
     /**
      * Finds a frame row position whose value matches the current row value plus a delta value.
@@ -193,9 +198,10 @@ public abstract class WindowBuffer<V> extends ValueBuffer<V> {
      *
      * @param delta The range start value is calculated as the current value minus the delta.
      * The delta is typically less than zero, but any value is allowed.
-     * @return a frame position relative to the current row (which is zero)
+     * @return a frame position relative to the current row (which is zero), or MAX_VALUE if
+     * out of bounds (effective range is empty)
      */
-    //public abstract long findRangeStartDesc(V delta);
+    public abstract long findRangeStartDesc(V delta);
 
     /**
      * Finds a frame row position whose value matches the current row value plus a delta value.
@@ -206,9 +212,10 @@ public abstract class WindowBuffer<V> extends ValueBuffer<V> {
      *
      * @param delta The range end value is calculated as the current value minus the delta. The
      * delta is typically greater than zero, but any value is allowed.
-     * @return a frame position relative to the current row (which is zero)
+     * @return a frame position relative to the current row (which is zero), or MIN_VALUE if
+     * out of bounds (effective range is empty)
      */
-    //public abstract long findRangeEndDesc(V delta);
+    public abstract long findRangeEndDesc(V delta);
 
     /**
      * Returns the number of non-null values which are available over the given range.
@@ -474,6 +481,30 @@ public abstract class WindowBuffer<V> extends ValueBuffer<V> {
 
         {
             MethodMaker mm = cm.addMethod
+                (long.class, "findRangeStartAsc", clazz).public_().final_();
+            makeFindRange(type, mm, true, true);
+        }
+
+        {
+            MethodMaker mm = cm.addMethod
+                (long.class, "findRangeStartDesc", clazz).public_().final_();
+            makeFindRange(type, mm, true, false);
+        }
+
+        {
+            MethodMaker mm = cm.addMethod
+                (long.class, "findRangeEndAsc", clazz).public_().final_();
+            makeFindRange(type, mm, false, true);
+        }
+
+        {
+            MethodMaker mm = cm.addMethod
+                (long.class, "findRangeEndDesc", clazz).public_().final_();
+            makeFindRange(type, mm, false, false);
+        }
+
+        {
+            MethodMaker mm = cm.addMethod
                 (int.class, "frameCount", long.class, long.class).public_().final_();
             makeFrameCode(mm, 0, "count");
         }
@@ -731,6 +762,143 @@ public abstract class WindowBuffer<V> extends ValueBuffer<V> {
                 a.invoke("equals", b).ifTrue(equal);
             }
         });
+    }
+
+    private static void makeFindRange(Type type, MethodMaker mm,
+                                      boolean forStart, boolean ascending)
+    {
+        /*
+          long index = -start;
+          if (delta <deltaOp> 0) {
+              ... forward scan ...
+          } else {
+              ... reverse scan ...
+          }
+          return index + start;
+        */
+
+        int cmpOp = forStart ? (ascending ? OP_LT : OP_GT) : (ascending ? OP_LE : OP_GE);
+
+        var deltaVar = mm.param(0);
+        var startVar = mm.field("start");
+        var indexVar = mm.var(long.class).set(startVar.neg());
+
+        var zeroVar = mm.var(type.clazz());
+        Arithmetic.zero(zeroVar);
+
+        Label reverse = mm.label();
+        Label forward = mm.label();
+        int deltaOp = forStart ? (ascending ? OP_GT : OP_LT) : (ascending ? OP_GE : OP_LE);
+        CompareUtils.compare(mm, type, deltaVar, type, zeroVar, deltaOp, forward, reverse);
+        forward.here();
+        makeFindRangeLoop(type, mm, deltaVar, indexVar, true, flipOperator(cmpOp));
+        Label cont = mm.label().goto_();
+        reverse.here();
+        makeFindRangeLoop(type, mm, deltaVar, indexVar, false, cmpOp);
+
+        cont.here();
+        mm.return_(indexVar.add(startVar));
+    }
+
+    private static void makeFindRangeLoop(Type type, MethodMaker mm,
+                                          Variable deltaVar, Variable indexVar,
+                                          boolean forward, int cmpOp)
+    {
+        Label done = mm.label();
+
+        if (forward) {
+            /*
+              long endIndex = end - start;
+              if (index < endIndex) {
+                  V find = get((int) index) + delta;                
+                  do {
+                      index++;
+                      V value = get((int) index);
+                      if (value <cmpOp> find) {
+                          index--; // only when cmpOp doesn't have '='
+                          goto done;
+                      }
+                  } while (index < endIndex);
+              }
+              return Long.MAX_VALUE; // only when cmpOp has '='
+            */
+
+            var endIndexVar = mm.field("end").sub(mm.field("start"));
+            Label loopEnd = mm.label();
+            indexVar.ifGe(endIndexVar, loopEnd);
+
+            var findVar = mm.invoke("get", indexVar.cast(int.class));
+            findVar = Arithmetic.eval(type, Token.T_PLUS, findVar, deltaVar);
+
+            Label doStart = mm.label().here();
+            indexVar.inc(1);
+            var valueVar = mm.invoke("get", indexVar.cast(int.class));
+
+            Label stop = mm.label();
+            Label cont = mm.label();
+            CompareUtils.compare(mm, type, valueVar, type, findVar, cmpOp, stop, cont);
+            stop.here();
+
+            if (!hasEqualComponent(cmpOp)) {
+                indexVar.dec(1);
+            }
+            done.goto_();
+
+            cont.here();
+            indexVar.ifLt(endIndexVar, doStart);
+
+            loopEnd.here();
+
+            if (hasEqualComponent(cmpOp)) {
+                mm.return_(Long.MAX_VALUE);
+            }
+        } else {
+            /*
+              if (index > 0) {
+                  V find = get((int) index) + delta;
+                  do {
+                      index--;
+                      V value = get((int) index);
+                      if (value <cmpOp> find) {
+                          index++; // only when cmpOp doesn't have '='
+                          goto done;
+                      }
+                  } while (index > 0);
+              }
+              return Long.MIN_VALUE; // only when cmpOp has '='
+            */
+
+            Label loopEnd = mm.label();
+            indexVar.ifLe(0, loopEnd);
+
+            var findVar = mm.invoke("get", indexVar.cast(int.class));
+            findVar = Arithmetic.eval(type, Token.T_PLUS, findVar, deltaVar);
+
+            Label doStart = mm.label().here();
+            indexVar.dec(1);
+            var valueVar = mm.invoke("get", indexVar.cast(int.class));
+
+            Label stop = mm.label();
+            Label cont = mm.label();
+            CompareUtils.compare(mm, type, valueVar, type, findVar, cmpOp, stop, cont);
+            stop.here();
+
+            if (!hasEqualComponent(cmpOp)) {
+                indexVar.inc(1);
+            }
+            done.goto_();
+
+            cont.here();
+            indexVar.ifGt(0, doStart);
+
+            loopEnd.here();
+
+            if (hasEqualComponent(cmpOp)) {
+                mm.return_(Long.MIN_VALUE);
+            }
+        }
+
+        done.here();
     }
 
     private static void addNumericalMethods(ClassMaker cm, Type type) {
