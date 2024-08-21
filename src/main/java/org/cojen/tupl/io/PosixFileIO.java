@@ -37,6 +37,8 @@ import com.sun.jna.Platform;
 import com.sun.jna.Pointer;
 import com.sun.jna.Structure;
 
+import org.cojen.tupl.WriteFailureException;
+
 import org.cojen.tupl.unsafe.DirectAccess;
 
 import org.cojen.tupl.util.LocalPool;
@@ -161,6 +163,8 @@ final class PosixFileIO extends AbstractFileIO {
             bb.position(0);
             bb.put(buf, offset, length);
             pwriteFd(fd(), ref.mPointer, length, pos);
+        } catch (IOException ex) {
+            writeFailure(ex);
         } finally {
             e.release();
         }
@@ -168,7 +172,18 @@ final class PosixFileIO extends AbstractFileIO {
 
     @Override
     protected void doWrite(long pos, long ptr, int length) throws IOException {
-        pwriteFd(fd(), ptr, length, pos);
+        try {
+            pwriteFd(fd(), ptr, length, pos);
+        } catch (IOException ex) {
+            writeFailure(ex);
+        }
+    }
+
+    private void writeFailure(IOException ex) throws IOException {
+        if (isReadOnly()) {
+            throw new WriteFailureException("File is read only", ex);
+        }
+        throw ex;
     }
 
     @Override

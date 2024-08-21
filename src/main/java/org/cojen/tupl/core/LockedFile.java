@@ -45,30 +45,35 @@ final class LockedFile implements Closeable {
         } catch (IOException e) {
         }
 
-        RandomAccessFile raf;
+        RandomAccessFile raf = null;
         FileLock lock;
 
         try {
-            raf = new RandomAccessFile(file, readOnly ? "r" : "rw");
-            lock = raf.getChannel().tryLock(8, Long.MAX_VALUE - 8, readOnly);
-            if (lock == null) {
-                String message = "Database is open and locked by another process";
-                try {
-                    message = message + ": " + raf.readLong();
-                } catch (EOFException e) {
-                    // Ignore.
+            try {
+                raf = new RandomAccessFile(file, readOnly ? "r" : "rw");
+                lock = raf.getChannel().tryLock(8, Long.MAX_VALUE - 8, readOnly);
+                if (lock == null) {
+                    String message = "Database is open and locked by another process";
+                    try {
+                        message = message + ": " + raf.readLong();
+                    } catch (EOFException e) {
+                        // Ignore.
+                    }
+                    throw new DatabaseException(message);
                 }
-                throw new DatabaseException(message);
+            } catch (FileNotFoundException e) {
+                if (readOnly) {
+                    raf = null;
+                    lock = null;
+                } else {
+                    throw e;
+                }
+            } catch (OverlappingFileLockException e) {
+                throw new DatabaseException("Database is already open in the current process");
             }
-        } catch (FileNotFoundException e) {
-            if (readOnly) {
-                raf = null;
-                lock = null;
-            } else {
-                throw e;
-            }
-        } catch (OverlappingFileLockException e) {
-            throw new DatabaseException("Database is already open in the current process");
+        } catch (Throwable e) {
+            Utils.closeQuietly(raf);
+            throw e;
         }
 
         mRaf = raf;
