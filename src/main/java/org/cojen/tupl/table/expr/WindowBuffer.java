@@ -479,28 +479,30 @@ public abstract class WindowBuffer<V> extends ValueBuffer<V> {
             makeFindGroup(type, mm, false);
         }
 
-        {
-            MethodMaker mm = cm.addMethod
-                (long.class, "findRangeStartAsc", clazz).public_().final_();
-            makeFindRange(type, mm, true, true);
-        }
+        if (type.isNumber()) {
+            {
+                MethodMaker mm = cm.addMethod
+                    (long.class, "findRangeStartAsc", clazz).public_().final_();
+                makeFindRange(type, mm, true, true);
+            }
 
-        {
-            MethodMaker mm = cm.addMethod
-                (long.class, "findRangeStartDesc", clazz).public_().final_();
-            makeFindRange(type, mm, true, false);
-        }
+            {
+                MethodMaker mm = cm.addMethod
+                    (long.class, "findRangeStartDesc", clazz).public_().final_();
+                makeFindRange(type, mm, true, false);
+            }
 
-        {
-            MethodMaker mm = cm.addMethod
-                (long.class, "findRangeEndAsc", clazz).public_().final_();
-            makeFindRange(type, mm, false, true);
-        }
+            {
+                MethodMaker mm = cm.addMethod
+                    (long.class, "findRangeEndAsc", clazz).public_().final_();
+                makeFindRange(type, mm, false, true);
+            }
 
-        {
-            MethodMaker mm = cm.addMethod
-                (long.class, "findRangeEndDesc", clazz).public_().final_();
-            makeFindRange(type, mm, false, false);
+            {
+                MethodMaker mm = cm.addMethod
+                    (long.class, "findRangeEndDesc", clazz).public_().final_();
+                makeFindRange(type, mm, false, false);
+            }
         }
 
         {
