@@ -133,6 +133,16 @@ public abstract class WindowBuffer<V> extends ValueBuffer<V> {
      */
     public abstract void advanceAndRemove();
 
+    /**
+     * Update the frame start position and remove all values lower than the new position. This
+     * method has no effect if the given position is less than or equal to the current start
+     * position. The given frame start position is clamped such that it isn't larger than zero,
+     * thus preventing the current row (and higher) from being removed.
+     *
+     * @param frameStart inclusive frame start, relative to the current row (which is zero)
+     */
+    public abstract void trimStart(long frameStart);
+
     // FIXME: Define advanceAndRemoveGet variants, to be used with incremental modes.
 
     /**
@@ -465,6 +475,27 @@ public abstract class WindowBuffer<V> extends ValueBuffer<V> {
             MethodMaker mm = cm.addMethod(null, "advanceAndRemove").public_().final_();
             mm.field("end").dec(1);
             mm.invoke("remove", 1);
+        }
+
+        {
+            MethodMaker mm = cm.addMethod(null, "trimStart", long.class).public_().final_();
+
+            /*
+              frameStart = Math.min(frameStart, 0L);
+              long amt = frameStart - start;
+              if (amt > 0) {
+                  remove((int) amt);
+                  start = (int) frameStart;
+              }
+             */
+
+            var frameStartVar = mm.var(Math.class).invoke("min", mm.param(0), 0L);
+            var startField = mm.field("start");
+            var amtVar = frameStartVar.sub(startField);
+            amtVar.ifGt(0, () -> {
+                mm.invoke("remove", amtVar.cast(int.class));
+                startField.set(frameStartVar.cast(int.class));
+            });
         }
 
         {

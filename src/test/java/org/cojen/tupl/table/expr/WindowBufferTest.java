@@ -950,15 +950,26 @@ public class WindowBufferTest {
 
     @Test
     public void findGroup() throws Exception {
+        findGroup(false);
+    }
+
+    @Test
+    public void findGroupAndTrim() throws Exception {
+        findGroup(true);
+    }
+
+    private void findGroup(boolean trim) throws Exception {
         mValueType = BasicType.make(double.class, Type.TYPE_DOUBLE);
         Class<?> bufferClass = WindowBuffer.forType(mValueType);
         Class<?> valueClass = mValueType.clazz();
 
         Object buffer = bufferClass.getConstructor(int.class).newInstance(8);
 
+        var sizeMethod = bufferClass.getMethod("size");
         var beginMethod = bufferClass.getMethod("begin", valueClass);
         var appendMethod = bufferClass.getMethod("append", valueClass);
         var advanceMethod = bufferClass.getMethod("advance");
+        var trimStartMethod = bufferClass.getMethod("trimStart", long.class);
         var findStartMethod = bufferClass.getMethod("findGroupStart", long.class);
         var findEndMethod = bufferClass.getMethod("findGroupEnd", long.class);
         var frameGetMethod = bufferClass.getMethod("frameGet", long.class);
@@ -978,18 +989,35 @@ public class WindowBufferTest {
             advanceMethod.invoke(buffer);
         }
 
+        assertEquals(10, sizeMethod.invoke(buffer));
+
         assertEquals(3.0, frameGetMethod.invoke(buffer, 0L));
         assertEquals(3.0, frameGetMethod.invoke(buffer, 1L));
 
         {
-            long[] starts = {-4, -4, -3, -1, 0, 2, 3, 5, 5};
+            int[] starts = {-4, -4, -3, -1, 0, 2, 3, 5, 5};
             double[] values = {1.5, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5, 4.5};
 
             for (int i = -4; i <= 4; i++) {
                 long pos = (long) findStartMethod.invoke(buffer, (long) i);
-                assertEquals(starts[i + 4], pos);
+                int start = starts[i + 4];
+                assertEquals(start, pos);
                 double value = (double) frameGetMethod.invoke(buffer, pos);
                 assertTrue(values[i + 4] == value);
+
+                if (trim) {
+                    trimStartMethod.invoke(buffer, pos);
+
+                    int expect = switch(start) {
+                        case -4 -> 10;
+                        case -3 -> 9;
+                        case -1 -> 7;
+                        default -> 6;
+                    };
+
+                    int size = (int) sizeMethod.invoke(buffer);
+                    assertEquals(expect, size);
+                }
             }
         }
 
@@ -997,7 +1025,7 @@ public class WindowBufferTest {
             long[] ends = {5, 5, 4, 2, 1, -1, -2, -4, -4};
             double[] values = {4.5, 4.5, 4.0, 3.5, 3.0, 2.5, 2.0, 1.5, 1.5};
 
-            for (int i = 4; i >= -4; i--) {
+            for (int i = 4; i >= (trim ? 0 : -4); i--) {
                 long pos = (long) findEndMethod.invoke(buffer, (long) i);
                 assertEquals(ends[4 - i], pos);
                 double value = (double) frameGetMethod.invoke(buffer, pos);
