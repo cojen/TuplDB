@@ -901,7 +901,7 @@ public class WindowBufferTest {
 
         var beginMethod = bufferClass.getMethod("begin", valueClass);
         var appendMethod = bufferClass.getMethod("append", valueClass);
-        var readyMethod = bufferClass.getMethod("ready", long.class);
+        var endMethod = bufferClass.getMethod("end");
         var advanceMethod = bufferClass.getMethod("advance");
         var advanceAndRemoveMethod = bufferClass.getMethod("advanceAndRemove");
         var advanceAndRemoveMethodFS = bufferClass.getMethod("advanceAndRemove", long.class);
@@ -926,7 +926,7 @@ public class WindowBufferTest {
                 }
             }
 
-            if (finished || (boolean) readyMethod.invoke(buffer, frameEnd)) {
+            if (finished || frameEnd <= (int) endMethod.invoke(buffer)) {
                 Object result = opMethod.invoke(buffer, frameStart, frameEnd);
                 assertEquals(results[resultPos], result);
 

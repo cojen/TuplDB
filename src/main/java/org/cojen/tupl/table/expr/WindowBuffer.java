@@ -101,13 +101,13 @@ public abstract class WindowBuffer<V> extends ValueBuffer<V> {
     public abstract void append(V value);
 
     /**
-     * Determine if enough values have been appended such that a complete calculation is
-     * possible. If the frame end is constantly open (> max int), then this method would always
-     * return false.
-     *
-     * @param frameEnd inclusive frame end, relative to the current row (which is zero)
+     * Returns the inclusive buffer end position, relative to the current row (which is zero).
+     * When the end is zero, then the current row is the end. When the end is positive, then
+     * rows exist after the current row. The end can become negative when advance has been
+     * called, kicking out the current row. The append method must be called to add back a
+     * current row.
      */
-    public abstract boolean ready(long frameEnd);
+    public abstract int end();
 
     /**
      * Increment the current row by one. Should only be called when the frame start is
@@ -428,8 +428,8 @@ public abstract class WindowBuffer<V> extends ValueBuffer<V> {
         }
 
         {
-            MethodMaker mm = cm.addMethod(boolean.class, "ready", long.class).public_().final_();
-            mm.return_(mm.field("end").ge(mm.param(0)));
+            MethodMaker mm = cm.addMethod(int.class, "end").public_().final_();
+            mm.return_(mm.field("end"));
         }
 
         {
