@@ -75,19 +75,35 @@ public abstract class WindowBuffer<V> extends ValueBuffer<V> {
         return bufferClass;
     }
 
+    static final int DEFAULT_MIN_CAPACITY = 8;
+
     /**
      * Calculates an initial buffer capacity.
      *
      * @param frameStart inclusive frame start
      * @param frameEnd inclusive frame end
+     * @return a capacity clamped to [8..1024]
      */
     public static int capacityFor(long frameStart, long frameEnd) {
-        long capacity = frameEnd - frameStart + 1;
-        if (0 < capacity && capacity <= 1024) {
-            return (int) capacity;
-        } else {
-            return 8;
-        }
+        return clampCapacity(frameEnd - frameStart + 1);
+    }
+
+    /**
+     * Calculates an initial buffer capacity.
+     *
+     * @param groupSize minimum number of rows expected per group
+     * @param groupEnd group range end value
+     * @return a capacity clamped to [8..1024]
+     */
+    public static int capacityForGroup(int groupSize, long groupEnd) {
+        return clampCapacity(groupSize * groupEnd);
+    }
+
+    /**
+     * @return a capacity clamped to [8..1024]
+     */
+    public static int clampCapacity(long capacity) {
+        return capacity <= 0 ? DEFAULT_MIN_CAPACITY : (int) Math.min(capacity, 1024);
     }
 
     /**

@@ -99,7 +99,7 @@ public class WindowFunctionTest {
     }
 
     @Test
-    public void variableRange() throws Exception {
+    public void frameRowsVariableRange() throws Exception {
         fill();
 
         try {
@@ -269,6 +269,172 @@ public class WindowFunctionTest {
     }
 
     @Test
+    public void frameGroups() throws Exception {
+        fill();
+
+        {
+            Object[][] expect = {
+                // a, min, max, sum, cnt, avg
+                {1,    1,   1,   5,   5,  1.0},
+                {1,    1,   1,   5,   5,  1.0},
+                {1,    1,   1,   5,   5,  1.0},
+                {1,    1,   1,   5,   5,  1.0},
+                {1,    1,   1,   5,   5,  1.0},
+                {2,    2,   2,  10,   5,  2.0},
+                {2,    2,   2,  10,   5,  2.0},
+                {2,    2,   2,  10,   5,  2.0},
+                {2,    2,   2,  10,   5,  2.0},
+                {2,    2,   2,  10,   5,  2.0},
+                {3,    3,   3,  15,   5,  3.0},
+                {3,    3,   3,  15,   5,  3.0},
+                {3,    3,   3,  15,   5,  3.0},
+                {3,    3,   3,  15,   5,  3.0},
+                {3,    3,   3,  15,   5,  3.0},
+                {4,    4,   4,  20,   5,  4.0},
+                {4,    4,   4,  20,   5,  4.0},
+                {4,    4,   4,  20,   5,  4.0},
+                {4,    4,   4,  20,   5,  4.0},
+                {4,    4,   4,  20,   5,  4.0},
+            };
+
+            String query = "{; +a, min = min(a, groups:0..0), max = max(a, groups:0..0), " +
+                "sum = sum(a, groups:0..0), cnt = count(a, groups:0..0), " +
+                "avg = avg(a, groups:0..0)}";
+
+            verify(expect, query);
+        }
+
+        {
+            Object[][] expect = {
+                // a, min, max, sum, cnt, avg
+                {1,    1,   2,  15,  10,  1.5},
+                {1,    1,   2,  15,  10,  1.5},
+                {1,    1,   2,  15,  10,  1.5},
+                {1,    1,   2,  15,  10,  1.5},
+                {1,    1,   2,  15,  10,  1.5},
+                {2,    1,   3,  30,  15,  2.0},
+                {2,    1,   3,  30,  15,  2.0},
+                {2,    1,   3,  30,  15,  2.0},
+                {2,    1,   3,  30,  15,  2.0},
+                {2,    1,   3,  30,  15,  2.0},
+                {3,    2,   4,  45,  15,  3.0},
+                {3,    2,   4,  45,  15,  3.0},
+                {3,    2,   4,  45,  15,  3.0},
+                {3,    2,   4,  45,  15,  3.0},
+                {3,    2,   4,  45,  15,  3.0},
+                {4,    3,   4,  35,  10,  3.5},
+                {4,    3,   4,  35,  10,  3.5},
+                {4,    3,   4,  35,  10,  3.5},
+                {4,    3,   4,  35,  10,  3.5},
+                {4,    3,   4,  35,  10,  3.5},
+            };
+
+            String query = "{; +a, min = min(a, groups:-1..1), max = max(a, groups:-1..1), " +
+                "sum = sum(a, groups:-1..1), cnt = count(a, groups:-1..1), " +
+                "avg = avg(a, groups:-1..1)}";
+
+            verify(expect, query);
+        }
+
+        {
+            Object[][] expect = {
+                // a, min, max, sum, cnt, avg
+                {1,    1,   2,  15,  10,  1.5},
+                {1,    1,   2,  15,  10,  1.5},
+                {1,    1,   2,  15,  10,  1.5},
+                {1,    1,   2,  15,  10,  1.5},
+                {1,    1,   2,  15,  10,  1.5},
+                {2,    1,   3,  30,  15,  2.0},
+                {2,    1,   3,  30,  15,  2.0},
+                {2,    1,   3,  30,  15,  2.0},
+                {2,    1,   3,  30,  15,  2.0},
+                {2,    1,   3,  30,  15,  2.0},
+                {3,    2,   4,  45,  15,  3.0},
+                {3,    2,   4,  45,  15,  3.0},
+                {3,    2,   4,  45,  15,  3.0},
+                {3,    2,   4,  45,  15,  3.0},
+                {3,    2,   4,  45,  15,  3.0},
+                {4,    3,   4,  35,  10,  3.5},
+                {4,    3,   4,  35,  10,  3.5},
+                {4,    3,   4,  35,  10,  3.5},
+                {4,    3,   4,  35,  10,  3.5},
+                {4,    3,   4,  35,  10,  3.5},
+            };
+
+            String query = "{; +a, ~s=-1, ~e=1, " +
+                "min = min(a, groups:s..e), max = max(a, groups:s..e), " +
+                "sum = sum(a, groups:s..e), cnt = count(a, groups:s..e), " +
+                "avg = avg(a, groups:s..e)}";
+
+            verify(expect, query);
+        }
+
+        {
+            Object[][] expect = {
+                // a, min,  max,  sum, cnt, avg
+                {1,   null, null,  0,   0,  null},
+                {1,   null, null,  0,   0,  null},
+                {1,   null, null,  0,   0,  null},
+                {1,   null, null,  0,   0,  null},
+                {1,   null, null,  0,   0,  null},
+                {2,    1,    1,    5,   5,  1.0},
+                {2,    1,    1,    5,   5,  1.0},
+                {2,    1,    1,    5,   5,  1.0},
+                {2,    1,    1,    5,   5,  1.0},
+                {2,    1,    1,    5,   5,  1.0},
+                {3,    1,    2,   15,  10,  1.5},
+                {3,    1,    2,   15,  10,  1.5},
+                {3,    1,    2,   15,  10,  1.5},
+                {3,    1,    2,   15,  10,  1.5},
+                {3,    1,    2,   15,  10,  1.5},
+                {4,    2,    3,   25,  10,  2.5},
+                {4,    2,    3,   25,  10,  2.5},
+                {4,    2,    3,   25,  10,  2.5},
+                {4,    2,    3,   25,  10,  2.5},
+                {4,    2,    3,   25,  10,  2.5},
+            };
+
+            String query = "{; +a, min = min(a, groups:-2..-1), max = max(a, groups:-2..-1), " +
+                "sum = sum(a, groups:-2..-1), cnt = count(a, groups:-2..-1), " +
+                "avg = avg(a, groups:-2..-1)}";
+
+            verify(expect, query);
+        }
+
+        {
+            Object[][] expect = {
+                // a, min,  max,  sum, cnt, avg
+                {1,    2,    3,   25,  10,  2.5},
+                {1,    2,    3,   25,  10,  2.5},
+                {1,    2,    3,   25,  10,  2.5},
+                {1,    2,    3,   25,  10,  2.5},
+                {1,    2,    3,   25,  10,  2.5},
+                {2,    3,    4,   35,  10,  3.5},
+                {2,    3,    4,   35,  10,  3.5},
+                {2,    3,    4,   35,  10,  3.5},
+                {2,    3,    4,   35,  10,  3.5},
+                {2,    3,    4,   35,  10,  3.5},
+                {3,    4,    4,   20,   5,  4.0},
+                {3,    4,    4,   20,   5,  4.0},
+                {3,    4,    4,   20,   5,  4.0},
+                {3,    4,    4,   20,   5,  4.0},
+                {3,    4,    4,   20,   5,  4.0},
+                {4,   null, null,  0,   0,  null},
+                {4,   null, null,  0,   0,  null},
+                {4,   null, null,  0,   0,  null},
+                {4,   null, null,  0,   0,  null},
+                {4,   null, null,  0,   0,  null},
+            };
+
+            String query = "{; +a, min = min(a, groups:1..2), max = max(a, groups:1..2), " +
+                "sum = sum(a, groups:1..2), cnt = count(a, groups:1..2), " +
+                "avg = avg(a, groups:1..2)}";
+
+            verify(expect, query);
+        }
+    }
+
+    @Test
     public void noGrouping() throws Exception {
         fill();
 
@@ -301,6 +467,21 @@ public class WindowFunctionTest {
         }
     }
 
+    private void dump(String query) throws Exception {
+        try (Scanner<Row> s = mTable.derive(query).newScanner(null)) {
+            for (Row row = s.row(); row != null; row = s.step(row)) {
+                System.out.print('{');
+                System.out.print(row.get_int("a") + ", ");
+                System.out.print(row.getInteger("min") + ", ");
+                System.out.print(row.getInteger("max") + ", ");
+                System.out.print(row.getInteger("sum") + ", ");
+                System.out.print(row.getInteger("cnt") + ", ");
+                System.out.print(row.getDouble("avg"));
+                System.out.println("},");
+            }
+        }
+    }
+
     private void verify(Object[][] expect, String query) throws Exception {
         int i = 0;
 
@@ -319,7 +500,7 @@ public class WindowFunctionTest {
         assertEquals(i, expect.length);
     }
 
-   private void verify2(Object[][] expect, String query) throws Exception {
+    private void verify2(Object[][] expect, String query) throws Exception {
         int i = 0;
 
         try (Scanner<Row> s = mTable.derive(query).newScanner(null)) {
@@ -337,7 +518,7 @@ public class WindowFunctionTest {
         assertEquals(i, expect.length);
     }
 
-   private void verify3(Object[][] expect, String query) throws Exception {
+    private void verify3(Object[][] expect, String query) throws Exception {
         int i = 0;
 
         try (Scanner<Row> s = mTable.derive(query).newScanner(null)) {

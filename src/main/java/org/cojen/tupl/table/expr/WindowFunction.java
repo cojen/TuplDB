@@ -36,12 +36,11 @@ import static org.cojen.tupl.table.expr.Type.*;
  *
  * @author Brian S. O'Neill
  */
-// FIXME: Only supports "row" type range. Need to support "range" and "groups" too.
 abstract class WindowFunction extends FunctionApplier.Grouped {
     /**
      * Defines a window frame specification.
      *
-     * @param argName "rows", "range", or "groups"
+     * @param argName "rows", "groups", or "range"
      * @param expr must have a Range type
      */
     record Frame(String argName, Expr expr) {
@@ -64,7 +63,23 @@ abstract class WindowFunction extends FunctionApplier.Grouped {
         boolean includesCurrent() {
             return expr.isRangeWithCurrent();
         }
+
+        private int mode() {
+            return switch (argName) {
+                case "rows" -> MODE_ROWS; case "groups" -> MODE_GROUPS; case "range" -> MODE_RANGE;
+                default -> throw new IllegalStateException();
+            };
+        }
     }
+
+    private static final int MODE_ROWS = 1, MODE_GROUPS = 2, MODE_RANGE = 3;
+
+    // Defines the default ValueBuffer and WindowBuffer capacity when a more accurate capacity
+    // cannot be determined.
+    private static final int DEFAULT_CAPACITY = WindowBuffer.DEFAULT_MIN_CAPACITY;
+
+    // The estimated group size to use when using calculating buffer capacity for MODE_GROUPS.
+    private static final int GROUP_SIZE = 4;
 
     private final Type mValueType;
     private final Type mOriginalType;
@@ -76,9 +91,12 @@ abstract class WindowFunction extends FunctionApplier.Grouped {
     // Is set if the range start/end is a compile-time constant.
     private Long mStartConstant, mEndConstant;
 
-    // References the start/end of the frame range. Is null if start/end is compile-constant.
-    // The field type is long when the start/end is a runtime constant, and is a
-    // ValueBuffer.OfLong when the start/end is variable.
+    private int mMode;
+
+    // References the start/end of the range. Is null if start/end is compile-constant. The
+    // field type is long when the start/end is a runtime constant, and is a ValueBuffer.OfLong
+    // when the start/end is variable.
+    // FIXME: Type must be different when using MODE_RANGE.
     private String mStartFieldName, mEndFieldName;
 
     // References a WindowBuffer instance.
@@ -86,6 +104,15 @@ abstract class WindowFunction extends FunctionApplier.Grouped {
 
     // Tracks the number of remaining values that the step method must produce.
     private String mRemainingFieldName;
+
+    // Is used by MODE_GROUPS and MODE_RANGE to determine if enough rows have been accumulated
+    // before finding the group or range end position.
+    private String mCheckAmountFieldName;
+
+    // Is used by MODE_GROUPS and MODE_RANGE when the check method has found the window buffer
+    // end position. When uninitialized, the value is Long.MAX_VALUE, which is never returned
+    // by the WindowBuffer find end methods.
+    private String mFoundEndFieldName;
 
     /**
      * @param resultType the result type produced by the function
@@ -147,7 +174,7 @@ abstract class WindowFunction extends FunctionApplier.Grouped {
                 Type valueType = BasicType.make(long.class, Type.TYPE_LONG);
                 Class<?> bufferType = ValueBuffer.forType(valueType);
                 fieldName = context.newWorkField(bufferType).final_().name();
-                mm.field(fieldName).set(mm.new_(bufferType, 8));
+                mm.field(fieldName).set(mm.new_(bufferType, DEFAULT_CAPACITY));
             }
             mStartFieldName = fieldName;
         }
@@ -161,7 +188,7 @@ abstract class WindowFunction extends FunctionApplier.Grouped {
                 Type valueType = BasicType.make(long.class, Type.TYPE_LONG);
                 Class<?> bufferType = ValueBuffer.forType(valueType);
                 fieldName = context.newWorkField(bufferType).final_().name();
-                mm.field(fieldName).set(mm.new_(bufferType, 8));
+                mm.field(fieldName).set(mm.new_(bufferType, DEFAULT_CAPACITY));
             }
             mEndFieldName = fieldName;
         }
@@ -170,13 +197,37 @@ abstract class WindowFunction extends FunctionApplier.Grouped {
         FieldMaker bufferFieldMaker = context.newWorkField(bufferType);
         mBufferFieldName = bufferFieldMaker.name();
 
-        if (mStartConstant != null && mEndConstant != null) {
+        mMode = isOpenStart() && isOpenEnd() ? MODE_ROWS : mFrame.mode();
+
+        if (mMode == MODE_RANGE) {
+            bufferFieldMaker.final_();
+            mm.field(mBufferFieldName).set(mm.new_(bufferType, DEFAULT_CAPACITY));
+        } else if (mStartConstant != null && mEndConstant != null) {
             bufferFieldMaker.final_();
             int capacity = WindowBuffer.capacityFor(mStartConstant, mEndConstant);
+            if (mMode == MODE_GROUPS) {
+                capacity = WindowBuffer.clampCapacity(capacity * (long) GROUP_SIZE);
+            }
             mm.field(mBufferFieldName).set(mm.new_(bufferType, capacity));
         }
 
         mRemainingFieldName = context.newWorkField(long.class).name();
+
+        if (mMode != MODE_ROWS) {
+            mCheckAmountFieldName = context.newWorkField(int.class).name();
+            var checkField = mm.field(mCheckAmountFieldName);
+            if (mMode != MODE_GROUPS || !mIsEndConstant) {
+                checkField.set(DEFAULT_CAPACITY);
+            } else if (mEndConstant != null) {
+                checkField.set(WindowBuffer.capacityForGroup(GROUP_SIZE, mEndConstant));
+            } else {
+                var capacityVar = mm.var(WindowBuffer.class)
+                    .invoke("capacityFor", GROUP_SIZE, mm.field(mEndFieldName));
+                checkField.set(capacityVar);
+            }
+
+            mFoundEndFieldName = context.newWorkField(long.class).name();
+        }
     }
 
     @Override
@@ -195,10 +246,15 @@ abstract class WindowFunction extends FunctionApplier.Grouped {
 
         var bufferField = mm.field(mBufferFieldName);
 
-        if (mStartConstant == null || mEndConstant == null) {
+        if (mMode != MODE_RANGE && (mStartConstant == null || mEndConstant == null)) {
             var startVar = mFrame.evalRangeStart(context);
             var endVar = mFrame.evalRangeEnd(context);
-            var capacityVar = mm.var(WindowBuffer.class).invoke("capacityFor", startVar, endVar);
+            var windowBufferVar = mm.var(WindowBuffer.class);
+            var capacityVar = windowBufferVar.invoke("capacityFor", startVar, endVar);
+            if (mMode == MODE_GROUPS) {
+                capacityVar = windowBufferVar.invoke
+                    ("clampCapacity", capacityVar.cast(long.class).mul(GROUP_SIZE));
+            }
             Class<?> bufferType = bufferField.classType();
             bufferField.set(mm.new_(bufferType, capacityVar));
         }
@@ -259,10 +315,11 @@ abstract class WindowFunction extends FunctionApplier.Grouped {
 
         if (!isOpenEnd()) {
             if (mEndConstant == null || mEndConstant < 0) {
-                // Prevent the remaining amount from decrementing below zero. This check isn't
-                // necessary when the end is known to always include the current row because
-                // then the buffer ready check is sufficient. As long as there's something in
-                // the buffer, then the remaining amount must be at least one.
+                // The current row isn't guaranteed to be included, so prevent the remaining
+                // amount from decrementing below zero. This check isn't necessary when the end
+                // is known to always include the current row because then the buffer ready
+                // check is sufficient. As long as there's something in the buffer, then the
+                // remaining amount must be at least one.
                 notReady = mm.label();
                 remainingVar.and(~(1L << 63)).ifEq(0, notReady);
             }
@@ -274,8 +331,44 @@ abstract class WindowFunction extends FunctionApplier.Grouped {
                 end = mm.field(mEndFieldName).invoke("get", 0);
             }
 
-            // Is ready when the buffer end is greater than or equal to the desired end.
-            mm.field(mBufferFieldName).invoke("end").ifGe(end, ready);
+            var bufferVar = mm.field(mBufferFieldName);
+            var bufferEndVar = bufferVar.invoke("end");
+
+            if (mMode == MODE_ROWS) {
+                // Is ready when the buffer end is greater than or equal to the desired end.
+                bufferEndVar.ifGe(end, ready);
+            } else {
+                // First check if enough rows have been accumulated.
+                var checkField = mm.field(mCheckAmountFieldName);
+                final var checkVar = checkField.get();
+                if (notReady == null) {
+                    notReady = mm.label();
+                }
+                bufferEndVar.ifLt(checkVar, notReady);
+
+                final var foundEndVar = mm.var(long.class);
+
+                if (mMode == MODE_GROUPS) {
+                    foundEndVar.set(bufferVar.invoke("findGroupEnd", end));
+                } else {
+                    assert mMode == MODE_RANGE;
+                    // FIXME: range asc and desc variants
+                    throw new UnsupportedOperationException("FIXME");
+                }
+
+                // If the found end is greater than or equal to the buffer end, then there's no
+                // guarantee that the end of the group has been reached.
+                Label needsMore = mm.label();
+                foundEndVar.ifGe(bufferEndVar, needsMore);
+                mm.field(mFoundEndFieldName).set(foundEndVar);
+                ready.goto_();
+
+                needsMore.here();
+                // Expand the check amount for the next time.
+                checkVar.set(checkVar.shl(1));
+                checkVar.ifLe(0, () -> checkVar.set(Integer.MAX_VALUE));
+                checkField.set(checkVar);
+            }
         }
 
         if (notReady != null) {
@@ -293,12 +386,22 @@ abstract class WindowFunction extends FunctionApplier.Grouped {
 
         var bufferVar = mm.field(mBufferFieldName).get();
 
-        final Object start, end;
+        Object start, end;
 
         if (mIsStartConstant) {
             start = mStartConstant != null ? mStartConstant : mm.field(mStartFieldName);
         } else {
             start = mm.field(mStartFieldName).invoke("removeFirst");
+        }
+
+        if (mMode != MODE_ROWS && !isOpenStart()) {
+            if (mMode == MODE_GROUPS) {
+                start = bufferVar.invoke("findGroupStart", start);
+            } else {
+                assert mMode == MODE_RANGE;
+                // FIXME: range asc and desc variants
+                throw new UnsupportedOperationException("FIXME");
+             }
         }
 
         if (mIsEndConstant) {
@@ -307,11 +410,38 @@ abstract class WindowFunction extends FunctionApplier.Grouped {
             end = mm.field(mEndFieldName).invoke("removeFirst");
         }
 
+        if (mMode != MODE_ROWS && !isOpenEnd()) {
+            var foundEndField = mm.field(mFoundEndFieldName); 
+            var endVar = foundEndField.get();
+            Label notFound = mm.label();
+            endVar.ifEq(Long.MAX_VALUE, notFound);
+            foundEndField.set(Long.MAX_VALUE);
+            Label cont = mm.label().goto_();
+
+            notFound.here();
+
+            if (mMode == MODE_GROUPS) {
+                endVar.set(bufferVar.invoke("findGroupEnd", end));
+            } else {
+                assert mMode == MODE_RANGE;
+                // FIXME: range asc and desc variants
+                throw new UnsupportedOperationException("FIXME");
+            }
+
+            cont.here();
+            end = endVar;
+        }
+
+        // FIXME: For MODE_GROUPS, if the range is constant, and the buffer value is the same
+        // as before, then no need to compute a new target value.
         var resultVar = compute(bufferVar, start, end);
 
         mm.field(mRemainingFieldName).inc(-1);
 
         if (isOpenStart() || !mIsStartConstant) {
+            bufferVar.invoke("advance");
+        } else if (mMode != MODE_ROWS) {
+            bufferVar.invoke("trimStart", start);
             bufferVar.invoke("advance");
         } else if (mStartConstant != null && mStartConstant >= 0) {
             bufferVar.invoke("advanceAndRemove");

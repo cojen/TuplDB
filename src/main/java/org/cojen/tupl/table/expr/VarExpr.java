@@ -147,7 +147,13 @@ public final class VarExpr extends Expr implements Named {
 
     @Override
     protected Variable doMakeEval(EvalContext context, EvalContext.ResultRef resultRef) {
-        return context.findLocalVar(name()).get();
+        Variable localVar = context.findLocalVar(name());
+        if (localVar == null) {
+            // Usually the assignment should have already been evaluated, but do it now.
+            localVar = mAssign.makeEval(context);
+            assert context.findLocalVar(name()) != null;
+        }
+        return localVar.get();
     }
 
     @Override
