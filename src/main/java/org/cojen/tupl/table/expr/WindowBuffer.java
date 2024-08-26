@@ -154,7 +154,8 @@ public abstract class WindowBuffer<V> extends ValueBuffer<V> {
      *
      * @param delta Number of groups to skip relative to the current row. The delta is
      * typically less than or equal to zero, but any value is allowed.
-     * @return a frame position relative to the current row (which is zero)
+     * @return a frame position relative to the current row (which is zero), or MAX_VALUE if
+     * out of bounds (effective range is empty)
      */
     public abstract long findGroupStart(long delta);
 
@@ -167,7 +168,8 @@ public abstract class WindowBuffer<V> extends ValueBuffer<V> {
      *
      * @param delta Number of groups to skip relative to the current row. The delta is
      * typically greater than or equal to zero, but any value is allowed.
-     * @return a frame position relative to the current row (which is zero)
+     * @return a frame position relative to the current row (which is zero), or MIN_VALUE if
+     * out of bounds (effective range is empty)
      */
     public abstract long findGroupEnd(long delta);
 
@@ -619,7 +621,7 @@ public abstract class WindowBuffer<V> extends ValueBuffer<V> {
         if (forStart) {
             deltaVar.ifLe(0, () -> {
                 Label begin = mm.label();
-                makeFindGroupPrev(posVar, startVar, begin, valueVar, prevVar);
+                makeFindGroupPrev(posVar, startVar, begin, valueVar, prevVar, forStart);
                 /*
                   delta++;
                   if (delta > 0) {
@@ -635,7 +637,7 @@ public abstract class WindowBuffer<V> extends ValueBuffer<V> {
             () -> { // else
                 var endVar = mm.field("end").get();
                 Label begin = mm.label();
-                makeFindGroupNext(posVar, startVar, endVar, begin, valueVar, nextVar);
+                makeFindGroupNext(posVar, startVar, endVar, begin, valueVar, nextVar, forStart);
                 /*
                   delta--;
                   if (delta <= 0) {
@@ -652,7 +654,7 @@ public abstract class WindowBuffer<V> extends ValueBuffer<V> {
             deltaVar.ifGe(0, () -> {
                 var endVar = mm.field("end").get();
                 Label begin = mm.label();
-                makeFindGroupNext(posVar, startVar, endVar, begin, valueVar, nextVar);
+                makeFindGroupNext(posVar, startVar, endVar, begin, valueVar, nextVar, forStart);
                 /*
                   delta--;
                   if (delta < 0) {
@@ -667,7 +669,7 @@ public abstract class WindowBuffer<V> extends ValueBuffer<V> {
             },
             () -> { // else
                 Label begin = mm.label();
-                makeFindGroupPrev(posVar, startVar, begin, valueVar, prevVar);
+                makeFindGroupPrev(posVar, startVar, begin, valueVar, prevVar, forStart);
                 /*
                   delta++;
                   if (delta >= 0) {
@@ -691,21 +693,22 @@ public abstract class WindowBuffer<V> extends ValueBuffer<V> {
      * @param prevVar type is V
      */
     private static void makeFindGroupPrev(Variable posVar, Variable startVar,
-                                          Label begin, Variable valueVar, Variable prevVar)
+                                          Label begin, Variable valueVar, Variable prevVar,
+                                          boolean forStart)
     {
         MethodMaker mm = posVar.methodMaker();
 
         /*
           long index = pos - start;
           if (index <= 0) {
-              return start;
+              return forStart ? start : Long.MIN_VALUE;
           }
           value = get((int) index);
           begin: while (true) {
               pos--;
               index = pos - start;
               if (index < 0) {
-                  return start;
+                  return forStart ? start : Long.MIN_VALUE;
               }
               prev = get((int) index);
               if (prev == value) {
@@ -717,7 +720,7 @@ public abstract class WindowBuffer<V> extends ValueBuffer<V> {
         var indexVar = posVar.sub(startVar);
         Label inBounds = mm.label();
         indexVar.ifGt(0, inBounds);
-        mm.return_(startVar);
+        mm.return_(forStart ? startVar : Long.MIN_VALUE);
         inBounds.here();
         valueVar.set(mm.invoke("get", indexVar.cast(int.class)));
         begin.here();
@@ -725,7 +728,7 @@ public abstract class WindowBuffer<V> extends ValueBuffer<V> {
         indexVar.set(posVar.sub(startVar));
         inBounds = mm.label();
         indexVar.ifGe(0, inBounds);
-        mm.return_(startVar);
+        mm.return_(forStart ? startVar : Long.MIN_VALUE);
         inBounds.here();
         prevVar.set(mm.invoke("get", indexVar.cast(int.class)));
         makeFindGroupCompare(prevVar, valueVar, begin);
@@ -739,19 +742,20 @@ public abstract class WindowBuffer<V> extends ValueBuffer<V> {
      * @param nextVar type is V
      */
     private static void makeFindGroupNext(Variable posVar, Variable startVar, Variable endVar,
-                                          Label begin, Variable valueVar, Variable nextVar)
+                                          Label begin, Variable valueVar, Variable nextVar,
+                                          boolean forStart)
     {
         MethodMaker mm = posVar.methodMaker();
 
         /*
           if (pos >= end) {
-              return end;
+              return forStart ? Long.MAX_VALUE : end;
           }
           V value = get((int) (pos - start));
           begin: while (true) {
               pos++;
               if (pos > end) {
-                  return end;
+                  return forStart ? Long.MAX_VALUE : end;
               }
               V next = get((int) (pos - start));
               if (next == value) {
@@ -762,14 +766,14 @@ public abstract class WindowBuffer<V> extends ValueBuffer<V> {
 
         Label inBounds = mm.label();
         posVar.ifLt(endVar, inBounds);
-        mm.return_(endVar);
+        mm.return_(forStart ? Long.MAX_VALUE : endVar);
         inBounds.here();
         valueVar.set(mm.invoke("get", posVar.sub(startVar).cast(int.class)));
         begin.here();
         posVar.inc(1);
         inBounds = mm.label();
         posVar.ifLe(endVar, inBounds);
-        mm.return_(endVar);
+        mm.return_(forStart ? Long.MAX_VALUE : endVar);
         inBounds.here();
         nextVar.set(mm.invoke("get", posVar.sub(startVar).cast(int.class)));
         makeFindGroupCompare(nextVar, valueVar, begin);

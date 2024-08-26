@@ -995,20 +995,25 @@ public class WindowBufferTest {
         assertEquals(3.0, frameGetMethod.invoke(buffer, 1L));
 
         {
-            int[] starts = {-4, -4, -3, -1, 0, 2, 3, 5, 5};
+            long[] starts = {-4, -4, -3, -1, 0, 2, 3, 5, Long.MAX_VALUE};
             double[] values = {1.5, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5, 4.5};
 
             for (int i = -4; i <= 4; i++) {
                 long pos = (long) findStartMethod.invoke(buffer, (long) i);
-                int start = starts[i + 4];
+                long start = starts[i + 4];
                 assertEquals(start, pos);
+
+                if (start == Long.MAX_VALUE) {
+                    continue;
+                }
+
                 double value = (double) frameGetMethod.invoke(buffer, pos);
                 assertTrue(values[i + 4] == value);
 
                 if (trim) {
                     trimStartMethod.invoke(buffer, pos);
 
-                    int expect = switch(start) {
+                    int expect = switch((int) start) {
                         case -4 -> 10;
                         case -3 -> 9;
                         case -1 -> 7;
@@ -1022,12 +1027,18 @@ public class WindowBufferTest {
         }
 
         {
-            long[] ends = {5, 5, 4, 2, 1, -1, -2, -4, -4};
+            long[] ends = {5, 5, 4, 2, 1, -1, -2, -4, Long.MIN_VALUE};
             double[] values = {4.5, 4.5, 4.0, 3.5, 3.0, 2.5, 2.0, 1.5, 1.5};
 
             for (int i = 4; i >= (trim ? 0 : -4); i--) {
                 long pos = (long) findEndMethod.invoke(buffer, (long) i);
+                long end = ends[4 - i];
                 assertEquals(ends[4 - i], pos);
+
+                if (end == Long.MIN_VALUE) {
+                    continue;
+                }
+
                 double value = (double) frameGetMethod.invoke(buffer, pos);
                 assertTrue(values[4 - i] == value);
             }
