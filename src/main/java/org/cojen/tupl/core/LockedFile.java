@@ -24,6 +24,7 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 
+import java.nio.channels.ClosedChannelException;
 import java.nio.channels.FileLock;
 import java.nio.channels.OverlappingFileLockException;
 
@@ -87,8 +88,13 @@ final class LockedFile implements Closeable {
     @Override
     public void close() throws IOException {
         if (mLock != null) {
-            mLock.close();
+            try {
+                mLock.close();
+            } catch (ClosedChannelException e) {
+                // Ignore.
+            }
         }
+
         if (mRaf != null) {
             mRaf.close();
         }
