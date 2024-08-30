@@ -149,6 +149,30 @@ final class LocalDatabase extends CoreDatabase {
         return count <= Integer.MAX_VALUE ? (int) count : Integer.MAX_VALUE;
     }
 
+    /*
+
+    The database header is stored in the "extra data" section as defined by StoredPageDb,
+    which starts at offset 256 and is limited to 256 bytes in size.
+
+    +------------------------------------------+
+    | StoredPageDb header (256 bytes)          |
+    +------------------------------------------+
+    | int:  encoding version                   |
+    | long: root page id                       |
+    | long: master undo log page id            |
+    | long: transaction id                     |
+    | long: checkpoint number                  |
+    | long: redo transaction id                |
+    | long: redo position                      |
+    | long: replication encoding version       |
+    +------------------------------------------+
+    | reserved (196 bytes)                     |
+    +------------------------------------------+
+
+    The reserved section is used by CipherCrypto when encryption is enabled.
+
+    */
+
     private static final int I_ENCODING_VERSION        = 0;
     private static final int I_ROOT_PAGE_ID            = I_ENCODING_VERSION + 4;
     private static final int I_MASTER_UNDO_LOG_PAGE_ID = I_ROOT_PAGE_ID + 8;
