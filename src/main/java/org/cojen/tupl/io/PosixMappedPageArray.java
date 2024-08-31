@@ -61,17 +61,7 @@ class PosixMappedPageArray extends MappedPageArray {
             long mappingSize = pageSize * pageCount;
             long addr = PosixFileIO.mmapFd(mappingSize, prot, flags, -1, 0);
 
-            if (mappingSize >= (1L << 30) && Platform.isLinux()) {
-                try {
-                    PosixFileIO.madvisePtr(addr, mappingSize, 14); // 14 = MADV_HUGEPAGE
-                } catch (IOException e) {
-                    if (listener != null) {
-                        listener.notify
-                            (EventType.CACHE_INIT_INFO,
-                             "Unable to allocate using transparent huge pages");
-                    }
-                }
-            }
+            hugePages(addr, mappingSize, listener);
 
             setMappingPtr(addr);
 
@@ -135,6 +125,12 @@ class PosixMappedPageArray extends MappedPageArray {
             if (options.contains(OpenOption.RANDOM_ACCESS)) {
                 PosixFileIO.madvisePtr(addr, mappingSize, 1); // 1 = POSIX_MADV_RANDOM
             }
+
+            if (options.contains(OpenOption.NON_DURABLE)) {
+                // Only works when /sys/kernel/mm/transparent_hugepage/shmem_enabled is set to
+                // 'advise' or some other appropriate value.
+                hugePages(addr, mappingSize, listener);
+            }
         } catch (IOException e) {
             try {
                 PosixFileIO.closeFd(fd);
@@ -147,6 +143,20 @@ class PosixMappedPageArray extends MappedPageArray {
         mFileDescriptor = fd;
 
         setMappingPtr(addr);
+    }
+
+    private static void hugePages(long addr, long mappingSize, EventListener listener) {
+        if (mappingSize >= (1L << 30) && Platform.isLinux()) {
+            try {
+                PosixFileIO.madvisePtr(addr, mappingSize, 14); // 14 = MADV_HUGEPAGE
+            } catch (IOException e) {
+                if (listener != null) {
+                    listener.notify
+                        (EventType.CACHE_INIT_INFO,
+                         "Unable to allocate using transparent huge pages");
+                }
+            }
+        }
     }
 
     @Override
