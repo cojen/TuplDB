@@ -126,11 +126,13 @@ class PosixMappedPageArray extends MappedPageArray {
                 PosixFileIO.madvisePtr(addr, mappingSize, 1); // 1 = POSIX_MADV_RANDOM
             }
 
+            /* Performance appears to be worse with this option.
             if (options.contains(OpenOption.NON_DURABLE)) {
                 // Only works when /sys/kernel/mm/transparent_hugepage/shmem_enabled is set to
                 // 'advise' or some other appropriate value.
                 hugePages(addr, mappingSize, listener);
             }
+            */
         } catch (IOException e) {
             try {
                 PosixFileIO.closeFd(fd);
