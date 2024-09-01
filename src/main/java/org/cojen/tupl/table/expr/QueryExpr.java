@@ -81,12 +81,22 @@ public abstract sealed class QueryExpr extends RelationExpr
             // The loop could just stop when groupBy is reached, but going further allows
             // ordering within the group to be examined too. Stop as soon as a projection is
             // reached which performs an actual grouping operation.
-            for (int i=0; i<projection.size(); i++) {
+
+            int limit = groupBy;
+
+            for (int i=groupBy; i<projection.size(); i++) {
                 ProjExpr pe = projection.get(i);
                 if (pe.isGrouping()) {
                     assert i >= groupBy;
                     break;
                 }
+                if (pe.hasOrderBy()) {
+                    limit = i + 1;
+                }
+            }
+
+            for (int i=0; i<limit; i++) {
+                ProjExpr pe = projection.get(i);
 
                 Expr wrapped = pe.wrapped();
                 if (wrapped instanceof ColumnExpr) {
