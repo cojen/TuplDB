@@ -453,12 +453,12 @@ public class WindowFunctionTest {
         }
 
         {
-            String query = "{; q = 1, ~b = random()} iif(b == 0, true, true)";
+            String query = "{; q = 1, b = random()} iif(b == 0, true, true)";
 
             int num = 0;
             try (Scanner<Row> s = mTable.derive(query).newScanner(null)) {
                 for (Row row = s.row(); row != null; row = s.step(row)) {
-                    assertEquals("{q=1}", row.toString());
+                    assertTrue(row.toString().contains(", q=1}"));
                     num++;
                 }
             }

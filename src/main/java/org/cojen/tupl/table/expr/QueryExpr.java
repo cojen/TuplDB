@@ -70,7 +70,7 @@ public abstract sealed class QueryExpr extends RelationExpr
             }
         }
 
-        groupByColumns: if (groupBy > 0) {
+        groupByColumns: if (groupBy >= 0) {
             // The group-by projection expressions can only be simple column references. If
             // not, create an intermediate mapping that converts them.
 
