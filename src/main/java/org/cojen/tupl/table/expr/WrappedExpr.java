@@ -64,6 +64,11 @@ abstract sealed class WrappedExpr extends Expr
     }
 
     @Override
+    public final boolean isOrderDependent() {
+        return mExpr.isOrderDependent();
+    }
+
+    @Override
     public final boolean isGrouping() {
         return mExpr.isGrouping();
     }

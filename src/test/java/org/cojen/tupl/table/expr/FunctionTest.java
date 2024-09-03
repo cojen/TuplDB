@@ -152,7 +152,7 @@ public class FunctionTest {
             Parser.parse(IdentityTable.THE, "{c = coalesce()}");
             fail();
         } catch (QueryException e) {
-            assertTrue(e.getMessage().contains("at least 1 argument"));
+            assertTrue(e.getMessage().contains("at least 1 unnamed argument"));
         }
 
         try {
@@ -195,7 +195,7 @@ public class FunctionTest {
             Parser.parse(IdentityTable.THE, "{v = iif(1)}");
             fail();
         } catch (QueryException e) {
-            assertTrue(e.getMessage().contains("exactly 3 arguments"));
+            assertTrue(e.getMessage().contains("exactly 3 unnamed arguments"));
         }
 
         try {
@@ -240,7 +240,7 @@ public class FunctionTest {
             Parser.parse(IdentityTable.THE, "{v = random(1, 2, 3)}");
             fail();
         } catch (QueryException e) {
-            assertTrue(e.getMessage().contains("at most 2 arguments"));
+            assertTrue(e.getMessage().contains("at most 2 unnamed arguments"));
         }
 
         try {
@@ -303,7 +303,7 @@ public class FunctionTest {
             Parser.parse(IdentityTable.THE, "{v = count(1, 2)}");
             fail();
         } catch (QueryException e) {
-            assertTrue(e.getMessage().contains("at most 1 argument"));
+            assertTrue(e.getMessage().contains("at most 1 unnamed argument"));
         }
 
         try {
@@ -342,7 +342,7 @@ public class FunctionTest {
             Parser.parse(IdentityTable.THE, "{v = first()}");
             fail();
         } catch (QueryException e) {
-            assertTrue(e.getMessage().contains("exactly 1 argument"));
+            assertTrue(e.getMessage().contains("exactly 1 unnamed argument"));
         }
 
         try {
@@ -385,7 +385,7 @@ public class FunctionTest {
             Parser.parse(IdentityTable.THE, "{v = last()}");
             fail();
         } catch (QueryException e) {
-            assertTrue(e.getMessage().contains("exactly 1 argument"));
+            assertTrue(e.getMessage().contains("exactly 1 unnamed argument"));
         }
 
         try {
@@ -428,7 +428,7 @@ public class FunctionTest {
             Parser.parse(IdentityTable.THE, "{v = min()}");
             fail();
         } catch (QueryException e) {
-            assertTrue(e.getMessage().contains("exactly 1 argument"));
+            assertTrue(e.getMessage().contains("exactly 1 unnamed argument"));
         }
 
         try {
@@ -483,7 +483,7 @@ public class FunctionTest {
             Parser.parse(IdentityTable.THE, "{v = max()}");
             fail();
         } catch (QueryException e) {
-            assertTrue(e.getMessage().contains("exactly 1 argument"));
+            assertTrue(e.getMessage().contains("exactly 1 unnamed argument"));
         }
 
         try {
@@ -632,7 +632,7 @@ public class FunctionTest {
             Parser.parse(IdentityTable.THE, "{v = sum()}");
             fail();
         } catch (QueryException e) {
-            assertTrue(e.getMessage().contains("exactly 1 argument"));
+            assertTrue(e.getMessage().contains("exactly 1 unnamed argument"));
         }
 
         try {

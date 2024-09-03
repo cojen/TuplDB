@@ -27,6 +27,8 @@ import org.cojen.maker.FieldMaker;
 import org.cojen.maker.MethodMaker;
 import org.cojen.maker.Variable;
 
+import org.cojen.tupl.Ordering;
+
 import org.cojen.tupl.table.Converter;
 
 import static org.cojen.tupl.table.expr.Type.*;
@@ -41,9 +43,10 @@ abstract class WindowFunction extends FunctionApplier.Grouped {
      * Defines a window frame specification.
      *
      * @param argName "rows", "groups", or "range"
-     * @param expr must have a Range type
+     * @param expr must have a Range type (not to be confused with MODE_RANGE)
+     * @param ordering the expected value ordering, which is needed by MODE_RANGE
      */
-    record Frame(String argName, Expr expr) {
+    record Frame(String argName, Expr expr, Ordering ordering) {
         LazyValue rangeVal(GroupContext context) {
             return context.namedArgs().get(argName);
         }
@@ -70,6 +73,18 @@ abstract class WindowFunction extends FunctionApplier.Grouped {
                 default -> throw new IllegalStateException();
             };
         }
+
+        private boolean isOrderDependent() {
+            return ordering != Ordering.UNSPECIFIED && mode() == MODE_RANGE;
+        }
+
+        private String orderStr() {
+            return switch (ordering) {
+                case ASCENDING -> "Asc";
+                case DESCENDING -> "Desc";
+                default -> throw new AssertionError();
+            };
+        }
     }
 
     private static final int MODE_ROWS = 1, MODE_GROUPS = 2, MODE_RANGE = 3;
@@ -89,6 +104,7 @@ abstract class WindowFunction extends FunctionApplier.Grouped {
     private boolean mIsStartConstant, mIsEndConstant;
 
     // Is set if the range start/end is a compile-time constant.
+    // FIXME: Type might be different when using MODE_RANGE.
     private Long mStartConstant, mEndConstant;
 
     private int mMode;
@@ -96,7 +112,7 @@ abstract class WindowFunction extends FunctionApplier.Grouped {
     // References the start/end of the range. Is null if start/end is compile-constant. The
     // field type is long when the start/end is a runtime constant, and is a ValueBuffer.OfLong
     // when the start/end is variable.
-    // FIXME: Type must be different when using MODE_RANGE.
+    // FIXME: Type might be different when using MODE_RANGE.
     private String mStartFieldName, mEndFieldName;
 
     // References a WindowBuffer instance.
@@ -127,12 +143,18 @@ abstract class WindowFunction extends FunctionApplier.Grouped {
     }
 
     @Override
+    public final boolean isOrderDependent() {
+        return mFrame.isOrderDependent();
+    }
+
+    @Override
     public final boolean hasNamedParameters() {
         return true;
     }
 
     @Override
     public FunctionApplier validate(List<Expr> args, Map<String, Expr> namedArgs,
+                                    Map<String, ProjExpr> projectionMap,
                                     Consumer<String> reasons)
     {
         return this;
@@ -227,6 +249,7 @@ abstract class WindowFunction extends FunctionApplier.Grouped {
             }
 
             mFoundEndFieldName = context.newWorkField(long.class).name();
+            mm.field(mFoundEndFieldName).set(Long.MAX_VALUE);
         }
     }
 
@@ -346,14 +369,14 @@ abstract class WindowFunction extends FunctionApplier.Grouped {
                 }
                 bufferEndVar.ifLt(checkVar, notReady);
 
-                final var foundEndVar = mm.var(long.class);
+                final Variable foundEndVar;
 
                 if (mMode == MODE_GROUPS) {
-                    foundEndVar.set(bufferVar.invoke("findGroupEnd", end));
+                    foundEndVar = bufferVar.invoke("findGroupEnd", end);
                 } else {
                     assert mMode == MODE_RANGE;
-                    // FIXME: range asc and desc variants
-                    throw new UnsupportedOperationException("FIXME");
+                    // FIXME: pass last endPos if delta is constant
+                    foundEndVar = bufferVar.invoke("findRangeEnd" + mFrame.orderStr(), end, 0L);
                 }
 
                 // If the found end is greater than or equal to the buffer end, then there's no
@@ -399,9 +422,9 @@ abstract class WindowFunction extends FunctionApplier.Grouped {
                 start = bufferVar.invoke("findGroupStart", start);
             } else {
                 assert mMode == MODE_RANGE;
-                // FIXME: range asc and desc variants
-                throw new UnsupportedOperationException("FIXME");
-             }
+                // FIXME: pass last startPos if delta is constant
+                start = bufferVar.invoke("findRangeStart" + mFrame.orderStr(), start, 0L);
+            }
         }
 
         if (mIsEndConstant) {
@@ -424,8 +447,8 @@ abstract class WindowFunction extends FunctionApplier.Grouped {
                 endVar.set(bufferVar.invoke("findGroupEnd", end));
             } else {
                 assert mMode == MODE_RANGE;
-                // FIXME: range asc and desc variants
-                throw new UnsupportedOperationException("FIXME");
+                // FIXME: pass last endPos if delta is constant
+                endVar.set(bufferVar.invoke("findRangeEnd" + mFrame.orderStr(), end, 0L));
             }
 
             cont.here();

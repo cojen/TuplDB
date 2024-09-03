@@ -135,6 +135,11 @@ final class GroupedQueryExpr extends QueryExpr {
     }
 
     @Override
+    public boolean isOrderDependent() {
+        return super.isOrderDependent() || (mFilter != null && mFilter.isOrderDependent());
+    }
+
+    @Override
     public boolean isGrouping() {
         return true;
     }
@@ -159,6 +164,20 @@ final class GroupedQueryExpr extends QueryExpr {
         return null;
     }
 
+    // Note that the regular isOrderDependent method isn't called, because it also tests the
+    // "from" relation.
+    private boolean isGroupByOrderDependent() {
+        if (mProjection != null) {
+            for (Expr expr : mProjection) {
+                if (expr.isOrderDependent()) {
+                    return true;
+                }
+            }
+        }
+
+        return mFilter != null && mFilter.isOrderDependent();
+    }
+
     private static final byte K_TYPE = KeyEncoder.allocType();
 
     @Override
@@ -166,6 +185,10 @@ final class GroupedQueryExpr extends QueryExpr {
         if (enc.encode(this, K_TYPE)) {
             super.doEncodeKey(enc);
             enc.encodeInt(mNumGroupBy);
+            // If calling a function which depends on ordering, then the order spec must be
+            // included in the key to because the generated code will differ.
+            String spec = isGroupByOrderDependent() ? mGroupOrderBySpec : null;
+            enc.encodeString(spec);
         }
     }
 

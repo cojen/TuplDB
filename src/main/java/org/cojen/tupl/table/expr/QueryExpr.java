@@ -26,6 +26,8 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 
+import java.util.function.Predicate;
+
 import org.cojen.tupl.table.ColumnInfo;
 import org.cojen.tupl.table.OrderBy;
 import org.cojen.tupl.table.RowInfo;
@@ -480,74 +482,71 @@ public abstract sealed class QueryExpr extends RelationExpr
 
     @Override
     public boolean isPureFunction() {
-        if (!mFrom.isPureFunction()) {
+        // Note that mRowFilter isn't checked. The filter used by the UnmappedQueryExpr
+        // subclass never has ExprFilters, and so it's always pure. The MappedQueryExpr
+        // subclass overrides this method and checks the filter expression too.
+
+        return isTestF(Expr::isPureFunction);
+    }
+
+    @Override
+    public boolean isOrderDependent() {
+        return isTestT(Expr::isOrderDependent);
+    }
+
+    @Override
+    public boolean isGrouping() {
+        return isTestT(Expr::isGrouping);
+    }
+
+    @Override
+    public boolean isAccumulating() {
+        return isTestT(Expr::isAccumulating);
+    }
+
+    @Override
+    public boolean isAggregating() {
+        return isTestT(Expr::isAggregating);
+    }
+
+    /**
+     * Tests the predicate against mFrom and mProjection, short-circuiting on true like an 'or'
+     * expression.
+     */
+    private boolean isTestT(Predicate<Expr> pred) {
+        if (pred.test(mFrom)) {
+            return true;
+        }
+
+        if (mProjection != null) {
+            for (Expr expr : mProjection) {
+                if (pred.test(expr)) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Tests the predicate against mFrom and mProjection, short-circuiting on false like an
+     * 'and' expression.
+     */
+    private boolean isTestF(Predicate<Expr> pred) {
+        if (!pred.test(mFrom)) {
             return false;
         }
 
         if (mProjection != null) {
             for (Expr expr : mProjection) {
-                if (!expr.isPureFunction()) {
+                if (!pred.test(expr)) {
                     return false;
                 }
             }
         }
 
-        // Note that mRowFilter isn't checked. The filter used by the UnmappedQueryExpr
-        // subclass never has ExprFilters, and so it's always pure. The MappedQueryExpr
-        // subclass overrides this method and checks the filter expression too.
-
         return true;
-    }
-
-    @Override
-    public boolean isGrouping() {
-        if (mFrom.isGrouping()) {
-            return true;
-        }
-
-        if (mProjection != null) {
-            for (Expr expr : mProjection) {
-                if (expr.isGrouping()) {
-                    return true;
-                }
-            }
-        }
-
-        return false;
-    }
-
-    @Override
-    public boolean isAccumulating() {
-        if (mFrom.isAccumulating()) {
-            return true;
-        }
-
-        if (mProjection != null) {
-            for (Expr expr : mProjection) {
-                if (expr.isAccumulating()) {
-                    return true;
-                }
-            }
-        }
-
-        return false;
-    }
-
-    @Override
-    public boolean isAggregating() {
-        if (mFrom.isAggregating()) {
-            return true;
-        }
-
-        if (mProjection != null) {
-            for (Expr expr : mProjection) {
-                if (expr.isAggregating()) {
-                    return true;
-                }
-            }
-        }
-
-        return false;
     }
 
     @Override

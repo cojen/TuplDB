@@ -122,6 +122,8 @@ public final class Parser {
 
     private Map<String, AssignExpr> mLocalVars;
 
+    private Map<String, ProjExpr> mProjectionMap;
+
     /**
      * @param paramDelta amount to add to each parameter number after being parsed
      * @param from can be null if not selecting from any table at all
@@ -269,9 +271,18 @@ public final class Parser {
             return Map.of();
         }
 
+        if (mProjectionMap != null) {
+            // A ProjExpr cannot directly or indirectly reference another ProjExpr. If this
+            // changes, some sort of stack would be needed to manage the nesting.
+            throw new AssertionError();
+        }
+
         Map<String, ProjExpr> map = new LinkedHashMap<>();
         Map<String, ColumnExpr> wildcards = null;
         Set<String> excluded = null;
+
+        // Used when making CallExpr instances.
+        mProjectionMap = map;
 
         while (true) {
             ProjExpr expr = parseProjExpr();
@@ -351,6 +362,8 @@ public final class Parser {
                 map.computeIfAbsent(name, n -> ProjExpr.make(pos, pos, ce, 0));
             });
         }
+
+        mProjectionMap = null;
 
         return map;
     }
@@ -842,7 +855,7 @@ public final class Parser {
             throw new QueryException("Unknown function: " + name, startPos, endPos);
         }
 
-        return CallExpr.make(startPos, endPos, name, args, namedArgs, applier);
+        return CallExpr.make(startPos, endPos, name, args, namedArgs, applier, mProjectionMap);
     }
 
     private ColumnExpr resolveColumn(List<Token> path, boolean allowWildcards) throws IOException {

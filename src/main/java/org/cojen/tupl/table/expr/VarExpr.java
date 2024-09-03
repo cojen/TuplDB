@@ -87,6 +87,11 @@ public final class VarExpr extends Expr implements Named {
     }
 
     @Override
+    public final boolean isOrderDependent() {
+        return mAssign.isOrderDependent();
+    }
+
+    @Override
     public boolean isNull() {
         return mAssign.isNull();
     }

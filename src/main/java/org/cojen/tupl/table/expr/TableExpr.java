@@ -105,6 +105,11 @@ public final class TableExpr extends RelationExpr {
     }
 
     @Override
+    public boolean isOrderDependent() {
+        return false;
+    }
+
+    @Override
     public boolean isGrouping() {
         return false;
     }

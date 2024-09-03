@@ -25,6 +25,7 @@ import java.util.Set;
 
 import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.function.Predicate;
 
 import org.cojen.maker.FieldMaker;
 import org.cojen.maker.MethodMaker;
@@ -42,7 +43,19 @@ public final class CallExpr extends Expr {
                                 String name, List<Expr> args, Map<String, Expr> namedArgs,
                                 FunctionApplier applier)
     {
-        return new CallExpr(startPos, endPos, name, args, namedArgs, applier);
+        return make(startPos, endPos, name, args, namedArgs, applier, null);
+    }
+
+    /**
+     * @param projectionMap a linked map of all the projection expressions encountered by the
+     * Parser so far within the current projection group; is used by WindowFunction for
+     * supporting the "range" frame mode which requires an explicit value ordering
+     */
+    public static CallExpr make(int startPos, int endPos,
+                                String name, List<Expr> args, Map<String, Expr> namedArgs,
+                                FunctionApplier applier, Map<String, ProjExpr> projectionMap)
+    {
+        return new CallExpr(startPos, endPos, name, args, namedArgs, applier, projectionMap);
     }
 
     private final String mName;
@@ -52,7 +65,7 @@ public final class CallExpr extends Expr {
 
     private CallExpr(int startPos, int endPos,
                      String name, List<Expr> args, Map<String, Expr> namedArgs,
-                     FunctionApplier applier)
+                     FunctionApplier applier, Map<String, ProjExpr> projectionMap)
     {
         super(startPos, endPos);
 
@@ -65,7 +78,7 @@ public final class CallExpr extends Expr {
             reasons.add("it doesn't define any named parameters");
             mApplier = null;
         } else {
-            mApplier = applier.validate(args, namedArgs, reasons::add);
+            mApplier = applier.validate(args, namedArgs, projectionMap, reasons::add);
         }
 
         mArgs = args;
@@ -126,17 +139,7 @@ public final class CallExpr extends Expr {
 
     @Override
     public boolean isPureFunction() {
-        if (!mApplier.isPureFunction()) {
-            return false;
-        }
-
-        for (Expr arg : mArgs) {
-            if (!arg.isPureFunction()) {
-                return false;
-            }
-        }
-
-        return true;
+        return mApplier.isPureFunction() && isTestF(Expr::isPureFunction);
     }
 
     @Override
@@ -146,62 +149,67 @@ public final class CallExpr extends Expr {
 
     @Override
     public boolean isConstant() {
-        if (!mApplier.isPureFunction()) {
-            return false;
+        return mApplier.isPureFunction() && isTestF(Expr::isConstant);
+    }
+
+    @Override
+    public boolean isOrderDependent() {
+        return mApplier.isOrderDependent() || isTestT(Expr::isOrderDependent);
+    }
+
+    @Override
+    public boolean isGrouping() {
+        return mApplier.isGrouping() || isTestT(Expr::isGrouping);
+    }
+
+    @Override
+    public boolean isAccumulating() {
+        return mApplier instanceof FunctionApplier.Accumulator || isTestT(Expr::isAccumulating);
+    }
+
+    @Override
+    public boolean isAggregating() {
+        return mApplier instanceof FunctionApplier.Aggregated || isTestT(Expr::isAggregating);
+    }
+
+    /**
+     * Tests the predicate against mArgs and mNamedArgs, short-circuiting on true like an 'or'
+     * expression.
+     */
+    private boolean isTestT(Predicate<Expr> pred) {
+        for (Expr arg : mArgs) {
+            if (pred.test(arg)) {
+                return true;
+            }
         }
 
+        for (Expr arg : mNamedArgs.values()) {
+            if (pred.test(arg)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Tests the predicate against mArgs and mNamedArgs, short-circuiting on false like an
+     * 'and' expression.
+     */
+    private boolean isTestF(Predicate<Expr> pred) {
         for (Expr arg : mArgs) {
-            if (!arg.isConstant()) {
+            if (!pred.test(arg)) {
+                return false;
+            }
+        }
+
+        for (Expr arg : mNamedArgs.values()) {
+            if (!pred.test(arg)) {
                 return false;
             }
         }
 
         return true;
-    }
-
-    @Override
-    public boolean isGrouping() {
-        if (mApplier.isGrouping()) {
-            return true;
-        }
-
-        for (Expr arg : mArgs) {
-            if (arg.isGrouping()) {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    @Override
-    public boolean isAccumulating() {
-        if (mApplier instanceof FunctionApplier.Accumulator) {
-            return true;
-        }
-
-        for (Expr arg : mArgs) {
-            if (arg.isAccumulating()) {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    @Override
-    public boolean isAggregating() {
-        if (mApplier instanceof FunctionApplier.Aggregated) {
-            return true;
-        }
-
-        for (Expr arg : mArgs) {
-            if (arg.isAggregating()) {
-                return true;
-            }
-        }
-
-        return false;
     }
 
     @Override
@@ -216,7 +224,7 @@ public final class CallExpr extends Expr {
             (mNamedArgs, (k, arg) -> arg.asAggregate(group));
 
         return args == mArgs && namedArgs == mNamedArgs ? this
-            : new CallExpr(startPos(), endPos(), mName, args, namedArgs, mApplier);
+            : new CallExpr(startPos(), endPos(), mName, args, namedArgs, mApplier, null);
     }
 
     @Override
@@ -231,7 +239,7 @@ public final class CallExpr extends Expr {
             (mNamedArgs, (k, arg) -> arg.asWindow(newAssignments));
 
         return args == mArgs && namedArgs == mNamedArgs ? this
-            : new CallExpr(startPos(), endPos(), mName, args, namedArgs, mApplier);
+            : new CallExpr(startPos(), endPos(), mName, args, namedArgs, mApplier, null);
     }
 
     @Override
@@ -247,7 +255,7 @@ public final class CallExpr extends Expr {
             (mNamedArgs, (k, arg) -> arg.replace(replacements));
 
         return args == mArgs && namedArgs == mNamedArgs ? this
-            : new CallExpr(startPos(), endPos(), mName, args, namedArgs, mApplier);
+            : new CallExpr(startPos(), endPos(), mName, args, namedArgs, mApplier, null);
     }
 
     @Override

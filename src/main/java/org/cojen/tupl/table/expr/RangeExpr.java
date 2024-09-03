@@ -145,6 +145,12 @@ public final class RangeExpr extends Expr {
     }
 
     @Override
+    public boolean isOrderDependent() {
+        return (mStart != null && mStart.isOrderDependent())
+            || (mEnd != null && mEnd.isOrderDependent());
+    }
+
+    @Override
     public boolean isGrouping() {
         return (mStart != null && mStart.isGrouping())
             || (mEnd != null && mEnd.isGrouping());

@@ -1056,8 +1056,8 @@ public class WindowBufferTest {
         var beginMethod = bufferClass.getMethod("begin", valueClass);
         var appendMethod = bufferClass.getMethod("append", valueClass);
         var advanceMethod = bufferClass.getMethod("advance");
-        var findStartMethod = bufferClass.getMethod("findRangeStartAsc", double.class);
-        var findEndMethod = bufferClass.getMethod("findRangeEndAsc", double.class);
+        var findStartMethod = bufferClass.getMethod("findRangeStartAsc", double.class, long.class);
+        var findEndMethod = bufferClass.getMethod("findRangeEndAsc", double.class, long.class);
         var frameGetMethod = bufferClass.getMethod("frameGet", long.class);
 
         double[] values = {
@@ -1078,7 +1078,7 @@ public class WindowBufferTest {
 
         for (double delta = -2.0; delta <= 2.0; delta += 0.25) {
             double find = 3.0 + delta;
-            long pos = (long) findStartMethod.invoke(buffer, delta);
+            long pos = (long) findStartMethod.invoke(buffer, delta, 0L);
             if (pos == Long.MAX_VALUE) {
                 assertTrue(find > values[values.length - 1]);
             } else {
@@ -1093,7 +1093,7 @@ public class WindowBufferTest {
 
         for (double delta = -2.0; delta <= 2.0; delta += 0.25) {
             double find = 3.0 + delta;
-            long pos = (long) findEndMethod.invoke(buffer, delta);
+            long pos = (long) findEndMethod.invoke(buffer, delta, 0L);
             if (pos == Long.MIN_VALUE) {
                 assertTrue(find < values[0]);
             } else {
@@ -1118,8 +1118,8 @@ public class WindowBufferTest {
         var beginMethod = bufferClass.getMethod("begin", valueClass);
         var appendMethod = bufferClass.getMethod("append", valueClass);
         var advanceMethod = bufferClass.getMethod("advance");
-        var findStartMethod = bufferClass.getMethod("findRangeStartDesc", double.class);
-        var findEndMethod = bufferClass.getMethod("findRangeEndDesc", double.class);
+        var findStartMethod = bufferClass.getMethod("findRangeStartDesc", double.class, long.class);
+        var findEndMethod = bufferClass.getMethod("findRangeEndDesc", double.class, long.class);
         var frameGetMethod = bufferClass.getMethod("frameGet", long.class);
 
         double[] values = {
@@ -1140,7 +1140,7 @@ public class WindowBufferTest {
 
         for (double delta = -2.0; delta <= 2.0; delta += 0.25) {
             double find = 3.0 + delta;
-            long pos = (long) findStartMethod.invoke(buffer, delta);
+            long pos = (long) findStartMethod.invoke(buffer, delta, 0L);
             if (pos == Long.MAX_VALUE) {
                 assertTrue(find < values[values.length - 1]);
             } else {
@@ -1155,7 +1155,7 @@ public class WindowBufferTest {
 
         for (double delta = -2.0; delta <= 2.0; delta += 0.25) {
             double find = 3.0 + delta;
-            long pos = (long) findEndMethod.invoke(buffer, delta);
+            long pos = (long) findEndMethod.invoke(buffer, delta, 0L);
             if (pos == Long.MIN_VALUE) {
                 assertTrue(find > values[0]);
             } else {

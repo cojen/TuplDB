@@ -159,8 +159,6 @@ public abstract class WindowBuffer<V> extends ValueBuffer<V> {
      */
     public abstract void trimStart(long frameStart);
 
-    // FIXME: Define advanceAndRemoveGet variants, to be used with incremental modes.
-
     /**
      * Finds a frame row position relative to the current row by counting groups. A group is
      * defined by a cluster of rows which have the same value. The returned position references
@@ -198,10 +196,12 @@ public abstract class WindowBuffer<V> extends ValueBuffer<V> {
      *
      * @param delta The range start value is calculated as the current value plus the delta.
      * The delta is typically less than zero, but any value is allowed.
+     * @param startPos a frame position returned by a previous call to findRangeStartAsc; pass
+     * 0 or MAX_VALUE if unknown or if delta isn't a constant
      * @return a frame position relative to the current row (which is zero), or MAX_VALUE if
      * out of bounds (effective range is empty)
      */
-    public abstract long findRangeStartAsc(V delta);
+    public abstract long findRangeStartAsc(V delta, long startPos);
 
     /**
      * Finds a frame row position whose value matches the current row value plus a delta value.
@@ -212,10 +212,12 @@ public abstract class WindowBuffer<V> extends ValueBuffer<V> {
      *
      * @param delta The range end value is calculated as the current value plus the delta. The
      * delta is typically greater than zero, but any value is allowed.
+     * @param endPos a frame position returned by a previous call to findRangeEndAsc; pass
+     * 0 or MIN_VALUE if unknown or if delta isn't a constant
      * @return a frame position relative to the current row (which is zero), or MIN_VALUE if
      * out of bounds (effective range is empty)
      */
-    public abstract long findRangeEndAsc(V delta);
+    public abstract long findRangeEndAsc(V delta, long endPos);
 
     /**
      * Finds a frame row position whose value matches the current row value plus a delta value.
@@ -224,12 +226,14 @@ public abstract class WindowBuffer<V> extends ValueBuffer<V> {
      *
      * <p>Note: To work correctly, the buffered values must have a descending order.
      *
-     * @param delta The range start value is calculated as the current value minus the delta.
+     * @param delta The range start value is calculated as the current value plus the delta.
      * The delta is typically less than zero, but any value is allowed.
+     * @param startPos a frame position returned by a previous call to findRangeStartDesc; can
+     * pass MAX_VALUE if unknown or if delta isn't a constant
      * @return a frame position relative to the current row (which is zero), or MAX_VALUE if
      * out of bounds (effective range is empty)
      */
-    public abstract long findRangeStartDesc(V delta);
+    public abstract long findRangeStartDesc(V delta, long startPos);
 
     /**
      * Finds a frame row position whose value matches the current row value plus a delta value.
@@ -238,12 +242,14 @@ public abstract class WindowBuffer<V> extends ValueBuffer<V> {
      *
      * <p>Note: To work correctly, the buffered values must have a descending order.
      *
-     * @param delta The range end value is calculated as the current value minus the delta. The
+     * @param delta The range end value is calculated as the current value plus the delta. The
      * delta is typically greater than zero, but any value is allowed.
+     * @param endPos a frame position returned by a previous call to findRangeEndDesc; pass
+     * 0 or MIN_VALUE if unknown or if delta isn't a constant
      * @return a frame position relative to the current row (which is zero), or MIN_VALUE if
      * out of bounds (effective range is empty)
      */
-    public abstract long findRangeEndDesc(V delta);
+    public abstract long findRangeEndDesc(V delta, long endPos);
 
     /**
      * Returns the number of non-null values which are available over the given range.
@@ -531,25 +537,25 @@ public abstract class WindowBuffer<V> extends ValueBuffer<V> {
         if (type.isNumber()) {
             {
                 MethodMaker mm = cm.addMethod
-                    (long.class, "findRangeStartAsc", clazz).public_().final_();
+                    (long.class, "findRangeStartAsc", clazz, long.class).public_().final_();
                 makeFindRange(type, mm, true, true);
             }
 
             {
                 MethodMaker mm = cm.addMethod
-                    (long.class, "findRangeStartDesc", clazz).public_().final_();
+                    (long.class, "findRangeStartDesc", clazz, long.class).public_().final_();
                 makeFindRange(type, mm, true, false);
             }
 
             {
                 MethodMaker mm = cm.addMethod
-                    (long.class, "findRangeEndAsc", clazz).public_().final_();
+                    (long.class, "findRangeEndAsc", clazz, long.class).public_().final_();
                 makeFindRange(type, mm, false, true);
             }
 
             {
                 MethodMaker mm = cm.addMethod
-                    (long.class, "findRangeEndDesc", clazz).public_().final_();
+                    (long.class, "findRangeEndDesc", clazz, long.class).public_().final_();
                 makeFindRange(type, mm, false, false);
             }
         }
@@ -820,21 +826,39 @@ public abstract class WindowBuffer<V> extends ValueBuffer<V> {
     private static void makeFindRange(Type type, MethodMaker mm,
                                       boolean forStart, boolean ascending)
     {
+        var deltaVar = mm.param(0);
+        var posVar = mm.param(1);
+
         /*
-          long index = -start;
+          if (pos == forStart ? MAX_VALUE : MIN_VALUE) {
+              // Start at the current row.
+              pos = 0;
+          }
+        */
+
+        {
+            Label cont = mm.label();
+            posVar.ifNe(forStart ? Long.MAX_VALUE : Long.MIN_VALUE, cont);
+            posVar.set(0);
+            cont.here();
+        }
+
+        /*
+          long index = pos - start;
+
           if (delta <deltaOp> 0) {
               ... forward scan ...
           } else {
               ... reverse scan ...
           }
+
           return index + start;
         */
 
         int cmpOp = forStart ? (ascending ? OP_LT : OP_GT) : (ascending ? OP_LE : OP_GE);
 
-        var deltaVar = mm.param(0);
         var startVar = mm.field("start");
-        var indexVar = mm.var(long.class).set(startVar.neg());
+        var indexVar = mm.var(long.class).set(posVar.sub(startVar));
 
         var zeroVar = mm.var(type.clazz());
         Arithmetic.zero(zeroVar);

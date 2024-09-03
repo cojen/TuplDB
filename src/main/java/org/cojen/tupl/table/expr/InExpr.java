@@ -121,6 +121,11 @@ public final class InExpr extends Expr {
     }
 
     @Override
+    public boolean isOrderDependent() {
+        return mLeft.isOrderDependent() || mRight.isOrderDependent();
+    }
+
+    @Override
     public boolean isGrouping() {
         return mLeft.isGrouping() || mRight.isGrouping();
     }

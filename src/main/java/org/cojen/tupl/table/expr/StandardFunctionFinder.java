@@ -89,6 +89,7 @@ public final class StandardFunctionFinder extends SoftCache<String, Object, Obje
 
         @Override
         public coalesce validate(List<Expr> args, Map<String, Expr> namedArgs,
+                                 Map<String, ProjExpr> projectionMap,
                                  Consumer<String> reason)
         {
             if (!checkNumArgs(1, Integer.MAX_VALUE, args.size(), reason)) {
@@ -158,6 +159,7 @@ public final class StandardFunctionFinder extends SoftCache<String, Object, Obje
 
         @Override
         public iif validate(List<Expr> args, Map<String, Expr> namedArgs,
+                            Map<String, ProjExpr> projectionMap,
                             Consumer<String> reason)
         {
             if (!checkNumArgs(3, 3, args.size(), reason)) {
@@ -220,6 +222,7 @@ public final class StandardFunctionFinder extends SoftCache<String, Object, Obje
 
         @Override
         public random validate(List<Expr> args, Map<String, Expr> namedArgs,
+                               Map<String, ProjExpr> projectionMap,
                                Consumer<String> reason)
         {
             if (!checkNumArgs(0, 2, args.size(), reason)) {
@@ -324,6 +327,7 @@ public final class StandardFunctionFinder extends SoftCache<String, Object, Obje
 
         @Override
         public FunctionApplier validate(List<Expr> args, Map<String, Expr> namedArgs,
+                                        Map<String, ProjExpr> projectionMap,
                                         Consumer<String> reason)
         {
             if (!checkNumArgs(0, 1, args.size(), reason)) {
@@ -336,7 +340,7 @@ public final class StandardFunctionFinder extends SoftCache<String, Object, Obje
                 return new count(resultType);
             }
 
-            WindowFunction.Frame frame = accessFrame(namedArgs, true, reason);
+            WindowFunction.Frame frame = accessFrame(args, namedArgs, projectionMap, reason);
             if (frame == null) {
                 // The reason should have been provided by the accessFrame method.
                 return null;
@@ -413,6 +417,7 @@ public final class StandardFunctionFinder extends SoftCache<String, Object, Obje
 
         @Override
         public FunctionApplier validate(List<Expr> args, Map<String, Expr> namedArgs,
+                                        Map<String, ProjExpr> projectionMap,
                                         Consumer<String> reason)
         {
             if (!checkNumArgs(1, 1, args.size(), reason)) {
@@ -425,7 +430,7 @@ public final class StandardFunctionFinder extends SoftCache<String, Object, Obje
                 return new first(type);
             }
 
-            WindowFunction.Frame frame = accessFrame(namedArgs, true, reason);
+            WindowFunction.Frame frame = accessFrame(args, namedArgs, projectionMap, reason);
             if (frame == null) {
                 // The reason should have been provided by the accessFrame method.
                 return null;
@@ -456,6 +461,7 @@ public final class StandardFunctionFinder extends SoftCache<String, Object, Obje
 
         @Override
         public FunctionApplier validate(List<Expr> args, Map<String, Expr> namedArgs,
+                                        Map<String, ProjExpr> projectionMap,
                                         Consumer<String> reason)
         {
             if (!checkNumArgs(1, 1, args.size(), reason)) {
@@ -468,7 +474,7 @@ public final class StandardFunctionFinder extends SoftCache<String, Object, Obje
                 return new last(type);
             }
 
-            WindowFunction.Frame frame = accessFrame(namedArgs, true, reason);
+            WindowFunction.Frame frame = accessFrame(args, namedArgs, projectionMap, reason);
             if (frame == null) {
                 // The reason should have been provided by the accessFrame method.
                 return null;
@@ -502,14 +508,16 @@ public final class StandardFunctionFinder extends SoftCache<String, Object, Obje
         }
 
         @Override
-        protected FunctionApplier validate(Type type, Map<String, Expr> namedArgs,
+        protected FunctionApplier validate(Type type,
+                                           List<Expr> args, Map<String, Expr> namedArgs,
+                                           Map<String, ProjExpr> projectionMap,
                                            Consumer<String> reason)
         {
             if (!hasFrame(namedArgs)) {
                 return new min(type);
             }
 
-            WindowFunction.Frame frame = accessFrame(namedArgs, true, reason);
+            WindowFunction.Frame frame = accessFrame(args, namedArgs, projectionMap, reason);
             if (frame == null) {
                 // The reason should have been provided by the accessFrame method.
                 return null;
@@ -546,14 +554,16 @@ public final class StandardFunctionFinder extends SoftCache<String, Object, Obje
         }
 
         @Override
-        protected FunctionApplier validate(Type type, Map<String, Expr> namedArgs,
+        protected FunctionApplier validate(Type type,
+                                           List<Expr> args, Map<String, Expr> namedArgs,
+                                           Map<String, ProjExpr> projectionMap,
                                            Consumer<String> reason)
         {
             if (!hasFrame(namedArgs)) {
                 return new max(type);
             }
 
-            WindowFunction.Frame frame = accessFrame(namedArgs, true, reason);
+            WindowFunction.Frame frame = accessFrame(args, namedArgs, projectionMap, reason);
             if (frame == null) {
                 // The reason should have been provided by the accessFrame method.
                 return null;
@@ -595,7 +605,9 @@ public final class StandardFunctionFinder extends SoftCache<String, Object, Obje
         }
 
         @Override
-        protected FunctionApplier validate(Type originalType, Map<String, Expr> namedArgs,
+        protected FunctionApplier validate(Type originalType,
+                                           List<Expr> args, Map<String, Expr> namedArgs,
+                                           Map<String, ProjExpr> projectionMap,
                                            Consumer<String> reason)
         {
             Class<?> clazz = originalType.clazz();
@@ -633,7 +645,7 @@ public final class StandardFunctionFinder extends SoftCache<String, Object, Obje
                 return new sum(resultType, originalType);
             }
 
-            WindowFunction.Frame frame = accessFrame(namedArgs, true, reason);
+            WindowFunction.Frame frame = accessFrame(args, namedArgs, projectionMap, reason);
             if (frame == null) {
                 // The reason should have been provided by the accessFrame method.
                 return null;
@@ -675,7 +687,9 @@ public final class StandardFunctionFinder extends SoftCache<String, Object, Obje
         }
 
         @Override
-        protected FunctionApplier validate(Type originalType, Map<String, Expr> namedArgs,
+        protected FunctionApplier validate(Type originalType,
+                                           List<Expr> args, Map<String, Expr> namedArgs,
+                                           Map<String, ProjExpr> projectionMap,
                                            Consumer<String> reason)
         {
             Class<?> clazz;
@@ -712,7 +726,7 @@ public final class StandardFunctionFinder extends SoftCache<String, Object, Obje
                 return new avg(resultType, originalType);
             }
 
-            WindowFunction.Frame frame = accessFrame(namedArgs, true, reason);
+            WindowFunction.Frame frame = accessFrame(args, namedArgs, projectionMap, reason);
             if (frame == null) {
                 // The reason should have been provided by the accessFrame method.
                 return null;

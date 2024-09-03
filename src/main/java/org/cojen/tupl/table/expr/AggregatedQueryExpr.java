@@ -111,6 +111,11 @@ final class AggregatedQueryExpr extends QueryExpr {
     }
 
     @Override
+    public boolean isOrderDependent() {
+        return super.isOrderDependent() || (mFilter != null && mFilter.isOrderDependent());
+    }
+
+    @Override
     public boolean isGrouping() {
         return true;
     }

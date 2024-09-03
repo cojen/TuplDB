@@ -84,6 +84,11 @@ public final class ParamExpr extends Expr {
     }
 
     @Override
+    public boolean isOrderDependent() {
+        return false;
+    }
+
+    @Override
     public boolean isGrouping() {
         return false;
     }

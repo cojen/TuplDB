@@ -194,6 +194,13 @@ public abstract sealed class Expr
     }
 
     /**
+     * Returns true if this expression is calling an accumulating function and the generated
+     * code depends on the input values arriving in a specific order. This generally implies
+     * the use of a WindowFunction with a "range" frame mode.
+     */
+    public abstract boolean isOrderDependent();
+
+    /**
      * Returns true if this expression depends on a function which needs a projection group.
      */
     public abstract boolean isGrouping();

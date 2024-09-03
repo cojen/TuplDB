@@ -17,6 +17,7 @@
 
 package org.cojen.tupl.table.expr;
 
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
@@ -27,6 +28,8 @@ import org.cojen.maker.FieldMaker;
 import org.cojen.maker.Label;
 import org.cojen.maker.MethodMaker;
 import org.cojen.maker.Variable;
+
+import org.cojen.tupl.Ordering;
 
 import org.cojen.tupl.table.ColumnInfo;
 import org.cojen.tupl.table.Converter;
@@ -63,32 +66,32 @@ public abstract class FunctionApplier {
         message: {
             if (min == 0) {
                 if (max == 0) {
-                    message = "no arguments are allowed";
+                    message = "no unnamed arguments are allowed";
                     break message;
                 } else if (max == 1) {
-                    message = "at most 1 argument is allowed";
+                    message = "at most 1 unnamed argument is allowed";
                     break message;
                 } else {
-                    message = "at most " + max + " arguments are allowed";
+                    message = "at most " + max + " unnamed arguments are allowed";
                     break message;
                 }
             } else if (min == 1) {
                 if (max == 1) {
-                    message = "exactly 1 argument is required";
+                    message = "exactly 1 unnamed argument is required";
                     break message;
                 } else if (max == Integer.MAX_VALUE) {
-                    message = "at least 1 argument is required";
+                    message = "at least 1 unnamed argument is required";
                     break message;
                 }
             } else if (min == max) {
-                message = "exactly " + min + " arguments are required";
+                message = "exactly " + min + " unnamed arguments are required";
                 break message;
             } else if (max == Integer.MAX_VALUE) {
-                message = "at least " + min + " arguments are required";
+                message = "at least " + min + " unnamed arguments are required";
                 break message;
             }
 
-            message = min + " to " + max + " arguments are required";
+            message = min + " to " + max + " unnamed arguments are required";
         }
 
         reason.accept(message);
@@ -109,12 +112,31 @@ public abstract class FunctionApplier {
      * "groups". If the frame is malformed or if not exactly one is provided, then null is
      * returned a reason is provided.
      *
-     * @param strict when true, only one named argument is allowed overall
+     * @param projectionMap is used when mode is "range" to validate that arg 0 is ordered; see
+     * CallExpr.make; can be null if empty
      * @param reason if null is returned, a reason is provided
      */
-    public static WindowFunction.Frame accessFrame(Map<String, Expr> namedArgs, boolean strict,
+    public static WindowFunction.Frame accessFrame(List<Expr> args, Map<String, Expr> namedArgs,
+                                                   Map<String, ProjExpr> projectionMap,
                                                    Consumer<String> reason)
     {
+        Ordering ordering = Ordering.UNSPECIFIED;
+
+        if (projectionMap != null && !projectionMap.isEmpty() && !args.isEmpty()) {
+            Expr arg = args.get(0);
+            if (arg.isConstant()) {
+                ordering = Ordering.ASCENDING; // could be DESCENDING too; doesn't matter
+            } else {
+                String n;
+                if (arg instanceof Named named && projectionMap.containsKey((n = named.name()))) {
+                    Map.Entry<String, ProjExpr> first = projectionMap.entrySet().iterator().next();
+                    if (first.getKey().equals(n)) {
+                        ordering = first.getValue().ordering();
+                    }
+                }
+            }
+        }
+
         check: {
             String name = "rows";
             Expr expr = namedArgs.get(name);
@@ -126,6 +148,16 @@ public abstract class FunctionApplier {
                 }
                 name = "range";
                 expr = rangeExpr;
+
+                if (ordering == Ordering.UNSPECIFIED) {
+                    reason.accept("range frame type requires ordered values");
+                    return null;
+                }
+
+                if (!args.get(0).type().isNumber()) {
+                    reason.accept("range argument type must be a number");
+                    return null;
+                }
             }
 
             Expr groupsExpr = namedArgs.get("groups");
@@ -152,7 +184,7 @@ public abstract class FunctionApplier {
                 return null;
             }
 
-            return new WindowFunction.Frame(name, expr);
+            return new WindowFunction.Frame(name, expr, ordering);
         }
 
         reason.accept("more than one type of frame is specified");
@@ -166,10 +198,12 @@ public abstract class FunctionApplier {
      *
      * @param args non-null array of unnamed argument types
      * @param namedArgs non-null map of named argument types
+     * @param projectionMap see CallExpr.make; can be null if empty
      * @param reasons if validation fails, optionally provide reasons
      * @return the new applier, or else null if validation fails
      */
     public abstract FunctionApplier validate(List<Expr> args, Map<String, Expr> namedArgs,
+                                             Map<String, ProjExpr> projectionMap,
                                              Consumer<String> reasons);
 
     /**
@@ -192,6 +226,13 @@ public abstract class FunctionApplier {
      * Returns true if the function needs a projection group.
      */
     public abstract boolean isGrouping();
+
+    /**
+     * Returns true if this is an accumulating function and the generated code depends on the
+     * input values arriving in a specific order. This generally implies the use of a
+     * WindowFunction with a "range" frame mode.
+     */
+    public abstract boolean isOrderDependent();
 
     /**
      * Returns true if the function accepts named parameters.
@@ -240,6 +281,11 @@ public abstract class FunctionApplier {
         public boolean isGrouping() {
             return false;
         }
+
+        @Override
+        public final boolean isOrderDependent() {
+            return false;
+        }
     }
 
     public static interface GroupContext extends FunctionContext {
@@ -282,6 +328,11 @@ public abstract class FunctionApplier {
         @Override
         public final boolean isGrouping() {
             return true;
+        }
+
+        @Override
+        public boolean isOrderDependent() {
+            return false;
         }
 
         abstract void init(GroupContext context);
@@ -506,6 +557,7 @@ public abstract class FunctionApplier {
 
         @Override
         public FunctionApplier validate(List<Expr> args, Map<String, Expr> namedArgs,
+                                        Map<String, ProjExpr> projectionMap,
                                         Consumer<String> reason)
         {
             if (!checkNumArgs(1, 1, args.size(), reason)) {
@@ -519,10 +571,12 @@ public abstract class FunctionApplier {
                 return null;
             }
 
-            return validate(type, namedArgs, reason);
+            return validate(type, args, namedArgs, projectionMap, reason);
         }
 
-        protected abstract FunctionApplier validate(Type type, Map<String, Expr> namedArgs,
+        protected abstract FunctionApplier validate(Type type,
+                                                    List<Expr> args, Map<String, Expr> namedArgs,
+                                                    Map<String, ProjExpr> projectionMap,
                                                     Consumer<String> reason);
     }
 

@@ -112,6 +112,11 @@ public abstract sealed class ColumnExpr extends Expr implements Named {
     }
 
     @Override
+    public final boolean isOrderDependent() {
+        return false;
+    }
+
+    @Override
     public final boolean isGrouping() {
         return false;
     }

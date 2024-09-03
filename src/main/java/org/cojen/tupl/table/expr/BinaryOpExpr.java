@@ -255,6 +255,11 @@ public sealed class BinaryOpExpr extends Expr permits FilterExpr {
     }
 
     @Override
+    public final boolean isOrderDependent() {
+        return mLeft.isOrderDependent() || mRight.isOrderDependent();
+    }
+
+    @Override
     public final boolean isGrouping() {
         return mLeft.isGrouping() || mRight.isGrouping();
     }

@@ -24,6 +24,8 @@ import java.util.function.Consumer;
 
 import org.cojen.maker.Variable;
 
+import org.cojen.tupl.Ordering;
+
 import org.cojen.tupl.table.RowMethodsMaker;
 
 /**
@@ -33,10 +35,10 @@ import org.cojen.tupl.table.RowMethodsMaker;
  */
 public final class ProjExpr extends WrappedExpr implements Named {
     // Basic flags.
-    public static int F_EXCLUDE = 1, F_ORDER_BY = 2;
+    public static final int F_EXCLUDE = 1, F_ORDER_BY = 2;
 
     // These flags are only applicable when F_ORDER_BY is set.
-    public static int F_DESCENDING = Type.TYPE_DESCENDING, F_NULL_LOW = Type.TYPE_NULL_LOW;
+    public static final int F_DESCENDING = Type.TYPE_DESCENDING, F_NULL_LOW = Type.TYPE_NULL_LOW;
 
     /**
      * @param expr expected to be AssignExpr, ColumnExpr, or VarExpr
@@ -124,6 +126,14 @@ public final class ProjExpr extends WrappedExpr implements Named {
             return this;
         }
         return new ProjExpr(startPos(), endPos(), mExpr, flags);
+    }
+
+    public Ordering ordering() {
+        return switch (mFlags & (F_ORDER_BY | F_DESCENDING)) {
+            case F_ORDER_BY -> Ordering.ASCENDING;
+            case (F_ORDER_BY | F_DESCENDING) -> Ordering.DESCENDING;
+            default -> Ordering.UNSPECIFIED;
+        };
     }
 
     /**

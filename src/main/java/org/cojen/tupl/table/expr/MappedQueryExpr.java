@@ -104,6 +104,11 @@ final class MappedQueryExpr extends QueryExpr {
     }
 
     @Override
+    public boolean isOrderDependent() {
+        return super.isOrderDependent() || (mFilter != null && mFilter.isOrderDependent());
+    }
+
+    @Override
     public boolean isGrouping() {
         return super.isGrouping() || (mFilter != null && mFilter.isGrouping());
     }
