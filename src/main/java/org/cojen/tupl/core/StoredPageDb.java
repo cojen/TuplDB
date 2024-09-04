@@ -212,12 +212,18 @@ final class StoredPageDb extends PageDb {
     private static PageArray decorate(PageArray pa,
                                       Supplier<Checksum> checksumFactory, Crypto crypto)
     {
-        if (checksumFactory != null) {
-            pa = ChecksumPageArray.open(pa, checksumFactory);
-        }
         if (crypto != null) {
             pa = new CryptoPageArray(pa, crypto);
         }
+
+        if (checksumFactory != null) {
+            // If encryption is also enabled, the checksum applies to the plaintext, and the
+            // checksum value gets encrypted. This provides some protection against tampering
+            // because the checksum value needs to change too, but it cannot be calculated
+            // without knowing the plaintext first.
+            pa = ChecksumPageArray.open(pa, checksumFactory);
+        }
+
         return pa;
     }
 
