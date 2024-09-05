@@ -38,14 +38,11 @@ public final class RangeExpr extends Expr {
      * @param endPos optional
      */
     public static Expr make(int startPos, int endPos, Expr start, Expr end) {
-        {
-            Type type = BasicType.make(int.class, Type.TYPE_INT);
-            if (start != null) {
-                start = start.asType(type);
-            }
-            if (end != null) {
-                end = end.asType(type);
-            }
+        if (start != null && !start.type().isNumber()) {
+            throw new QueryException("Range start must be a number", start);
+        }
+        if (end != null && !end.type().isNumber()) {
+            throw new QueryException("Range end must be a number", end);
         }
 
         Type type = BasicType.make(Range.class, Type.TYPE_REFERENCE);
