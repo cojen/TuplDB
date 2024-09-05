@@ -885,11 +885,7 @@ public abstract class WindowBuffer<V> extends ValueBuffer<V> {
             Label loopEnd = mm.label();
             indexVar.ifGe(endIndexVar, loopEnd);
 
-            var findVar = mm.invoke("get", indexVar.cast(int.class));
-            if (!findVar.classType().isPrimitive()) {
-                findVar.ifEq(null, done);
-            }
-            findVar = Arithmetic.eval(type, Token.T_PLUS, findVar, deltaVar);
+            var findVar = makeFindVar(type, indexVar, deltaVar);
 
             Label doStart = mm.label().here();
             indexVar.inc(1);
@@ -932,11 +928,7 @@ public abstract class WindowBuffer<V> extends ValueBuffer<V> {
             Label loopEnd = mm.label();
             indexVar.ifLe(0, loopEnd);
 
-            var findVar = mm.invoke("get", indexVar.cast(int.class));
-            if (!findVar.classType().isPrimitive()) {
-                findVar.ifEq(null, done);
-            }
-            findVar = Arithmetic.eval(type, Token.T_PLUS, findVar, deltaVar);
+            var findVar = makeFindVar(type, indexVar, deltaVar);
 
             Label doStart = mm.label().here();
             indexVar.dec(1);
@@ -963,6 +955,22 @@ public abstract class WindowBuffer<V> extends ValueBuffer<V> {
         }
 
         done.here();
+    }
+
+    private static Variable makeFindVar(Type type, Variable indexVar, Variable deltaVar) {
+        MethodMaker mm = indexVar.methodMaker();
+        var findVar = mm.invoke("get", indexVar.cast(int.class));
+
+        if (findVar.classType().isPrimitive()) {
+            findVar = Arithmetic.eval(type, Token.T_PLUS, findVar, deltaVar);
+        } else {
+            Label skip = mm.label();
+            findVar.ifEq(null, skip);
+            findVar.set(Arithmetic.eval(type, Token.T_PLUS, findVar, deltaVar));
+            skip.here();
+        }
+
+        return findVar;
     }
 
     private static void addNumericalMethods(ClassMaker cm, Type type) {
