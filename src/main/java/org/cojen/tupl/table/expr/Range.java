@@ -239,7 +239,9 @@ public interface Range {
      */
     public static Range make(Number start, Number end) {
         if (start == null || isOpenStart(start)) {
-            if (isInt(end)) {
+            if (end == null) {
+                return open();
+            } else if (isInt(end)) {
                 return makeOpenStart(end.intValue());
             } else if (isLong(end)) {
                 return makeOpenStart(clamp_to_long(end));
