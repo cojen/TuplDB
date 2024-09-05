@@ -110,9 +110,8 @@ abstract class WindowFunction extends FunctionApplier.Grouped {
     private int mMode;
 
     // References the start/end of the range. Is null if start/end is compile-constant. The
-    // field type is long when the start/end is a runtime constant, and is a ValueBuffer.OfLong
-    // when the start/end is variable.
-    // FIXME: Type might be different when using MODE_RANGE.
+    // field type is long/double when the start/end is a runtime constant, and is a
+    // ValueBuffer.OfLong/OfDouble when the start/end is variable.
     private String mStartFieldName, mEndFieldName;
 
     // References a WindowBuffer instance.
@@ -185,41 +184,20 @@ abstract class WindowFunction extends FunctionApplier.Grouped {
             }
         }
 
-        MethodMaker mm = context.methodMaker();
+        mMode = isOpenStart() && isOpenEnd() ? MODE_ROWS : mFrame.mode();
 
         if (mStartConstant == null) {
-            String fieldName;
-            if (mIsStartConstant) {
-                fieldName = context.newWorkField(long.class).final_().name();
-                mm.field(fieldName).set(mFrame.evalRangeStart(context));
-            } else {
-                Type valueType = BasicType.make(long.class, Type.TYPE_LONG);
-                Class<?> bufferType = ValueBuffer.forType(valueType);
-                fieldName = context.newWorkField(bufferType).final_().name();
-                mm.field(fieldName).set(mm.new_(bufferType, DEFAULT_CAPACITY));
-            }
-            mStartFieldName = fieldName;
+            mStartFieldName = initValueField(context, mIsStartConstant, true);
         }
 
         if (mEndConstant == null) {
-            String fieldName;
-            if (mIsEndConstant) {
-                fieldName = context.newWorkField(long.class).final_().name();
-                mm.field(fieldName).set(mFrame.evalRangeEnd(context));
-            } else {
-                Type valueType = BasicType.make(long.class, Type.TYPE_LONG);
-                Class<?> bufferType = ValueBuffer.forType(valueType);
-                fieldName = context.newWorkField(bufferType).final_().name();
-                mm.field(fieldName).set(mm.new_(bufferType, DEFAULT_CAPACITY));
-            }
-            mEndFieldName = fieldName;
+            mEndFieldName = initValueField(context, mIsEndConstant, false);
         }
 
         Class<?> bufferType = bufferType();
         FieldMaker bufferFieldMaker = context.newWorkField(bufferType);
         mBufferFieldName = bufferFieldMaker.name();
-
-        mMode = isOpenStart() && isOpenEnd() ? MODE_ROWS : mFrame.mode();
+        MethodMaker mm = context.methodMaker();
 
         if (mMode == MODE_RANGE) {
             bufferFieldMaker.final_();
@@ -251,6 +229,27 @@ abstract class WindowFunction extends FunctionApplier.Grouped {
             mFoundEndFieldName = context.newWorkField(long.class).name();
             mm.field(mFoundEndFieldName).set(Long.MAX_VALUE);
         }
+    }
+
+    private String initValueField(GroupContext context, boolean isConstant, boolean forStart) {
+        MethodMaker mm = context.methodMaker();
+        String fieldName;
+
+        if (isConstant) {
+            Class<?> valueType = mMode == MODE_RANGE ? double.class : long.class;
+            fieldName = context.newWorkField(valueType).final_().name();
+            var field = mm.field(fieldName);
+            field.set(forStart ? mFrame.evalRangeStart(context) : mFrame.evalRangeEnd(context));
+        } else {
+            Type valueType = mMode == MODE_RANGE
+                ? BasicType.make(double.class, Type.TYPE_DOUBLE)
+                : BasicType.make(long.class, Type.TYPE_LONG);
+            Class<?> bufferType = ValueBuffer.forType(valueType);
+            fieldName = context.newWorkField(bufferType).final_().name();
+            mm.field(fieldName).set(mm.new_(bufferType, DEFAULT_CAPACITY));
+        }
+
+        return fieldName;
     }
 
     @Override
@@ -506,6 +505,7 @@ abstract class WindowFunction extends FunctionApplier.Grouped {
     protected abstract Variable compute(Variable bufferVar, Object frameStart, Object frameEnd);
 
     private Number start(Range range) {
+        // Note: mMode isn't expected to be set yet.
         if (mFrame.mode() == MODE_RANGE) {
             return range.start_double();
         } else {
@@ -514,6 +514,7 @@ abstract class WindowFunction extends FunctionApplier.Grouped {
     }
 
     private Number end(Range range) {
+        // Note: mMode isn't expected to be set yet.
         if (mFrame.mode() == MODE_RANGE) {
             return range.end_double();
         } else {
