@@ -523,41 +523,15 @@ public abstract class WindowBuffer<V> extends ValueBuffer<V> {
         }
 
         {
-            MethodMaker mm = cm.addMethod
-                (long.class, "findGroupStart", long.class).public_().final_();
-            makeFindGroup(type, mm, true);
-        }
-
-        {
-            MethodMaker mm = cm.addMethod
-                (long.class, "findGroupEnd", long.class).public_().final_();
-            makeFindGroup(type, mm, false);
+            makeFindGroup(type, cm, true);
+            makeFindGroup(type, cm, false);
         }
 
         if (type.isNumber()) {
-            {
-                MethodMaker mm = cm.addMethod
-                    (long.class, "findRangeStartAsc", clazz, long.class).public_().final_();
-                makeFindRange(type, mm, true, true);
-            }
-
-            {
-                MethodMaker mm = cm.addMethod
-                    (long.class, "findRangeStartDesc", clazz, long.class).public_().final_();
-                makeFindRange(type, mm, true, false);
-            }
-
-            {
-                MethodMaker mm = cm.addMethod
-                    (long.class, "findRangeEndAsc", clazz, long.class).public_().final_();
-                makeFindRange(type, mm, false, true);
-            }
-
-            {
-                MethodMaker mm = cm.addMethod
-                    (long.class, "findRangeEndDesc", clazz, long.class).public_().final_();
-                makeFindRange(type, mm, false, false);
-            }
+            makeFindRange(type, cm, true, true);
+            makeFindRange(type, cm, true, false);
+            makeFindRange(type, cm, false, true);
+            makeFindRange(type, cm, false, false);
         }
 
         {
@@ -621,7 +595,10 @@ public abstract class WindowBuffer<V> extends ValueBuffer<V> {
         return cm.finish();
     }
 
-    private static void makeFindGroup(Type type, MethodMaker mm, boolean forStart) {
+    private static void makeFindGroup(Type type, ClassMaker cm, boolean forStart) {
+        String name = "findGroup" + (forStart ? "Start" : "End");
+        MethodMaker mm = cm.addMethod(long.class, name, long.class).public_().final_();
+
         final var deltaVar = mm.param(0);
         final var posVar = mm.var(long.class).set(0);
         final var startVar = mm.field("start").get();
@@ -823,9 +800,13 @@ public abstract class WindowBuffer<V> extends ValueBuffer<V> {
         });
     }
 
-    private static void makeFindRange(Type type, MethodMaker mm,
+    private static void makeFindRange(Type type, ClassMaker cm,
                                       boolean forStart, boolean ascending)
     {
+        Class clazz = type.clazz();
+        String name = "findRange" + (forStart ? "Start" : "End") + (ascending ? "Asc" : "Desc");
+        MethodMaker mm = cm.addMethod(long.class, name, clazz, long.class).public_().final_();
+
         var deltaVar = mm.param(0);
         var posVar = mm.param(1);
 
@@ -860,7 +841,7 @@ public abstract class WindowBuffer<V> extends ValueBuffer<V> {
         var startVar = mm.field("start");
         var indexVar = mm.var(long.class).set(posVar.sub(startVar));
 
-        var zeroVar = mm.var(type.clazz());
+        var zeroVar = mm.var(clazz);
         Arithmetic.zero(zeroVar);
 
         Label reverse = mm.label();
@@ -905,6 +886,9 @@ public abstract class WindowBuffer<V> extends ValueBuffer<V> {
             indexVar.ifGe(endIndexVar, loopEnd);
 
             var findVar = mm.invoke("get", indexVar.cast(int.class));
+            if (!findVar.classType().isPrimitive()) {
+                findVar.ifEq(null, done);
+            }
             findVar = Arithmetic.eval(type, Token.T_PLUS, findVar, deltaVar);
 
             Label doStart = mm.label().here();
@@ -949,6 +933,9 @@ public abstract class WindowBuffer<V> extends ValueBuffer<V> {
             indexVar.ifLe(0, loopEnd);
 
             var findVar = mm.invoke("get", indexVar.cast(int.class));
+            if (!findVar.classType().isPrimitive()) {
+                findVar.ifEq(null, done);
+            }
             findVar = Arithmetic.eval(type, Token.T_PLUS, findVar, deltaVar);
 
             Label doStart = mm.label().here();
