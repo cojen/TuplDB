@@ -103,9 +103,9 @@ abstract class WindowFunction extends FunctionApplier.Grouped {
     // True if the range start/end is a compile-time or run-time constant.
     private boolean mIsStartConstant, mIsEndConstant;
 
-    // Is set if the range start/end is a compile-time constant.
-    // FIXME: Type might be different when using MODE_RANGE.
-    private Long mStartConstant, mEndConstant;
+    // Is set if the range start/end is a compile-time constant. Type is Long for MODE_ROWS and
+    // MODE_GROUPS, and is Double for MODE_RANGE.
+    private Number mStartConstant, mEndConstant;
 
     private int mMode;
 
@@ -168,19 +168,19 @@ abstract class WindowFunction extends FunctionApplier.Grouped {
             mIsStartConstant = true;
             mIsEndConstant = true;
             var range = (Range) rangeVal.constantValue();
-            mStartConstant = range.start_long();
-            mEndConstant = range.end_long();
+            mStartConstant = start(range);
+            mEndConstant = end(range);
         } else if (rangeVal.expr() instanceof RangeExpr re) {
             if (re.start().isConstant()) {
                 mIsStartConstant = true;
                 if (re.start() instanceof ConstantExpr c) {
-                    mStartConstant = Range.make((Number) c.value(), null).start_long();
+                    mStartConstant = start(Range.make((Number) c.value(), null));
                 }
             }
             if (re.end().isConstant()) {
                 mIsEndConstant = true;
                 if (re.end() instanceof ConstantExpr c) {
-                    mEndConstant = Range.make(null, (Number) c.value()).end_long();
+                    mEndConstant = end(Range.make(null, (Number) c.value()));
                 }
             }
         }
@@ -226,7 +226,7 @@ abstract class WindowFunction extends FunctionApplier.Grouped {
             mm.field(mBufferFieldName).set(mm.new_(bufferType, DEFAULT_CAPACITY));
         } else if (mStartConstant != null && mEndConstant != null) {
             bufferFieldMaker.final_();
-            int capacity = WindowBuffer.capacityFor(mStartConstant, mEndConstant);
+            int capacity = WindowBuffer.capacityFor((Long) mStartConstant, (Long) mEndConstant);
             if (mMode == MODE_GROUPS) {
                 capacity = WindowBuffer.clampCapacity(capacity * (long) GROUP_SIZE);
             }
@@ -241,7 +241,7 @@ abstract class WindowFunction extends FunctionApplier.Grouped {
             if (mMode != MODE_GROUPS || !mIsEndConstant) {
                 checkField.set(DEFAULT_CAPACITY);
             } else if (mEndConstant != null) {
-                checkField.set(WindowBuffer.capacityForGroup(GROUP_SIZE, mEndConstant));
+                checkField.set(WindowBuffer.capacityForGroup(GROUP_SIZE, (Long) mEndConstant));
             } else {
                 var capacityVar = mm.var(WindowBuffer.class)
                     .invoke("capacityFor", GROUP_SIZE, mm.field(mEndFieldName));
@@ -337,7 +337,7 @@ abstract class WindowFunction extends FunctionApplier.Grouped {
         remainingVar.ifGt(0L, ready);
 
         if (!isOpenEnd()) {
-            if (mEndConstant == null || mEndConstant < 0) {
+            if (mEndConstant == null || ((Number) mEndConstant).doubleValue() < 0) {
                 // The current row isn't guaranteed to be included, so prevent the remaining
                 // amount from decrementing below zero. This check isn't necessary when the end
                 // is known to always include the current row because then the buffer ready
@@ -466,7 +466,7 @@ abstract class WindowFunction extends FunctionApplier.Grouped {
         } else if (mMode != MODE_ROWS) {
             bufferVar.invoke("trimStart", start);
             bufferVar.invoke("advance");
-        } else if (mStartConstant != null && mStartConstant >= 0) {
+        } else if (mStartConstant != null && ((Number) mStartConstant).doubleValue() >= 0) {
             bufferVar.invoke("advanceAndRemove");
         } else {
             bufferVar.invoke("advanceAndRemove", start);
@@ -505,12 +505,32 @@ abstract class WindowFunction extends FunctionApplier.Grouped {
      */
     protected abstract Variable compute(Variable bufferVar, Object frameStart, Object frameEnd);
 
+    private Number start(Range range) {
+        if (mFrame.mode() == MODE_RANGE) {
+            return range.start_double();
+        } else {
+            return range.start_long();
+        }
+    }
+
+    private Number end(Range range) {
+        if (mFrame.mode() == MODE_RANGE) {
+            return range.end_double();
+        } else {
+            return range.end_long();
+        }
+    }
+
     private boolean isOpenStart() {
-        return mStartConstant != null && mStartConstant == Long.MIN_VALUE;
+        return mStartConstant != null &&
+            (mStartConstant == (Number) Long.MIN_VALUE ||
+             mStartConstant == (Number) Double.NEGATIVE_INFINITY);
     }
 
     private boolean isOpenEnd() {
-        return mEndConstant != null && mEndConstant == Long.MAX_VALUE;
+        return mEndConstant != null &&
+            (mEndConstant == (Number) Long.MAX_VALUE ||
+             mEndConstant == (Number) Double.POSITIVE_INFINITY);
     }
 
     private boolean isStartVariable() {

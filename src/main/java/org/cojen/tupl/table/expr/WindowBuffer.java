@@ -33,6 +33,7 @@ import org.cojen.maker.Label;
 import org.cojen.maker.MethodMaker;
 import org.cojen.maker.Variable;
 
+import org.cojen.tupl.table.ColumnInfo;
 import org.cojen.tupl.table.CompareUtils;
 import org.cojen.tupl.table.Converter;
 
@@ -201,7 +202,7 @@ public abstract class WindowBuffer<V> extends ValueBuffer<V> {
      * @return a frame position relative to the current row (which is zero), or MAX_VALUE if
      * out of bounds (effective range is empty)
      */
-    public abstract long findRangeStartAsc(V delta, long startPos);
+    public abstract long findRangeStartAsc(double delta, long startPos);
 
     /**
      * Finds a frame row position whose value matches the current row value plus a delta value.
@@ -217,7 +218,7 @@ public abstract class WindowBuffer<V> extends ValueBuffer<V> {
      * @return a frame position relative to the current row (which is zero), or MIN_VALUE if
      * out of bounds (effective range is empty)
      */
-    public abstract long findRangeEndAsc(V delta, long endPos);
+    public abstract long findRangeEndAsc(double delta, long endPos);
 
     /**
      * Finds a frame row position whose value matches the current row value plus a delta value.
@@ -233,7 +234,7 @@ public abstract class WindowBuffer<V> extends ValueBuffer<V> {
      * @return a frame position relative to the current row (which is zero), or MAX_VALUE if
      * out of bounds (effective range is empty)
      */
-    public abstract long findRangeStartDesc(V delta, long startPos);
+    public abstract long findRangeStartDesc(double delta, long startPos);
 
     /**
      * Finds a frame row position whose value matches the current row value plus a delta value.
@@ -249,7 +250,7 @@ public abstract class WindowBuffer<V> extends ValueBuffer<V> {
      * @return a frame position relative to the current row (which is zero), or MIN_VALUE if
      * out of bounds (effective range is empty)
      */
-    public abstract long findRangeEndDesc(V delta, long endPos);
+    public abstract long findRangeEndDesc(double delta, long endPos);
 
     /**
      * Returns the number of non-null values which are available over the given range.
@@ -803,9 +804,9 @@ public abstract class WindowBuffer<V> extends ValueBuffer<V> {
     private static void makeFindRange(Type type, ClassMaker cm,
                                       boolean forStart, boolean ascending)
     {
-        Class clazz = type.clazz();
         String name = "findRange" + (forStart ? "Start" : "End") + (ascending ? "Asc" : "Desc");
-        MethodMaker mm = cm.addMethod(long.class, name, clazz, long.class).public_().final_();
+        MethodMaker mm = cm.addMethod(long.class, name, double.class, long.class);
+        mm.public_().final_();
 
         var deltaVar = mm.param(0);
         var posVar = mm.param(1);
@@ -836,19 +837,29 @@ public abstract class WindowBuffer<V> extends ValueBuffer<V> {
           return index + start;
         */
 
-        int cmpOp = forStart ? (ascending ? OP_LT : OP_GT) : (ascending ? OP_LE : OP_GE);
-
         var startVar = mm.field("start");
         var indexVar = mm.var(long.class).set(posVar.sub(startVar));
 
-        var zeroVar = mm.var(clazz);
-        Arithmetic.zero(zeroVar);
+        //int deltaOp = forStart ? (ascending ? OP_GT : OP_LT) : (ascending ? OP_GE : OP_LE);
 
         Label reverse = mm.label();
-        Label forward = mm.label();
-        int deltaOp = forStart ? (ascending ? OP_GT : OP_LT) : (ascending ? OP_GE : OP_LE);
-        CompareUtils.compare(mm, type, deltaVar, type, zeroVar, deltaOp, forward, reverse);
-        forward.here();
+
+        if (forStart) {
+            if (ascending) {
+                deltaVar.ifLe(0, reverse);
+            } else {
+                deltaVar.ifGe(0, reverse);
+            }
+        } else {
+            if (ascending) {
+                deltaVar.ifLt(0, reverse);
+            } else {
+                deltaVar.ifGt(0, reverse);
+            }
+        }
+
+        int cmpOp = forStart ? (ascending ? OP_LT : OP_GT) : (ascending ? OP_LE : OP_GE);
+
         makeFindRangeLoop(type, mm, deltaVar, indexVar, true, flipOperator(cmpOp));
         Label cont = mm.label().goto_();
         reverse.here();
@@ -858,20 +869,25 @@ public abstract class WindowBuffer<V> extends ValueBuffer<V> {
         mm.return_(indexVar.add(startVar));
     }
 
+    /**
+     * @param deltaVar variable of double type
+     */
     private static void makeFindRangeLoop(Type type, MethodMaker mm,
                                           Variable deltaVar, Variable indexVar,
                                           boolean forward, int cmpOp)
     {
         Label done = mm.label();
 
+        var doubleType = doubleType(type);
+
         if (forward) {
             /*
               long endIndex = end - start;
               if (index < endIndex) {
-                  V find = get((int) index) + delta;                
+                  double find = get((int) index) + delta;                
                   do {
                       index++;
-                      V value = get((int) index);
+                      double value = get((int) index);
                       if (value <cmpOp> find) {
                           index--; // only when cmpOp doesn't have '='
                           goto done;
@@ -885,15 +901,15 @@ public abstract class WindowBuffer<V> extends ValueBuffer<V> {
             Label loopEnd = mm.label();
             indexVar.ifGe(endIndexVar, loopEnd);
 
-            var findVar = makeFindVar(type, indexVar, deltaVar);
+            var findVar = makeFindVar(type, doubleType, indexVar, deltaVar);
 
             Label doStart = mm.label().here();
             indexVar.inc(1);
-            var valueVar = mm.invoke("get", indexVar.cast(int.class));
+            var valueVar = convert(type, mm.invoke("get", indexVar.cast(int.class)), doubleType);
 
             Label stop = mm.label();
             Label cont = mm.label();
-            CompareUtils.compare(mm, type, valueVar, type, findVar, cmpOp, stop, cont);
+            CompareUtils.compare(mm, doubleType, valueVar, doubleType, findVar, cmpOp, stop, cont);
             stop.here();
 
             if (!hasEqualComponent(cmpOp)) {
@@ -912,10 +928,10 @@ public abstract class WindowBuffer<V> extends ValueBuffer<V> {
         } else {
             /*
               if (index > 0) {
-                  V find = get((int) index) + delta;
+                  double find = get((int) index) + delta;
                   do {
                       index--;
-                      V value = get((int) index);
+                      double value = get((int) index);
                       if (value <cmpOp> find) {
                           index++; // only when cmpOp doesn't have '='
                           goto done;
@@ -928,15 +944,15 @@ public abstract class WindowBuffer<V> extends ValueBuffer<V> {
             Label loopEnd = mm.label();
             indexVar.ifLe(0, loopEnd);
 
-            var findVar = makeFindVar(type, indexVar, deltaVar);
+            var findVar = makeFindVar(type, doubleType, indexVar, deltaVar);
 
             Label doStart = mm.label().here();
             indexVar.dec(1);
-            var valueVar = mm.invoke("get", indexVar.cast(int.class));
+            var valueVar = convert(type, mm.invoke("get", indexVar.cast(int.class)), doubleType);
 
             Label stop = mm.label();
             Label cont = mm.label();
-            CompareUtils.compare(mm, type, valueVar, type, findVar, cmpOp, stop, cont);
+            CompareUtils.compare(mm, doubleType, valueVar, doubleType, findVar, cmpOp, stop, cont);
             stop.here();
 
             if (!hasEqualComponent(cmpOp)) {
@@ -957,20 +973,44 @@ public abstract class WindowBuffer<V> extends ValueBuffer<V> {
         done.here();
     }
 
-    private static Variable makeFindVar(Type type, Variable indexVar, Variable deltaVar) {
+    /**
+     * @param deltaVar variable of double type
+     * @return variable of type double or Double
+     */
+    private static Variable makeFindVar(Type type, Type doubleType,
+                                        Variable indexVar, Variable deltaVar)
+    {
         MethodMaker mm = indexVar.methodMaker();
-        var findVar = mm.invoke("get", indexVar.cast(int.class));
+        final var findVar = convert(type, mm.invoke("get", indexVar.cast(int.class)), doubleType);
 
-        if (findVar.classType().isPrimitive()) {
-            findVar = Arithmetic.eval(type, Token.T_PLUS, findVar, deltaVar);
+        if (!doubleType.isNullable()) {
+            findVar.set(findVar.add(deltaVar));
         } else {
             Label skip = mm.label();
             findVar.ifEq(null, skip);
-            findVar.set(Arithmetic.eval(type, Token.T_PLUS, findVar, deltaVar));
+            findVar.set(findVar.add(deltaVar));
             skip.here();
         }
 
         return findVar;
+    }
+
+    private static Variable convert(ColumnInfo srcInfo, Variable srcVar, Type dstType) {
+        MethodMaker mm = srcVar.methodMaker();
+        Variable dstVar = mm.var(dstType.clazz());
+        Converter.convertLossy(mm, srcInfo, srcVar, dstType, dstVar);
+        return dstVar;
+    }
+
+    /**
+     * Returns a double or nullable Double type.
+     */
+    private static Type doubleType(ColumnInfo info) {
+        if (info.isNullable()) {
+            return BasicType.make(Double.class, Type.TYPE_DOUBLE | Type.TYPE_NULLABLE);
+        } else {
+            return BasicType.make(double.class, Type.TYPE_DOUBLE);
+        }
     }
 
     private static void addNumericalMethods(ClassMaker cm, Type type) {
