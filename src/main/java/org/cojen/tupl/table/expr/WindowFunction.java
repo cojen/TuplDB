@@ -104,7 +104,7 @@ abstract class WindowFunction extends FunctionApplier.Grouped {
     private boolean mIsStartConstant, mIsEndConstant;
 
     // Is set if the range start/end is a compile-time constant. Type is Long for MODE_ROWS and
-    // MODE_GROUPS, and is Double for MODE_RANGE.
+    // MODE_GROUPS, and is Double for MODE_RANGE. If the range is open, the type is Long.
     private Number mStartConstant, mEndConstant;
 
     private int mMode;
@@ -507,31 +507,31 @@ abstract class WindowFunction extends FunctionApplier.Grouped {
     private Number start(Range range) {
         // Note: mMode isn't expected to be set yet.
         if (mFrame.mode() == MODE_RANGE) {
-            return range.start_double();
-        } else {
-            return range.start_long();
+            double v = range.start_double();
+            if (v != Double.NEGATIVE_INFINITY) {
+                return v;
+            }
         }
+        return range.start_long();
     }
 
     private Number end(Range range) {
         // Note: mMode isn't expected to be set yet.
         if (mFrame.mode() == MODE_RANGE) {
-            return range.end_double();
-        } else {
-            return range.end_long();
+            double v = range.end_double();
+            if (v != Double.POSITIVE_INFINITY) {
+                return v;
+            }
         }
+        return range.end_long();
     }
 
     private boolean isOpenStart() {
-        return mStartConstant != null &&
-            (mStartConstant == (Number) Long.MIN_VALUE ||
-             mStartConstant == (Number) Double.NEGATIVE_INFINITY);
+        return mStartConstant instanceof Long v && v.longValue() == Long.MIN_VALUE;
     }
 
     private boolean isOpenEnd() {
-        return mEndConstant != null &&
-            (mEndConstant == (Number) Long.MAX_VALUE ||
-             mEndConstant == (Number) Double.POSITIVE_INFINITY);
+        return mEndConstant instanceof Long v && v.longValue() == Long.MAX_VALUE;
     }
 
     private boolean isStartVariable() {
