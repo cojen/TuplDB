@@ -230,8 +230,8 @@ public abstract class WindowBuffer<V> extends ValueBuffer<V> {
      * @param delta The range start value is calculated as the current value plus the delta.
      * The delta is typically less than zero, but any value is allowed.
      * @param startPos a frame position returned by a previous call to findRangeStartDesc; can
-     * pass MAX_VALUE if unknown or if delta isn't a constant
-     * @return a frame position relative to the current row (which is zero), or MAX_VALUE if
+     * pass MIN_VALUE if unknown or if delta isn't a constant
+     * @return a frame position relative to the current row (which is zero), or MIN_VALUE if
      * out of bounds (effective range is empty)
      */
     public abstract long findRangeStartDesc(double delta, long startPos);
@@ -246,8 +246,8 @@ public abstract class WindowBuffer<V> extends ValueBuffer<V> {
      * @param delta The range end value is calculated as the current value plus the delta. The
      * delta is typically greater than zero, but any value is allowed.
      * @param endPos a frame position returned by a previous call to findRangeEndDesc; pass
-     * 0 or MIN_VALUE if unknown or if delta isn't a constant
-     * @return a frame position relative to the current row (which is zero), or MIN_VALUE if
+     * 0 or MAX_VALUE if unknown or if delta isn't a constant
+     * @return a frame position relative to the current row (which is zero), or MAX_VALUE if
      * out of bounds (effective range is empty)
      */
     public abstract long findRangeEndDesc(double delta, long endPos);
@@ -530,8 +530,8 @@ public abstract class WindowBuffer<V> extends ValueBuffer<V> {
 
         if (type.isNumber()) {
             makeFindRange(type, cm, true, true);
-            makeFindRange(type, cm, true, false);
             makeFindRange(type, cm, false, true);
+            makeFindRange(type, cm, true, false);
             makeFindRange(type, cm, false, false);
         }
 
@@ -812,7 +812,7 @@ public abstract class WindowBuffer<V> extends ValueBuffer<V> {
         var posVar = mm.param(1);
 
         /*
-          if (pos == forStart ? MAX_VALUE : MIN_VALUE) {
+          if (pos == (forStart == ascending) ? MAX_VALUE : MIN_VALUE) {
               // Start at the current row.
               pos = 0;
           }
@@ -820,7 +820,7 @@ public abstract class WindowBuffer<V> extends ValueBuffer<V> {
 
         {
             Label cont = mm.label();
-            posVar.ifNe(forStart ? Long.MAX_VALUE : Long.MIN_VALUE, cont);
+            posVar.ifNe((forStart == ascending) ? Long.MAX_VALUE : Long.MIN_VALUE, cont);
             posVar.set(0);
             cont.here();
         }
@@ -840,7 +840,7 @@ public abstract class WindowBuffer<V> extends ValueBuffer<V> {
         var startVar = mm.field("start");
         var indexVar = mm.var(long.class).set(posVar.sub(startVar));
 
-        //int deltaOp = forStart ? (ascending ? OP_GT : OP_LT) : (ascending ? OP_GE : OP_LE);
+        //int deltaOp = forStart ? (ascending ? OP_GT : OP_LE) : (ascending ? OP_GE : OP_LT);
 
         Label reverse = mm.label();
 
@@ -848,22 +848,26 @@ public abstract class WindowBuffer<V> extends ValueBuffer<V> {
             if (ascending) {
                 deltaVar.ifLe(0, reverse);
             } else {
-                deltaVar.ifGe(0, reverse);
+                deltaVar.ifGt(0, reverse);
             }
         } else {
             if (ascending) {
                 deltaVar.ifLt(0, reverse);
             } else {
-                deltaVar.ifGt(0, reverse);
+                deltaVar.ifGe(0, reverse);
             }
         }
 
-        int cmpOp = forStart ? (ascending ? OP_LT : OP_GT) : (ascending ? OP_LE : OP_GE);
+        int cmpOp = forStart ? OP_GE : OP_GT;
 
-        makeFindRangeLoop(type, mm, deltaVar, indexVar, true, flipOperator(cmpOp));
+        if (!ascending) {
+            cmpOp = flipOperator(cmpOp);
+        }
+
+        makeFindRangeLoop(type, mm, deltaVar, indexVar, true, cmpOp);
         Label cont = mm.label().goto_();
         reverse.here();
-        makeFindRangeLoop(type, mm, deltaVar, indexVar, false, cmpOp);
+        makeFindRangeLoop(type, mm, deltaVar, indexVar, false, flipOperator(cmpOp));
 
         cont.here();
         mm.return_(indexVar.add(startVar));
@@ -894,7 +898,7 @@ public abstract class WindowBuffer<V> extends ValueBuffer<V> {
                       }
                   } while (index < endIndex);
               }
-              return Long.MAX_VALUE; // only when cmpOp has '='
+              return forward ? Long.MAX_VALUE : Long.MIN_VALUE; // only when cmpOp has '='
             */
 
             var endIndexVar = mm.field("end").sub(mm.field("start"));
@@ -923,7 +927,7 @@ public abstract class WindowBuffer<V> extends ValueBuffer<V> {
             loopEnd.here();
 
             if (hasEqualComponent(cmpOp)) {
-                mm.return_(Long.MAX_VALUE);
+                mm.return_(forward ? Long.MAX_VALUE : Long.MIN_VALUE);
             }
         } else {
             /*
@@ -938,7 +942,7 @@ public abstract class WindowBuffer<V> extends ValueBuffer<V> {
                       }
                   } while (index > 0);
               }
-              return Long.MIN_VALUE; // only when cmpOp has '='
+              return forward ? Long.MAX_VALUE : Long.MIN_VALUE; // only when cmpOp has '='
             */
 
             Label loopEnd = mm.label();
@@ -966,7 +970,7 @@ public abstract class WindowBuffer<V> extends ValueBuffer<V> {
             loopEnd.here();
 
             if (hasEqualComponent(cmpOp)) {
-                mm.return_(Long.MIN_VALUE);
+                mm.return_(forward ? Long.MAX_VALUE : Long.MIN_VALUE);
             }
         }
 

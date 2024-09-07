@@ -67,6 +67,10 @@ abstract class WindowFunction extends FunctionApplier.Grouped {
             return expr.isRangeWithCurrent();
         }
 
+        private boolean isDescending() {
+            return ordering == Ordering.DESCENDING;
+        }
+
         private int mode() {
             return switch (argName) {
                 case "rows" -> MODE_ROWS; case "groups" -> MODE_GROUPS; case "range" -> MODE_RANGE;
@@ -126,7 +130,8 @@ abstract class WindowFunction extends FunctionApplier.Grouped {
 
     // Is used by MODE_GROUPS and MODE_RANGE when the check method has found the window buffer
     // end position. When uninitialized, the value is Long.MAX_VALUE, which is never returned
-    // by the WindowBuffer find end methods.
+    // by the WindowBuffer find end methods. Note that when using MODE_RANGE and descending
+    // order, the findRangeStartDesc is called instead, which never returns MAX_VALUE either.
     private String mFoundEndFieldName;
 
     /**
@@ -335,8 +340,8 @@ abstract class WindowFunction extends FunctionApplier.Grouped {
         var remainingVar = mm.field(mRemainingFieldName).get();
         remainingVar.ifGt(0L, ready);
 
-        if (!isOpenEnd()) {
-            if (mEndConstant == null || ((Number) mEndConstant).doubleValue() < 0) {
+        if (!isRangeDescending() ? !isOpenEnd() : !isOpenStart()) {
+            if (!mFrame.includesCurrent()) {
                 // The current row isn't guaranteed to be included, so prevent the remaining
                 // amount from decrementing below zero. This check isn't necessary when the end
                 // is known to always include the current row because then the buffer ready
@@ -346,11 +351,21 @@ abstract class WindowFunction extends FunctionApplier.Grouped {
                 remainingVar.and(~(1L << 63)).ifEq(0, notReady);
             }
 
-            final Object end;
-            if (mIsEndConstant) {
-                end = mEndConstant != null ? mEndConstant : mm.field(mEndFieldName);
+            final Object start, end;
+            if (!isRangeDescending()) {
+                start = null;
+                if (mIsEndConstant) {
+                    end = mEndConstant != null ? mEndConstant : mm.field(mEndFieldName);
+                } else {
+                    end = mm.field(mEndFieldName).invoke("get", 0);
+                }
             } else {
-                end = mm.field(mEndFieldName).invoke("get", 0);
+                end = null;
+                if (mIsStartConstant) {
+                    start = mStartConstant != null ? mStartConstant : mm.field(mStartFieldName);
+                } else {
+                    start = mm.field(mStartFieldName).invoke("get", 0);
+                }
             }
 
             var bufferVar = mm.field(mBufferFieldName);
@@ -374,8 +389,14 @@ abstract class WindowFunction extends FunctionApplier.Grouped {
                     foundEndVar = bufferVar.invoke("findGroupEnd", end);
                 } else {
                     assert mMode == MODE_RANGE;
-                    // FIXME: pass last endPos if delta is constant
-                    foundEndVar = bufferVar.invoke("findRangeEnd" + mFrame.orderStr(), end, 0L);
+                    String orderStr = mFrame.orderStr();
+                    if (!isRangeDescending()) {
+                        // FIXME: pass last endPos if delta is constant
+                        foundEndVar = bufferVar.invoke("findRangeEnd" + orderStr, end, 0L);
+                    } else {
+                        // FIXME: pass last startPos if delta is constant
+                        foundEndVar = bufferVar.invoke("findRangeStart" + orderStr, start, 0L);
+                    }
                 }
 
                 // If the found end is greater than or equal to the buffer end, then there's no
@@ -417,13 +438,34 @@ abstract class WindowFunction extends FunctionApplier.Grouped {
         }
 
         if (mMode != MODE_ROWS && !isOpenStart()) {
+            Variable startVar;
+            Label cont = null;
+
+            if (!isRangeDescending()) {
+                startVar = mm.var(long.class);
+            } else {
+                var foundEndField = mm.field(mFoundEndFieldName); 
+                startVar = foundEndField.get();
+                Label notFound = mm.label();
+                startVar.ifEq(Long.MAX_VALUE, notFound);
+                foundEndField.set(Long.MAX_VALUE);
+                cont = mm.label().goto_();
+                notFound.here();
+            }
+
             if (mMode == MODE_GROUPS) {
-                start = bufferVar.invoke("findGroupStart", start);
+                startVar.set(bufferVar.invoke("findGroupStart", start));
             } else {
                 assert mMode == MODE_RANGE;
                 // FIXME: pass last startPos if delta is constant
-                start = bufferVar.invoke("findRangeStart" + mFrame.orderStr(), start, 0L);
+                startVar.set(bufferVar.invoke("findRangeStart" + mFrame.orderStr(), start, 0L));
             }
+
+            if (cont != null) {
+                cont.here();
+            }
+
+            start = startVar;
         }
 
         if (mIsEndConstant) {
@@ -433,14 +475,20 @@ abstract class WindowFunction extends FunctionApplier.Grouped {
         }
 
         if (mMode != MODE_ROWS && !isOpenEnd()) {
-            var foundEndField = mm.field(mFoundEndFieldName); 
-            var endVar = foundEndField.get();
-            Label notFound = mm.label();
-            endVar.ifEq(Long.MAX_VALUE, notFound);
-            foundEndField.set(Long.MAX_VALUE);
-            Label cont = mm.label().goto_();
+            Variable endVar;
+            Label cont = null;
 
-            notFound.here();
+            if (isRangeDescending()) {
+                endVar = mm.var(long.class);
+            } else {
+                var foundEndField = mm.field(mFoundEndFieldName); 
+                endVar = foundEndField.get();
+                Label notFound = mm.label();
+                endVar.ifEq(Long.MAX_VALUE, notFound);
+                foundEndField.set(Long.MAX_VALUE);
+                cont = mm.label().goto_();
+                notFound.here();
+            }
 
             if (mMode == MODE_GROUPS) {
                 endVar.set(bufferVar.invoke("findGroupEnd", end));
@@ -450,8 +498,18 @@ abstract class WindowFunction extends FunctionApplier.Grouped {
                 endVar.set(bufferVar.invoke("findRangeEnd" + mFrame.orderStr(), end, 0L));
             }
 
-            cont.here();
+            if (cont != null) {
+                cont.here();
+            }
+
             end = endVar;
+        }
+
+        if (isRangeDescending()) {
+            // Swap the positions.
+            Object tmp = start;
+            start = end;
+            end = tmp;
         }
 
         // FIXME: For MODE_GROUPS, if the range is constant, and the buffer value is the same
@@ -506,32 +564,40 @@ abstract class WindowFunction extends FunctionApplier.Grouped {
 
     private Number start(Range range) {
         // Note: mMode isn't expected to be set yet.
-        if (mFrame.mode() == MODE_RANGE) {
-            double v = range.start_double();
-            if (v != Double.NEGATIVE_INFINITY) {
-                return v;
-            }
+        if (mFrame.mode() != MODE_RANGE) {
+            return range.start_long();
         }
-        return range.start_long();
+        double v = range.start_double();
+        if (v != Double.NEGATIVE_INFINITY) {
+            return v;
+        }
+        return mFrame.isDescending() ? Long.MAX_VALUE : Long.MIN_VALUE;
     }
 
     private Number end(Range range) {
         // Note: mMode isn't expected to be set yet.
-        if (mFrame.mode() == MODE_RANGE) {
-            double v = range.end_double();
-            if (v != Double.POSITIVE_INFINITY) {
-                return v;
-            }
+        if (mFrame.mode() != MODE_RANGE) {
+            return range.end_long();
         }
-        return range.end_long();
+        double v = range.end_double();
+        if (v != Double.POSITIVE_INFINITY) {
+            return v;
+        }
+        return mFrame.isDescending() ? Long.MIN_VALUE : Long.MAX_VALUE;
+    }
+
+    private boolean isRangeDescending() {
+        return mMode == MODE_RANGE && mFrame.isDescending();
     }
 
     private boolean isOpenStart() {
-        return mStartConstant instanceof Long v && v.longValue() == Long.MIN_VALUE;
+        return mStartConstant instanceof Long v &&
+            v.longValue() == (isRangeDescending() ? Long.MAX_VALUE : Long.MIN_VALUE);
     }
 
     private boolean isOpenEnd() {
-        return mEndConstant instanceof Long v && v.longValue() == Long.MAX_VALUE;
+        return mEndConstant instanceof Long v &&
+            v.longValue() == (isRangeDescending() ? Long.MIN_VALUE : Long.MAX_VALUE);
     }
 
     private boolean isStartVariable() {

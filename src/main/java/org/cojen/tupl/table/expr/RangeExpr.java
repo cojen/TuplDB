@@ -187,6 +187,9 @@ public final class RangeExpr extends Expr {
 
     @Override
     public boolean isRangeWithCurrent() {
+        // Note that a range of constant values doesn't need to be checked because if the start
+        // and end are both constant, the make method returns a ConstantExpr(Range). This
+        // guarantees that mStart and mEnd aren't both constants.
         return mStart.isZero() || mEnd.isZero();
     }
 
