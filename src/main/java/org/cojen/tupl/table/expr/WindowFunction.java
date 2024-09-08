@@ -89,6 +89,28 @@ abstract class WindowFunction extends FunctionApplier.Grouped {
                 default -> throw new AssertionError();
             };
         }
+
+        private Number startFor(Range range) {
+            if (mode() != MODE_RANGE) {
+                return range.start_long();
+            }
+            double v = range.start_double();
+            if (v != Double.NEGATIVE_INFINITY) {
+                return v;
+            }
+            return isDescending() ? Long.MAX_VALUE : Long.MIN_VALUE;
+        }
+
+        private Number endFor(Range range) {
+            if (mode() != MODE_RANGE) {
+                return range.end_long();
+            }
+            double v = range.end_double();
+            if (v != Double.POSITIVE_INFINITY) {
+                return v;
+            }
+            return isDescending() ? Long.MIN_VALUE : Long.MAX_VALUE;
+        }
     }
 
     private static final int MODE_ROWS = 1, MODE_GROUPS = 2, MODE_RANGE = 3;
@@ -172,19 +194,19 @@ abstract class WindowFunction extends FunctionApplier.Grouped {
             mIsStartConstant = true;
             mIsEndConstant = true;
             var range = (Range) rangeVal.constantValue();
-            mStartConstant = start(range);
-            mEndConstant = end(range);
+            mStartConstant = mFrame.startFor(range);
+            mEndConstant = mFrame.endFor(range);
         } else if (rangeVal.expr() instanceof RangeExpr re) {
             if (re.start().isConstant()) {
                 mIsStartConstant = true;
                 if (re.start() instanceof ConstantExpr c) {
-                    mStartConstant = start(Range.make((Number) c.value(), null));
+                    mStartConstant = mFrame.startFor(Range.make((Number) c.value(), null));
                 }
             }
             if (re.end().isConstant()) {
                 mIsEndConstant = true;
                 if (re.end() instanceof ConstantExpr c) {
-                    mEndConstant = end(Range.make(null, (Number) c.value()));
+                    mEndConstant = mFrame.endFor(Range.make(null, (Number) c.value()));
                 }
             }
         }
@@ -561,30 +583,6 @@ abstract class WindowFunction extends FunctionApplier.Grouped {
      * result type
      */
     protected abstract Variable compute(Variable bufferVar, Object frameStart, Object frameEnd);
-
-    private Number start(Range range) {
-        // Note: mMode isn't expected to be set yet.
-        if (mFrame.mode() != MODE_RANGE) {
-            return range.start_long();
-        }
-        double v = range.start_double();
-        if (v != Double.NEGATIVE_INFINITY) {
-            return v;
-        }
-        return mFrame.isDescending() ? Long.MAX_VALUE : Long.MIN_VALUE;
-    }
-
-    private Number end(Range range) {
-        // Note: mMode isn't expected to be set yet.
-        if (mFrame.mode() != MODE_RANGE) {
-            return range.end_long();
-        }
-        double v = range.end_double();
-        if (v != Double.POSITIVE_INFINITY) {
-            return v;
-        }
-        return mFrame.isDescending() ? Long.MIN_VALUE : Long.MAX_VALUE;
-    }
 
     private boolean isRangeDescending() {
         return mMode == MODE_RANGE && mFrame.isDescending();
