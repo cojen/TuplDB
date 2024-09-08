@@ -156,6 +156,9 @@ abstract class WindowFunction extends FunctionApplier.Grouped {
     // order, the findRangeStartDesc is called instead, which never returns MAX_VALUE either.
     private String mFoundEndFieldName;
 
+    // These fields are used to skip computing a new result if the input values are the same.
+    private String mLastResultFieldName, mLastStartFieldName, mLastEndFieldName;
+
     /**
      * @param resultType the result type produced by the function
      * @param valueType the intermediate value type which might need to be buffered
@@ -256,6 +259,17 @@ abstract class WindowFunction extends FunctionApplier.Grouped {
             mFoundEndFieldName = context.newWorkField(long.class).name();
             mm.field(mFoundEndFieldName).set(Long.MAX_VALUE);
         }
+
+        if (isPureFunction() && !isOpenStart() && !isOpenEnd() &&
+            // If MODE_ROWS, then both sides of the frame must be variable. If either is
+            // constant, then the start/end check to skip computation will always be false, and
+            // so the result must always be computed. For this reason, don't bother checking.
+            (mMode != MODE_ROWS || !(mIsStartConstant || mIsEndConstant)))
+        {
+            mLastResultFieldName = context.newWorkField(type().clazz()).name();
+            mLastStartFieldName = context.newWorkField(long.class).name();
+            mLastEndFieldName = context.newWorkField(long.class).name();
+        }
     }
 
     private String initValueField(GroupContext context, boolean isConstant, boolean forStart) {
@@ -312,6 +326,16 @@ abstract class WindowFunction extends FunctionApplier.Grouped {
 
         // Set the initial value with the highest bit set to indicate not finished yet.
         mm.field(mRemainingFieldName).set((1L << 63) + 1);
+
+        if (mLastStartFieldName != null) {
+            mm.field(mLastResultFieldName).clear();
+            // Initialize to a fully open range because these fields will never be defined for
+            // a fully open frame anyhow. There won't be any conflict with the actual start/end
+            // values to be used for computation.
+            assert !isOpenStart() && !isOpenEnd();
+            mm.field(mLastStartFieldName).set(Long.MIN_VALUE);
+            mm.field(mLastEndFieldName).set(Long.MAX_VALUE);
+        }
     }
 
     @Override
@@ -534,9 +558,44 @@ abstract class WindowFunction extends FunctionApplier.Grouped {
             end = tmp;
         }
 
-        // FIXME: For MODE_GROUPS, if the range is constant, and the buffer value is the same
-        // as before, then no need to compute a new target value.
-        var resultVar = compute(bufferVar, start, end);
+        final Variable resultVar;
+
+        if (mLastResultFieldName == null) {
+            resultVar = compute(bufferVar, start, end);
+        } else {
+            /* 
+               If the computed result is guaranteed to be the same as before, then don't bother
+               computing it again. Note that one is subtracted from the check because start/end
+               is relative to the current row.
+
+               if (start == lastStart - 1 && end == lastEnd - 1) {
+                   result = lastResult;
+               } else {
+                   result = compute...
+                   lastResult = result;
+               }
+            */
+
+            var lastResultField = mm.field(mLastResultFieldName);
+            var lastStartField = mm.field(mLastStartFieldName);
+            var lastEndField = mm.field(mLastEndFieldName);
+
+            resultVar = mm.var(type().clazz());
+
+            Label compute = mm.label();
+            lastStartField.sub(1).ifNe(start, compute);
+            lastEndField.sub(1).ifNe(end, compute);
+            resultVar.set(lastResultField);
+            Label cont = mm.label().goto_();
+
+            compute.here();
+            resultVar.set(compute(bufferVar, start, end));
+            lastResultField.set(resultVar);
+
+            cont.here();
+            lastStartField.set(start);
+            lastEndField.set(end);
+        }
 
         mm.field(mRemainingFieldName).inc(-1);
 
