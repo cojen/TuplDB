@@ -327,7 +327,7 @@ abstract class WindowFunction extends FunctionApplier.Grouped {
         // Set the initial value with the highest bit set to indicate not finished yet.
         mm.field(mRemainingFieldName).set((1L << 63) + 1);
 
-        if (mLastStartFieldName != null) {
+        if (mLastResultFieldName != null) {
             mm.field(mLastResultFieldName).clear();
             // Initialize to a fully open range because these fields will never be defined for
             // a fully open frame anyhow. There won't be any conflict with the actual start/end
