@@ -229,8 +229,8 @@ public abstract class WindowBuffer<V> extends ValueBuffer<V> {
      *
      * @param delta The range start value is calculated as the current value plus the delta.
      * The delta is typically less than zero, but any value is allowed.
-     * @param startPos a frame position returned by a previous call to findRangeStartDesc; can
-     * pass MIN_VALUE if unknown or if delta isn't a constant
+     * @param startPos a frame position returned by a previous call to findRangeStartDesc; pass
+     * 0 or MIN_VALUE if unknown or if delta isn't a constant
      * @return a frame position relative to the current row (which is zero), or MIN_VALUE if
      * out of bounds (effective range is empty)
      */
