@@ -28,6 +28,11 @@ import java.util.Set;
 
 import java.util.function.Predicate;
 
+import org.cojen.maker.ClassMaker;
+import org.cojen.maker.MethodMaker;
+
+import org.cojen.tupl.Untransformed;
+
 import org.cojen.tupl.table.ColumnInfo;
 import org.cojen.tupl.table.OrderBy;
 import org.cojen.tupl.table.RowInfo;
@@ -612,6 +617,34 @@ public abstract sealed class QueryExpr extends RelationExpr
         }
 
         return new QuerySpec(projMap, orderBy, mRowFilter);
+    }
+
+    /**
+     * Intended to be used when making Mapper and Grouper.Factory classes.
+     */
+    protected void addInverseMappingFunctions(ClassMaker cm, List<ProjExpr> projection) {
+        TupleType targetType = rowType();
+
+        for (ProjExpr pe : projection) {
+            ColumnExpr source;
+            if (pe.shouldExclude() || (source = pe.sourceColumn()) == null) {
+                continue;
+            }
+
+            Column targetColumn = targetType.findColumn(pe.name());
+
+            Class targetColumnType = targetColumn.type().clazz();
+            if (targetColumnType != source.type().clazz()) {
+                continue;
+            }
+
+            Class sourceColumnType = source.originalType().clazz();
+
+            String methodName = targetColumn.name() + "_to_" + source.name();
+            MethodMaker mm = cm.addMethod(sourceColumnType, methodName, targetColumnType);
+            mm.public_().static_().addAnnotation(Untransformed.class, true);
+            mm.return_(mm.param(0));
+        }
     }
 
     protected final void doEncodeKey(KeyEncoder enc) {

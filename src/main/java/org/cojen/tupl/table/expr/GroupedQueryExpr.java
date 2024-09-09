@@ -69,6 +69,8 @@ final class GroupedQueryExpr extends QueryExpr {
                                  List<ProjExpr> projection, int groupBy,
                                  int maxArgument, String orderBy)
     {
+        final List<ProjExpr> oProjection = projection;
+
         String groupBySpec, groupOrderBySpec;
 
         {
@@ -104,24 +106,29 @@ final class GroupedQueryExpr extends QueryExpr {
                                      (i, proj) -> proj.asWindow(newAssignments));
 
         return new GroupedQueryExpr(startPos, endPos, type, from, rowFilter, filter,
-                                    projection, groupBy, maxArgument, orderBy,
+                                    oProjection, projection, groupBy, maxArgument, orderBy,
                                     groupBySpec, groupOrderBySpec);
     }
 
+    private final List<ProjExpr> mOriginalProjection;
     private final int mNumGroupBy;
     private final Expr mFilter;
     private final String mOrderBy;
     private final String mGroupBySpec;
     private final String mGroupOrderBySpec;
 
+    /**
+     * @param oProjection original projection
+     */
     private GroupedQueryExpr(int startPos, int endPos, RelationType type,
                              RelationExpr from, RowFilter rowFilter, Expr filter,
-                             List<ProjExpr> projection, int groupBy,
+                             List<ProjExpr> oProjection, List<ProjExpr> projection, int groupBy,
                              int maxArgument, String orderBy,
                              String groupBySpec, String groupOrderBySpec)
     {
         super(startPos, endPos, type, from, rowFilter, projection, maxArgument);
 
+        mOriginalProjection = oProjection;
         mNumGroupBy = groupBy;
         mFilter = filter;
         mOrderBy = orderBy;
@@ -286,7 +293,7 @@ final class GroupedQueryExpr extends QueryExpr {
             }
         }
 
-        // FIXME: addInverseMappingFunctions
+        addInverseMappingFunctions(cm, mOriginalProjection);
 
         addPlanMethod(cm);
 

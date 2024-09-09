@@ -30,7 +30,6 @@ import java.util.Set;
 
 import org.cojen.tupl.Mapper;
 import org.cojen.tupl.Table;
-import org.cojen.tupl.Untransformed;
 
 import org.cojen.tupl.diag.QueryPlan;
 
@@ -281,7 +280,7 @@ final class MappedQueryExpr extends QueryExpr {
 
         addMapMethod(cm, evalColumns, argCount);
 
-        addInverseMappingFunctions(cm);
+        addInverseMappingFunctions(cm, mEffectiveProjection);
 
         addPlanMethod(cm);
 
@@ -376,31 +375,6 @@ final class MappedQueryExpr extends QueryExpr {
             (Object.class, "map", Object.class, Object.class).public_().bridge();
         bridge.return_(bridge.this_().invoke(targetType.clazz(), "map",
                                              null, bridge.param(0), bridge.param(1)));
-    }
-
-    private void addInverseMappingFunctions(ClassMaker cm) {
-        TupleType targetType = rowType();
-
-        for (ProjExpr pe : mEffectiveProjection) {
-            ColumnExpr source;
-            if (pe.shouldExclude() || (source = pe.sourceColumn()) == null) {
-                continue;
-            }
-
-            Column targetColumn = targetType.findColumn(pe.name());
-
-            Class targetColumnType = targetColumn.type().clazz();
-            if (targetColumnType != source.type().clazz()) {
-                continue;
-            }
-
-            Class sourceColumnType = source.originalType().clazz();
-
-            String methodName = targetColumn.name() + "_to_" + source.name();
-            MethodMaker mm = cm.addMethod(sourceColumnType, methodName, targetColumnType);
-            mm.public_().static_().addAnnotation(Untransformed.class, true);
-            mm.return_(mm.param(0));
-        }
     }
 
     private void addPlanMethod(ClassMaker cm) {
