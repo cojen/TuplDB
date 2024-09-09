@@ -231,16 +231,58 @@ final class GroupedQueryExpr extends QueryExpr {
         }
 
         if (mOrderBy == null) {
-            /* FIXME: with argCount
-            return new NoView(source, argCount, targetClass, qa);
-            */
-            throw null;
+            return new NoView(source, argCount, mGroupBySpec, mGroupOrderBySpec, targetClass, qg);
         }
 
-        /* FIXME: with argCount and orderBy
-        return new WithView(source, argCount, targetClass, qa, mOrderBy);
-        */
-        throw null;
+        return new WithView(source, argCount,
+                            mGroupBySpec, mGroupOrderBySpec, targetClass, qg, mOrderBy);
+    }
+
+    @SuppressWarnings("unchecked")
+    private static sealed class NoView extends CompiledQuery.Wrapped {
+        private final String mGroupBySpec;
+        private final String mGroupOrderBySpec;
+        private final Class mTargetClass;
+        private final QueryGrouper mGrouper;
+
+        NoView(CompiledQuery source, int argCount,
+               String groupBySpec, String groupOrderBySpec, Class targetClass, QueryGrouper qg)
+        {
+            super(source, argCount);
+            mGroupBySpec = groupBySpec;
+            mGroupOrderBySpec = groupOrderBySpec;
+            mTargetClass = targetClass;
+            mGrouper = qg;
+        }
+
+        @Override
+        public Class rowType() {
+            return mTargetClass;
+        }
+
+        @Override
+        public Table table(Object... args) throws IOException {
+            checkArgumentCount(args);
+            return source.table(args).group(mGroupBySpec, mGroupOrderBySpec,
+                                            mTargetClass, mGrouper.factoryFor(args));
+        }
+    }
+
+    private static final class WithView extends NoView {
+        private final String mViewStr;
+
+        WithView(CompiledQuery source, int argCount,
+                 String groupBySpec, String groupOrderBySpec, Class targetClass, QueryGrouper qg,
+                 String viewStr)
+        {
+            super(source, argCount, groupBySpec, groupOrderBySpec, targetClass, qg);
+            mViewStr = viewStr;
+        }
+
+        @Override
+        public Table table(Object... args) throws IOException {
+            return super.table(args).view(mViewStr);
+        }
     }
 
     private QueryGrouper makeQueryGrouper() {
@@ -332,7 +374,7 @@ final class GroupedQueryExpr extends QueryExpr {
             ctor.invokeSuperConstructor();
         } else {
             cm.addField(Object[].class, "args").private_().final_();
-            ctor = cm.addConstructor(Object[].class, "args");
+            ctor = cm.addConstructor(Object[].class);
             ctor.invokeSuperConstructor();
             ctor.field("args").set(ctor.param(0));
         }

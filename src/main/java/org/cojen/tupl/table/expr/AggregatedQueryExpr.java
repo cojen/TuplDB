@@ -181,16 +181,49 @@ final class AggregatedQueryExpr extends QueryExpr {
         }
 
         if (mOrderBy == null) {
-            /* FIXME: with argCount
             return new NoView(source, argCount, targetClass, qa);
-            */
-            throw null;
         }
 
-        /* FIXME: with argCount and orderBy
         return new WithView(source, argCount, targetClass, qa, mOrderBy);
-        */
-        throw null;
+    }
+
+    @SuppressWarnings("unchecked")
+    private static sealed class NoView extends CompiledQuery.Wrapped {
+        private final Class mTargetClass;
+        private final QueryAggregator mAggregator;
+
+        NoView(CompiledQuery source, int argCount, Class targetClass, QueryAggregator qa) {
+            super(source, argCount);
+            mTargetClass = targetClass;
+            mAggregator = qa;
+        }
+
+        @Override
+        public Class rowType() {
+            return mTargetClass;
+        }
+
+        @Override
+        public Table table(Object... args) throws IOException {
+            checkArgumentCount(args);
+            return source.table(args).aggregate(mTargetClass, mAggregator.factoryFor(args));
+        }
+    }
+
+    private static final class WithView extends NoView {
+        private final String mViewStr;
+
+        WithView(CompiledQuery source, int argCount, Class targetClass, QueryAggregator qa,
+                 String viewStr)
+        {
+            super(source, argCount, targetClass, qa);
+            mViewStr = viewStr;
+        }
+
+        @Override
+        public Table table(Object... args) throws IOException {
+            return super.table(args).view(mViewStr);
+        }
     }
 
     private QueryAggregator makeQueryAggregator() {
@@ -280,7 +313,7 @@ final class AggregatedQueryExpr extends QueryExpr {
             ctor.invokeSuperConstructor();
         } else {
             cm.addField(Object[].class, "args").private_().final_();
-            ctor = cm.addConstructor(Object[].class, "args");
+            ctor = cm.addConstructor(Object[].class);
             ctor.invokeSuperConstructor();
             ctor.field("args").set(ctor.param(0));
         }
