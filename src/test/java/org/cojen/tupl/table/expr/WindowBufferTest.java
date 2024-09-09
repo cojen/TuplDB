@@ -1056,8 +1056,8 @@ public class WindowBufferTest {
         var beginMethod = bufferClass.getMethod("begin", valueClass);
         var appendMethod = bufferClass.getMethod("append", valueClass);
         var advanceMethod = bufferClass.getMethod("advance");
-        var findStartMethod = bufferClass.getMethod("findRangeStartAsc", double.class, long.class);
-        var findEndMethod = bufferClass.getMethod("findRangeEndAsc", double.class, long.class);
+        var findStartMethod = bufferClass.getMethod("findRangeStartAsc", double.class);
+        var findEndMethod = bufferClass.getMethod("findRangeEndAsc", double.class);
         var frameGetMethod = bufferClass.getMethod("frameGet", long.class);
 
         double[] values = {
@@ -1078,7 +1078,7 @@ public class WindowBufferTest {
 
         for (double delta = -2.0; delta <= 2.0; delta += 0.25) {
             double find = 3.0 + delta;
-            long pos = (long) findStartMethod.invoke(buffer, delta, 0L);
+            long pos = (long) findStartMethod.invoke(buffer, delta);
             if (pos == Long.MAX_VALUE) {
                 assertTrue(find > values[values.length - 1]);
             } else {
@@ -1093,7 +1093,7 @@ public class WindowBufferTest {
 
         for (double delta = -2.0; delta <= 2.0; delta += 0.25) {
             double find = 3.0 + delta;
-            long pos = (long) findEndMethod.invoke(buffer, delta, 0L);
+            long pos = (long) findEndMethod.invoke(buffer, delta);
             if (pos == Long.MIN_VALUE) {
                 assertTrue(find < values[0]);
             } else {
@@ -1111,12 +1111,12 @@ public class WindowBufferTest {
         assertEquals(3.0, frameGetMethod.invoke(buffer, 0L));
 
         {
-            long pos = (long) findStartMethod.invoke(buffer, 0.0, 0L);
+            long pos = (long) findStartMethod.invoke(buffer, 0.0);
             assertEquals(-1, pos);
         }
 
         {
-            long pos = (long) findEndMethod.invoke(buffer, 0.0, 0L);
+            long pos = (long) findEndMethod.invoke(buffer, 0.0);
             assertEquals(0, pos);
         }
     }
@@ -1132,8 +1132,8 @@ public class WindowBufferTest {
         var beginMethod = bufferClass.getMethod("begin", valueClass);
         var appendMethod = bufferClass.getMethod("append", valueClass);
         var advanceMethod = bufferClass.getMethod("advance");
-        var findStartMethod = bufferClass.getMethod("findRangeStartDesc", double.class, long.class);
-        var findEndMethod = bufferClass.getMethod("findRangeEndDesc", double.class, long.class);
+        var findStartMethod = bufferClass.getMethod("findRangeStartDesc", double.class);
+        var findEndMethod = bufferClass.getMethod("findRangeEndDesc", double.class);
         var frameGetMethod = bufferClass.getMethod("frameGet", long.class);
 
         double[] values = {
@@ -1154,7 +1154,7 @@ public class WindowBufferTest {
 
         for (double delta = -2.0; delta <= 2.0; delta += 0.25) {
             double find = 3.0 + delta;
-            long pos = (long) findStartMethod.invoke(buffer, delta, 0L);
+            long pos = (long) findStartMethod.invoke(buffer, delta);
             if (pos == Long.MIN_VALUE) {
                 assertTrue(find > values[0]);
             } else {
@@ -1169,7 +1169,7 @@ public class WindowBufferTest {
 
         for (double delta = -2.0; delta <= 2.0; delta += 0.25) {
             double find = 3.0 + delta;
-            long pos = (long) findEndMethod.invoke(buffer, delta, 0L);
+            long pos = (long) findEndMethod.invoke(buffer, delta);
             if (pos == Long.MAX_VALUE) {
                 assertTrue(find < values[values.length - 1]);
             } else {
@@ -1187,12 +1187,12 @@ public class WindowBufferTest {
         assertEquals(3.0, frameGetMethod.invoke(buffer, 0L));
 
         {
-            long pos = (long) findStartMethod.invoke(buffer, 0.0, 0L);
+            long pos = (long) findStartMethod.invoke(buffer, 0.0);
             assertEquals(0, pos);
         }
 
         {
-            long pos = (long) findEndMethod.invoke(buffer, 0.0, 0L);
+            long pos = (long) findEndMethod.invoke(buffer, 0.0);
             assertEquals(-1, pos);
         }
     }

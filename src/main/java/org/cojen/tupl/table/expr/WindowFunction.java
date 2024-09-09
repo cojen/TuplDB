@@ -437,11 +437,9 @@ abstract class WindowFunction extends FunctionApplier.Grouped {
                     assert mMode == MODE_RANGE;
                     String orderStr = mFrame.orderStr();
                     if (!isRangeDescending()) {
-                        // FIXME: pass last endPos if delta is constant
-                        foundEndVar = bufferVar.invoke("findRangeEnd" + orderStr, end, 0L);
+                        foundEndVar = bufferVar.invoke("findRangeEnd" + orderStr, end);
                     } else {
-                        // FIXME: pass last startPos if delta is constant
-                        foundEndVar = bufferVar.invoke("findRangeStart" + orderStr, start, 0L);
+                        foundEndVar = bufferVar.invoke("findRangeStart" + orderStr, start);
                     }
                 }
 
@@ -503,8 +501,7 @@ abstract class WindowFunction extends FunctionApplier.Grouped {
                 startVar.set(bufferVar.invoke("findGroupStart", start));
             } else {
                 assert mMode == MODE_RANGE;
-                // FIXME: pass last startPos if delta is constant
-                startVar.set(bufferVar.invoke("findRangeStart" + mFrame.orderStr(), start, 0L));
+                startVar.set(bufferVar.invoke("findRangeStart" + mFrame.orderStr(), start));
             }
 
             if (cont != null) {
@@ -540,8 +537,7 @@ abstract class WindowFunction extends FunctionApplier.Grouped {
                 endVar.set(bufferVar.invoke("findGroupEnd", end));
             } else {
                 assert mMode == MODE_RANGE;
-                // FIXME: pass last endPos if delta is constant
-                endVar.set(bufferVar.invoke("findRangeEnd" + mFrame.orderStr(), end, 0L));
+                endVar.set(bufferVar.invoke("findRangeEnd" + mFrame.orderStr(), end));
             }
 
             if (cont != null) {

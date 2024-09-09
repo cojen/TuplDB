@@ -197,12 +197,10 @@ public abstract class WindowBuffer<V> extends ValueBuffer<V> {
      *
      * @param delta The range start value is calculated as the current value plus the delta.
      * The delta is typically less than zero, but any value is allowed.
-     * @param startPos a frame position returned by a previous call to findRangeStartAsc; pass
-     * 0 or MAX_VALUE if unknown or if delta isn't a constant
      * @return a frame position relative to the current row (which is zero), or MAX_VALUE if
      * out of bounds (effective range is empty)
      */
-    public abstract long findRangeStartAsc(double delta, long startPos);
+    public abstract long findRangeStartAsc(double delta);
 
     /**
      * Finds a frame row position whose value matches the current row value plus a delta value.
@@ -213,12 +211,10 @@ public abstract class WindowBuffer<V> extends ValueBuffer<V> {
      *
      * @param delta The range end value is calculated as the current value plus the delta. The
      * delta is typically greater than zero, but any value is allowed.
-     * @param endPos a frame position returned by a previous call to findRangeEndAsc; pass
-     * 0 or MIN_VALUE if unknown or if delta isn't a constant
      * @return a frame position relative to the current row (which is zero), or MIN_VALUE if
      * out of bounds (effective range is empty)
      */
-    public abstract long findRangeEndAsc(double delta, long endPos);
+    public abstract long findRangeEndAsc(double delta);
 
     /**
      * Finds a frame row position whose value matches the current row value plus a delta value.
@@ -229,12 +225,10 @@ public abstract class WindowBuffer<V> extends ValueBuffer<V> {
      *
      * @param delta The range start value is calculated as the current value plus the delta.
      * The delta is typically less than zero, but any value is allowed.
-     * @param startPos a frame position returned by a previous call to findRangeStartDesc; pass
-     * 0 or MIN_VALUE if unknown or if delta isn't a constant
      * @return a frame position relative to the current row (which is zero), or MIN_VALUE if
      * out of bounds (effective range is empty)
      */
-    public abstract long findRangeStartDesc(double delta, long startPos);
+    public abstract long findRangeStartDesc(double delta);
 
     /**
      * Finds a frame row position whose value matches the current row value plus a delta value.
@@ -245,12 +239,10 @@ public abstract class WindowBuffer<V> extends ValueBuffer<V> {
      *
      * @param delta The range end value is calculated as the current value plus the delta. The
      * delta is typically greater than zero, but any value is allowed.
-     * @param endPos a frame position returned by a previous call to findRangeEndDesc; pass
-     * 0 or MAX_VALUE if unknown or if delta isn't a constant
      * @return a frame position relative to the current row (which is zero), or MAX_VALUE if
      * out of bounds (effective range is empty)
      */
-    public abstract long findRangeEndDesc(double delta, long endPos);
+    public abstract long findRangeEndDesc(double delta);
 
     /**
      * Returns the number of non-null values which are available over the given range.
@@ -805,28 +797,13 @@ public abstract class WindowBuffer<V> extends ValueBuffer<V> {
                                       boolean forStart, boolean ascending)
     {
         String name = "findRange" + (forStart ? "Start" : "End") + (ascending ? "Asc" : "Desc");
-        MethodMaker mm = cm.addMethod(long.class, name, double.class, long.class);
+        MethodMaker mm = cm.addMethod(long.class, name, double.class);
         mm.public_().final_();
 
         var deltaVar = mm.param(0);
-        var posVar = mm.param(1);
 
         /*
-          if (pos == (forStart == ascending) ? MAX_VALUE : MIN_VALUE) {
-              // Start at the current row.
-              pos = 0;
-          }
-        */
-
-        {
-            Label cont = mm.label();
-            posVar.ifNe((forStart == ascending) ? Long.MAX_VALUE : Long.MIN_VALUE, cont);
-            posVar.set(0);
-            cont.here();
-        }
-
-        /*
-          long index = pos - start;
+          long index = -start;
 
           if (delta <deltaOp> 0) {
               ... forward scan ...
@@ -838,7 +815,7 @@ public abstract class WindowBuffer<V> extends ValueBuffer<V> {
         */
 
         var startVar = mm.field("start");
-        var indexVar = mm.var(long.class).set(posVar.sub(startVar));
+        var indexVar = mm.var(long.class).set(startVar.neg());
 
         //int deltaOp = forStart ? (ascending ? OP_GT : OP_LE) : (ascending ? OP_GE : OP_LT);
 
@@ -888,7 +865,7 @@ public abstract class WindowBuffer<V> extends ValueBuffer<V> {
             /*
               long endIndex = end - start;
               if (index < endIndex) {
-                  double find = get((int) index) + delta;                
+                  double find = get(-start) + delta;                
                   do {
                       index++;
                       double value = get((int) index);
@@ -905,7 +882,7 @@ public abstract class WindowBuffer<V> extends ValueBuffer<V> {
             Label loopEnd = mm.label();
             indexVar.ifGe(endIndexVar, loopEnd);
 
-            var findVar = makeFindVar(type, doubleType, indexVar, deltaVar);
+            var findVar = makeFindVar(type, doubleType, deltaVar);
 
             Label doStart = mm.label().here();
             indexVar.inc(1);
@@ -932,7 +909,7 @@ public abstract class WindowBuffer<V> extends ValueBuffer<V> {
         } else {
             /*
               if (index > 0) {
-                  double find = get((int) index) + delta;
+                  double find = get(-start) + delta;
                   do {
                       index--;
                       double value = get((int) index);
@@ -948,7 +925,7 @@ public abstract class WindowBuffer<V> extends ValueBuffer<V> {
             Label loopEnd = mm.label();
             indexVar.ifLe(0, loopEnd);
 
-            var findVar = makeFindVar(type, doubleType, indexVar, deltaVar);
+            var findVar = makeFindVar(type, doubleType, deltaVar);
 
             Label doStart = mm.label().here();
             indexVar.dec(1);
@@ -981,11 +958,9 @@ public abstract class WindowBuffer<V> extends ValueBuffer<V> {
      * @param deltaVar variable of double type
      * @return variable of type double or Double
      */
-    private static Variable makeFindVar(Type type, Type doubleType,
-                                        Variable indexVar, Variable deltaVar)
-    {
-        MethodMaker mm = indexVar.methodMaker();
-        final var findVar = convert(type, mm.invoke("get", indexVar.cast(int.class)), doubleType);
+    private static Variable makeFindVar(Type type, Type doubleType, Variable deltaVar) {
+        MethodMaker mm = deltaVar.methodMaker();
+        final var findVar = convert(type, mm.invoke("get", mm.field("start").neg()), doubleType);
 
         if (!doubleType.isNullable()) {
             findVar.set(findVar.add(deltaVar));
