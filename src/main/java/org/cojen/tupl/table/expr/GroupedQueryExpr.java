@@ -390,7 +390,7 @@ final class GroupedQueryExpr extends QueryExpr {
         MethodMaker finishedMaker = cm.addMethod(null, "finished").public_();
         MethodMaker stepMaker = cm.addMethod(targetType, "step", Object.class).public_();
 
-        // FIXME: Lots of duplication with AggregatedQueryExpr.
+        // TODO: Lots of duplication with AggregatedQueryExpr.
 
         abstract class Context extends EvalContext {
             Context(Variable argsVar, Variable sourceRowVar) {

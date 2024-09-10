@@ -321,7 +321,6 @@ public final class StandardFunctionFinder extends SoftCache<String, Object, Obje
 
         @Override
         public boolean hasNamedParameters() {
-            // FIXME: Use something other than hasNamedParameters?
             return true;
         }
 
@@ -411,7 +410,6 @@ public final class StandardFunctionFinder extends SoftCache<String, Object, Obje
 
         @Override
         public boolean hasNamedParameters() {
-            // FIXME: Use something other than hasNamedParameters?
             return true;
         }
 
@@ -455,7 +453,6 @@ public final class StandardFunctionFinder extends SoftCache<String, Object, Obje
 
         @Override
         public boolean hasNamedParameters() {
-            // FIXME: Use something other than hasNamedParameters?
             return true;
         }
 
@@ -503,7 +500,6 @@ public final class StandardFunctionFinder extends SoftCache<String, Object, Obje
 
         @Override
         public boolean hasNamedParameters() {
-            // FIXME: Use something other than hasNamedParameters?
             return true;
         }
 
@@ -549,7 +545,6 @@ public final class StandardFunctionFinder extends SoftCache<String, Object, Obje
 
         @Override
         public boolean hasNamedParameters() {
-            // FIXME: Use something other than hasNamedParameters?
             return true;
         }
 
@@ -600,7 +595,6 @@ public final class StandardFunctionFinder extends SoftCache<String, Object, Obje
 
         @Override
         public boolean hasNamedParameters() {
-            // FIXME: Use something other than hasNamedParameters?
             return true;
         }
 
@@ -682,7 +676,6 @@ public final class StandardFunctionFinder extends SoftCache<String, Object, Obje
 
         @Override
         public boolean hasNamedParameters() {
-            // FIXME: Use something other than hasNamedParameters?
             return true;
         }
 

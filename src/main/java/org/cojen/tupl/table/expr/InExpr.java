@@ -53,7 +53,7 @@ public final class InExpr extends Expr {
     private InExpr(int startPos, int endPos, Expr left, Expr right, boolean not) {
         super(startPos, endPos);
         mLeft = left;
-        // FIXME: Perhaps 'in' operator should only work against a set?
+        // TODO: Perhaps 'in' operator should only work against a set?
         mRight = right.asType(BasicType.make(Object[].class, Type.TYPE_REFERENCE));
         mNot = not;
     }

@@ -54,7 +54,7 @@ public abstract sealed class RelationExpr extends Expr permits TableExpr, QueryE
 
     @Override
     public final Expr asType(Type type) {
-        // FIXME: Should this ever be supported? Yes, for supporting renames, and for
+        // TODO: Should this ever be supported? Yes, for supporting renames, and for
         // converting to basic expressions (depending on cardinality).
         throw null;
     }
@@ -71,13 +71,13 @@ public abstract sealed class RelationExpr extends Expr permits TableExpr, QueryE
 
     @Override
     public final void gatherEvalColumns(Consumer<Column> c) {
-        // FIXME: revise when makeEval is implemented
+        // TODO: revise when makeEval is implemented
         throw null;
     }
 
     @Override
     protected final Variable doMakeEval(EvalContext context, EvalContext.ResultRef resultRef) {
-        // FIXME: makeEval - return a Table
+        // TODO: makeEval - return a Table
         throw null;
     }
 

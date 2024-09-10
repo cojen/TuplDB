@@ -337,7 +337,7 @@ public abstract sealed class QueryExpr extends RelationExpr
 
         TupleType rowType;
 
-        // FIXME: If grouping by the primary key, then it might be possible to use the existing
+        // TODO: If grouping by the primary key, then it might be possible to use the existing
         // row type.
         if (groupBy < 0 && (projection == null || fromType.canRepresent(projection))) {
             // Use the existing row type.
@@ -714,8 +714,6 @@ public abstract sealed class QueryExpr extends RelationExpr
 
     @Override
     public final void appendTo(StringBuilder b) {
-        // FIXME: Need to revise the syntax for the "from" portion. Pipeline syntax? It must
-        // always be parseable, so perhaps no table at all for now?
         b.append('(');
         mFrom.appendTo(b);
         b.append(')').append(' ');

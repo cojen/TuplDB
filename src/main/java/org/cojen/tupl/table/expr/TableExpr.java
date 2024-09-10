@@ -181,9 +181,7 @@ public final class TableExpr extends RelationExpr {
 
     @Override
     public void appendTo(StringBuilder b) {
-        // FIXME: Need to revise the syntax for the "from" portion. Pipeline syntax? It must
-        // always be parseable, so perhaps no table at all for now?
-        // FIXME: If not all columns are projected, don't use the wildcard character.
+        // TODO: If not all columns are projected, don't use the wildcard character.
         b.append(rowTypeClass().getName()).append(' ').append("{*}");
     }
 }

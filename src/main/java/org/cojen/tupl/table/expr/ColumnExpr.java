@@ -345,7 +345,7 @@ public abstract sealed class ColumnExpr extends Expr implements Named {
                 if (mColumn == null) {
                     mFullName = pname + '.' + '*';
                 } else {
-                    // FIXME: consider unescaping by path elements separately
+                    // TODO: consider unescaping by path elements separately
                     mFullName = escape(unescape(pname) + '.' + mColumn.name());
                 }
             }
@@ -403,7 +403,7 @@ public abstract sealed class ColumnExpr extends Expr implements Named {
         @Override
         public void expandWildcard(Map<String, ColumnExpr> wildcards) {
             if (mColumn == null && mParent.type() instanceof TupleType rowType) {
-                // FIXME: consider unescaping by path elements separately
+                // TODO: consider unescaping by path elements separately
                 String pname = unescape(mParent.name());
                 for (Column c : rowType) {
                     String name = escape(pname + '.' + c.name());

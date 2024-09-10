@@ -447,7 +447,7 @@ public final class Parser {
         return ProjExpr.make(startPos, expr.endPos(), expr, flags);
     }
 
-    // FIXME: Use peeks to skip ahead to parseExpr, reducing stack depth.
+    // TODO: Use peeks to skip ahead to parseExpr, reducing stack depth.
 
     /*
      * Expr = LogicalOrExpr
