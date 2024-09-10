@@ -276,14 +276,14 @@ public abstract sealed class ViewedTable<R> extends WrappedTable<R, R> {
     @SuppressWarnings("unchecked")
     public final Table<Row> derive(String query, Object... args) throws IOException {
         // See the cacheNewValue method.
-        return ((CompiledQuery<Row>) cacheObtain(Type4, query, null)).table(fuseArguments(args));
+        return ((CompiledQuery<Row>) cacheObtain(TYPE_4, query, null)).table(fuseArguments(args));
     }
 
     @Override // MultiCache; see also WrappedTable
     protected final Object cacheNewValue(Type type, Object key, Object helper)
         throws IOException
     {
-        if (type == Type1) { // see the inherited query method
+        if (type == TYPE_1) { // see the inherited query method
             var queryStr = (String) key;
             Query<R> query = mSource.query(fuseQuery(queryStr));
 
@@ -344,7 +344,7 @@ public abstract sealed class ViewedTable<R> extends WrappedTable<R, R> {
             availSet = availMap == null ? null : availMap.keySet();
         }
 
-        if (type == Type3) { // see the fuseQuery method
+        if (type == TYPE_3) { // see the fuseQuery method
             QuerySpec otherQuery = Parser.parseQuerySpec(mMaxArg, rowType(), availSet, queryStr);
 
             OrderBy orderBy = otherQuery.orderBy();
@@ -365,7 +365,7 @@ public abstract sealed class ViewedTable<R> extends WrappedTable<R, R> {
             return new QuerySpec(projection, orderBy, filter).toString();
         }
 
-        if (type == Type4) { // see the derive method
+        if (type == TYPE_4) { // see the derive method
             return Parser.parse(mMaxArg, this, availSet, queryStr).makeCompiledRowQuery();
         }
 
@@ -392,7 +392,7 @@ public abstract sealed class ViewedTable<R> extends WrappedTable<R, R> {
      */
     protected final String fuseQuery(String queryStr) throws IOException {
         // See the cacheNewValue method.
-        return (String) cacheObtain(Type3, queryStr, null);
+        return (String) cacheObtain(TYPE_3, queryStr, null);
     }
 
     /**

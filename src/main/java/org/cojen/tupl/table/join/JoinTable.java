@@ -67,7 +67,7 @@ public abstract class JoinTable<J> extends MultiCache<Object, Object, Object, IO
     @SuppressWarnings("unchecked")
     protected final QueryLauncher<J> scannerQueryLauncher(String query) {
         try {
-            return (QueryLauncher<J>) cacheObtain(Type1, query, this);
+            return (QueryLauncher<J>) cacheObtain(TYPE_1, query, this);
         } catch (IOException e) {
             // Not expected.
             throw RowUtils.rethrow(e);
@@ -120,7 +120,7 @@ public abstract class JoinTable<J> extends MultiCache<Object, Object, Object, IO
     @SuppressWarnings("unchecked")
     public final Table<Row> derive(String query, Object... args) throws IOException {
         // See the cacheNewValue method.
-        return ((CompiledQuery<Row>) cacheObtain(Type2, query, this)).table(args);
+        return ((CompiledQuery<Row>) cacheObtain(TYPE_2, query, this)).table(args);
     }
 
     @Override
@@ -175,12 +175,12 @@ public abstract class JoinTable<J> extends MultiCache<Object, Object, Object, IO
 
     @Override // MultiCache
     protected final Object cacheNewValue(Type type, Object key, Object helper) throws IOException {
-        if (type == Type1) { // see the scannerQueryLauncher method
+        if (type == TYPE_1) { // see the scannerQueryLauncher method
             var queryStr = (String) key;
             return JoinQueryLauncherMaker.newInstance(JoinTable.this, queryStr);
         }
 
-        if (type == Type2) { // see the derive method
+        if (type == TYPE_2) { // see the derive method
             return CompiledQuery.makeDerived(this, type, key, helper);
         }
 

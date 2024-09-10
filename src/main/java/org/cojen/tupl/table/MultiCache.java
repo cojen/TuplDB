@@ -43,14 +43,14 @@ public abstract class MultiCache<K, V, H, X extends Throwable> extends Reference
     }
 
     /** Cache key type typically used by Table.query implementations. */
-    public static final Type Type1 = new Type1();
+    public static final Type TYPE_1 = new Type1();
 
     /** Cache key type typically used by Table.derive implementations. */
-    public static final Type Type2 = new Type2();
+    public static final Type TYPE_2 = new Type2();
 
-    public static final Type Type3 = new Type3();
+    public static final Type TYPE_3 = new Type3();
 
-    public static final Type Type4 = new Type4();
+    public static final Type TYPE_4 = new Type4();
 
     private Entry<K, V>[] mEntries;
     private int mSize;

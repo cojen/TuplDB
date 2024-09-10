@@ -209,7 +209,7 @@ public abstract class BaseTable<R>
     {
         // Might need to double check the filter after joining to the primary, in case there
         // were any changes after the secondary entry was loaded. See the cacheNewValue method.
-        MultiCache.Type cacheType = RowUtils.isUnlocked(txn) ? Type4 : Type3;
+        MultiCache.Type cacheType = RowUtils.isUnlocked(txn) ? TYPE_4 : TYPE_3;
         return (ScanControllerFactory<R>) cacheObtain(cacheType, queryStr, null);
     }
 
@@ -323,7 +323,7 @@ public abstract class BaseTable<R>
         // needed with READ_UNCOMMITTED, because the updater for it still acquires locks. Also
         // note that FOR_UPDATE isn't used, because mFilterFactoryCache doesn't support it.
         // See the cacheNewValue method.
-        MultiCache.Type cacheType = RowUtils.isUnsafe(txn) ? Type4 : Type3;
+        MultiCache.Type cacheType = RowUtils.isUnsafe(txn) ? TYPE_4 : TYPE_3;
         return (ScanControllerFactory<R>) cacheObtain(cacheType, queryStr, null);
     }
 
@@ -331,14 +331,14 @@ public abstract class BaseTable<R>
     @SuppressWarnings("unchecked")
     public final QueryLauncher<R> query(String queryStr) throws IOException {
         // See the cacheNewValue method.
-        return (QueryLauncher<R>) cacheObtain(MultiCache.Type1, queryStr, null);
+        return (QueryLauncher<R>) cacheObtain(MultiCache.TYPE_1, queryStr, null);
     }
 
     @Override
     @SuppressWarnings("unchecked")
     public final Table<Row> derive(String query, Object... args) throws IOException {
         // See the cacheNewValue method.
-        return ((CompiledQuery<Row>) cacheObtain(MultiCache.Type2, query, this)).table(args);
+        return ((CompiledQuery<Row>) cacheObtain(MultiCache.TYPE_2, query, this)).table(args);
     }
 
     @Override
@@ -576,9 +576,9 @@ public abstract class BaseTable<R>
     {
         factory: {
             int type;
-            if (cacheType == MultiCache.Type3) {
+            if (cacheType == MultiCache.TYPE_3) {
                 type = PLAIN;
-            } else if (cacheType == MultiCache.Type4) {
+            } else if (cacheType == MultiCache.TYPE_4) {
                 type = DOUBLE_CHECK;
             } else {
                 break factory;
@@ -590,7 +590,7 @@ public abstract class BaseTable<R>
             return newFilteredFactory(type, queryStr, spec);
         }
 
-        if (cacheType == MultiCache.Type1) { // see the query method
+        if (cacheType == MultiCache.TYPE_1) { // see the query method
             // Short lived helper object.
             record ParsedQuery(String queryStr, RelationExpr expr) { }
 
@@ -608,7 +608,7 @@ public abstract class BaseTable<R>
             return cacheObtain(cacheType, canonicalKey, new ParsedQuery(queryStr, expr));
         }
 
-        if (cacheType == MultiCache.Type2) { // see the derive method
+        if (cacheType == MultiCache.TYPE_2) { // see the derive method
             return CompiledQuery.makeDerived(this, cacheType, key, helper);
         }
 
@@ -616,7 +616,7 @@ public abstract class BaseTable<R>
     }
 
     private static MultiCache.Type toCacheType(int type) {
-        return (type & ~FOR_UPDATE) == PLAIN ? MultiCache.Type3 : MultiCache.Type4;
+        return (type & ~FOR_UPDATE) == PLAIN ? MultiCache.TYPE_3 : MultiCache.TYPE_4;
     }
 
     /**

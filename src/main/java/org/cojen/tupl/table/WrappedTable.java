@@ -87,12 +87,12 @@ public abstract class WrappedTable<S, T> extends MultiCache<Object, Object, Obje
     @Override
     @SuppressWarnings("unchecked")
     public final Query<T> query(String query) throws IOException {
-        return (Query<T>) cacheObtain(Type1, query, null);
+        return (Query<T>) cacheObtain(TYPE_1, query, null);
     }
 
     @Override
     @SuppressWarnings("unchecked")
     public Table<Row> derive(String query, Object... args) throws IOException {
-        return ((CompiledQuery<Row>) cacheObtain(Type2, query, this)).table(args);
+        return ((CompiledQuery<Row>) cacheObtain(TYPE_2, query, this)).table(args);
     }
 }

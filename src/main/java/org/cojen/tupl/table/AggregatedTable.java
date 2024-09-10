@@ -333,7 +333,7 @@ public abstract class AggregatedTable<S, T> extends WrappedTable<S, T>
     protected final Object cacheNewValue(Type type, Object key, Object helper)
         throws IOException
     {
-        if (type == Type1) { // see the inherited query method
+        if (type == TYPE_1) { // see the inherited query method
             var queryStr = (String) key;
             try {
                 return (Query<T>) mQueryFactoryCache.obtain(queryStr, this).invoke(this);
@@ -342,7 +342,7 @@ public abstract class AggregatedTable<S, T> extends WrappedTable<S, T>
             }
         }
 
-        if (type == Type2) { // see the inherited derive method
+        if (type == TYPE_2) { // see the inherited derive method
             return CompiledQuery.makeDerived(this, type, key, helper);
         }
 

@@ -44,9 +44,6 @@ import org.cojen.tupl.table.expr.Cardinality;
 import org.cojen.tupl.table.expr.CompiledQuery;
 import org.cojen.tupl.table.expr.Parser;
 
-import org.cojen.tupl.table.filter.FalseFilter;
-import org.cojen.tupl.table.filter.QuerySpec;
-
 /**
  * Defines an unmodifiable table consisting of one row with no columns. It represents the
  * identity element when joining tables. Joining tables multiplies the number of rows, and so a
@@ -141,7 +138,7 @@ public final class IdentityTable extends MultiCache<Object, Object, Object, IOEx
     @Override
     @SuppressWarnings("unchecked")
     public Query<Row> query(String query) throws IOException {
-        return (Query<Row>) cacheObtain(Type1, query, this);
+        return (Query<Row>) cacheObtain(TYPE_1, query, this);
     }
 
     @Override
@@ -178,7 +175,7 @@ public final class IdentityTable extends MultiCache<Object, Object, Object, IOEx
     @SuppressWarnings("unchecked")
     public Table<Row> derive(String query, Object... args) throws IOException {
         // See the cacheNewValue method.
-        return ((CompiledQuery<Row>) cacheObtain(Type2, query, this)).table(args);
+        return ((CompiledQuery<Row>) cacheObtain(TYPE_2, query, this)).table(args);
     }
 
     @Override
@@ -247,7 +244,7 @@ public final class IdentityTable extends MultiCache<Object, Object, Object, IOEx
 
     @Override // MultiCache
     protected final Object cacheNewValue(Type type, Object key, Object helper) throws IOException {
-        if (type == Type1) { // see the query method
+        if (type == TYPE_1) { // see the query method
             var queryStr = (String) key;
             if (Parser.parse(queryStr).type().cardinality() != Cardinality.ZERO) {
                 return this;
@@ -259,7 +256,7 @@ public final class IdentityTable extends MultiCache<Object, Object, Object, IOEx
             return empty;
         }
 
-        if (type == Type2) { // see the derive method
+        if (type == TYPE_2) { // see the derive method
             return CompiledQuery.makeDerived(this, type, key, helper);
         }
 
