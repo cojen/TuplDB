@@ -855,6 +855,39 @@ public class BasicJoinTest {
              "department.id == employee.departmentId && company.id == department.companyId");
     }
 
+    @Test
+    public void generated() throws Exception {
+        // Test against a generated join class.
+
+        mJoin = Table.join("emp : dept", mEmployee, mDepartment);
+
+        assertTrue(Row.class.isAssignableFrom(mJoin.rowType()));
+
+        // Run a basic test like with the innerJoin test.
+
+        var plan = """
+            - nested loops join
+              - first
+                - full scan over primary key: org.cojen.tupl.table.join.Employee
+                  key columns: +id
+                assignments: ?1 = emp.departmentId
+              - join
+                - load one using primary key: org.cojen.tupl.table.join.Department
+                  key columns: +id
+                  filter: id == ?1
+            """;
+
+        var results = new String[] {
+            "{dept={id=31, companyId=1, name=Sales}, emp={departmentId=31, country=Australia, lastName=Rafferty}}",
+            "{dept={id=33, companyId=2, name=Engineering}, emp={departmentId=33, country=Australia, lastName=Jones}}",
+            "{dept={id=33, companyId=2, name=Engineering}, emp={departmentId=33, country=Australia, lastName=Heisenberg}}",
+            "{dept={id=34, companyId=1, name=Clerical}, emp={departmentId=34, country=United States, lastName=Robinson}}",
+            "{dept={id=34, companyId=1, name=Clerical}, emp={departmentId=34, country=Germany, lastName=Smith}}",
+        };
+
+        eval(true, plan, results, "dept.id == emp.departmentId");
+    }
+
     private void join(String spec) throws Exception {
         mJoin = mDb.openJoinTable(EmployeeJoinDepartment.class, spec);
     }
@@ -863,8 +896,14 @@ public class BasicJoinTest {
         mJoin = mDb.openJoinTable(EmployeeJoinDepartmentJoinCompany.class, spec);
     }
 
-    @SuppressWarnings("unchecked")
     private void eval(String plan, String[] results, String queryStr, Object... args)
+        throws Exception 
+    {
+        eval(false, plan, results, queryStr, args);
+    }
+
+    @SuppressWarnings("unchecked")
+    private void eval(boolean isRow, String plan, String[] results, String queryStr, Object... args)
         throws Exception 
     {
         Query query = mJoin.query(queryStr);
@@ -880,6 +919,10 @@ public class BasicJoinTest {
 
         try (var scanner = mJoin.newScanner(null, queryStr, args)) {
             for (var row = scanner.row(); row != null; row = scanner.step(row)) {
+                if (isRow) {
+                    assertTrue(row instanceof Row);
+                }
+
                 String result = results[resultNum++];
                 String actualResult = row.toString();
                 assertEquals(result, actualResult);

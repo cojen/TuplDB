@@ -133,6 +133,8 @@ public abstract class TupleKey implements RandomAccess {
 
         public abstract TupleKey with(Object[] e0, Object e1);
 
+        public abstract TupleKey with(Object[] e0, Object[] e1);
+
         static CallSite indyWith(MethodHandles.Lookup lookup, String name, MethodType mt) {
             MethodMaker mm = MethodMaker.begin(lookup, name, mt);
             makeWith(lookup, mm, mt.parameterArray());

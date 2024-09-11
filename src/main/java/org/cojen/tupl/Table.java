@@ -667,6 +667,19 @@ public interface Table<R> extends Closeable {
     }
 
     /**
+     * Joins tables together into a generated join type class.
+     *
+     * @param spec join specification
+     * @throws NullPointerException if any parameters are null
+     * @throws IllegalArgumentException if the specification is malformed, or if there are any
+     * table matching issues
+     * @see #join(Class,String,Table...)
+     */
+    public static Table<Row> join(String spec, Table<?>... tables) throws IOException {
+        return JoinTableMaker.join(spec, tables);
+    }
+
+    /**
      * Returns a view backed by this table, whose rows and natural ordering are defined by the
      * given query. The returned table instance will throw a {@link ViewConstraintException}
      * for operations against rows which are restricted by the query, and closing the table has

@@ -24,6 +24,8 @@ import java.lang.invoke.ConstantCallSite;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
 
+import java.util.Map;
+import java.util.TreeMap;
 import java.util.Set;
 
 import org.cojen.maker.ClassMaker;
@@ -33,13 +35,18 @@ import org.cojen.maker.Variable;
 
 import org.cojen.tupl.ColumnProcessor;
 import org.cojen.tupl.Database;
+import org.cojen.tupl.Nullable;
+import org.cojen.tupl.Row;
 import org.cojen.tupl.Table;
+
+import org.cojen.tupl.core.TupleKey;
 
 import org.cojen.tupl.table.ColumnInfo;
 import org.cojen.tupl.table.RowGen;
 import org.cojen.tupl.table.RowInfo;
 import org.cojen.tupl.table.RowMethodsMaker;
 import org.cojen.tupl.table.RowUtils;
+import org.cojen.tupl.table.WeakCache;
 import org.cojen.tupl.table.WeakClassCache;
 
 import org.cojen.tupl.util.Canonicalizer;
@@ -52,6 +59,7 @@ import org.cojen.tupl.util.Canonicalizer;
 public class JoinTableMaker {
     private static final WeakClassCache<Class<?>> cClassCache;
     private static final Canonicalizer cInstanceCache;
+    private static final WeakCache<TupleKey, Class<Row>, Map<String, ColumnInfo>> cTypeCache;
 
     static {
         cClassCache = new WeakClassCache<>() {
@@ -62,6 +70,29 @@ public class JoinTableMaker {
         };
 
         cInstanceCache = new Canonicalizer();
+
+        cTypeCache = new WeakCache<>() {
+            @Override
+            protected Class<Row> newValue(TupleKey key, Map<String, ColumnInfo> columns) {
+                return makeJoinTypeClass(columns);
+            }
+        };
+    }
+
+    @SuppressWarnings("unchecked")
+    private static Class<Row> makeJoinTypeClass(Map<String, ColumnInfo> columns) {
+        ClassMaker cm = RowGen.beginClassMakerForRowType
+            (JoinTableMaker.class.getPackageName(), "Join");
+        cm.implement(Row.class);
+        cm.sourceFile(JoinTableMaker.class.getSimpleName());
+
+        for (ColumnInfo ci : columns.values()) {
+            cm.addMethod(ci.type, ci.name).public_().abstract_()
+                .addAnnotation(Nullable.class, true);
+            cm.addMethod(null, ci.name, ci.type).public_().abstract_();
+        }
+
+        return (Class<Row>) cm.finish();
     }
 
     /**
@@ -70,6 +101,30 @@ public class JoinTableMaker {
     public static <J> JoinTable<J> join(Class<J> joinType, String specStr, Table<?>... tables) {
         JoinSpec spec = JoinSpec.parse(RowInfo.find(joinType), specStr, tables);
         return join(joinType, spec);
+    }
+
+    /**
+     * @see Table#join
+     */
+    public static JoinTable<Row> join(String specStr, Table<?>... tables) {
+        var definedColumns = new TreeMap<String, ColumnInfo>();
+        JoinSpec spec = JoinSpec.parse(specStr, definedColumns, tables);
+
+        TupleKey cacheKey;
+        {
+            var names = new String[definedColumns.size()];
+            var types = new Class[names.length];
+            int i = 0;
+            for (ColumnInfo column : definedColumns.values()) {
+                names[i] = column.name;
+                types[i] = column.type;
+                i++;
+            }
+            assert i == names.length;
+            cacheKey = TupleKey.make.with(names, types, definedColumns);
+        }
+
+        return join(cTypeCache.obtain(cacheKey, definedColumns), spec);
     }
 
     /**
