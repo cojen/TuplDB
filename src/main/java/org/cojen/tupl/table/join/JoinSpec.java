@@ -664,14 +664,18 @@ public final class JoinSpec {
     public static sealed class Column extends Node implements Source {
         private final Table mTable;
         private final ColumnInfo mColumn;
+        private final boolean mDefined;
 
         private boolean mNullable;
 
-        Column(Table table, ColumnInfo column, boolean nullable) {
+        Column(Table table, ColumnInfo column, boolean defined, boolean nullable) {
             mTable = table;
             mColumn = column;
+            mDefined = defined;
             mNullable = nullable;
-            nullableCheck();
+            if (!defined) {
+                nullableCheck();
+            }
         }
 
         @Override
@@ -824,8 +828,14 @@ public final class JoinSpec {
 
         @Override
         void nullable() {
-            mNullable = true;
-            nullableCheck();
+            if (!mNullable) {
+                mNullable = true;
+                if (mDefined) {
+                    mColumn.typeCode |= ColumnInfo.TYPE_NULLABLE;
+                } else {
+                    nullableCheck();
+                }
+            }
         }
 
         @Override
@@ -864,7 +874,7 @@ public final class JoinSpec {
         private long mFilterScore;
 
         PlannedColumn(Column column) {
-            super(column.mTable, column.mColumn, column.mNullable);
+            super(column.mTable, column.mColumn, column.mDefined, column.mNullable);
         }
 
         @Override
@@ -1529,6 +1539,7 @@ public final class JoinSpec {
             String name = mText.substring(start, --mPos);
 
             ColumnInfo column;
+            boolean defined;
 
             if (mAllColumns != null) {
                 column = mAllColumns.get(name);
@@ -1536,6 +1547,7 @@ public final class JoinSpec {
                     mPos = start;
                     throw error("Unknown column");
                 }
+                defined = false;
             } else {
                 if (mNumTables >= mTables.length) {
                     throw new IllegalArgumentException("Not enough tables provided");
@@ -1544,6 +1556,7 @@ public final class JoinSpec {
                 column.name = name;
                 column.type = mTables[mNumTables].rowType();
                 column.typeCode = ColumnInfo.TYPE_REFERENCE;
+                defined = true;
             }
 
             if (mSelectedColumns.putIfAbsent(name, column) != null) {
@@ -1568,7 +1581,7 @@ public final class JoinSpec {
 
             mNumTables++;
 
-            return new Column(table, column, nullable);
+            return new Column(table, column, defined, nullable);
         }
 
         /**

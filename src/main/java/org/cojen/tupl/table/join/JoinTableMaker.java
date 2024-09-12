@@ -87,8 +87,12 @@ public class JoinTableMaker {
         cm.sourceFile(JoinTableMaker.class.getSimpleName());
 
         for (ColumnInfo ci : columns.values()) {
-            cm.addMethod(ci.type, ci.name).public_().abstract_()
-                .addAnnotation(Nullable.class, true);
+            MethodMaker mm = cm.addMethod(ci.type, ci.name).public_().abstract_();
+
+            if (ci.isNullable()) {
+                mm.addAnnotation(Nullable.class, true);
+            }
+
             cm.addMethod(null, ci.name, ci.type).public_().abstract_();
         }
 
@@ -112,16 +116,20 @@ public class JoinTableMaker {
 
         TupleKey cacheKey;
         {
-            var names = new String[definedColumns.size()];
-            var types = new Class[names.length];
+            var pairs = new Object[definedColumns.size() * 2];
             int i = 0;
             for (ColumnInfo column : definedColumns.values()) {
-                names[i] = column.name;
-                types[i] = column.type;
-                i++;
+                String name = column.name.intern();
+                if (column.isNullable()) {
+                    pairs[i++] = name;
+                    pairs[i++] = column.type;
+                } else {
+                    pairs[i++] = column.type;
+                    pairs[i++] = name;
+                }
             }
-            assert i == names.length;
-            cacheKey = TupleKey.make.with(names, types, definedColumns);
+            assert i == pairs.length;
+            cacheKey = TupleKey.make.with(pairs);
         }
 
         return join(cTypeCache.obtain(cacheKey, definedColumns), spec);
