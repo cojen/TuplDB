@@ -168,7 +168,6 @@ public abstract sealed class ViewedTable<R> extends WrappedTable<R, R> {
     }
 
     protected final String mQueryStr;
-    protected final int mMaxArg;
     protected final Object[] mArgs;
 
     private SoftReference<QuerySpec> mQueryRef;
@@ -202,7 +201,6 @@ public abstract sealed class ViewedTable<R> extends WrappedTable<R, R> {
         }
 
         mQueryStr = queryStr;
-        mMaxArg = maxArg;
         mArgs = args;
 
         mQueryRef = queryRef;
@@ -295,7 +293,8 @@ public abstract sealed class ViewedTable<R> extends WrappedTable<R, R> {
 
                 @Override
                 public int argumentCount() {
-                    return mMaxArg + query.argumentCount();
+                    // Subtract the number of arguments to be filled by fuseArguments.
+                    return query.argumentCount() - mArgs.length;
                 }
 
                 @Override
@@ -345,7 +344,8 @@ public abstract sealed class ViewedTable<R> extends WrappedTable<R, R> {
         }
 
         if (type == TYPE_3) { // see the fuseQuery method
-            QuerySpec otherQuery = Parser.parseQuerySpec(mMaxArg, rowType(), availSet, queryStr);
+            QuerySpec otherQuery = Parser.parseQuerySpec
+                (mArgs.length, rowType(), availSet, queryStr);
 
             OrderBy orderBy = otherQuery.orderBy();
 
@@ -366,7 +366,7 @@ public abstract sealed class ViewedTable<R> extends WrappedTable<R, R> {
         }
 
         if (type == TYPE_4) { // see the derive method
-            return Parser.parse(mMaxArg, this, availSet, queryStr).makeCompiledRowQuery();
+            return Parser.parse(mArgs.length, this, availSet, queryStr).makeCompiledRowQuery();
         }
 
         throw new AssertionError();
@@ -388,7 +388,7 @@ public abstract sealed class ViewedTable<R> extends WrappedTable<R, R> {
 
     /**
      * Fuse this view's query specification with the one given. The arguments of the given
-     * query are incremented by mMaxArg.
+     * query are incremented by mArgs.length.
      */
     protected final String fuseQuery(String queryStr) throws IOException {
         // See the cacheNewValue method.
@@ -398,16 +398,17 @@ public abstract sealed class ViewedTable<R> extends WrappedTable<R, R> {
     /**
      * Used in conjunction with fuseQuery.
      */
-    protected final Object[] fuseArguments(Object... args) {
-        if (args == null || args.length == 0) {
-            return mArgs;
-        } else if (mMaxArg == 0) {
-            return args;
-        } else {
-            var newArgs = new Object[mMaxArg + args.length];
-            System.arraycopy(mArgs, 0, newArgs, 0, mArgs.length);
-            System.arraycopy(args, 0, newArgs, mMaxArg, args.length);
+    protected final Object[] fuseArguments(Object... newArgs) {
+        Object[] existingArgs = mArgs;
+        if (newArgs == null || newArgs.length == 0) {
+            return existingArgs;
+        } else if (existingArgs.length == 0) {
             return newArgs;
+        } else {
+            var fusedArgs = new Object[existingArgs.length + newArgs.length];
+            System.arraycopy(existingArgs, 0, fusedArgs, 0, existingArgs.length);
+            System.arraycopy(newArgs, 0, fusedArgs, existingArgs.length, newArgs.length);
+            return fusedArgs;
         }
     }
 
@@ -419,7 +420,7 @@ public abstract sealed class ViewedTable<R> extends WrappedTable<R, R> {
     private Query<R> fuseQueryWithPk(boolean emptyProjection) throws IOException {
         QuerySpec query = querySpec();
         RowFilter filter = query.filter();
-        int argNum = mMaxArg;
+        int argNum = mArgs.length;
         for (ColumnInfo column : RowInfo.find(rowType()).keyColumns.values()) {
             filter = filter.and(new ColumnToArgFilter(column, ColumnFilter.OP_EQ, ++argNum));
         }
@@ -582,11 +583,11 @@ public abstract sealed class ViewedTable<R> extends WrappedTable<R, R> {
 
         {
             mm = cm.addMethod(Object[].class, "fusePkArguments",
-                              Object[].class, int.class, Object.class).protected_().override();
+                              Object[].class, Object.class).protected_().override();
             var argsVar = mm.param(0);
-            var maxArg = mm.param(1);
-            var rowVar = mm.param(2).cast(rowType);
+            var rowVar = mm.param(1).cast(rowType);
 
+            var maxArg = argsVar.alength();
             argsVar = mm.var(Arrays.class).invoke("copyOf", argsVar, maxArg.add(keyColumns.size()));
 
             for (String name : keyColumns.keySet()) {
@@ -683,7 +684,7 @@ public abstract sealed class ViewedTable<R> extends WrappedTable<R, R> {
             // is responsible for implementing the quick option if all columns are projected.
 
             Query<R> query = fusedPkQuery(table);
-            Object[] args = fusePkArguments(table.mArgs, table.mMaxArg, row);
+            Object[] args = fusePkArguments(table.mArgs, row);
 
             try (var scanner = query.newScanner(txn, args)) {
                 R found = scanner.row();
@@ -710,7 +711,7 @@ public abstract sealed class ViewedTable<R> extends WrappedTable<R, R> {
 
             // Use an empty projection because the columns don't need to be decoded.
             Query<R> query = fusedPkQueryEmptyProjection(table);
-            Object[] args = fusePkArguments(table.mArgs, table.mMaxArg, row);
+            Object[] args = fusePkArguments(table.mArgs, row);
 
             try (var scanner = query.newScanner(txn, args)) {
                 return scanner.row() != null;
@@ -759,7 +760,7 @@ public abstract sealed class ViewedTable<R> extends WrappedTable<R, R> {
             checkPk(row);
 
             Query<R> query = fusedPkQuery(table);
-            Object[] args = fusePkArguments(table.mArgs, table.mMaxArg, row);
+            Object[] args = fusePkArguments(table.mArgs, row);
 
             try (var updater = query.newUpdater(txn, args)) {
                 R found = updater.row();
@@ -791,7 +792,7 @@ public abstract sealed class ViewedTable<R> extends WrappedTable<R, R> {
             }
 
             Query<R> query = fusedPkQueryEmptyProjection(table);
-            Object[] args = fusePkArguments(table.mArgs, table.mMaxArg, row);
+            Object[] args = fusePkArguments(table.mArgs, row);
 
             return query.deleteAll(txn, args) != 0;
         }
@@ -843,7 +844,7 @@ public abstract sealed class ViewedTable<R> extends WrappedTable<R, R> {
         /**
          * Used in conjunction with fuseQueryWithPk.
          */
-        protected abstract Object[] fusePkArguments(Object[] args, int maxArg, R row);
+        protected abstract Object[] fusePkArguments(Object[] args, R row);
         
         protected abstract void unsetValueColumns(R row);
 

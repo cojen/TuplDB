@@ -860,10 +860,9 @@ public class BasicJoinTest {
         // Test against a generated join class.
 
         mJoin = Table.join("emp : dept", mEmployee, mDepartment);
-
         assertTrue(Row.class.isAssignableFrom(mJoin.rowType()));
 
-        // Run a basic test like with the innerJoin test.
+        // First run a basic test like with the innerJoin test.
 
         var plan = """
             - nested loops join
@@ -886,6 +885,33 @@ public class BasicJoinTest {
         };
 
         eval(true, plan, results, "dept.id == emp.departmentId");
+
+        // Test again with a view.
+
+        mJoin = mJoin.view("dept.id < ?", 34);
+        assertTrue(Row.class.isAssignableFrom(mJoin.rowType()));
+
+        plan = """
+            - nested loops join
+              - first
+                - reverse range scan over primary key: org.cojen.tupl.table.join.Department
+                  key columns: +id
+                  range: .. id < ?1
+                assignments: ?2 = dept.id
+              - join
+                - filter: departmentId == ?2
+                  - full scan over primary key: org.cojen.tupl.table.join.Employee
+                    key columns: +id
+            """;
+
+        results = new String[] {
+            "{dept={id=33, companyId=2, name=Engineering}, emp={departmentId=33, country=Australia, lastName=Jones}}",
+            "{dept={id=33, companyId=2, name=Engineering}, emp={departmentId=33, country=Australia, lastName=Heisenberg}}",
+            "{dept={id=31, companyId=1, name=Sales}, emp={departmentId=31, country=Australia, lastName=Rafferty}}",
+        };
+
+        eval(true, plan, results, "dept.id == emp.departmentId");
+
     }
 
     private void join(String spec) throws Exception {
