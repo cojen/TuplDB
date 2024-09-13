@@ -142,7 +142,7 @@ public class SoftCache<K, V, H> extends RefCache<K, V, H> {
             }
         }
 
-        if (mSize >= mEntries.length) {
+        if (mSize >= entries.length) {
             // Rehash.
             var newEntries = new Entry[entries.length << 1];
             int size = 0;
