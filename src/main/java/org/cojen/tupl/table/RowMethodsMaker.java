@@ -25,6 +25,7 @@ import java.lang.invoke.MethodType;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -37,6 +38,7 @@ import org.cojen.maker.MethodMaker;
 import org.cojen.maker.Variable;
 
 import org.cojen.tupl.ConversionException;
+import org.cojen.tupl.Row;
 
 import org.cojen.tupl.table.codec.ColumnCodec;
 
@@ -146,33 +148,83 @@ public final class RowMethodsMaker {
         };
     }
 
+    // Used to cache generated classes which contain only static methods.
+    private static volatile WeakClassCache<Class<?>> cRowMethodsClasses;
+
+    /**
+     * Returns a class which contains methods which correspond to all the Row methods, except
+     * they're static and the last parameter is the row instance.
+     */
+    private static Class<?> rowMethodsClass(Class<?> rowType) {
+        WeakClassCache<Class<?>> cache = cRowMethodsClasses;
+
+        if (cache == null) {
+            synchronized (RowMethodsMaker.class) {
+                cache = cRowMethodsClasses;
+                if (cache == null) {
+                    cRowMethodsClasses = cache = new WeakClassCache<>() {
+                        @Override
+                        protected Class<?> newValue(Class<?> rowType, Object unused) {
+                            return makeRowMethodsClass(rowType);
+                        }
+                    };
+                }
+            }
+        }
+
+        return cache.obtain(rowType, null);
+    }
+
+    private static Class<?> makeRowMethodsClass(Class<?> rowType) {
+        ClassMaker cm = ClassMaker.begin(rowType.getName()).public_().final_();
+        new RowMethodsMaker(cm, rowType, RowInfo.find(rowType).rowGen(), true).addMethods();
+        return cm.finishHidden().lookupClass();
+    }
+
     private final ClassMaker mClassMaker;
     private final Class<?> mRowType;
+    private final boolean mStaticMethods;
     private final ColumnInfo[] mColumns;
+    private final boolean mHasReferences;
     private final Map<String, Integer> mUnescapedMap; // maps unescaped names to column indexes
 
     public RowMethodsMaker(ClassMaker cm, Class<?> rowType, RowInfo rowInfo) {
-        this(cm, rowType, rowInfo.rowGen());
+        this(cm, rowType, rowInfo.rowGen(), false);
     }
 
-    RowMethodsMaker(ClassMaker cm, Class<?> rowType, RowGen rowGen) {
+    public RowMethodsMaker(ClassMaker cm, Class<?> rowType, RowGen rowGen) {
+        this(cm, rowType, rowGen, false);
+    }
+
+    /**
+     * @param staticMethods when true, define static methods which accept a row object as the
+     * last parameter
+     */
+    private RowMethodsMaker(ClassMaker cm, Class<?> rowType, RowGen rowGen, boolean staticMethods) {
         mClassMaker = cm;
         mRowType = rowType;
+        mStaticMethods = staticMethods;
 
         RowInfo rowInfo = rowGen.info;
         var columns = new ColumnInfo[rowInfo.allColumns.size()];
 
+        boolean hasReferences = false;
+
         int i = 0;
         for (ColumnInfo info : rowInfo.keyColumns.values()) {
             columns[i++] = info;
+            hasReferences |= !info.isScalarType();
         }
         for (ColumnCodec codec : rowGen.valueCodecs()) { // use encoding order
-            columns[i++] = codec.info;
+            ColumnInfo info = codec.info;
+            columns[i++] = info;
+            hasReferences |= !info.isScalarType();
         }
 
         assert i == columns.length;
 
         mColumns = columns;
+        mHasReferences = hasReferences;
 
         Map<String, Integer> unescapedMap = Map.of();
 
@@ -195,6 +247,13 @@ public final class RowMethodsMaker {
     }
 
     public void addMethods() {
+        if (mHasReferences) {
+            // Returns a lazily initialized PathSplitter instance.
+            MethodMaker mm = addPublicMethod(PathSplitter.class, "splitter").static_();
+            Bootstrap condy = mm.var(RowMethodsMaker.class).condy("splitter", mRowType);
+            mm.return_(condy.invoke(PathSplitter.class, "splitter"));
+        }
+
         addColumnType();
         addColumnMethodName();
 
@@ -228,49 +287,132 @@ public final class RowMethodsMaker {
         addGetSetMethods(BigDecimal.class, TYPE_BIG_DECIMAL | TYPE_NULLABLE);
     }
 
-    private void nameSwitch(MethodMaker mm, Consumer<ColumnInfo> caseBody) {
+    private MethodMaker addPublicMethod(Object retType, String name, Object... paramTypes) {
+        if (!mStaticMethods) {
+            return mClassMaker.addMethod(retType, name, paramTypes).public_();
+        } else {
+            paramTypes = Arrays.copyOf(paramTypes, paramTypes.length + 1);
+            paramTypes[paramTypes.length - 1] = mRowType;
+            return mClassMaker.addMethod(retType, name, paramTypes).public_().static_();
+        }
+    }
+
+    private Variable rowVar(MethodMaker mm) {
+        return !mStaticMethods ? mm.this_() : mm.param(mm.paramCount() - 1);
+    }
+
+    /**
+     * @param mm param(0) is the column name, param(1) is the row instance, and param(2) is the
+     * value instance if making a "set" method
+     * @param caseBody generates code which must return from the method
+     */
+    private void nameSwitch(Lookup lookup, MethodType type,
+                            MethodMaker mm, Consumer<ColumnInfo> caseBody)
+    {
         // Accepts escaped and unescaped forms.
 
-        var cases = new String[mColumns.length + mUnescapedMap.size()];
-        var labels = new Label[cases.length];
+        var nameVar = mm.param(0);
 
         {
-            int i = 0;
+            var cases = new String[mColumns.length + mUnescapedMap.size()];
+            var labels = new Label[cases.length];
 
-            for (; i<mColumns.length; i++) {
-                cases[i] = mColumns[i].name;
+            {
+                int i = 0;
+
+                for (; i<mColumns.length; i++) {
+                    cases[i] = mColumns[i].name;
+                    labels[i] = mm.label();
+                }
+
+                if (!mUnescapedMap.isEmpty()) {
+                    for (var entry : mUnescapedMap.entrySet()) {
+                        cases[i] = entry.getKey();
+                        labels[i] = labels[entry.getValue()];
+                        i++;
+                    }
+                }
+
+                assert i == cases.length;
+            }
+
+            Label default_ = mm.label();
+
+            nameVar.switch_(default_, cases, labels);
+
+            for (int i=0; i<mColumns.length; i++) {
+                labels[i].here();
+                caseBody.accept(mColumns[i]);
+            }
+
+            default_.here();
+        }
+
+        if (mHasReferences) {
+            // Support accessing joined columns by path.
+
+            var splitterVar = mm.var(lookup.lookupClass()).invoke("splitter");
+            var entryVar = splitterVar.invoke("find", nameVar);
+            var tailVar = entryVar.field("tail");
+
+            var cases = new int[mColumns.length];
+            var labels = new Label[cases.length];
+
+            for (int i=0; i<cases.length; i++) {
+                cases[i] = i;
                 labels[i] = mm.label();
             }
 
-            if (!mUnescapedMap.isEmpty()) {
-                for (var entry : mUnescapedMap.entrySet()) {
-                    cases[i] = entry.getKey();
-                    labels[i] = labels[entry.getValue()];
-                    i++;
+            Label default_ = mm.label();
+
+            entryVar.field("number").switch_(default_, cases, labels);
+
+            var rowVar = mm.param(1);
+
+            for (int i=0; i<labels.length; i++) {
+                labels[i].here();
+                var subVar = rowVar.invoke(mColumns[i].name);
+
+                Label notNull = mm.label();
+                subVar.ifNe(null, notNull);
+                if (type.returnType().isPrimitive()) {
+                    mm.var(RowMethodsMaker.class).invoke("nullJoin", nameVar, tailVar).throw_();
+                } else {
+                    mm.return_(null);
+                }
+                notNull.here();
+
+                String name = mm.name();
+
+                if (Row.class.isAssignableFrom(subVar.classType())) {
+                    if (name.equals("set")) {
+                        subVar.invoke(name, tailVar, mm.param(2));
+                        mm.return_();
+                    } else {
+                        mm.return_(subVar.invoke(name, tailVar));
+                    }
+                } else {
+                    var rowMethodsVar = mm.var(rowMethodsClass(subVar.classType()));
+                    if (name.equals("set")) {
+                        rowMethodsVar.invoke(name, tailVar, mm.param(2), subVar);
+                        mm.return_();
+                    } else {
+                        mm.return_(rowMethodsVar.invoke(name, tailVar, subVar));
+                    }
                 }
             }
 
-            assert i == cases.length;
+            default_.here();
         }
 
-        Label notFound = mm.label();
-
-        mm.param(0).switch_(notFound, cases, labels);
-
-        for (int i=0; i<mColumns.length; i++) {
-            labels[i].here();
-            caseBody.accept(mColumns[i]);
-        }
-
-        notFound.here();
-
-        mm.var(RowMethodsMaker.class).invoke("notFound", mm.param(0)).throw_();
+        mm.var(RowMethodsMaker.class).invoke("notFound", nameVar).throw_();
     }
 
     private void addColumnType() {
-        MethodMaker mm = mClassMaker.addMethod(Class.class, "columnType", String.class).public_();
+        String name = "columnType";
+        MethodMaker mm = addPublicMethod(Class.class, name, String.class);
         Bootstrap indy = mm.var(RowMethodsMaker.class).indy("indyColumnType", mRowType);
-        mm.return_(indy.invoke(Class.class, "_", null, mm.param(0), mm.this_()));
+        mm.return_(indy.invoke(Class.class, name, null, mm.param(0), rowVar(mm)));
     }
 
     public static CallSite indyColumnType(Lookup lookup, String name, MethodType type,
@@ -278,22 +420,23 @@ public final class RowMethodsMaker {
     {
         MethodMaker mm = MethodMaker.begin(lookup, name, type);
         //var nameVar = mm.param(0); // nameSwitch will access it
-        var rowVar = mm.param(1);
+        //var rowVar = mm.param(1); // nameSwitch might access it
 
-        new RowMethodsMaker(mm.classMaker(), rowType).nameSwitch(mm, ci -> mm.return_(ci.type));
+        new RowMethodsMaker(mm.classMaker(), rowType)
+            .nameSwitch(lookup, type, mm, ci -> mm.return_(ci.type));
 
         return new ConstantCallSite(mm.finish());
     }
 
     private void addColumnMethodName() {
-        if (mUnescapedMap.isEmpty()) {
+        if (!mStaticMethods && !mHasReferences && mUnescapedMap.isEmpty()) {
             // Rely on the default implementation.
             return;
         }
-        MethodMaker mm = mClassMaker.addMethod
-            (String.class, "columnMethodName", String.class).public_();
+        String name = "columnMethodName";
+        MethodMaker mm = addPublicMethod(String.class, name, String.class);
         Bootstrap indy = mm.var(RowMethodsMaker.class).indy("indyColumnMethodName", mRowType);
-        mm.return_(indy.invoke(String.class, "_", null, mm.param(0), mm.this_()));
+        mm.return_(indy.invoke(String.class, name, null, mm.param(0), rowVar(mm)));
     }
 
     public static CallSite indyColumnMethodName(Lookup lookup, String name, MethodType type,
@@ -301,9 +444,10 @@ public final class RowMethodsMaker {
     {
         MethodMaker mm = MethodMaker.begin(lookup, name, type);
         //var nameVar = mm.param(0); // nameSwitch will access it
-        var rowVar = mm.param(1);
+        // var rowVar = mm.param(1); // nameSwitch might access it
 
-        new RowMethodsMaker(mm.classMaker(), rowType).nameSwitch(mm, ci -> mm.return_(ci.name));
+        new RowMethodsMaker(mm.classMaker(), rowType)
+            .nameSwitch(lookup, type, mm, ci -> mm.return_(ci.name));
 
         return new ConstantCallSite(mm.finish());
     }
@@ -331,9 +475,9 @@ public final class RowMethodsMaker {
             name += suffix;
         }
 
-        MethodMaker mm = mClassMaker.addMethod(type, name, String.class).public_();
+        MethodMaker mm = addPublicMethod(type, name, String.class);
         Bootstrap indy = mm.var(RowMethodsMaker.class).indy("indyGet", mRowType, typeCode);
-        mm.return_(indy.invoke(type, "_", null, mm.param(0), mm.this_()));
+        mm.return_(indy.invoke(type, name, null, mm.param(0), rowVar(mm)));
     }
 
     public static CallSite indyGet(Lookup lookup, String name, MethodType type,
@@ -350,7 +494,7 @@ public final class RowMethodsMaker {
         returnInfo.type = returnType;
         returnInfo.typeCode = returnTypeCode;
 
-        new RowMethodsMaker(mm.classMaker(), rowType).nameSwitch(mm, columnInfo -> {
+        new RowMethodsMaker(mm.classMaker(), rowType).nameSwitch(lookup, type, mm, columnInfo -> {
             var columnVar = rowVar.invoke(columnInfo.name);
 
             if (returnType != Object.class) {
@@ -388,9 +532,10 @@ public final class RowMethodsMaker {
     }
 
     private void addSetMethod(Class<?> type, int typeCode) {
-        MethodMaker mm = mClassMaker.addMethod(null, "set", String.class, type).public_();
+        String name = "set";
+        MethodMaker mm = addPublicMethod(null, name, String.class, type);
         Bootstrap indy = mm.var(RowMethodsMaker.class).indy("indySet", mRowType, typeCode);
-        indy.invoke(null, "_", null, mm.param(0), mm.param(1), mm.this_());
+        indy.invoke(null, name, null, mm.param(0), rowVar(mm), mm.param(1));
     }
 
     public static CallSite indySet(Lookup lookup, String name, MethodType type,
@@ -398,8 +543,8 @@ public final class RowMethodsMaker {
     {
         MethodMaker mm = MethodMaker.begin(lookup, name, type);
         //var nameVar = mm.param(0); // nameSwitch will access it
-        var valueVar = mm.param(1);
-        var rowVar = mm.param(2);
+        var rowVar = mm.param(1);
+        var valueVar = mm.param(2);
 
         Class<?> valueType = valueVar.classType();
         var valueInfo = new ColumnInfo();
@@ -408,7 +553,7 @@ public final class RowMethodsMaker {
 
         var rmmVar = mm.var(RowMethodsMaker.class);
 
-        new RowMethodsMaker(mm.classMaker(), rowType).nameSwitch(mm, columnInfo -> {
+        new RowMethodsMaker(mm.classMaker(), rowType).nameSwitch(lookup, type, mm, columnInfo -> {
             boolean noNullCheck = false;
 
             if (!columnInfo.isNullable() && !valueInfo.type.isPrimitive()) {
@@ -446,6 +591,11 @@ public final class RowMethodsMaker {
     }
 
     // Called by generated code.
+    public static PathSplitter splitter(Lookup lookup, String name, Class type, Class rowType) {
+        return new PathSplitter(rowType);
+    }
+
+    // Called by generated code.
     public static IllegalArgumentException notFound(String name) {
         return new IllegalArgumentException("Column name isn't found: " + name);
     }
@@ -453,5 +603,11 @@ public final class RowMethodsMaker {
     // Called by generated code.
     public static ConversionException notNull(String columnName) {
         return new ConversionException("Column cannot be set to null: " + columnName);
+    }
+
+    // Called by generated code.
+    public static ConversionException nullJoin(String path, String tail) {
+        String head = path.substring(0, path.length() - tail.length() - 1);
+        return new ConversionException("Column path joins to a null row: " + head);
     }
 }

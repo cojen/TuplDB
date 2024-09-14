@@ -912,6 +912,83 @@ public class BasicJoinTest {
 
         eval(true, plan, results, "dept.id == emp.departmentId");
 
+        // Test accessing column paths.
+
+        assertTrue(Row.class.isAssignableFrom(Department.class));
+        assertFalse(Row.class.isAssignableFrom(Employee.class));
+
+        String queryStr = "dept.id == ? && emp.lastName == ?";
+
+        try (var scanner = mJoin.newScanner(null, queryStr, 31, "Williams")) {
+            for (var row = (Row) scanner.row(); row != null; row = (Row) scanner.step()) {
+                assertEquals(int.class, row.columnType("dept.id"));
+                assertEquals(Integer.class, row.columnType("dept.companyId"));
+                assertEquals(String.class, row.columnType("dept.name"));
+
+                assertEquals("id", row.columnMethodName("dept.id"));
+                assertEquals("companyId", row.columnMethodName("dept.companyId"));
+                assertEquals("name", row.columnMethodName("dept.name"));
+
+                assertEquals(31, row.get_int("dept.id"));
+                assertEquals(1, row.get_int("dept.companyId"));
+                assertEquals("Sales", row.getString("dept.name"));
+
+                row.set("dept.id", 123L);
+                row.set("dept.companyId", (Integer) null);
+                row.set("dept.name", "none");
+
+                assertEquals(123, row.get_int("dept.id"));
+                assertEquals(null, row.getInteger("dept.companyId"));
+                assertEquals("none", row.getString("dept.name"));
+
+                assertEquals(int.class, row.columnType("emp.id"));
+                assertEquals(Integer.class, row.columnType("emp.departmentId"));
+                assertEquals(String.class, row.columnType("emp.country"));
+                assertEquals(String.class, row.columnType("emp.lastName"));
+
+                assertEquals("id", row.columnMethodName("emp.id"));
+                assertEquals("departmentId", row.columnMethodName("emp.departmentId"));
+                assertEquals("country", row.columnMethodName("emp.country"));
+                assertEquals("lastName", row.columnMethodName("emp.lastName"));
+
+                assertEquals(null, row.get("emp.departmentId"));
+                assertEquals("Germany", row.get("emp.country"));
+                assertEquals("Williams", row.get("emp.lastName"));
+
+                row.set("emp.id", 10);
+                row.set("emp.departmentId", 100);
+                row.set("emp.country", "nowhere");
+                row.set("emp.lastName", "what");
+
+                assertEquals(10, row.get("emp.id"));
+                assertEquals(100, row.get("emp.departmentId"));
+                assertEquals("nowhere", row.get("emp.country"));
+                assertEquals("what", row.get("emp.lastName"));
+            }
+        }
+
+        // Test path access against a joined row which is null.
+
+        {
+            var row = (Row) mJoin.newRow();
+
+            assertNull(row.getInteger("dept.id"));
+            assertNull(row.getInteger("dept.companyId"));
+
+            try {
+                row.get_int("dept.companyId");
+                fail();
+            } catch (ConversionException e) {
+                assertEquals("Column path joins to a null row: dept", e.getMessage());
+            }
+
+            try {
+                row.get_int("dept.id");
+                fail();
+            } catch (ConversionException e) {
+                assertEquals("Column path joins to a null row: dept", e.getMessage());
+            }
+        }
     }
 
     private void join(String spec) throws Exception {

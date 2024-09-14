@@ -20,10 +20,11 @@ package org.cojen.tupl.table.join;
 import org.cojen.tupl.Automatic;
 import org.cojen.tupl.Nullable;
 import org.cojen.tupl.PrimaryKey;
+import org.cojen.tupl.Row;
 
 @org.junit.Ignore
 @PrimaryKey("id")
-public interface Department {
+public interface Department extends Row {
     @Automatic
     int id();
     void id(int id);
