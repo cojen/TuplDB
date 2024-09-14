@@ -933,6 +933,13 @@ public class BasicJoinTest {
                 assertEquals(1, row.get_int("dept.companyId"));
                 assertEquals("Sales", row.getString("dept.name"));
 
+                try {
+                    row.get("dept.fake.id");
+                    fail();
+                } catch (IllegalArgumentException e) {
+                    assertEquals("Column name isn't found: fake.id", e.getMessage());
+                }
+
                 row.set("dept.id", 123L);
                 row.set("dept.companyId", (Integer) null);
                 row.set("dept.name", "none");

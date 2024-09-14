@@ -124,4 +124,22 @@ public final class PathSplitter {
 
         return e;
     }
+
+    public synchronized void remove(Entry entry) {
+        Entry[] entries = mEntries;
+        int index = entry.mPath.hashCode() & (entries.length - 1);
+        for (Entry e = entries[index], prev = null; e != null; e = e.mNext) {
+            if (e == entry) {
+                if (prev == null) {
+                    entries[index] = e.mNext;
+                } else {
+                    prev.mNext = e.mNext;
+                }
+                mSize--;
+                return;
+            } else {
+                prev = e;
+            }
+        }
+    }
 }
