@@ -22,6 +22,7 @@ import java.math.BigInteger;
 
 /**
  * Optional interface that rows can extend for supporting reflection-style access to columns.
+ * If the row represents a join, dotted name paths can be used to access sub columns.
  *
  * @author Brian S. O'Neill
  * @see Table
