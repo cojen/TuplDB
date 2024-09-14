@@ -355,6 +355,8 @@ public final class RowMethodsMaker {
             var entryVar = splitterVar.invoke("find", nameVar);
             var tailVar = entryVar.field("tail");
 
+            Label tryStart = mm.label().here();
+
             var cases = new int[mColumns.length];
             var labels = new Label[cases.length];
 
@@ -373,16 +375,14 @@ public final class RowMethodsMaker {
                 labels[i].here();
                 var subVar = rowVar.invoke(mColumns[i].name);
 
-                Label ready = mm.label();
-
-                subVar.ifNe(null, ready);
+                Label notNull = mm.label();
+                subVar.ifNe(null, notNull);
                 if (type.returnType().isPrimitive()) {
                     mm.var(RowMethodsMaker.class).invoke("nullJoin", nameVar, tailVar).throw_();
                 } else {
                     mm.return_(null);
                 }
-
-                ready.here();
+                notNull.here();
 
                 String name = mm.name();
 
@@ -402,13 +402,13 @@ public final class RowMethodsMaker {
                         mm.return_(rowMethodsVar.invoke(name, tailVar, subVar));
                     }
                 }
-
-                mm.catch_(ready, IllegalArgumentException.class, exVar -> {
-                    // Remove a bogus entry from the PathSplitter to free up memory.
-                    splitterVar.invoke("remove", entryVar);
-                    exVar.throw_();
-                });
             }
+
+            mm.catch_(tryStart, IllegalArgumentException.class, exVar -> {
+                // Remove a bogus entry from the PathSplitter to free up memory.
+                splitterVar.invoke("remove", entryVar);
+                exVar.throw_();
+            });
 
             default_.here();
         }
