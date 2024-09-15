@@ -65,6 +65,13 @@ public class BasicJoinTest {
     }
 
     @Test
+    public void identity() throws Exception {
+        try (var scanner = Table.join().derive("{a=1}").newScanner(null)) {
+            assertEquals(1, scanner.row().get_int("a"));
+        }
+    }
+
+    @Test
     public void crossJoin() throws Exception {
         join("department : employee");
 

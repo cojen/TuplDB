@@ -31,6 +31,7 @@ import org.cojen.tupl.io.Utils;
 import org.cojen.tupl.table.AggregatedTable;
 import org.cojen.tupl.table.ComparatorMaker;
 import org.cojen.tupl.table.GroupedTable;
+import org.cojen.tupl.table.JoinIdentityTable;
 import org.cojen.tupl.table.MappedTable;
 import org.cojen.tupl.table.PlainPredicateMaker;
 import org.cojen.tupl.table.ViewedTable;
@@ -677,6 +678,15 @@ public interface Table<R> extends Closeable {
      */
     public static Table<Row> join(String spec, Table<?>... tables) throws IOException {
         return JoinTableMaker.join(spec, tables);
+    }
+
+    /**
+     * Returns an unmodifiable table consisting of one row with no columns, representing the
+     * identity element when joining an empty set of tables. Calling {@link #derive derive}
+     * against the join identity table can be used to perform arbitrary expression evaluation.
+     */
+    public static Table<Row> join() {
+        return JoinIdentityTable.THE;
     }
 
     /**
