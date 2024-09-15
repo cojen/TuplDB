@@ -34,7 +34,7 @@ import org.cojen.tupl.Scanner;
 import org.cojen.tupl.Table;
 import org.cojen.tupl.Unsigned;
 
-import org.cojen.tupl.table.IdentityTable;
+import org.cojen.tupl.table.JoinIdentityTable;
 
 import static org.cojen.tupl.table.expr.Token.*;
 import static org.cojen.tupl.table.expr.Type.*;
@@ -433,21 +433,21 @@ public class BinaryOpTest {
     @Test
     public void broken() throws Exception {
         try {
-            Parser.parse(IdentityTable.THE, "true < 0");
+            Parser.parse(JoinIdentityTable.THE, "true < 0");
             fail();
         } catch (QueryException e) {
             assertTrue(e.getMessage().contains("No common type"));
         }
 
         try {
-            Parser.parse(IdentityTable.THE, "0 && 1");
+            Parser.parse(JoinIdentityTable.THE, "0 && 1");
             fail();
         } catch (QueryException e) {
             assertTrue(e.getMessage().contains("Boolean operation not allowed"));
         }
 
         try {
-            Parser.parse(IdentityTable.THE, "'a' & 'b'");
+            Parser.parse(JoinIdentityTable.THE, "'a' & 'b'");
             fail();
         } catch (QueryException e) {
             assertTrue(e.getMessage().contains("Bitwise operation not allowed"));

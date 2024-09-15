@@ -22,7 +22,7 @@ import java.util.Set;
 
 import org.cojen.tupl.Table;
 
-import org.cojen.tupl.table.IdentityTable;
+import org.cojen.tupl.table.JoinIdentityTable;
 
 import org.cojen.tupl.table.filter.QuerySpec;
 import org.cojen.tupl.table.filter.TrueFilter;
@@ -36,8 +36,8 @@ public final class TableExpr extends RelationExpr {
     /**
      * Uses an unmodifiable table consisting of one row with no columns.
      */
-    public static TableExpr identity() {
-        return make(-1, -1, IdentityTable.THE);
+    public static TableExpr joinIdentity() {
+        return make(-1, -1, JoinIdentityTable.THE);
     }
 
     /**
@@ -54,7 +54,7 @@ public final class TableExpr extends RelationExpr {
      * @param projection consists of column names; can pass null to project all columns
      */
     public static TableExpr make(int startPos, int endPos, Table table, Set<String> projection) {
-        var cardinality = table instanceof IdentityTable ? Cardinality.ONE : Cardinality.MANY;
+        var cardinality = table instanceof JoinIdentityTable ? Cardinality.ONE : Cardinality.MANY;
         var type = RelationType.make(TupleType.make(table.rowType(), projection), cardinality);
         return new TableExpr(startPos, endPos, type, table);
     }
@@ -101,7 +101,7 @@ public final class TableExpr extends RelationExpr {
 
     @Override
     public boolean isPureFunction() {
-        return mTable != null && mTable instanceof IdentityTable;
+        return mTable != null && mTable instanceof JoinIdentityTable;
     }
 
     @Override

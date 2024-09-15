@@ -52,11 +52,11 @@ import org.cojen.tupl.table.expr.Parser;
  *
  * @author Brian S. O'Neill
  */
-public final class IdentityTable extends MultiCache<Object, Object, Object, IOException>
+public final class JoinIdentityTable extends MultiCache<Object, Object, Object, IOException>
     implements Table<Row>, Query<Row>
 {
     // Singleton instance.
-    public static final IdentityTable THE = new IdentityTable();
+    public static final JoinIdentityTable THE = new JoinIdentityTable();
 
     private static volatile EmptyQuery<Row> cEmptyQuery;
 
@@ -73,7 +73,7 @@ public final class IdentityTable extends MultiCache<Object, Object, Object, IOEx
         }
     }
 
-    private IdentityTable() {
+    private JoinIdentityTable() {
     }
 
     @Override

@@ -35,7 +35,7 @@ import org.cojen.tupl.Scanner;
 import org.cojen.tupl.Table;
 import org.cojen.tupl.Unsigned;
 
-import org.cojen.tupl.table.IdentityTable;
+import org.cojen.tupl.table.JoinIdentityTable;
 
 /**
  * 
@@ -57,7 +57,7 @@ public class FunctionTest {
     }
 
     private static RelationExpr parse(String query) {
-        return parse(IdentityTable.THE, query);
+        return parse(JoinIdentityTable.THE, query);
     }
 
     private static RelationExpr parse(Table table, String query) {
@@ -149,14 +149,14 @@ public class FunctionTest {
     @Test
     public void coalesce() throws Exception {
         try {
-            Parser.parse(IdentityTable.THE, "{c = coalesce()}");
+            Parser.parse(JoinIdentityTable.THE, "{c = coalesce()}");
             fail();
         } catch (QueryException e) {
             assertTrue(e.getMessage().contains("at least 1 unnamed argument"));
         }
 
         try {
-            Parser.parse(IdentityTable.THE, "{c = coalesce(5, true)}");
+            Parser.parse(JoinIdentityTable.THE, "{c = coalesce(5, true)}");
             fail();
         } catch (QueryException e) {
             assertTrue(e.getMessage().contains("no common type"));
@@ -192,21 +192,21 @@ public class FunctionTest {
     @Test
     public void iif() throws Exception {
         try {
-            Parser.parse(IdentityTable.THE, "{v = iif(1)}");
+            Parser.parse(JoinIdentityTable.THE, "{v = iif(1)}");
             fail();
         } catch (QueryException e) {
             assertTrue(e.getMessage().contains("exactly 3 unnamed arguments"));
         }
 
         try {
-            Parser.parse(IdentityTable.THE, "{v = iif(1, 2, 3)}");
+            Parser.parse(JoinIdentityTable.THE, "{v = iif(1, 2, 3)}");
             fail();
         } catch (QueryException e) {
             assertTrue(e.getMessage().contains("boolean type"));
         }
 
         try {
-            Parser.parse(IdentityTable.THE, "{v = iif(true, 2, false)}");
+            Parser.parse(JoinIdentityTable.THE, "{v = iif(true, 2, false)}");
             fail();
         } catch (QueryException e) {
             assertTrue(e.getMessage().contains("no common type"));
@@ -237,21 +237,21 @@ public class FunctionTest {
     @Test
     public void random() throws Exception {
         try {
-            Parser.parse(IdentityTable.THE, "{v = random(1, 2, 3)}");
+            Parser.parse(JoinIdentityTable.THE, "{v = random(1, 2, 3)}");
             fail();
         } catch (QueryException e) {
             assertTrue(e.getMessage().contains("at most 2 unnamed arguments"));
         }
 
         try {
-            Parser.parse(IdentityTable.THE, "{v = random(1, true)}");
+            Parser.parse(JoinIdentityTable.THE, "{v = random(1, true)}");
             fail();
         } catch (QueryException e) {
             assertTrue(e.getMessage().contains("must be a number"));
         }
 
         try {
-            Parser.parse(IdentityTable.THE, "{v = random(99999999999999999999999999999)}");
+            Parser.parse(JoinIdentityTable.THE, "{v = random(99999999999999999999999999999)}");
             fail();
         } catch (QueryException e) {
             assertTrue(e.getMessage().contains("unsupported argument type"));
@@ -300,14 +300,14 @@ public class FunctionTest {
     @Test
     public void count() throws Exception {
         try {
-            Parser.parse(IdentityTable.THE, "{v = count(1, 2)}");
+            Parser.parse(JoinIdentityTable.THE, "{v = count(1, 2)}");
             fail();
         } catch (QueryException e) {
             assertTrue(e.getMessage().contains("at most 1 unnamed argument"));
         }
 
         try {
-            Parser.parse(IdentityTable.THE, "{v = count()}");
+            Parser.parse(JoinIdentityTable.THE, "{v = count()}");
             fail();
         } catch (QueryException e) {
             assertTrue(e.getMessage().contains("requires grouping"));
@@ -339,14 +339,14 @@ public class FunctionTest {
     @Test
     public void first() throws Exception {
         try {
-            Parser.parse(IdentityTable.THE, "{v = first()}");
+            Parser.parse(JoinIdentityTable.THE, "{v = first()}");
             fail();
         } catch (QueryException e) {
             assertTrue(e.getMessage().contains("exactly 1 unnamed argument"));
         }
 
         try {
-            Parser.parse(IdentityTable.THE, "{v = first(1)}");
+            Parser.parse(JoinIdentityTable.THE, "{v = first(1)}");
             fail();
         } catch (QueryException e) {
             assertTrue(e.getMessage().contains("requires grouping"));
@@ -382,14 +382,14 @@ public class FunctionTest {
     @Test
     public void last() throws Exception {
         try {
-            Parser.parse(IdentityTable.THE, "{v = last()}");
+            Parser.parse(JoinIdentityTable.THE, "{v = last()}");
             fail();
         } catch (QueryException e) {
             assertTrue(e.getMessage().contains("exactly 1 unnamed argument"));
         }
 
         try {
-            Parser.parse(IdentityTable.THE, "{v = last(1)}");
+            Parser.parse(JoinIdentityTable.THE, "{v = last(1)}");
             fail();
         } catch (QueryException e) {
             assertTrue(e.getMessage().contains("requires grouping"));
@@ -425,14 +425,14 @@ public class FunctionTest {
     @Test
     public void min() throws Exception {
         try {
-            Parser.parse(IdentityTable.THE, "{v = min()}");
+            Parser.parse(JoinIdentityTable.THE, "{v = min()}");
             fail();
         } catch (QueryException e) {
             assertTrue(e.getMessage().contains("exactly 1 unnamed argument"));
         }
 
         try {
-            Parser.parse(IdentityTable.THE, "{v = min(1)}");
+            Parser.parse(JoinIdentityTable.THE, "{v = min(1)}");
             fail();
         } catch (QueryException e) {
             assertTrue(e.getMessage().contains("requires grouping"));
@@ -480,14 +480,14 @@ public class FunctionTest {
     @Test
     public void max() throws Exception {
         try {
-            Parser.parse(IdentityTable.THE, "{v = max()}");
+            Parser.parse(JoinIdentityTable.THE, "{v = max()}");
             fail();
         } catch (QueryException e) {
             assertTrue(e.getMessage().contains("exactly 1 unnamed argument"));
         }
 
         try {
-            Parser.parse(IdentityTable.THE, "{v = max(1)}");
+            Parser.parse(JoinIdentityTable.THE, "{v = max(1)}");
             fail();
         } catch (QueryException e) {
             assertTrue(e.getMessage().contains("requires grouping"));
@@ -629,14 +629,14 @@ public class FunctionTest {
     @Test
     public void countSumAvg() throws Exception {
         try {
-            Parser.parse(IdentityTable.THE, "{v = sum()}");
+            Parser.parse(JoinIdentityTable.THE, "{v = sum()}");
             fail();
         } catch (QueryException e) {
             assertTrue(e.getMessage().contains("exactly 1 unnamed argument"));
         }
 
         try {
-            Parser.parse(IdentityTable.THE, "{v = sum(1)}");
+            Parser.parse(JoinIdentityTable.THE, "{v = sum(1)}");
             fail();
         } catch (QueryException e) {
             assertTrue(e.getMessage().contains("requires grouping"));

@@ -147,7 +147,7 @@ public final class Parser {
     private Parser(int paramDelta, RelationExpr from, Tokenizer tokenizer) {
         mParamDelta = paramDelta;
         if (from == null) {
-            from = TableExpr.identity();
+            from = TableExpr.joinIdentity();
         }
         mFrom = from;
         mTokenizer = tokenizer;

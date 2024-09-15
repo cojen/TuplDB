@@ -67,7 +67,7 @@ public abstract sealed class QueryExpr extends RelationExpr
                                     List<ProjExpr> projection, int groupBy)
     {
         if (from == null) {
-            from = TableExpr.identity();
+            from = TableExpr.joinIdentity();
         }
 
         if (filter != null) {
