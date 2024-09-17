@@ -504,15 +504,15 @@ final class AggregatedQueryExpr extends QueryExpr {
         // conditions are met, then the AssignExprs can be evaluated after filtering.
         // TODO: This is too eager -- it's not checking canThrowRuntimeException, and it's not
         // checking if any downstream expressions exist.
-        IdentityHashMap<AssignExpr, Variable> projectedVars = null;
+        IdentityHashMap<ProjExpr, Variable> projectedVars = null;
         for (int i=mNumGroupBy; i<mProjection.size(); i++) {
             ProjExpr pe = mProjection.get(i);
-            if (pe.wrapped() instanceof AssignExpr ae) {
+            if (pe.wrapped() instanceof AssignExpr) {
                 Variable v = pe.makeEval(finishContext);
                 if (projectedVars == null) {
                     projectedVars = new IdentityHashMap<>();
                 }
-                projectedVars.put(ae, v);
+                projectedVars.put(pe, v);
             }
         }
 
@@ -527,16 +527,7 @@ final class AggregatedQueryExpr extends QueryExpr {
 
         for (int i=mNumGroupBy; i<mProjection.size(); i++) {
             ProjExpr pe = mProjection.get(i);
-            if (pe.shouldExclude()) {
-                continue;
-            }
-            Variable result;
-            if (pe.wrapped() instanceof AssignExpr ae) {
-                result = projectedVars.get(ae);
-            } else {
-                result = pe.makeEval(finishContext);
-            }
-            finishTargetVar.invoke(pe.name(), result);
+            pe.makeSetColumn(finishContext, projectedVars, rowType(), finishTargetVar);
         }
 
         beginMaker.return_(beginSourceVar);

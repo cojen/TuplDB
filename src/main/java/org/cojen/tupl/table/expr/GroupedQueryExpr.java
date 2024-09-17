@@ -633,15 +633,15 @@ final class GroupedQueryExpr extends QueryExpr {
         // TODO: This is too eager -- it's not checking canThrowRuntimeException, and it's not
         // checking if any downstream expressions exist. If any projections are dropped, then
         // the isGrouping check above need to be revised or else grouper might never stop.
-        IdentityHashMap<AssignExpr, Variable> projectedVars = null;
+        IdentityHashMap<ProjExpr, Variable> projectedVars = null;
         for (int i=0; i<mProjection.size(); i++) {
             ProjExpr pe = mProjection.get(i);
-            if (pe.wrapped() instanceof AssignExpr ae) {
+            if (pe.wrapped() instanceof AssignExpr) {
                 Variable v = pe.makeEval(stepContext);
                 if (projectedVars == null) {
                     projectedVars = new IdentityHashMap<>();
                 }
-                projectedVars.put(ae, v);
+                projectedVars.put(pe, v);
             }
         }
 
@@ -654,18 +654,8 @@ final class GroupedQueryExpr extends QueryExpr {
             pass.here();
         }
 
-        for (int i=0; i<mProjection.size(); i++) {
-            ProjExpr pe = mProjection.get(i);
-            if (pe.shouldExclude()) {
-                continue;
-            }
-            Variable result;
-            if (pe.wrapped() instanceof AssignExpr ae) {
-                result = projectedVars.get(ae);
-            } else {
-                result = pe.makeEval(stepContext);
-            }
-            stepTargetVar.invoke(pe.name(), result);
+        for (ProjExpr pe : mProjection) {
+            pe.makeSetColumn(stepContext, projectedVars, rowType(), stepTargetVar);
         }
 
         beginMaker.return_(beginSourceVar);

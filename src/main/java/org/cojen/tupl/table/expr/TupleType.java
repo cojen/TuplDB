@@ -329,13 +329,13 @@ public final class TupleType extends Type implements Iterable<Column> {
     }
 
     /**
-     * Returns true if the given projection only consists of columns which are found in this
-     * tuple.
+     * Returns true if the given projection consists of columns which are found in this tuple,
+     * possibly requiring a safe conversion.
      */
     public boolean canRepresent(Collection<ProjExpr> projExprs) {
         Map<String, Column> columns = columns();
         for (ProjExpr pe : projExprs) {
-            if (!pe.shouldExclude() && !pe.matches(columns)) {
+            if (!pe.shouldExclude() && !pe.canRepresent(columns)) {
                 return false;
             }
         }

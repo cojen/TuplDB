@@ -86,6 +86,14 @@ public abstract sealed class Type extends ColumnInfo
     }
 
     /**
+     * Returns true if this type can be used to represent the given type, possibly requiring a
+     * safe conversion.
+     */
+    public final boolean canRepresent(Type type) {
+        return this.equals(commonTypeLenient(type));
+    }
+
+    /**
      * Finds a common type which can be converted to without loss or ambiguity. The common type
      * might end up being a string, following lenient rules.
      *

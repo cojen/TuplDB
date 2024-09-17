@@ -333,15 +333,15 @@ final class MappedQueryExpr extends QueryExpr {
         // conditions are met, then the AssignExprs can be evaluated after filtering.
         // TODO: This is too eager -- it's not checking canThrowRuntimeException, and it's not
         // checking if any downstream expressions exist.
-        IdentityHashMap<AssignExpr, Variable> projectedVars = null;
+        IdentityHashMap<ProjExpr, Variable> projectedVars = null;
         if (mProjection != null) {
             for (ProjExpr pe : mProjection) {
-                if (pe.wrapped() instanceof AssignExpr ae) {
+                if (pe.wrapped() instanceof AssignExpr) {
                     Variable v = pe.makeEval(context);
                     if (projectedVars == null) {
                         projectedVars = new IdentityHashMap<>();
                     }
-                    projectedVars.put(ae, v);
+                    projectedVars.put(pe, v);
                 }
             }
         }
@@ -356,16 +356,7 @@ final class MappedQueryExpr extends QueryExpr {
         }
 
         for (ProjExpr pe : mEffectiveProjection) {
-            if (pe.shouldExclude()) {
-                continue;
-            }
-            Variable result;
-            if (pe.wrapped() instanceof AssignExpr ae) {
-                result = projectedVars.get(ae);
-            } else {
-                result = pe.makeEval(context);
-            }
-            targetRow.invoke(pe.name(), result);
+            pe.makeSetColumn(context, projectedVars, targetType, targetRow);
         }
 
         mm.return_(targetRow);

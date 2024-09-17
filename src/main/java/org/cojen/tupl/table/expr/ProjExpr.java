@@ -22,10 +22,12 @@ import java.util.Set;
 
 import java.util.function.Consumer;
 
+import org.cojen.maker.MethodMaker;
 import org.cojen.maker.Variable;
 
 import org.cojen.tupl.Ordering;
 
+import org.cojen.tupl.table.Converter;
 import org.cojen.tupl.table.RowMethodsMaker;
 
 /**
@@ -250,17 +252,63 @@ public final class ProjExpr extends WrappedExpr implements Named {
     }
 
     /**
-     * Returns true if the start of the projection path matches one of the given tuple columns.
+     * Returns true if the start of the projection path can be represented by a tuple column of
+     * the same name. A safe conversion might need to be performed.
      */
-    public boolean matches(Map<String, Column> columns) {
+    public boolean canRepresent(Map<String, Column> columns) {
         if (mExpr instanceof ColumnExpr ce) {
             Column first = ce.firstColumn();
             Column column = columns.get(first.name());
-            return column != null && column.type().equals(first.type());
+            return column != null && column.type().canRepresent(first.type());
         } else {
             Column column = columns.get(name());
-            return column != null && column.type().equals(type());
+            return column != null && column.type().canRepresent(type());
         }
+    }
+
+    /**
+     * Generates code which sets a column corresponding to this projection, by evaluating it
+     * and applying a conversion if necessary. If already evaluated, then the existing value is
+     * used and possibly converted. If this projection should be excluded, then no code is
+     * generated at all.
+     *
+     * @param evaluated optional map of projection expressions which have already been evaluated
+     * @param rowType defines the row columns
+     * @param rowVar references a row instance
+     */
+    public void makeSetColumn(EvalContext context, Map<ProjExpr, Variable> evaluated,
+                              TupleType rowType, Variable rowVar)
+    {
+        if (!shouldExclude()) {
+            Variable valueVar;
+            if (evaluated == null || (valueVar = evaluated.get(this)) == null) {
+                valueVar = makeEval(context);
+            }
+            makeSetColumn(rowType, rowVar, valueVar);
+        }
+    }
+
+    /**
+     * Generates code which sets a column corresponding to this projection, applying a
+     * conversion if necessary.
+     *
+     * @param rowType defines the row columns
+     * @param rowVar references a row instance
+     * @param valueVar the value to to set
+     */
+    public void makeSetColumn(TupleType rowType, Variable rowVar, Variable valueVar) {
+        Type type = type();
+        String name = name();
+
+        Type colType = rowType.findColumn(name).type();
+        if (!colType.equals(type)) {
+            MethodMaker mm = valueVar.methodMaker();
+            var converted = mm.var(colType.clazz());
+            Converter.convertLossy(mm, type, valueVar, colType, converted);
+            valueVar = converted;
+        }
+
+        rowVar.invoke(name, valueVar);
     }
 
     @Override
