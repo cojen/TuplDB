@@ -25,7 +25,7 @@ import org.cojen.tupl.table.RowMethodsMaker;
  * @author Brian S. O'Neill
  * @see TupleType
  */
-public final class Column implements Named {
+public final class Column implements Attr {
     private final Type mType;
     private final String mName;
     private final boolean mHidden;
@@ -43,6 +43,7 @@ public final class Column implements Named {
         mHidden = hidden;
     }
 
+    @Override
     public Type type() {
         return mType;
     }

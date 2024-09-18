@@ -39,7 +39,7 @@ import static org.cojen.tupl.table.RowMethodsMaker.unescape;
  *
  * @author Brian S. O'Neill
  */
-public abstract sealed class ColumnExpr extends Expr implements Named {
+public abstract sealed class ColumnExpr extends Expr implements Attr {
     /**
      * @param column can be null for wildcard
      */

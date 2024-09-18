@@ -234,6 +234,7 @@ public final class TupleType extends Type implements Iterable<Column> {
         return columns().size();
     }
 
+    @Override
     public Iterator<Column> iterator() {
         return columns().values().iterator();
     }
@@ -331,15 +332,65 @@ public final class TupleType extends Type implements Iterable<Column> {
     /**
      * Returns true if the given projection consists of columns which are found in this tuple,
      * possibly requiring a safe conversion.
+     *
+     * @param exact when true, the column types must exactly match
      */
-    public boolean canRepresent(Collection<ProjExpr> projExprs) {
+    public boolean canRepresent(Collection<ProjExpr> projExprs, boolean exact) {
         Map<String, Column> columns = columns();
         for (ProjExpr pe : projExprs) {
-            if (!pe.shouldExclude() && !pe.canRepresent(columns)) {
+            if (!pe.shouldExclude() && !pe.canRepresent(columns, exact)) {
                 return false;
             }
         }
         return true;
+    }
+
+    /**
+     * Returns true if the given tuple consists of columns which are found in this tuple,
+     * possibly requiring a safe conversion.
+     *
+     * @param exact when true, the column types must exactly match
+     */
+    public boolean canRepresent(TupleType other, boolean exact) {
+        Map<String, Column> columns = columns();
+        for (Column otherColumn : other.columns().values()) {
+            Column thisColumn = columns.get(otherColumn.name());
+            if (thisColumn == null || !thisColumn.type().canRepresent(otherColumn.type(), exact)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /**
+     * Call when canRepresent returns false to get a detailed message.
+     */
+    public String notRepresentable(Iterable<? extends Attr> columns) {
+        var b = new StringBuilder().append("Query derives new or mismatched columns: ");
+        final int originalLength = b.length();
+
+        for (Attr column : columns) {
+            String name = column.name();
+            Column thisColumn = tryFindColumn(name);
+            if (thisColumn == null || !column.type().equals(thisColumn.type())) {
+                if (b.length() != originalLength) {
+                    b.append(", ");
+                }
+                column.type().appendTo(b, true);
+                b.append(' ').append(RowMethodsMaker.unescape(name));
+                if (thisColumn != null) {
+                    b.append(" cannot be converted to ");
+                    thisColumn.type().appendTo(b, true);
+                }
+            }
+        }
+
+        if (b.length() == originalLength) {
+            // Shouldn't happen if canRepresent returned false.
+            b.append('?');
+        }
+
+        return b.toString();
     }
 
     private Map<String, Column> columns() {

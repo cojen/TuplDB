@@ -52,10 +52,11 @@ import static org.cojen.tupl.table.BaseTable.*;
  */
 final class BaseQueryLauncher<R> extends QueryLauncher<R> {
     /**
-     * Parses a query against a table, throwing a QueryException if it fails.
+     * Parses a query against a table into the same row type, throwing a QueryException if the
+     * operation fails.
      */
     static RelationExpr parse(Table<?> table, String queryStr) {
-        return Parser.parse(table, queryStr);
+        return Parser.parse(table, table.rowType(), queryStr);
     }
 
     /**
@@ -264,7 +265,7 @@ final class BaseQueryLauncher<R> extends QueryLauncher<R> {
     private QuerySpec query() {
         QuerySpec query = mQueryRef.get();
         if (query == null) {
-            query = parse(mTable, mQueryStr).querySpec(mTable.rowType());
+            query = parse(mTable, mQueryStr).querySpec();
             mQueryRef = new WeakReference<>(query);
         }
         return query;

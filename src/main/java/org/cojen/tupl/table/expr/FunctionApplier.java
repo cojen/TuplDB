@@ -128,7 +128,7 @@ public abstract class FunctionApplier {
                 ordering = Ordering.ASCENDING; // could be DESCENDING too; doesn't matter
             } else {
                 String n;
-                if (arg instanceof Named named && projectionMap.containsKey((n = named.name()))) {
+                if (arg instanceof Attr attr && projectionMap.containsKey((n = attr.name()))) {
                     Map.Entry<String, ProjExpr> first = projectionMap.entrySet().iterator().next();
                     if (first.getKey().equals(n)) {
                         ordering = first.getValue().ordering();

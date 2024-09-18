@@ -43,19 +43,27 @@ import static org.cojen.tupl.table.expr.Token.*;
  */
 public final class Parser {
     public static RelationExpr parse(String query) throws QueryException {
-        return parse((RelationExpr) null, query);
+        return parse((RelationExpr) null, null, query);
     }
 
-    public static RelationExpr parse(Table<?> from, String query) throws QueryException {
-        return parse(TableExpr.make(-1, -1, from), query);
+    /**
+     * @param rowType the row type class to use, or else null to select one automatically
+     */
+    public static RelationExpr parse(Table<?> from, Class<?> rowType, String query)
+        throws QueryException
+    {
+        return parse(TableExpr.make(-1, -1, from), rowType, query);
     }
 
     /**
      * @param from can be null if not selecting from any table at all
+     * @param rowType the row type class to use, or else null to select one automatically
      */
-    public static RelationExpr parse(RelationExpr from, String query) throws QueryException {
+    public static RelationExpr parse(RelationExpr from, Class<?> rowType, String query)
+        throws QueryException
+    {
         try {
-            return new Parser(0, from, query).parseQueryExpr();
+            return new Parser(0, from, rowType, query).parseQueryExpr();
         } catch (IOException e) {
             // Not expected.
             throw new QueryException(e);
@@ -67,20 +75,21 @@ public final class Parser {
      * causes an IllegalStateException to be thrown.
      */
     public static RelationExpr parse(Class<?> rowType, String query) throws QueryException {
-        return parse(TableExpr.make(-1, -1, rowType), query);
+        return parse(TableExpr.make(-1, -1, rowType), rowType, query);
     }
 
     /**
      * @param paramDelta amount to add to each parameter number after being parsed
+     * @param rowType the row type class to use, or else null to select one automatically
      * @param availableColumns can pass null if all columns are available
      */
-    public static RelationExpr parse(int paramDelta, Table<?> fromTable,
+    public static RelationExpr parse(int paramDelta, Table<?> fromTable, Class<?> rowType,
                                      Set<String> availableColumns, String query)
         throws QueryException
     {
         RelationExpr from = TableExpr.make(-1, -1, fromTable, availableColumns);
         try {
-            return new Parser(paramDelta, from, query).parseQueryExpr();
+            return new Parser(paramDelta, from, rowType, query).parseQueryExpr();
         } catch (IOException e) {
             // Not expected.
             throw new QueryException(e);
@@ -91,7 +100,7 @@ public final class Parser {
      * Attempt to parse a query into a QuerySpec, throwing a QueryException if not possible.
      */
     public static QuerySpec parseQuerySpec(Class<?> rowType, String query) throws QueryException {
-        return parse(rowType, query).querySpec(rowType);
+        return parse(rowType, query).querySpec();
     }
 
     /**
@@ -106,7 +115,7 @@ public final class Parser {
     {
         RelationExpr from = TableExpr.make(-1, -1, rowType, availableColumns);
         try {
-            return new Parser(paramDelta, from, query).parseQueryExpr().querySpec(rowType);
+            return new Parser(paramDelta, from, rowType, query).parseQueryExpr().querySpec();
         } catch (IOException e) {
             // Not expected.
             throw new QueryException(e);
@@ -115,6 +124,7 @@ public final class Parser {
 
     private final int mParamDelta;
     private final RelationExpr mFrom;
+    private final Class<?> mRowType;
     private final Tokenizer mTokenizer;
     private final ArrayDeque<Token> mTokenStack;
 
@@ -127,29 +137,33 @@ public final class Parser {
     /**
      * @param paramDelta amount to add to each parameter number after being parsed
      * @param from can be null if not selecting from any table at all
+     * @param rowType the row type class to use, or else null to select one automatically
      */
-    public Parser(int paramDelta, RelationExpr from, String source) {
-        this(paramDelta, from, new Tokenizer(source));
+    public Parser(int paramDelta, RelationExpr from, Class<?> rowType, String source) {
+        this(paramDelta, from, rowType, new Tokenizer(source));
     }
 
     /**
      * @param paramDelta amount to add to each parameter number after being parsed
      * @param from can be null if not selecting from any table at all
+     * @param rowType the row type class to use, or else null to select one automatically
      */
-    public Parser(int paramDelta, RelationExpr from, Reader in) {
-        this(paramDelta, from, new Tokenizer(in));
+    public Parser(int paramDelta, RelationExpr from, Class<?> rowType, Reader in) {
+        this(paramDelta, from, rowType, new Tokenizer(in));
     }
 
     /**
      * @param paramDelta amount to add to each parameter number after being parsed
      * @param from can be null if not selecting from any table at all
+     * @param rowType the row type class to use, or else null to select one automatically
      */
-    private Parser(int paramDelta, RelationExpr from, Tokenizer tokenizer) {
+    private Parser(int paramDelta, RelationExpr from, Class<?> rowType, Tokenizer tokenizer) {
         mParamDelta = paramDelta;
         if (from == null) {
             from = TableExpr.joinIdentity();
         }
         mFrom = from;
+        mRowType = rowType;
         mTokenizer = tokenizer;
         mTokenStack = new ArrayDeque<Token>(2);
     }
@@ -223,7 +237,8 @@ public final class Parser {
             }
         }
 
-        return QueryExpr.make(first.startPos(), endPos, mFrom, filter, projection, groupBy);
+        return QueryExpr.make(first.startPos(), endPos, mFrom, mRowType,
+                              filter, projection, groupBy);
     }
 
     private static void verifyNoGrouping(Expr expr) {

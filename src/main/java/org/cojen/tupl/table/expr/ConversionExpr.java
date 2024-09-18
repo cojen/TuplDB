@@ -104,7 +104,7 @@ public final class ConversionExpr extends WrappedExpr {
             dstVar = ConvertCallSite.make(mm, mType.clazz(), srcVar);
         } else {
             dstVar = mm.var(mType.clazz());
-            String name = mExpr instanceof Named n ? n.name() : null;
+            String name = mExpr instanceof Attr attr ? attr.name() : null;
             Converter.convertExact(mm, name, srcType, srcVar, mType, dstVar);
         }
 

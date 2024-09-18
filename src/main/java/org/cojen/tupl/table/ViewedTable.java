@@ -58,6 +58,7 @@ import org.cojen.tupl.diag.QueryPlan;
 
 import org.cojen.tupl.table.expr.CompiledQuery;
 import org.cojen.tupl.table.expr.Parser;
+import org.cojen.tupl.table.expr.RelationExpr;
 
 import org.cojen.tupl.table.filter.ColumnFilter;
 import org.cojen.tupl.table.filter.ColumnToArgFilter;
@@ -366,7 +367,8 @@ public abstract sealed class ViewedTable<R> extends WrappedTable<R, R> {
         }
 
         if (type == TYPE_4) { // see the derive method
-            return Parser.parse(mArgs.length, this, availSet, queryStr).makeCompiledRowQuery();
+            RelationExpr expr = Parser.parse(mArgs.length, this, null, availSet, queryStr);
+            return expr.makeCompiledRowQuery();
         }
 
         throw new AssertionError();

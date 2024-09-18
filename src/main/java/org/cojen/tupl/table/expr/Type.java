@@ -88,9 +88,11 @@ public abstract sealed class Type extends ColumnInfo
     /**
      * Returns true if this type can be used to represent the given type, possibly requiring a
      * safe conversion.
+     *
+     * @param exact when true, the column types must exactly match
      */
-    public final boolean canRepresent(Type type) {
-        return this.equals(commonTypeLenient(type));
+    public final boolean canRepresent(Type type, boolean exact) {
+        return this.equals(exact ? type : commonTypeLenient(type));
     }
 
     /**
@@ -104,7 +106,8 @@ public abstract sealed class Type extends ColumnInfo
     }
 
     /**
-     * Finds a common type which can be converted to without loss or ambiguity.
+     * Finds a common type which can be converted to without loss or ambiguity. If one type is
+     * numerical, the common type must also be numerical.
      *
      * @return null if a common type cannot be inferred or is ambiguous
      */

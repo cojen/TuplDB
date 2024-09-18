@@ -59,7 +59,7 @@ public class FunctionTest {
     }
 
     private static RelationExpr parse(Table table, String query) {
-        return Parser.parse(table, query);
+        return Parser.parse(table, null, query);
     }
 
     private static void verify(String query, String... expect) throws Exception {

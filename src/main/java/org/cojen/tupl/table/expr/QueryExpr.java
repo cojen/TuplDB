@@ -57,14 +57,15 @@ public abstract sealed class QueryExpr extends RelationExpr
 {
     /**
      * @param from can be null if not selecting from any table at all
+     * @param rowTypeClass the row type class to use, or else null to select one automatically
      * @param filter can be null if not filtered, or else filter type must be boolean or be
      * convertible to boolean
      * @param projection can be null to project all columns (only when groupBy is disabled)
      * @param groupBy number of projected columns to group by; pass -1 if disabled
      */
     public static RelationExpr make(int startPos, int endPos,
-                                    RelationExpr from, Expr filter,
-                                    List<ProjExpr> projection, int groupBy)
+                                    RelationExpr from, Class<?> rowTypeClass,
+                                    Expr filter, List<ProjExpr> projection, int groupBy)
     {
         if (from == null) {
             from = TableExpr.joinIdentity();
@@ -162,7 +163,7 @@ public abstract sealed class QueryExpr extends RelationExpr
             // MappedQueryExpr.make directly. This ensures that any intermediate projection
             // steps are properly applied. Without this, all of the from columns would be
             // unnecessarily projected.
-            from = make(-1, -1, from, null, fromProjList, -1);
+            from = make(-1, -1, from, null, null, fromProjList, -1);
         }
 
         final TupleType fromType = from.rowType();
@@ -330,21 +331,47 @@ public abstract sealed class QueryExpr extends RelationExpr
         from = UnmappedQueryExpr.make(-1, -1, from, unmappedRowFilter, fromProjection, maxArgument);
 
         if (!needsMapper) {
-            return from;
+            if (rowTypeClass == null || rowTypeClass.isAssignableFrom(fromType.clazz())) {
+                return from;
+            }
+            // A mapper is required to convert the row type.
         }
 
         // A Mapper, Aggregator, or Grouper is required.
 
         TupleType rowType;
+        selectRowType: {
+            if (rowTypeClass != null) {
+                TupleType desiredType = TupleType.make(rowTypeClass, null);
 
-        // TODO: If grouping by the primary key, then it might be possible to use the existing
-        // row type.
-        if (groupBy < 0 && (projection == null || fromType.canRepresent(projection))) {
-            // Use the existing row type.
-            rowType = fromType;
-        } else {
-            // Use a custom row type.
-            rowType = TupleType.make(projection, groupBy);
+                boolean canRepresent;
+                if (projection == null) {
+                    canRepresent = desiredType.canRepresent(fromType, false);
+                } else {
+                    canRepresent = desiredType.canRepresent(projection, false);
+                }
+
+                if (!canRepresent) {
+                    String message;
+                    if (projection == null) {
+                        message = desiredType.notRepresentable(fromType);
+                    } else {
+                        message = desiredType.notRepresentable(projection);
+                    }
+                    throw new QueryException(message);
+                }
+
+                rowType = desiredType;
+                break selectRowType;
+            }
+
+            if (groupBy < 0 && (projection == null || fromType.canRepresent(projection, true))) {
+                // Use the existing row type.
+                rowType = fromType;
+            } else {
+                // Use a custom row type.
+                rowType = TupleType.make(projection, groupBy);
+            }
         }
 
         RelationType type = RelationType.make

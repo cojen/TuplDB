@@ -86,7 +86,7 @@ public class ParserTest {
 
     private void parseFail(String queryStr, String message) {
         try {
-            Parser.parse(mTable, queryStr);
+            Parser.parse(mTable, null, queryStr);
             fail();
         } catch (QueryException e) {
             assertTrue(e.getMessage(), e.getMessage().contains(message));
@@ -96,9 +96,9 @@ public class ParserTest {
     @Test
     public void flatten() throws Exception {
         String filterStr = "a == ? && (a == ? && a < ?1) && !((a == ? || a < ?1) || a != ?)";
-        RelationExpr expr = Parser.parse(mTable, filterStr);
+        RelationExpr expr = Parser.parse(mTable, mTable.rowType(), filterStr);
         assertEquals("a == ?1 && a == ?2 && a < ?1 && a != ?3 && a >= ?1 && a == ?4",
-                     expr.querySpec(mTable.rowType()).toString());
+                     expr.querySpec().toString());
     }
 
     @Test
@@ -168,12 +168,12 @@ public class ParserTest {
     }
 
     private void passQuery(String queryStr, String expect) throws Exception {
-        RelationExpr expr = Parser.parse(mTable, queryStr);
-        assertEquals(expect, expr.querySpec(mTable.rowType()).toString());
+        RelationExpr expr = Parser.parse(mTable, mTable.rowType(), queryStr);
+        assertEquals(expect, expr.querySpec().toString());
     }
 
     private void passQueryNoSpec(String queryStr, String expect) throws Exception {
-        RelationExpr expr = Parser.parse(mTable, queryStr);
+        RelationExpr expr = Parser.parse(mTable, null, queryStr);
         String exprStr = expr.toString();
         assertTrue(exprStr, exprStr.endsWith(expect));
     }

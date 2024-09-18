@@ -31,7 +31,7 @@ import org.cojen.tupl.table.RowMethodsMaker;
  *
  * @author Brian S. O'Neill
  */
-public final class VarExpr extends Expr implements Named {
+public final class VarExpr extends Expr implements Attr {
     /**
      * @param assign the expression that created the local variable
      */

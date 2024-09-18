@@ -158,7 +158,7 @@ public abstract class CompiledQuery<R> extends QueryLauncher<R> {
             return ((RelationExpr) helper).makeCompiledRowQuery();
         }
         var queryStr = (String) key;
-        RelationExpr expr = Parser.parse((Table) helper, queryStr);
+        RelationExpr expr = Parser.parse((Table) helper, null, queryStr);
         // Obtain the canonical instance and map to that.
         TupleKey canonicalKey = expr.makeKey();
         return (CompiledQuery<Row>) cache.cacheObtain(type, canonicalKey, expr);

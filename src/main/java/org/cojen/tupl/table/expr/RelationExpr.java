@@ -126,17 +126,6 @@ public abstract sealed class RelationExpr extends Expr permits TableExpr, QueryE
 
     /**
      * Returns a QuerySpec if this RelationExpr can be represented by one, against the given
-     * row type. A QueryException is thrown otherwise.
-     */
-    public final QuerySpec querySpec(Class<?> rowType) throws QueryException {
-        if (rowType != rowTypeClass()) {
-            throw new QueryException("Mismatched row type");
-        }
-        return querySpec();
-    }
-
-    /**
-     * Returns a QuerySpec if this RelationExpr can be represented by one, against the given
      * row type. Returns null otherwise.
      */
     public abstract QuerySpec tryQuerySpec(Class<?> rowType);
@@ -157,39 +146,10 @@ public abstract sealed class RelationExpr extends Expr permits TableExpr, QueryE
         throws IOException, QueryException
     {
         TupleType thisRowType = rowType();
-
         if (rowTypeClass.isAssignableFrom(thisRowType.clazz())) {
             return (CompiledQuery<R>) makeCompiledQuery();
         }
-
-        TupleType otherRowType = TupleType.make(rowTypeClass, null);
-
-        var b = new StringBuilder().append("Query derives new or mismatched columns: ");
-        final int originalLength = b.length();
-
-        for (Column c : thisRowType) {
-            String name = c.name();
-            Column otherColumn = otherRowType.tryFindColumn(name);
-            if (otherColumn == null || !c.type().equals(otherColumn.type())) {
-                if (b.length() != originalLength) {
-                    b.append(", ");
-                }
-                c.type().appendTo(b, true);
-                b.append(' ').append(RowMethodsMaker.unescape(name));
-                if (otherColumn != null) {
-                    b.append(" != ");
-                    otherColumn.type().appendTo(b, true);
-                    b.append(' ').append(RowMethodsMaker.unescape(name));
-                }
-            }
-        }
-
-        if (b.length() == originalLength) {
-            // Shouldn't happen. See TupleType.canRepresent.
-            b.append('?');
-        }
-
-        throw new QueryException(b.toString());
+        throw new QueryException("Mismatched row type");
     }
 
     /**

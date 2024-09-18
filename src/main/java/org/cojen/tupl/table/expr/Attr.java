@@ -18,10 +18,12 @@
 package org.cojen.tupl.table.expr;
 
 /**
- * Defines something which has a name. (obviously)
+ * A generic attribute has a type and name.
  *
  * @author Brian S. O'Neill
  */
-interface Named {
+interface Attr {
+    Type type();
+
     String name();
 }

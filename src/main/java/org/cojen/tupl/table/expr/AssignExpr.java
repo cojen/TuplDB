@@ -30,7 +30,7 @@ import org.cojen.tupl.table.RowMethodsMaker;
  *
  * @author Brian S. O'Neill
  */
-public final class AssignExpr extends WrappedExpr implements Named {
+public final class AssignExpr extends WrappedExpr implements Attr {
     public static AssignExpr make(int startPos, int endPos, String name, Expr expr) {
         return new AssignExpr(startPos, endPos, name, expr);
     }

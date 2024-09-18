@@ -35,7 +35,7 @@ import org.cojen.tupl.table.RowMethodsMaker;
  *
  * @author Brian S. O'Neill
  */
-public final class ProjExpr extends WrappedExpr implements Named {
+public final class ProjExpr extends WrappedExpr implements Attr {
     // Basic flags.
     public static final int F_EXCLUDE = 1, F_ORDER_BY = 2;
 
@@ -63,11 +63,11 @@ public final class ProjExpr extends WrappedExpr implements Named {
     private final int mFlags;
 
     /**
-     * @param expr must also implement Named
+     * @param expr must also implement Attr
      */
     private ProjExpr(int startPos, int endPos, Expr expr, int flags) {
         super(startPos, endPos, expr);
-        if (!(expr instanceof Named)) {
+        if (!(expr instanceof Attr)) {
             throw new IllegalArgumentException();
         }
         mFlags = flags;
@@ -159,7 +159,7 @@ public final class ProjExpr extends WrappedExpr implements Named {
 
     @Override
     public String name() {
-        return ((Named) mExpr).name();
+        return ((Attr) mExpr).name();
     }
 
     @Override
@@ -254,15 +254,17 @@ public final class ProjExpr extends WrappedExpr implements Named {
     /**
      * Returns true if the start of the projection path can be represented by a tuple column of
      * the same name. A safe conversion might need to be performed.
-     */
-    public boolean canRepresent(Map<String, Column> columns) {
+     *
+     * @param exact when true, the column types must exactly match
+      */
+    public boolean canRepresent(Map<String, Column> columns, boolean exact) {
         if (mExpr instanceof ColumnExpr ce) {
             Column first = ce.firstColumn();
             Column column = columns.get(first.name());
-            return column != null && column.type().canRepresent(first.type());
+            return column != null && column.type().canRepresent(first.type(), exact);
         } else {
             Column column = columns.get(name());
-            return column != null && column.type().canRepresent(type());
+            return column != null && column.type().canRepresent(type(), exact);
         }
     }
 
