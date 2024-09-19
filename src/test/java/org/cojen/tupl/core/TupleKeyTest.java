@@ -58,13 +58,13 @@ public class TupleKeyTest {
         }
  
         try {
-            t1.getInt(0);
+            t1.get_int(0);
             fail();
         } catch (ClassCastException e) {
         }
 
         try {
-            t1.getLong(0);
+            t1.get_long(0);
             fail();
         } catch (ClassCastException e) {
         }
@@ -89,8 +89,8 @@ public class TupleKeyTest {
         assertEquals(int.class, t1.type(0));
         assertEquals(byte[].class, t1.type(1));
         assertEquals(10, t1.get(0));
-        assertEquals(10, t2.getInt(0));
-        assertEquals(10L, t2.getLong(0));
+        assertEquals(10, t2.get_int(0));
+        assertEquals(10L, t2.get_long(0));
         assertArrayEquals("hello".getBytes(), (byte[]) t2.get(1));
 
         assertEquals(t1.hashCode(), t2.hashCode());
@@ -117,8 +117,8 @@ public class TupleKeyTest {
         assertEquals(int.class, t1.type(0));
         assertEquals(Object.class, t1.type(1));
         assertEquals(10, t1.get(0));
-        assertEquals(10, t2.getInt(0));
-        assertEquals(10L, t2.getLong(0));
+        assertEquals(10, t2.get_int(0));
+        assertEquals(10L, t2.get_long(0));
         assertEquals("hello", t2.get(1));
 
         assertEquals(t1.hashCode(), t2.hashCode());
