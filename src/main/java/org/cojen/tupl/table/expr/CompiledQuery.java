@@ -140,28 +140,61 @@ public abstract class CompiledQuery<R> extends QueryLauncher<R> {
     }
 
     /**
+     * @param rowType the row type class to use
+     * @see #makeDerived
+     */
+    public static record DerivedKey(Class<?> rowType, String query) { }
+
+    /**
      * Make a new or cached CompiledQuery instance, suitable for queries which derive new
-     * columns.
+     * columns. Supported cache keys:
+     *
+     * <ul>
+     * <li>String -- specifies a query string against an automatically selected row type
+     * <li>DerivedKey -- specifies the desired row type and the query string
+     * <li>TupleKey -- reserved for obtaining canonical instances
+     * </ul>
      *
      * @param cache stores canonical CompiledQuery instances
      * @param type type to be passed to the cache instance
-     * @param key must be a query string
+     * @param key the cache key (see above)
      * @param helper must be a Table instance
      */
-    @SuppressWarnings("unchecked")
-    public static CompiledQuery<Row> makeDerived
+    public static CompiledQuery<?> makeDerived
         (MultiCache<? super TupleKey,? super CompiledQuery,? super RelationExpr,IOException> cache,
          MultiCache.Type type, Object key, Object helper)
         throws IOException
     {
-        if (key instanceof TupleKey) {
-            return ((RelationExpr) helper).makeCompiledRowQuery();
+        if (key instanceof TupleKey tk) {
+            var expr = (RelationExpr) helper;
+            return switch (((byte[]) tk.get(0))[0]) { // keyType; see below
+                case 1 -> expr.makeCompiledRowQuery();
+                case 2 -> expr.makeCompiledQuery();
+                default -> throw new AssertionError();
+            };
         }
-        var queryStr = (String) key;
-        RelationExpr expr = Parser.parse((Table) helper, null, queryStr);
-        // Obtain the canonical instance and map to that.
-        TupleKey canonicalKey = expr.makeKey();
-        return (CompiledQuery<Row>) cache.cacheObtain(type, canonicalKey, expr);
+
+        RelationExpr expr;
+        int keyType;
+
+        if (key instanceof String queryStr) {
+            expr = Parser.parse((Table) helper, null, queryStr);
+            keyType = 1;
+        } else if (key instanceof DerivedKey dk) {
+            expr = Parser.parse((Table) helper, dk.rowType(), dk.query());
+            keyType = 2;
+        } else {
+            throw new IllegalArgumentException();
+        }
+
+        // Obtain the canonical instance and map to that. Note that KeyEncoder always starts
+        // with a byte array, and so the keyType being encoded will be in a byte array.
+        var enc = new KeyEncoder();
+        enc.encodeByte(keyType);
+        expr.encodeKey(enc);
+        TupleKey canonicalKey = enc.finish();
+
+        return (CompiledQuery<?>) cache.cacheObtain(type, canonicalKey, expr);
     }
 
     public static abstract class Wrapped<R> extends CompiledQuery<R> {

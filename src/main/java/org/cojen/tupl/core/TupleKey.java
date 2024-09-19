@@ -84,7 +84,7 @@ public abstract class TupleKey implements RandomAccess {
      * @throws IndexOutOfBoundsException if out of bounds
      * @throws ClassCastException if element isn't an int or cannot be widened to an int
      */
-    public abstract int getInt(int ix);
+    public abstract int get_int(int ix);
 
     /**
      * Returns a tuple element.
@@ -93,7 +93,7 @@ public abstract class TupleKey implements RandomAccess {
      * @throws IndexOutOfBoundsException if out of bounds
      * @throws ClassCastException if element isn't a long or cannot be widened to a long
      */
-    public abstract long getLong(int ix);
+    public abstract long get_long(int ix);
 
     public abstract static class Maker {
         // Declaring more specific types of "with" methods allows for more efficient types of
@@ -298,8 +298,8 @@ public abstract class TupleKey implements RandomAccess {
         makeGet(cm, types, Class.class, "type");
         makeGet(cm, types, Object.class, "get");
         makeGet(cm, types, String.class, "getString");
-        makeGet(cm, types, int.class, "getInt");
-        makeGet(cm, types, long.class, "getLong");
+        makeGet(cm, types, int.class, "get_int");
+        makeGet(cm, types, long.class, "get_long");
 
         makeHashCode(cm, types, makerClass);
         makeEquals(cm, types, makerClass);
@@ -366,7 +366,7 @@ public abstract class TupleKey implements RandomAccess {
                     }
                 }
 
-                case "getInt" -> {
+                case "get_int" -> {
                     Class<?> type = fieldVar.classType();
                     if (type == int.class || type == byte.class ||
                         type == char.class || type == short.class)
@@ -377,7 +377,7 @@ public abstract class TupleKey implements RandomAccess {
                     }
                 }
 
-                case "getLong" -> {
+                case "get_long" -> {
                     Class<?> type = fieldVar.classType();
                     if (type == long.class || type == int.class || type == byte.class ||
                         type == char.class || type == short.class)

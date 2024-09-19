@@ -354,9 +354,9 @@ public abstract sealed class QueryExpr extends RelationExpr
                 if (!canRepresent) {
                     String message;
                     if (projection == null) {
-                        message = desiredType.notRepresentable(fromType);
+                        message = desiredType.notRepresentable(fromType, false);
                     } else {
-                        message = desiredType.notRepresentable(projection);
+                        message = desiredType.notRepresentable(projection, false);
                     }
                     throw new QueryException(message);
                 }

@@ -342,6 +342,16 @@ public abstract class BaseTable<R>
     }
 
     @Override
+    @SuppressWarnings("unchecked")
+    public final <D> Table<D> derive(Class<D> derivedType, String query, Object... args)
+        throws IOException
+    {
+        // See the cacheNewValue method.
+        var key = new CompiledQuery.DerivedKey(derivedType, query);
+        return ((CompiledQuery<D>) cacheObtain(MultiCache.TYPE_2, key, this)).table(args);
+    }
+
+    @Override
     public final String toString() {
         var b = new StringBuilder();
         RowUtils.appendMiniString(b, this);
@@ -929,7 +939,7 @@ public abstract class BaseTable<R>
                 protected MethodHandle newValue(TupleKey key, byte[] spec) {
                     int schemaVersion = 0;
                     if (key.size() == 2) {
-                        schemaVersion = key.getInt(0);
+                        schemaVersion = key.get_int(0);
                     }
                     return makeDecodePartialHandle(spec, schemaVersion);
                 }

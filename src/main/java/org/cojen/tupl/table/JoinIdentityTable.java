@@ -179,6 +179,16 @@ public final class JoinIdentityTable extends MultiCache<Object, Object, Object, 
     }
 
     @Override
+    @SuppressWarnings("unchecked")
+    public final <D> Table<D> derive(Class<D> derivedType, String query, Object... args)
+        throws IOException
+    {
+        // See the cacheNewValue method.
+        var key = new CompiledQuery.DerivedKey(derivedType, query);
+        return ((CompiledQuery<D>) cacheObtain(TYPE_2, key, this)).table(args);
+    }
+
+    @Override
     public Comparator<Row> comparator(String spec) {
         // Validate.
         OrderBy.forSpec(Collections.emptyMap(), spec);

@@ -278,6 +278,16 @@ public abstract sealed class ViewedTable<R> extends WrappedTable<R, R> {
         return ((CompiledQuery<Row>) cacheObtain(TYPE_4, query, null)).table(fuseArguments(args));
     }
 
+    @Override
+    @SuppressWarnings("unchecked")
+    public final <D> Table<D> derive(Class<D> derivedType, String query, Object... args)
+        throws IOException
+    {
+        // See the cacheNewValue method.
+        var key = new CompiledQuery.DerivedKey(derivedType, query);
+        return ((CompiledQuery<D>) cacheObtain(TYPE_4, key, null)).table(fuseArguments(args));
+    }
+
     @Override // MultiCache; see also WrappedTable
     protected final Object cacheNewValue(Type type, Object key, Object helper)
         throws IOException

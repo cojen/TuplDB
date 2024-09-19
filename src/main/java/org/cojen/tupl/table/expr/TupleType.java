@@ -365,14 +365,14 @@ public final class TupleType extends Type implements Iterable<Column> {
     /**
      * Call when canRepresent returns false to get a detailed message.
      */
-    public String notRepresentable(Iterable<? extends Attr> columns) {
+    public String notRepresentable(Iterable<? extends Attr> columns, boolean exact) {
         var b = new StringBuilder().append("Query derives new or mismatched columns: ");
         final int originalLength = b.length();
 
         for (Attr column : columns) {
             String name = column.name();
             Column thisColumn = tryFindColumn(name);
-            if (thisColumn == null || !column.type().equals(thisColumn.type())) {
+            if (thisColumn == null || !thisColumn.type().canRepresent(column.type(), exact)) {
                 if (b.length() != originalLength) {
                     b.append(", ");
                 }

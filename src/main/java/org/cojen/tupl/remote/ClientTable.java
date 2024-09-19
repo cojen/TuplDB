@@ -289,6 +289,14 @@ final class ClientTable<R> implements Table<R> {
     }
 
     @Override
+    public <D> Table<D> derive(Class<D> derivedType, String query, Object... args)
+        throws IOException
+    {
+        // FIXME: derive
+        throw null;
+    }
+
+    @Override
     public Table<Row> derive(String query, Object... args) throws IOException {
         // FIXME: Should derive on the server side.
         throw null;

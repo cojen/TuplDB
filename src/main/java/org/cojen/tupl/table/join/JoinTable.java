@@ -124,6 +124,16 @@ public abstract class JoinTable<J> extends MultiCache<Object, Object, Object, IO
     }
 
     @Override
+    @SuppressWarnings("unchecked")
+    public final <D> Table<D> derive(Class<D> derivedType, String query, Object... args)
+        throws IOException
+    {
+        // See the cacheNewValue method.
+        var key = new CompiledQuery.DerivedKey(derivedType, query);
+        return ((CompiledQuery<D>) cacheObtain(TYPE_2, key, this)).table(args);
+    }
+
+    @Override
     public final Predicate<J> predicate(String query, Object... args) {
         return JoinPredicateMaker.newInstance(rowType(), query, args);
     }
