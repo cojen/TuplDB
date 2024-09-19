@@ -80,7 +80,7 @@ public class ViewedTest {
 
     @Test
     public void noFilter() throws Exception {
-        var view = mTable.view("{-id, *}");
+        var view = ViewedTable.view(mTable, "{-id, *}");
 
         // CRUD operations should work just fine and behave the same as before.
 
@@ -218,7 +218,7 @@ public class ViewedTest {
           {id=4, num=8, name=name-4}
           {id=3, num=6, name=name-3}
         */
-        var view = mTable.view("{-id, *} id >= ? && num <= ?", 3, 10);
+        var view = ViewedTable.view(mTable, "{-id, *} id >= ? && num <= ?", 3, 10);
 
         // CRUD operations are restricted.
 
@@ -453,7 +453,7 @@ public class ViewedTest {
           {id=9, num=18, name=name-9}
           {id=10, num=20, name=name-10}
         */
-        var view = mTable.view("{id, *} id >= ?", 8);
+        var view = ViewedTable.view(mTable, "{id, *} id >= ?", 8);
 
         var row = view.newRow();
 
@@ -494,7 +494,7 @@ public class ViewedTest {
 
     @Test
     public void hasProjectionAndNoFilter() throws Exception {
-        var view = mTable.view("{id, name}");
+        var view = ViewedTable.view(mTable, "{id, name}");
 
         // Some CRUD operations are restricted.
 
@@ -575,7 +575,7 @@ public class ViewedTest {
           {id=4, name=name-4}
           {id=3, name=name-3}
         */
-        var view = mTable.view("{id, name} id >= ? && num <= ?", 3, 10);
+        var view = ViewedTable.view(mTable, "{id, name} id >= ? && num <= ?", 3, 10);
 
         // CRUD operations are restricted.
 
@@ -646,7 +646,7 @@ public class ViewedTest {
           {id=9, name=name-9}
           {id=10, name=name-10}
         */
-        var view = mTable.view("{id, name} id >= ?", 8);
+        var view = ViewedTable.view(mTable,  "{id, name} id >= ?", 8);
 
         var row = view.newRow();
 
@@ -657,7 +657,7 @@ public class ViewedTest {
 
     @Test
     public void noPrimaryKeyAndNoFilter() throws Exception {
-        var view = mTable.view("{num, name}");
+        var view = ViewedTable.view(mTable, "{num, name}");
 
         try (var scanner = view.newScanner(null, "num >= ? && num <= ?", 6, 10)) {
             var row = scanner.row();
@@ -717,7 +717,7 @@ public class ViewedTest {
           {num=8, name=name-4}
           {num=10, name=name-5}
         */
-        var view = mTable.view("{num, name} id >= ? && num <= ?", 3, 10);
+        var view = ViewedTable.view(mTable, "{num, name} id >= ? && num <= ?", 3, 10);
 
         try (var scanner = view.newScanner(null)) {
             var row = scanner.row();
@@ -770,17 +770,17 @@ public class ViewedTest {
 
     @Test
     public void multiView() throws Exception {
-        var view = mTable.view("{id, name} id >= ?", 3);
+        var view = ViewedTable.view(mTable, "{id, name} id >= ?", 3);
 
         try {
-            view = view.view("{id, name, num} id <= ?", 5);
+            view = ViewedTable.view(view, "{id, name, num} id <= ?", 5);
             fail();
         } catch (IllegalArgumentException e) {
             assertTrue(e.getMessage().contains("Unknown column"));
             assertTrue(e.getMessage().contains("num"));
         }
 
-        view = view.view("{-id, *} id <= ?", 5);
+        view = ViewedTable.view(view, "{-id, *} id <= ?", 5);
 
         try (var scanner = view.newScanner(null)) {
             var row = scanner.row();

@@ -34,7 +34,6 @@ import org.cojen.tupl.table.GroupedTable;
 import org.cojen.tupl.table.JoinIdentityTable;
 import org.cojen.tupl.table.MappedTable;
 import org.cojen.tupl.table.PlainPredicateMaker;
-import org.cojen.tupl.table.ViewedTable;
 
 import org.cojen.tupl.table.join.JoinTableMaker;
 
@@ -698,7 +697,7 @@ public interface Table<R> extends Closeable {
      * @see #derive
      */
     public default Table<R> view(String query, Object... args) throws IOException {
-        return ViewedTable.view(this, query, args);
+        return derive(rowType(), query, args);
     }
 
     /**

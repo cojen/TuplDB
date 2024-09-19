@@ -69,10 +69,9 @@ import org.cojen.tupl.table.filter.TrueFilter;
 import org.cojen.tupl.table.filter.Visitor;
 
 /**
- * Base class for view tables.
+ * Base class for simple view tables which cannot derive new columns.
  *
  * @author Brian S. O'Neill
- * @see Table#view
  */
 public abstract sealed class ViewedTable<R> extends WrappedTable<R, R> {
     private static final WeakCache<TupleKey, MethodHandle, QuerySpec> cFactoryCache;
@@ -114,8 +113,19 @@ public abstract sealed class ViewedTable<R> extends WrappedTable<R, R> {
         };
     }
 
-    public static <R> ViewedTable<R> view(Table<R> source, String query, Object... args) {
+    public static <R> ViewedTable<R> view(Table<R> source, String query) throws IOException {
+        return view(source, query, RowUtils.NO_ARGS);
+    }
+
+    public static <R> ViewedTable<R> view(Table<R> source, String query, Object... args)
+        throws IOException
+    {
         Objects.requireNonNull(query);
+
+        if (source instanceof ViewedTable<R> v) {
+            return view(v.mSource, v.fuseQuery(query), v.fuseArguments(args));
+        }
+
         try {
             var key = TupleKey.make.with(source.rowType(), query);
             return (ViewedTable<R>) cFactoryCache.obtain(key, null).invokeExact(source, args);
@@ -264,11 +274,6 @@ public abstract sealed class ViewedTable<R> extends WrappedTable<R, R> {
 
     protected Updater<R> applyChecks(Updater<R> updater) {
         return new CheckedUpdater<>(helper(), updater);
-    }
-
-    @Override
-    public final Table<R> view(String query, Object... args) throws IOException {
-        return mSource.view(fuseQuery(query), fuseArguments(args));
     }
 
     @Override

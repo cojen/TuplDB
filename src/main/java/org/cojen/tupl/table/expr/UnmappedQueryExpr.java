@@ -26,6 +26,7 @@ import java.util.Map;
 import org.cojen.tupl.Table;
 
 import org.cojen.tupl.table.RowUtils;
+import org.cojen.tupl.table.ViewedTable;
 
 import org.cojen.tupl.table.filter.ColumnToConstantFilter;
 import org.cojen.tupl.table.filter.FalseFilter;
@@ -160,14 +161,14 @@ final class UnmappedQueryExpr extends QueryExpr {
         }
 
         if (baseArgCount == 0) {
-            return CompiledQuery.make(source.table().view(viewQuery, viewArgs));
+            return CompiledQuery.make(ViewedTable.view(source.table(), viewQuery, viewArgs));
         }
 
         if (viewArgs.length == 0) {
             return new CompiledQuery.Wrapped(source, baseArgCount) {
                 @Override
                 public Table table(Object... args) throws IOException {
-                    return source.table(args).view(viewQuery, args);
+                    return ViewedTable.view(source.table(args), viewQuery, args);
                 }
             };
         }
@@ -179,7 +180,7 @@ final class UnmappedQueryExpr extends QueryExpr {
                 var fullArgs = new Object[argCount + viewArgs.length];
                 System.arraycopy(args, 0, fullArgs, 0, argCount);
                 System.arraycopy(viewArgs, 0, fullArgs, argCount, viewArgs.length);
-                return source.table(args).view(viewQuery, fullArgs);
+                return ViewedTable.view(source.table(args), viewQuery, fullArgs);
             }
         };
     }

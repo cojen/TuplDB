@@ -42,6 +42,7 @@ import org.cojen.tupl.diag.QueryPlan;
 
 import org.cojen.tupl.table.RowGen;
 import org.cojen.tupl.table.RowUtils;
+import org.cojen.tupl.table.ViewedTable;
 import org.cojen.tupl.table.WeakCache;
 
 import org.cojen.tupl.table.filter.QuerySpec;
@@ -175,7 +176,7 @@ final class AggregatedQueryExpr extends QueryExpr {
         if (argCount == 0) {
             Table table = source.table().aggregate(targetClass, qa.factoryFor(RowUtils.NO_ARGS));
             if (mOrderBy != null) {
-                table = table.view(mOrderBy);
+                table = ViewedTable.view(table, mOrderBy);
             }
             return CompiledQuery.make(table);
         }
@@ -221,8 +222,9 @@ final class AggregatedQueryExpr extends QueryExpr {
         }
 
         @Override
+        @SuppressWarnings("unchecked")
         public Table table(Object... args) throws IOException {
-            return super.table(args).view(mViewStr);
+            return ViewedTable.view(super.table(args), mViewStr);
         }
     }
 
