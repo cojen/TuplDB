@@ -80,6 +80,7 @@ public class DeriveTest {
 
         Table<DerivedRow3> derived = mTable.derive(DerivedRow3.class, "{*}");
         assertEquals(DerivedRow3.class, derived.rowType());
+        assertTrue(derived.getClass().getName().toLowerCase().contains("mapped"));
 
         try (Scanner<DerivedRow3> s = derived.newScanner(null)) {
             DerivedRow3 row = s.row();
@@ -88,6 +89,10 @@ public class DeriveTest {
             assertEquals("hello", row.b());
             assertEquals("3", row.c());
         }
+
+        Table<TestRow> notDerived = mTable.derive(TestRow.class, "{*}");
+        assertEquals(TestRow.class, notDerived.rowType());
+        assertFalse(notDerived.getClass().getName().toLowerCase().contains("mapped"));
     }
 
     @PrimaryKey("id")
