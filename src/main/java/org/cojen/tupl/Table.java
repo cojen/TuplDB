@@ -695,7 +695,7 @@ public interface Table<R> extends Closeable {
      * for operations against rows which are restricted by the query, and closing the table has
      * no effect.
      *
-     * @see #derive(String, Object...)
+     * @see #derive
      */
     public default Table<R> view(String query, Object... args) throws IOException {
         return ViewedTable.view(this, query, args);
@@ -713,25 +713,9 @@ public interface Table<R> extends Closeable {
      * returned table instance will throw a {@link ViewConstraintException} for operations
      * against rows which are restricted by the query, and closing the table has no effect.
      *
+     * @param derivedType the projected query columns must correspond to columns defined in the
+     * derived row type
      * @see #view
-     */
-    public Table<Row> derive(String query, Object... args) throws IOException;
-
-    /**
-     * @hidden
-     */
-    public default Table<Row> derive(String query) throws IOException {
-        return derive(query, NO_ARGS);
-    }
-
-    /**
-     * Returns a view backed by this table, specified by a fully-featured query expression. The
-     * returned table instance will throw a {@link ViewConstraintException} for operations
-     * against rows which are restricted by the query, and closing the table has no effect.
-     *
-     * <p>The {@code derivedType} parameter refers to a row type which can be used to store the
-     * query results. The projected query columns must correspond to columns defined in the
-     * derived row type.
      */
     public <D> Table<D> derive(Class<D> derivedType, String query, Object... args)
         throws IOException;
@@ -741,6 +725,22 @@ public interface Table<R> extends Closeable {
      */
     public default <D> Table<D> derive(Class<D> derivedType, String query) throws IOException {
         return derive(derivedType, query, NO_ARGS);
+    }
+
+    /**
+     * Returns a view backed by this table, specified by a fully-featured query expression. The
+     * returned table instance will throw a {@link ViewConstraintException} for operations
+     * against rows which are restricted by the query, and closing the table has no effect.
+     *
+     * @see #view
+     */
+    public Table<Row> derive(String query, Object... args) throws IOException;
+
+    /**
+     * @hidden
+     */
+    public default Table<Row> derive(String query) throws IOException {
+        return derive(query, NO_ARGS);
     }
 
     /**
