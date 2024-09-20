@@ -44,7 +44,7 @@ import org.cojen.tupl.table.codec.ColumnCodec;
  * @author Brian S O'Neill
  * @see RowWriter
  */
-public abstract class RowReader<R> implements Scanner<R> {
+public class RowReader<R> implements Scanner<R> {
     private static final WeakCache<CacheKey, Decoder, Object> cDecoders;
 
     static {
@@ -128,14 +128,13 @@ public abstract class RowReader<R> implements Scanner<R> {
             mRow = null;
             mRowData = null;
             mDecoders = null;
-            close(in, finished);
+            if (finished) {
+                in.recycle();
+            } else {
+                in.close();
+            }
         }
     }
-
-    /**
-     * @param finished true when all rows were scanned; false when closed prematurely
-     */
-    protected abstract void close(Pipe in, boolean finished) throws IOException;
 
     /**
      * @throws IOException or an unchecked exception from processing the query

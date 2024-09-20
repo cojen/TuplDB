@@ -133,17 +133,7 @@ final class ClientTable<R> implements Table<R> {
     Scanner<R> newScanner(Pipe pipe, R row) throws IOException {
         try {
             pipe.flush();
-
-            return new RowReader<R>(mType, pipe, row) {
-                @Override
-                protected void close(Pipe pipe, boolean finished) throws IOException {
-                    if (finished) {
-                        pipe.recycle();
-                    } else {
-                        pipe.close();
-                    }
-                }
-            };
+            return new RowReader<R>(mType, pipe, row);
         } catch (IOException e) {
             Utils.closeQuietly(pipe);
             throw e;
