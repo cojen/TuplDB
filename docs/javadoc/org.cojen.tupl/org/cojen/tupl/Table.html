@@ -106,7 +106,6 @@ loadScripts(document, 'script');</script>
 <li><a href="#join(java.lang.Class,java.lang.String,org.cojen.tupl.Table...)" tabindex="0">join(Class, String, Table...)</a></li>
 <li><a href="#join(java.lang.String,org.cojen.tupl.Table...)" tabindex="0">join(String, Table...)</a></li>
 <li><a href="#join()" tabindex="0">join()</a></li>
-<li><a href="#view(java.lang.String,java.lang.Object...)" tabindex="0">view(String, Object...)</a></li>
 <li><a href="#derive(java.lang.Class,java.lang.String,java.lang.Object...)" tabindex="0">derive(Class, String, Object...)</a></li>
 <li><a href="#derive(java.lang.String,java.lang.Object...)" tabindex="0">derive(String, Object...)</a></li>
 <li><a href="#comparator(java.lang.String)" tabindex="0">comparator(String)</a></li>
@@ -499,13 +498,6 @@ public interface MyRow {
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
 <div class="block">Updates an existing row with the modified columns of the given row, but the resulting
  row isn't loaded back.</div>
-</div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default <a href="Table.html" title="interface in org.cojen.tupl">Table</a><wbr>&lt;<a href="Table.html" title="type parameter in Table">R</a>&gt;</code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#view(java.lang.String,java.lang.Object...)" class="member-name-link">view</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/23/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;query,
- <a href="https://docs.oracle.com/en/java/javase/23/docs/api/java.base/java/lang/Object.html" title="class or interface in java.lang" class="external-link">Object</a>...&nbsp;args)</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
-<div class="block">Returns a view backed by this table, whose rows and natural ordering are defined by the
- given query.</div>
 </div>
 </div>
 </div>
@@ -1279,30 +1271,6 @@ public interface MyRow {
 </section>
 </li>
 <li>
-<section class="detail" id="view(java.lang.String,java.lang.Object...)">
-<h3>view</h3>
-<div class="horizontal-scroll">
-<div class="member-signature"><span class="modifiers">default</span>&nbsp;<span class="return-type"><a href="Table.html" title="interface in org.cojen.tupl">Table</a>&lt;<a href="Table.html" title="type parameter in Table">R</a>&gt;</span>&nbsp;<span class="element-name">view</span><wbr><span class="parameters">(<a href="https://docs.oracle.com/en/java/javase/23/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;query,
- <a href="https://docs.oracle.com/en/java/javase/23/docs/api/java.base/java/lang/Object.html" title="class or interface in java.lang" class="external-link">Object</a>...&nbsp;args)</span>
-               throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/23/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
-<div class="block">Returns a view backed by this table, whose rows and natural ordering are defined by the
- given query. The returned table instance will throw a <a href="ViewConstraintException.html" title="class in org.cojen.tupl"><code>ViewConstraintException</code></a>
- for operations against rows which are restricted by the query, and closing the table has
- no effect.</div>
-<dl class="notes">
-<dt>Throws:</dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/23/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
-<dt>See Also:</dt>
-<dd>
-<ul class="tag-list-long">
-<li><a href="#derive(java.lang.Class,java.lang.String,java.lang.Object...)"><code>derive(java.lang.Class&lt;D&gt;, java.lang.String, java.lang.Object...)</code></a></li>
-</ul>
-</dd>
-</dl>
-</div>
-</section>
-</li>
-<li>
 <section class="detail" id="derive(java.lang.Class,java.lang.String,java.lang.Object...)">
 <h3>derive</h3>
 <div class="horizontal-scroll">
@@ -1319,12 +1287,6 @@ public interface MyRow {
  derived row type</dd>
 <dt>Throws:</dt>
 <dd><code><a href="https://docs.oracle.com/en/java/javase/23/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
-<dt>See Also:</dt>
-<dd>
-<ul class="tag-list-long">
-<li><a href="#view(java.lang.String,java.lang.Object...)"><code>view(java.lang.String, java.lang.Object...)</code></a></li>
-</ul>
-</dd>
 </dl>
 </div>
 </section>
@@ -1342,12 +1304,6 @@ public interface MyRow {
 <dl class="notes">
 <dt>Throws:</dt>
 <dd><code><a href="https://docs.oracle.com/en/java/javase/23/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
-<dt>See Also:</dt>
-<dd>
-<ul class="tag-list-long">
-<li><a href="#view(java.lang.String,java.lang.Object...)"><code>view(java.lang.String, java.lang.Object...)</code></a></li>
-</ul>
-</dd>
 </dl>
 </div>
 </section>
