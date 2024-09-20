@@ -134,8 +134,8 @@ public abstract sealed class ColumnExpr extends Expr implements Attr {
     @Override
     public Expr asAggregate(Set<String> group) {
         if (!group.contains(name())) {
-            throw new QueryException("Column isn't part of the aggregation group or " +
-                                     "wrapped by an aggregation function", this);
+            throw queryException("Column isn't part of the aggregation group or " +
+                                 "wrapped by an aggregation function");
         }
         return CallExpr.make(startPos(), endPos(), "first", List.of(this), Map.of(),
                              new StandardFunctionFinder.first(null));

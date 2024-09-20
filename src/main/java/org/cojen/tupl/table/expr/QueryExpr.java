@@ -31,6 +31,7 @@ import java.util.function.Predicate;
 import org.cojen.maker.ClassMaker;
 import org.cojen.maker.MethodMaker;
 
+import org.cojen.tupl.QueryException;
 import org.cojen.tupl.Untransformed;
 
 import org.cojen.tupl.table.ColumnInfo;
@@ -488,7 +489,7 @@ public abstract sealed class QueryExpr extends RelationExpr
             return flags;
         }
 
-        throw new QueryException(message, expr);
+        throw expr.queryException(message);
     }
 
     protected final RelationExpr mFrom;

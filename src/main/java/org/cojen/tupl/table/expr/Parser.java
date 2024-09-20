@@ -28,6 +28,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import org.cojen.tupl.QueryException;
 import org.cojen.tupl.Table;
 
 import org.cojen.tupl.table.filter.QuerySpec;
@@ -212,7 +213,7 @@ public final class Parser {
             if (next.type() != T_RBRACE) {
                 String message = next.type() == T_SEMI
                     ? "At most one group specification is allowed" : "Right brace expected";
-                throw new QueryException(message, next);
+                throw next.queryException(message);
             }
             if (peekTokenType() == T_EOF) {
                 filter = null;
@@ -225,7 +226,7 @@ public final class Parser {
 
         Token peek = peekToken();
         if (peek.type() != T_EOF) {
-            throw new QueryException("Unexpected trailing characters", peek);
+            throw peek.queryException("Unexpected trailing characters");
         }
 
         if (groupBy < 0) {
@@ -243,8 +244,8 @@ public final class Parser {
 
     private static void verifyNoGrouping(Expr expr) {
         if (expr.isGrouping()) {
-            throw new QueryException("Query depends on a function which requires grouping, " +
-                                     "but no group specification is defined", expr);
+            throw expr.queryException("Query depends on a function which requires grouping, " +
+                                     "but no group specification is defined");
         }
     }
 
@@ -258,14 +259,14 @@ public final class Parser {
             String name = e.getKey();
             ProjExpr expr = e.getValue();
             if (groupByExprs.containsKey(name)) {
-                throw new QueryException("Duplicate projection: " + unescape(name), expr);
+                throw expr.queryException("Duplicate projection: " + unescape(name));
             }
         }
 
         for (ProjExpr expr : groupByExprs.values()) {
             if (expr.isGrouping()) {
-                throw new QueryException("Group specification depends on a function " +
-                                         "which itself needs a group specification", expr);
+                throw expr.queryException("Group specification depends on a function " +
+                                         "which itself needs a group specification");
             }
         }
 
@@ -305,7 +306,7 @@ public final class Parser {
             ColumnExpr wildcard;
             addProjection: if ((wildcard = expr.isWildcard()) != null) {
                 if (expr.hasExclude()) {
-                    throw new QueryException("Cannot exclude by wildcard", expr);
+                    throw expr.queryException("Cannot exclude by wildcard");
                 }
                 if (wildcards == null) {
                     wildcards = new LinkedHashMap<>();
@@ -319,7 +320,7 @@ public final class Parser {
                         excluded = new HashSet<>();
                     }
                     if (!excluded.add(name)) {
-                        throw new QueryException("Projection is already excluded: " + name, expr);
+                        throw expr.queryException("Projection is already excluded: " + name);
                     }
 
                     if (!(expr.wrapped() instanceof AssignExpr)) {
@@ -355,7 +356,7 @@ public final class Parser {
 
                 if (map.putIfAbsent(name, expr) != null) {
                     if (wildcards == null || wildcards.remove(name) == null) {
-                        throw new QueryException("Duplicate projection: " + unescape(name), expr);
+                        throw expr.queryException("Duplicate projection: " + unescape(name));
                     }
                 }
             }
@@ -443,7 +444,7 @@ public final class Parser {
                 mLocalVars = new LinkedHashMap<>();
             }
             if (mLocalVars.putIfAbsent(name, assign) != null) {
-                throw new QueryException("Duplicate assignment: " + ident.mText, assign);
+                throw assign.queryException("Duplicate assignment: " + ident.mText);
             }
         } else access: {
             if (mLocalVars != null && path.size() == 1) {
@@ -589,7 +590,7 @@ public final class Parser {
                 expr = BinaryOpExpr.make(expr.startPos(), right.endPos(), type, expr, right);
                 break;
             case T_ASSIGN:
-                throw new QueryException("Equality operator must be specified as '=='", peek);
+                throw peek.queryException("Equality operator must be specified as '=='");
             }
         }
 
@@ -764,7 +765,7 @@ public final class Parser {
             Expr expr = parseExpr();
             Token next = nextToken();
             if (next.type() != T_RPAREN) {
-                throw new QueryException("Right paren expected", next);
+                throw next.queryException("Right paren expected");
             }
             return expr;
         }
@@ -797,12 +798,12 @@ public final class Parser {
             if (t.endPos() == next.startPos() && next instanceof Token.Int ti) {
                 int ordinal = ti.mValue;
                 if (ordinal <= 0) {
-                    throw new QueryException("Argument number must be at least one", next);
+                    throw next.queryException("Argument number must be at least one");
                 }
                 if (ordinal > 100) {
                     // Define an arbitrary upper bound to guard against giant argument arrays
                     // from being allocated later on.
-                    throw new QueryException("Argument number is too large", next);
+                    throw next.queryException("Argument number is too large");
                 }
                 return ParamExpr.make(t.startPos(), next.endPos(), ordinal + mParamDelta);
             } else {
@@ -812,7 +813,7 @@ public final class Parser {
                 case T_IDENTIFIER: case T_STRING:
                 case T_INT: case T_LONG: case T_BIGINT:
                 case T_FLOAT: case T_DOUBLE: case T_BIGDEC:
-                    throw new QueryException("Malformed argument number", next);
+                    throw next.queryException("Malformed argument number");
                 }
                 pushbackToken(next);
                 return ParamExpr.make(t.startPos(), t.endPos(), ++mParamOrdinal + mParamDelta);
@@ -853,7 +854,7 @@ public final class Parser {
 
         Token next = nextToken();
         if (next.type() != T_RPAREN) {
-            throw new QueryException("Right paren expected", next);
+            throw next.queryException("Right paren expected");
         }
 
         int startPos = path.get(0).startPos();
@@ -878,7 +879,7 @@ public final class Parser {
             // A function call isn't allowed here, but parse it anyhow to provide a better
             // error message.
             CallExpr call = parseCallExpr(path);
-            throw new QueryException("Expression result must be assigned to a column", call);
+            throw call.queryException("Expression result must be assigned to a column");
         }
 
         TupleType rowType = mFrom.rowType();
@@ -919,7 +920,7 @@ public final class Parser {
     }
 
     private static QueryException unknown(String message, Token.Text ident) {
-        return new QueryException(message + ident.text(false), ident);
+        return ident.queryException(message + ident.text(false));
     }
 
     /*
@@ -939,12 +940,12 @@ public final class Parser {
                 // error message.
                 pushbackToken(first);
                 Expr expr = parseExpr();
-                throw new QueryException("Expression result must be assigned to a column", expr);
+                throw expr.queryException("Expression result must be assigned to a column");
             } else {
                 message = "Identifier expected";
             }
 
-            throw new QueryException(message, first);
+            throw first.queryException(message);
         }
 
         if (peekTokenType() != T_DOT) {
@@ -964,7 +965,7 @@ public final class Parser {
                 list.add(t);
                 break;
             } else {
-                throw new QueryException("Identifier or wildcard expected", t);
+                throw t.queryException("Identifier or wildcard expected");
             }
         }
 
@@ -979,7 +980,7 @@ public final class Parser {
         if (token instanceof Token.Text text) {
             return text;
         }
-        throw new QueryException("Wildcard disallowed", token);
+        throw token.queryException("Wildcard disallowed");
     }
 
     private static String toPath(List<Token> path, boolean escaped) {
@@ -1050,7 +1051,7 @@ public final class Parser {
                 if (namedArgs.putIfAbsent(name, parseExpr()) == null) {
                     return null;
                 }
-                throw new QueryException("Duplicate named argument: " + unescape(name), token);
+                throw token.queryException("Duplicate named argument: " + unescape(name));
             }
 
             pushbackToken(token);

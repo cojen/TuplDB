@@ -24,7 +24,7 @@ import java.util.Set;
 import org.cojen.dirmi.Pipe;
 import org.cojen.dirmi.Serializer;
 
-import org.cojen.tupl.table.expr.QueryException;
+import org.cojen.tupl.QueryException;
 
 /**
  * 

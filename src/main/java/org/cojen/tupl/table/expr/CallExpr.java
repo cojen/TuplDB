@@ -105,7 +105,7 @@ public final class CallExpr extends Expr {
                 }
             }
 
-            throw new QueryException(b.toString(), this);
+            throw queryException(b.toString());
         }
     }
 

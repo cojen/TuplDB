@@ -22,6 +22,7 @@ import java.util.Set;
 
 import java.util.function.Consumer;
 
+import org.cojen.tupl.QueryException;
 import org.cojen.tupl.table.ColumnInfo;
 import org.cojen.tupl.table.CompareUtils;
 import org.cojen.tupl.table.RowInfo;

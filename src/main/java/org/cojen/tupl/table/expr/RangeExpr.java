@@ -23,8 +23,9 @@ import java.util.Set;
 
 import java.util.function.Consumer;
 
-import org.cojen.maker.MethodMaker;
 import org.cojen.maker.Variable;
+
+import org.cojen.tupl.QueryException;
 
 /**
  * Define an expression for representing a range of values.
@@ -39,10 +40,10 @@ public final class RangeExpr extends Expr {
      */
     public static Expr make(int startPos, int endPos, Expr start, Expr end) {
         if (start != null && !start.type().isNumber()) {
-            throw new QueryException("Range start must be a number", start);
+            throw start.queryException("Range start must be a number");
         }
         if (end != null && !end.type().isNumber()) {
-            throw new QueryException("Range end must be a number", end);
+            throw end.queryException("Range end must be a number");
         }
 
         Type type = BasicType.make(Range.class, Type.TYPE_REFERENCE);

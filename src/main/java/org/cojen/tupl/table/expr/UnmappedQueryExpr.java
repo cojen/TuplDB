@@ -23,6 +23,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.cojen.tupl.QueryException;
 import org.cojen.tupl.Table;
 
 import org.cojen.tupl.table.RowUtils;

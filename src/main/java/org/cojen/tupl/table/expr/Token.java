@@ -20,6 +20,8 @@ package org.cojen.tupl.table.expr;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 
+import org.cojen.tupl.QueryException;
+
 import org.cojen.tupl.table.RowMethodsMaker;
 
 /**
@@ -78,6 +80,10 @@ sealed class Token {
      */
     final int endPos() {
         return mEndPos;
+    }
+
+    final QueryException queryException(String message) {
+        return new QueryException(message, mStartPos, mEndPos);
     }
 
     final int type() {

@@ -15,10 +15,10 @@
  *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-package org.cojen.tupl.table.expr;
+package org.cojen.tupl;
 
 /**
- * 
+ * Thrown when a query expression is malformed.
  *
  * @author Brian S. O'Neill
  */
@@ -45,14 +45,6 @@ public class QueryException extends IllegalArgumentException {
 
     public QueryException(String message, int pos) {
         this(message, pos, pos + 1);
-    }
-
-    public QueryException(String message, Token token) {
-        this(message, token.startPos(), token.endPos());
-    }
-
-    public QueryException(String message, Expr expr) {
-        this(message, expr.startPos(), expr.endPos());
     }
 
     public QueryException(String message, int startPos, int endPos) {

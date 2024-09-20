@@ -25,9 +25,8 @@ import java.util.List;
 
 import java.util.function.Consumer;
 
+import org.cojen.tupl.QueryException;
 import org.cojen.tupl.Row;
-
-import org.cojen.tupl.table.RowMethodsMaker;
 
 import org.cojen.tupl.table.filter.QuerySpec;
 import org.cojen.tupl.table.filter.TrueFilter;

@@ -31,6 +31,8 @@ import org.cojen.maker.Label;
 import org.cojen.maker.MethodMaker;
 import org.cojen.maker.Variable;
 
+import org.cojen.tupl.QueryException;
+
 /**
  * 
  *
@@ -363,7 +365,7 @@ public sealed class BinaryOpExpr extends Expr permits FilterExpr {
             return resulVar;
         }
 
-        throw new QueryException("Unsupported operation for type " + type(), this);
+        throw queryException("Unsupported operation for type " + type());
     }
 
     @Override

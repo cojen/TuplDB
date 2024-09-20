@@ -27,7 +27,7 @@ import static org.junit.Assert.*;
 
 import org.cojen.tupl.*;
 
-import org.cojen.tupl.table.expr.QueryException;
+import org.cojen.tupl.QueryException;
 
 /**
  * 

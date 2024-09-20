@@ -29,13 +29,13 @@ import java.util.List;
 import java.util.Set;
 
 import org.cojen.maker.ClassMaker;
-import org.cojen.maker.Field;
 import org.cojen.maker.FieldMaker;
 import org.cojen.maker.Label;
 import org.cojen.maker.MethodMaker;
 import org.cojen.maker.Variable;
 
 import org.cojen.tupl.Aggregator;
+import org.cojen.tupl.QueryException;
 import org.cojen.tupl.Table;
 
 import org.cojen.tupl.diag.QueryPlan;

@@ -43,6 +43,7 @@ import org.cojen.maker.MethodMaker;
 import org.cojen.tupl.Hidden;
 import org.cojen.tupl.Nullable;
 import org.cojen.tupl.PrimaryKey;
+import org.cojen.tupl.QueryException;
 import org.cojen.tupl.Row;
 import org.cojen.tupl.Unsigned;
 

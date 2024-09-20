@@ -26,9 +26,8 @@ import static org.junit.Assert.*;
 import org.cojen.tupl.Database;
 import org.cojen.tupl.DatabaseConfig;
 import org.cojen.tupl.PrimaryKey;
+import org.cojen.tupl.QueryException;
 import org.cojen.tupl.Table;
-
-import org.cojen.tupl.table.ColumnInfo;
 
 /**
  * 

@@ -27,6 +27,8 @@ import java.util.Set;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
 
+import org.cojen.tupl.QueryException;
+
 import org.cojen.tupl.core.TupleKey;
 
 import org.cojen.tupl.table.RowInfo;
@@ -70,6 +72,10 @@ public abstract sealed class Expr
      */
     public final int endPos() {
         return mEndPos;
+    }
+
+    final QueryException queryException(String message) {
+        return new QueryException(message, mStartPos, mEndPos);
     }
 
     public abstract Type type();

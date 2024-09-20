@@ -20,6 +20,7 @@ package org.cojen.tupl.table.expr;
 import java.util.Map;
 import java.util.Set;
 
+import org.cojen.tupl.QueryException;
 import org.cojen.tupl.table.ColumnInfo;
 import org.cojen.tupl.table.CompareUtils;
 import org.cojen.tupl.table.RowInfo;

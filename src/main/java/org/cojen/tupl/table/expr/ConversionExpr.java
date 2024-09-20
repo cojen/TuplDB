@@ -41,7 +41,7 @@ public final class ConversionExpr extends WrappedExpr {
         }
 
         if (expr.type().isBoolean() != type.isBoolean()) {
-            throw new QueryException("Cannot convert " + expr.type() + " to " + type, expr);
+            throw expr.queryException("Cannot convert " + expr.type() + " to " + type);
         }
 
         return new ConversionExpr(startPos, endPos, expr, type);

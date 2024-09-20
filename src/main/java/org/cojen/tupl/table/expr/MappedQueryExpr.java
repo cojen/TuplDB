@@ -29,6 +29,7 @@ import java.util.List;
 import java.util.Set;
 
 import org.cojen.tupl.Mapper;
+import org.cojen.tupl.QueryException;
 import org.cojen.tupl.Table;
 
 import org.cojen.tupl.diag.QueryPlan;

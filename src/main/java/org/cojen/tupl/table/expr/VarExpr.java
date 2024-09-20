@@ -131,8 +131,8 @@ public final class VarExpr extends Expr implements Attr {
         if (!mAssign.isAggregating()) {
             // Cannot change how mAssign behaves, so require that asAggregate has already been
             // called against it.
-            throw new QueryException("Column isn't part of the aggregation group or " +
-                                     "wrapped by an aggregation function", this);
+            throw queryException("Column isn't part of the aggregation group or " +
+                                     "wrapped by an aggregation function");
         }
         return this;
     }
