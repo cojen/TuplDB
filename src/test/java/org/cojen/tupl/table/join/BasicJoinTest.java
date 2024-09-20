@@ -863,6 +863,7 @@ public class BasicJoinTest {
     }
 
     @Test
+    @SuppressWarnings("unchecked")
     public void generated() throws Exception {
         // Test against a generated join class.
 
@@ -895,7 +896,7 @@ public class BasicJoinTest {
 
         // Test again with a view.
 
-        mJoin = mJoin.view("dept.id < ?", 34);
+        mJoin = mJoin.derive(mJoin.rowType(), "dept.id < ?", 34);
         assertTrue(Row.class.isAssignableFrom(mJoin.rowType()));
 
         plan = """
