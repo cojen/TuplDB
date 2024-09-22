@@ -20,6 +20,7 @@ package org.cojen.tupl.table;
 import java.io.IOException;
 
 import java.lang.invoke.MethodHandles;
+import java.lang.invoke.MethodType;
 
 import java.util.Map;
 
@@ -270,6 +271,12 @@ public abstract class ClientTableHelper<R> implements Table<R> {
         }
 
         Class<?> rowClass = RowMaker.find(rowType);
+
+        // Define singleton decoders that act against a Pipe.
+        cm.addField(Pipe.Decoder.class, "KD").private_().static_().final_()
+            .initExact(makePipeDecoder(cm, rowClass, rowGen.keyCodecs()));
+        cm.addField(Pipe.Decoder.class, "VD").private_().static_().final_()
+            .initExact(makePipeDecoder(cm, rowClass, rowGen.valueCodecs()));
 
         addEncodeMethods(cm, rowGen, rowClass);
 
@@ -571,43 +578,67 @@ public abstract class ClientTableHelper<R> implements Table<R> {
         });
     }
 
+    private static void decodeStateFields(RowGen rowGen, Variable rowVar, Variable pipeVar) {
+        for (String name : rowGen.stateFields()) {
+            rowVar.field(name).set(pipeVar.invoke("readInt"));
+        }
+    }
+
     /**
      * Reads the key columns from a pipe and decodes them into a row.
      */
     private static void decodeKeyColumns(RowGen rowGen, Variable rowVar, Variable pipeVar) {
-        decodeColumns(rowGen.keyCodecs(), rowVar, pipeVar);
+        MethodMaker mm = rowVar.methodMaker();
+        var lengthVar = mm.var(RowUtils.class).invoke("decodePrefixPF", pipeVar);
+        pipeVar.invoke("readDecode", rowVar, lengthVar, mm.field("KD"));
     }
 
     /**
      * Reads the value columns from a pipe and decodes them into a row.
      */
     private static void decodeValueColumns(RowGen rowGen, Variable rowVar, Variable pipeVar) {
-        decodeColumns(rowGen.valueCodecs(), rowVar, pipeVar);
+        MethodMaker mm = rowVar.methodMaker();
+        var lengthVar = mm.var(RowUtils.class).invoke("decodePrefixPF", pipeVar);
+        pipeVar.invoke("readDecode", rowVar, lengthVar, mm.field("VD"));
     }
 
-    /**
-     * Reads the columns from a pipe and decodes them into a row.
-     */
-    private static void decodeColumns(ColumnCodec[] codecs, Variable rowVar, Variable pipeVar) {
-        MethodMaker mm = rowVar.methodMaker();
+    private static Pipe.Decoder<?> makePipeDecoder
+        (ClassMaker peer, Class<?> rowClass, ColumnCodec[] codecs)
+    {
+        String name = ClientTableHelper.class.getName();
 
-        var lengthVar = mm.var(RowUtils.class).invoke("decodePrefixPF", pipeVar);
-        var bytesVar = mm.new_(byte[].class, lengthVar);
+        ClassMaker cm = peer.another(name)
+            .public_().final_()
+            .implement(Pipe.Decoder.class)
+            .sourceFile(name);
 
-        pipeVar.invoke("readFully", bytesVar);
+        cm.addConstructor().private_();
+
+        MethodMaker mm = cm.addMethod
+            (Object.class, "decode", Object.class, int.class, byte[].class, int.class).public_();
+
+        var rowVar = mm.param(0).cast(rowClass);
+        var lengthVar = mm.param(1);
+        var bytesVar = mm.param(2);
+        var offsetVar = mm.param(3);
+
+        var endVar = lengthVar.add(offsetVar);
 
         codecs = ColumnCodec.bind(codecs, mm);
 
-        var offsetVar = mm.var(int.class).set(0);
-
         for (ColumnCodec codec : codecs) {
-            codec.decode(rowVar.field(codec.info.name), bytesVar, offsetVar, null);
+            codec.decode(rowVar.field(codec.info.name), bytesVar, offsetVar, endVar);
         }
-    }
 
-    private static void decodeStateFields(RowGen rowGen, Variable rowVar, Variable pipeVar) {
-        for (String name : rowGen.stateFields()) {
-            rowVar.field(name).set(pipeVar.invoke("readInt"));
+        mm.return_(rowVar);
+
+        MethodHandles.Lookup lookup = cm.finishHidden();
+
+        try {
+            return (Pipe.Decoder<?>) lookup.findConstructor
+                (lookup.lookupClass(), MethodType.methodType(void.class)).invoke();
+        } catch (Throwable e) {
+            throw RowUtils.rethrow(e);
         }
     }
 
