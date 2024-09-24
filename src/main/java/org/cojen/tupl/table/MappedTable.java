@@ -496,7 +496,7 @@ public abstract class MappedTable<S, T> extends AbstractMappedTable<S, T>
 
         // Only attempt to check that the source columns are set if the source table type is
         // expected to have the special check methods defined.
-        boolean checkSet = BaseTable.class.isAssignableFrom(mSource.getClass());
+        boolean checkSet = StoredTable.class.isAssignableFrom(mSource.getClass());
 
         Class<?> sourceRowType = mSource.rowType();
         if (checkSet) {

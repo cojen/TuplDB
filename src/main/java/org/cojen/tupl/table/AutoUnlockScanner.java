@@ -28,7 +28,7 @@ import org.cojen.tupl.LockResult;
  * @author Brian S O'Neill
  */
 final class AutoUnlockScanner<R> extends TxnResetScanner<R> {
-    AutoUnlockScanner(BaseTable<R> table, ScanController<R> controller) {
+    AutoUnlockScanner(StoredTable<R> table, ScanController<R> controller) {
         super(table, controller);
     }
 

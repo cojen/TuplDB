@@ -164,7 +164,7 @@ final class RowSorter<R> extends ScanBatch<R> implements RowConsumer<R> {
         while (true) {
             if (table instanceof MappedTable mapped) {
                 table = mapped.source();
-            } else if (table instanceof BaseTable base) {
+            } else if (table instanceof StoredTable base) {
                 return base.rowStore().mDatabase.newSorter();
             } else {
                 return null;

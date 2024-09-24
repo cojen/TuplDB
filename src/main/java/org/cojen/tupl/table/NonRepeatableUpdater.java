@@ -32,7 +32,7 @@ import org.cojen.tupl.Transaction;
 final class NonRepeatableUpdater<R> extends BasicUpdater<R> {
     LockResult mLockResult;
 
-    NonRepeatableUpdater(BaseTable<R> table, ScanController<R> controller) {
+    NonRepeatableUpdater(StoredTable<R> table, ScanController<R> controller) {
         super(table, controller);
     }
 

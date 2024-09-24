@@ -31,7 +31,7 @@ import org.cojen.tupl.UnpositionedCursorException;
  * @author Brian S O'Neill
  */
 class BasicScanner<R> implements Scanner<R> {
-    final BaseTable<R> mTable;
+    final StoredTable<R> mTable;
     final ScanController<R> mController;
 
     Cursor mCursor;
@@ -39,7 +39,7 @@ class BasicScanner<R> implements Scanner<R> {
 
     R mRow;
 
-    BasicScanner(BaseTable<R> table, ScanController<R> controller) {
+    BasicScanner(StoredTable<R> table, ScanController<R> controller) {
         mTable = table;
         mController = controller;
     }

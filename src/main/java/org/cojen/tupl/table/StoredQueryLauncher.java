@@ -21,8 +21,6 @@ import java.io.IOException;
 
 import java.lang.ref.WeakReference;
 
-import java.util.Map;
-
 import org.cojen.tupl.ClosedIndexException;
 import org.cojen.tupl.LockFailureException;
 import org.cojen.tupl.Scanner;
@@ -40,17 +38,17 @@ import org.cojen.tupl.table.expr.RelationExpr;
 
 import org.cojen.tupl.table.filter.QuerySpec;
 
-import static org.cojen.tupl.table.BaseTable.*;
+import static org.cojen.tupl.table.StoredTable.*;
 
 /**
  * Defines a delegating launcher which lazily creates the underlying launchers by calling into
- * a BaseTable instance. The queries supported by the BaseQueryLauncher are "fundamental" in
- * nature, supporting the kinds of operations which can be optimized by index selection and
+ * a StoredTable instance. The queries supported by the StoredQueryLauncher are "foundational"
+ * in nature, supporting the kinds of operations which can be optimized by index selection and
  * proper index utilization.
  *
  * @author Brian S. O'Neill
  */
-final class BaseQueryLauncher<R> extends QueryLauncher<R> {
+final class StoredQueryLauncher<R> extends QueryLauncher<R> {
     /**
      * Parses a query against a table into the same row type, throwing a QueryException if the
      * operation fails.
@@ -60,24 +58,24 @@ final class BaseQueryLauncher<R> extends QueryLauncher<R> {
     }
 
     /**
-     * Makes a BaseQueryLauncher from a parsed query if it's relatively simple and can be
+     * Makes a StoredQueryLauncher from a parsed query if it's relatively simple and can be
      * represented by a QuerySpec, or else returns a CompiledQuery instance.
      *
      * @param expr the parsed query
      */
     @SuppressWarnings("unchecked")
-    static <R> QueryLauncher<R> make(BaseTable<R> table, String queryStr, RelationExpr expr)
+    static <R> QueryLauncher<R> make(StoredTable<R> table, String queryStr, RelationExpr expr)
         throws IOException
     {
         QuerySpec query = expr.tryQuerySpec(table.rowType());
         if (query != null) {
-            return new BaseQueryLauncher<>(table, queryStr, query.reduce());
+            return new StoredQueryLauncher<>(table, queryStr, query.reduce());
         } else {
             return expr.makeCompiledQuery(table.rowType());
         }
     }
 
-    private final BaseTable<R> mTable;
+    private final StoredTable<R> mTable;
     private final String mQueryStr;
 
     private volatile WeakReference<QuerySpec> mQueryRef;
@@ -86,7 +84,7 @@ final class BaseQueryLauncher<R> extends QueryLauncher<R> {
         mForScanner, mForScannerDoubleCheck,
         mForUpdater, mForUpdaterDoubleCheck;
 
-    private BaseQueryLauncher(BaseTable<R> table, String queryStr, QuerySpec query) {
+    private StoredQueryLauncher(StoredTable<R> table, String queryStr, QuerySpec query) {
         mTable = table;
 
         String newString = query.toString();

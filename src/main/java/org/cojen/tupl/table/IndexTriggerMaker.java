@@ -191,7 +191,7 @@ public class IndexTriggerMaker<R> {
      * @param primaryIndexId primary index id
      */
     @SuppressWarnings("unchecked")
-    Trigger<R> makeTrigger(RowStore rs, long primaryIndexId, BaseTable<R> table) {
+    Trigger<R> makeTrigger(RowStore rs, long primaryIndexId, StoredTable<R> table) {
         mClassMaker = mPrimaryGen.beginClassMaker(IndexTriggerMaker.class, mRowType, "trigger");
         mClassMaker.extend(Trigger.class).final_();
 
@@ -633,7 +633,7 @@ public class IndexTriggerMaker<R> {
      * @param define delegate to the non-partial variant when false
      * @return true if always requires a row instance
      */
-    private boolean addStoreMethod(String variant, boolean define, BaseTable<R> table) {
+    private boolean addStoreMethod(String variant, boolean define, StoredTable<R> table) {
         MethodMaker mm = mClassMaker.addMethod
             (null, variant, Transaction.class, Object.class,
              byte[].class, byte[].class, byte[].class).public_();

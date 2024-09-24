@@ -280,7 +280,7 @@ public final class RowStore {
     public Object toRow(Index ix, byte[] key) {
         var manager = (TableManager<?>) mTableManagers.get(ix);
         if (manager != null) {
-            BaseTable<?> table = manager.mostRecentTable();
+            StoredTable<?> table = manager.mostRecentTable();
             if (table != null) {
                 try {
                     return table.toRow(key);
@@ -344,14 +344,14 @@ public final class RowStore {
     }
 
     @SuppressWarnings("unchecked")
-    private <R> BaseTable<R> openTable(Index ix, Class<R> type) throws IOException {
+    private <R> StoredTable<R> openTable(Index ix, Class<R> type) throws IOException {
         return ((TableManager<R>) tableManager(ix)).asTable(this, ix, type);
     }
 
     /**
      * @throws DeletedIndexException if not found
      */
-    <R> BaseTable<R> findTable(long indexId, Class<R> type) throws IOException {
+    <R> StoredTable<R> findTable(long indexId, Class<R> type) throws IOException {
         Index ix = mDatabase.indexById(indexId);
         if (ix == null) {
             throw new DeletedIndexException();
@@ -366,9 +366,9 @@ public final class RowStore {
      * @param consumer called with lock held, to accept the newly made table
      */
     @SuppressWarnings("unchecked")
-    <R> BaseTable<R> makeTable(TableManager<R> manager, Index ix, Class<R> type,
-                               Supplier<BaseTable<R>> doubleCheck,
-                               Consumer<BaseTable<R>> consumer)
+    <R> StoredTable<R> makeTable(TableManager<R> manager, Index ix, Class<R> type,
+                                 Supplier<StoredTable<R>> doubleCheck,
+                                 Consumer<StoredTable<R>> consumer)
         throws IOException
     {
         // Throws an exception if type is malformed.
@@ -380,7 +380,7 @@ public final class RowStore {
 
         boolean evolvable = type != Entry.class;
 
-        BaseTable<R> table;
+        StoredTable<R> table;
 
         // Can use NO_FLUSH because transaction will be only used for reading data.
         Transaction txn = mSchemata.newTransaction(DurabilityMode.NO_FLUSH);
@@ -405,10 +405,10 @@ public final class RowStore {
             try {
                 if (evolvable) {
                     var mh = new DynamicTableMaker(type, info.rowGen(), this, ix.id()).finish();
-                    table = (BaseTable) mh.invoke(manager, ix, indexLock);
+                    table = (StoredTable) mh.invoke(manager, ix, indexLock);
                 } else {
                     Class tableClass = StaticTableMaker.obtain(type, info.rowGen());
-                    table = (BaseTable) tableClass.getConstructor
+                    table = (StoredTable) tableClass.getConstructor
                         (TableManager.class, Index.class, RowPredicateLock.class)
                         .newInstance(manager, ix, indexLock);
                 }
@@ -551,15 +551,15 @@ public final class RowStore {
     /**
      * @throws NoSuchIndexException if not found or isn't available
      */
-    public <R> BaseTableIndex<R> indexTable
-        (BaseTable<R> primaryTable, boolean alt, String... columns)
+    public <R> StoredTableIndex<R> indexTable
+        (StoredTable<R> primaryTable, boolean alt, String... columns)
         throws IOException
     {
         Object key = TupleKey.make.with(primaryTable.rowType(), alt, columns);
-        WeakCache<Object, BaseTableIndex<R>, Object> indexTables =
+        WeakCache<Object, StoredTableIndex<R>, Object> indexTables =
             primaryTable.mTableManager.indexTables();
 
-        BaseTableIndex<R> table = indexTables.get(key);
+        StoredTableIndex<R> table = indexTables.get(key);
 
         if (table == null) {
             synchronized (indexTables) {
@@ -584,9 +584,9 @@ public final class RowStore {
      * @return null if not found
      */
     @SuppressWarnings("unchecked")
-    private <R> BaseTableIndex<R> makeIndexTable
-        (WeakCache<Object, BaseTableIndex<R>, Object> indexTables,
-         BaseTable<R> primaryTable,
+    private <R> StoredTableIndex<R> makeIndexTable
+        (WeakCache<Object, StoredTableIndex<R>, Object> indexTables,
+         StoredTable<R> primaryTable,
          boolean alt, String... columns)
         throws IOException
     {
@@ -632,7 +632,7 @@ public final class RowStore {
 
         Object key = TupleKey.make.with(rowType, descriptor);
 
-        BaseTableIndex<R> table = indexTables.get(key);
+        StoredTableIndex<R> table = indexTables.get(key);
 
         if (table != null) {
             return table;
@@ -655,13 +655,13 @@ public final class RowStore {
                 (rowType, rowInfo.rowGen(), indexRowInfo.rowGen(), descriptor,
                  this, primaryTable.mSource.id());
             var mh = maker.finish();
-            var unjoined = (BaseTable<R>) mh.invoke(primaryTable.mTableManager, ix, indexLock);
+            var unjoined = (StoredTable<R>) mh.invoke(primaryTable.mTableManager, ix, indexLock);
 
             var maker2 = new JoinedTableMaker
                 (rowType, rowInfo.rowGen(), indexRowInfo.rowGen(), descriptor,
                  primaryTable.getClass(), unjoined.getClass());
             mh = maker2.finish();
-            table = (BaseTableIndex<R>) mh.invoke(ix, indexLock, primaryTable, unjoined);
+            table = (StoredTableIndex<R>) mh.invoke(ix, indexLock, primaryTable, unjoined);
         } catch (Throwable e) {
             throw rethrow(e);
         }
@@ -749,7 +749,7 @@ public final class RowStore {
         if (managers != null) {
             try {
                 for (var manager : managers) {
-                    BaseTable<?> table = manager.mostRecentTable();
+                    StoredTable<?> table = manager.mostRecentTable();
                     if (table != null) {
                         RowInfo info = RowInfo.find(table.rowType());
                         long indexId = manager.mPrimaryIndex.id();

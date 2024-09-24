@@ -85,7 +85,7 @@ public class ScannerTest {
         verify(table.newScanner
                (null, "{*, ~path, ~state} name == ?", "name-3"), 3, 3, "id", "name");
 
-        if (table instanceof BaseTable<TestRow> btable) {
+        if (table instanceof StoredTable<TestRow> btable) {
             checkSecondary(btable);
         }
     }
@@ -155,7 +155,7 @@ public class ScannerTest {
         }
     }
 
-    private void checkSecondary(BaseTable<TestRow> table) throws Exception {
+    private void checkSecondary(StoredTable<TestRow> table) throws Exception {
         var ix = table.viewSecondaryIndex("state");
 
         verify(ix.newScanner(null, "{}"), 1, 5);

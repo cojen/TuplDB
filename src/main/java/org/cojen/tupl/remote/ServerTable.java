@@ -29,7 +29,7 @@ import org.cojen.tupl.diag.QueryPlan;
 
 import org.cojen.tupl.io.Utils;
 
-import org.cojen.tupl.table.BaseTable;
+import org.cojen.tupl.table.StoredTable;
 import org.cojen.tupl.table.WeakCache;
 
 /**
@@ -38,11 +38,11 @@ import org.cojen.tupl.table.WeakCache;
  * @author Brian S O'Neill
  */
 final class ServerTable<R> implements RemoteTable {
-    final BaseTable<R> mTable;
+    final StoredTable<R> mTable;
 
     private final WeakCache<byte[], RemoteTableProxy, Object> mProxyCache;
 
-    ServerTable(BaseTable<R> table) throws IOException {
+    ServerTable(StoredTable<R> table) throws IOException {
         mTable = table;
 
         mProxyCache = new WeakCache<>() {

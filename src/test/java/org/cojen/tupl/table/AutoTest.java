@@ -130,7 +130,7 @@ public class AutoTest {
 
         assertEquals(expect.length, count);
 
-        if (table instanceof BaseTable<TestRow2> bt) {
+        if (table instanceof StoredTable<TestRow2> bt) {
             Table<TestRow2> valIx = bt.viewSecondaryIndex("val").viewUnjoined();
             count = 0;
 
@@ -198,7 +198,7 @@ public class AutoTest {
 
         assertEquals(expect.length, count);
 
-        if (table instanceof BaseTable<TestRow3> bt) {
+        if (table instanceof StoredTable<TestRow3> bt) {
             Table<TestRow3> valIx = bt.viewSecondaryIndex("val").viewUnjoined();
             count = 0;
 

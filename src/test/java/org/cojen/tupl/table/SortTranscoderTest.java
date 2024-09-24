@@ -161,12 +161,12 @@ public class SortTranscoderTest {
     @Test
     public void secondary() throws Exception {
         final Index ix = mDb.openIndex("test");
-        final var table = (BaseTable<TestRow>) ix.asTable(TestRow.class);
+        final var table = (StoredTable<TestRow>) ix.asTable(TestRow.class);
 
         fill(table);
 
         Table<TestRow> statusTable = table.viewSecondaryIndex("status").viewUnjoined();
-        Index statusIx = ((BaseTable) statusTable).mSource;
+        Index statusIx = ((StoredTable) statusTable).mSource;
 
         Class<TestRow> rowType = table.rowType();
         RowInfo primaryInfo = RowInfo.find(rowType);

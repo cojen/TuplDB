@@ -39,12 +39,12 @@ public class QueryPlanTest {
     }
 
     private Database mDatabase;
-    private BaseTable<TestRow> mTable, mIndexA, mIndexB, mIndexC;
+    private StoredTable<TestRow> mTable, mIndexA, mIndexB, mIndexC;
 
     @Before
     public void before() throws Exception {
         mDatabase = Database.open(new DatabaseConfig());
-        mTable = (BaseTable<TestRow>) mDatabase.openTable(TestRow.class);
+        mTable = (StoredTable<TestRow>) mDatabase.openTable(TestRow.class);
 
         mIndexA = mTable.viewAlternateKey("a");
         mIndexB = mTable.viewSecondaryIndex("b");
@@ -866,7 +866,7 @@ public class QueryPlanTest {
 
     @Test
     public void covering2() throws Exception {
-        var table = (BaseTable<TestRow2>) mDatabase.openTable(TestRow2.class);
+        var table = (StoredTable<TestRow2>) mDatabase.openTable(TestRow2.class);
         var index = table.viewSecondaryIndex("b", "a", "c");
 
         QueryPlan plan = index.query("b == ? && c == ?").scannerPlan(null);

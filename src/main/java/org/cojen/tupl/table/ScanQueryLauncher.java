@@ -32,10 +32,10 @@ import org.cojen.tupl.diag.QueryPlan;
  * @author Brian S O'Neill
  */
 class ScanQueryLauncher<R> extends QueryLauncher<R> {
-    protected final BaseTable<R> mTable;
+    protected final StoredTable<R> mTable;
     protected final ScanControllerFactory<R> mFactory;
 
-    ScanQueryLauncher(BaseTable<R> table, ScanControllerFactory<R> factory) {
+    ScanQueryLauncher(StoredTable<R> table, ScanControllerFactory<R> factory) {
         mTable = table;
         mFactory = factory;
     }

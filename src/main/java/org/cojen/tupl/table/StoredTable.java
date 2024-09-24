@@ -75,11 +75,11 @@ import org.cojen.tupl.views.ViewUtils;
 import static java.util.Spliterator.*;
 
 /**
- * Base class for all generated table classes.
+ * Base class for all generated table classes which store rows.
  *
  * @author Brian S O'Neill
  */
-public abstract class BaseTable<R>
+public abstract class StoredTable<R>
     extends MultiCache<Object, Object, Object, IOException>
     implements Table<R>, ScanControllerFactory<R>
 {
@@ -106,17 +106,17 @@ public abstract class BaseTable<R>
         try {
             MethodHandles.Lookup lookup = MethodHandles.lookup();
             cTriggerHandle = lookup.findVarHandle
-                (BaseTable.class, "mTrigger", Trigger.class);
+                (StoredTable.class, "mTrigger", Trigger.class);
             cDecodePartialCacheHandle = lookup.findVarHandle
-                (BaseTable.class, "mDecodePartialCache", WeakCache.class);
+                (StoredTable.class, "mDecodePartialCache", WeakCache.class);
             cWriteRowCacheHandle = lookup.findVarHandle
-                (BaseTable.class, "mWriteRowCache", WeakCache.class);
+                (StoredTable.class, "mWriteRowCache", WeakCache.class);
         } catch (Throwable e) {
             throw Utils.rethrow(e);
         }
     }
 
-    protected BaseTable(TableManager<R> manager, Index source, RowPredicateLock<R> indexLock) {
+    protected StoredTable(TableManager<R> manager, Index source, RowPredicateLock<R> indexLock) {
         mTableManager = Objects.requireNonNull(manager);
         mSource = Objects.requireNonNull(source);
         mIndexLock = Objects.requireNonNull(indexLock);
@@ -228,7 +228,7 @@ public abstract class BaseTable<R>
      * @param secondary non-null if joining from a secondary index to this primary table
      */
     final Updater<R> newUpdater(R row, Transaction txn, ScanController<R> controller,
-                                BaseTableIndex<R> secondary)
+                                StoredTableIndex<R> secondary)
         throws IOException
     {
         final BasicUpdater<R> updater;
@@ -409,7 +409,7 @@ public abstract class BaseTable<R>
      * Scan and write a subset of rows from this table to a remote endpoint. This method
      * doesn't flush the output stream.
      *
-     * @param query expected to be a Query object obtained from this BaseTable
+     * @param query expected to be a Query object obtained from this StoredTable
      */
     public final void scanWrite(Transaction txn, Pipe out, Query<R> query, Object... args)
         throws IOException
@@ -452,7 +452,7 @@ public abstract class BaseTable<R>
      * @return alternate key as a table
      * @throws IllegalStateException if alternate key wasn't found
      */
-    protected BaseTableIndex<R> viewAlternateKey(String... columns) throws IOException {
+    protected StoredTableIndex<R> viewAlternateKey(String... columns) throws IOException {
         return viewIndexTable(true, columns);
     }
 
@@ -467,11 +467,11 @@ public abstract class BaseTable<R>
      * @return secondary index as a table
      * @throws IllegalStateException if secondary index wasn't found
      */
-    protected BaseTableIndex<R> viewSecondaryIndex(String... columns) throws IOException {
+    protected StoredTableIndex<R> viewSecondaryIndex(String... columns) throws IOException {
         return viewIndexTable(false, columns);
     }
 
-    final BaseTableIndex<R> viewIndexTable(boolean alt, String... columns) throws IOException {
+    final StoredTableIndex<R> viewIndexTable(boolean alt, String... columns) throws IOException {
         return rowStore().indexTable(this, alt, columns);
     }
 
@@ -540,7 +540,7 @@ public abstract class BaseTable<R>
 
             @Override
             public ScanControllerFactory<R> reverse() {
-                return BaseTable.this;
+                return StoredTable.this;
             }
 
             @Override
@@ -550,7 +550,7 @@ public abstract class BaseTable<R>
 
             @Override
             public int characteristics() {
-                return BaseTable.this.characteristics();
+                return StoredTable.this.characteristics();
             }
 
             @Override
@@ -606,12 +606,12 @@ public abstract class BaseTable<R>
 
             if (key instanceof TupleKey) {
                 var pq = (ParsedQuery) helper;
-                return BaseQueryLauncher.make(BaseTable.this, pq.queryStr(), pq.expr());
+                return StoredQueryLauncher.make(StoredTable.this, pq.queryStr(), pq.expr());
             }
 
             String queryStr = (String) key;
             assert helper == null;
-            RelationExpr expr = BaseQueryLauncher.parse(BaseTable.this, queryStr);
+            RelationExpr expr = StoredQueryLauncher.parse(StoredTable.this, queryStr);
 
             // Obtain the canonical instance and map to that.
             TupleKey canonicalKey = expr.makeKey();
@@ -851,7 +851,7 @@ public abstract class BaseTable<R>
     private QueryLauncher<R> newSubLauncher(int type, IndexSelector<R> selector, int i)
         throws IOException
     {
-        BaseTable<R> subTable = selector.selectedIndexTable(i);
+        StoredTable<R> subTable = selector.selectedIndexTable(i);
         QuerySpec subQuery = selector.selectedQuery(i);
         String subQueryStr = subQuery.toString();
 
@@ -1034,7 +1034,7 @@ public abstract class BaseTable<R>
      * so a predicate lock is still required to ensure serializable isolation.
      *
      * <p>This method must be public to be accessible by code generated by
-     * DynamicTableMaker.indyDoUpdate. The generated code won't be a subclass of BaseTable, and
+     * DynamicTableMaker.indyDoUpdate. The generated code won't be a subclass of StoredTable, and
      * so it cannot access this method if it was protected.
      */
     public final void redoPredicateMode(Transaction txn) throws IOException {
@@ -1455,7 +1455,7 @@ public abstract class BaseTable<R>
      * opposite of the canonical lock acquisition order, and can lead to deadlock.
      *
      * <p>This method must be public to be accessible by code generated by
-     * DynamicTableMaker.indyDoUpdate. The generated code won't be a subclass of BaseTable, and
+     * DynamicTableMaker.indyDoUpdate. The generated code won't be a subclass of StoredTable, and
      * so it cannot access this method if it was protected.
      *
      * @param txn non-null
@@ -1617,7 +1617,7 @@ public abstract class BaseTable<R>
     /**
      * Override if this table implements a secondary index and joins to the primary.
      */
-    protected BaseTable<R> joinedPrimaryTable() {
+    protected StoredTable<R> joinedPrimaryTable() {
         return null;
     }
 
@@ -1629,7 +1629,7 @@ public abstract class BaseTable<R>
     }
 
     /**
-     * Note: Is overridden by BaseTableIndex.
+     * Note: Is overridden by StoredTableIndex.
      */
     boolean isEvolvable() {
         return isEvolvable(rowType());
@@ -1640,7 +1640,7 @@ public abstract class BaseTable<R>
     }
 
     /**
-     * Note: Is overridden by BaseTableIndex to always return false.
+     * Note: Is overridden by StoredTableIndex to always return false.
      */
     boolean supportsSecondaries() {
         return true;
@@ -1679,7 +1679,7 @@ public abstract class BaseTable<R>
     /**
      * Returns the current trigger, which must be held shared during the operation. As soon as
      * acquired, check if the trigger is disabled. This method must be public because it's
-     * sometimes accessed from generated code which isn't a subclass of BaseTable.
+     * sometimes accessed from generated code which isn't a subclass of StoredTable.
      */
     public final Trigger<R> trigger() {
         return (Trigger<R>) cTriggerHandle.getOpaque(this);

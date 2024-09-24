@@ -46,7 +46,7 @@ import org.cojen.tupl.core.RowPredicateLock;
 import org.cojen.tupl.table.filter.ColumnFilter;
 
 /**
- * Makes Table classes that extend BaseTableIndex for secondary index tables that can join to
+ * Makes Table classes that extend StoredTableIndex for secondary index tables that can join to
  * the primary table.
  *
  * @author Brian S O'Neill
@@ -76,7 +76,7 @@ public class JoinedTableMaker extends TableMaker {
 
     /**
      * Return a constructor which accepts a (Index, RowPredicateLock, TableImpl primary,
-     * TableImpl unjoined) and returns a BaseTableIndex implementation.
+     * TableImpl unjoined) and returns a StoredTableIndex implementation.
      */
     MethodHandle finish() {
         Objects.requireNonNull(mPrimaryTableClass);
@@ -108,7 +108,7 @@ public class JoinedTableMaker extends TableMaker {
 
         {
             MethodMaker mm = mClassMaker.addMethod
-                (BaseTable.class, "joinedPrimaryTable").protected_();
+                (StoredTable.class, "joinedPrimaryTable").protected_();
             mm.return_(mm.field("primaryTable"));
         }
 
@@ -135,14 +135,14 @@ public class JoinedTableMaker extends TableMaker {
 
         addJoinedLoadMethod();
 
-        // Override the methods inherited from the unjoined class, defined in BaseTable.
+        // Override the methods inherited from the unjoined class, defined in StoredTable.
         addJoinedUnfilteredMethods();
 
         // Override the methods inherited from the unjoined class, defined in ScanControllerFactory.
         addPlanMethod(0b10);
         addPlanMethod(0b11); // reverse option
 
-        // Override the method inherited from BaseTableIndex.
+        // Override the method inherited from StoredTableIndex.
         MethodMaker mm = mClassMaker.addMethod
             (Updater.class, "newUpdater",
              Object.class, Transaction.class, ScanController.class);

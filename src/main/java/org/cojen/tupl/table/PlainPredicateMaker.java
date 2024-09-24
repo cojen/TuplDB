@@ -44,7 +44,7 @@ public final class PlainPredicateMaker {
                 var rowType = (Class<?>) key.get(0);
                 String query = key.getString(1);
                 if (filter == null) {
-                    filter = BaseTable.parseFilter(rowType, query);
+                    filter = StoredTable.parseFilter(rowType, query);
                 }
                 String filterStr = filter.toString();
                 if (filterStr.equals(query)

@@ -33,7 +33,7 @@ import org.cojen.tupl.Transaction;
 final class AutoCommitUpdater<R> extends BasicUpdater<R> {
     LockResult mLockResult;
 
-    AutoCommitUpdater(BaseTable<R> table, ScanController<R> controller) {
+    AutoCommitUpdater(StoredTable<R> table, ScanController<R> controller) {
         super(table, controller);
     }
 

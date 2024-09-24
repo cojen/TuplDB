@@ -59,7 +59,7 @@ public abstract class QueryLauncher<R> implements Query<R> {
     public abstract QueryPlan updaterPlan(Transaction txn, Object... args) throws IOException;
 
     /**
-     * Is called when the BaseTable is closed, in order to close all the secondary indexes
+     * Is called when the StoredTable is closed, in order to close all the secondary indexes
      * referenced by this query. This method must not be public.
      */
     protected abstract void closeIndexes() throws IOException;

@@ -100,7 +100,7 @@ public class UpdaterTest {
 
         assertEquals(5, count(table));
 
-        if (table instanceof BaseTable<TestRow> btable) {
+        if (table instanceof StoredTable<TestRow> btable) {
             var ix = btable.viewSecondaryIndex("state");
             assertEquals(5, count(ix.viewUnjoined()));
             assertEquals(5, count(ix));
@@ -173,7 +173,7 @@ public class UpdaterTest {
             row = u.update(row);
         }
 
-        if (table instanceof BaseTable<TestRow> btable) {
+        if (table instanceof StoredTable<TestRow> btable) {
             var ix = btable.viewSecondaryIndex("state");
 
             {

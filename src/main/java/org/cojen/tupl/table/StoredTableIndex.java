@@ -32,9 +32,9 @@ import org.cojen.tupl.core.RowPredicateLock;
  *
  * @author Brian S O'Neill
  */
-public abstract class BaseTableIndex<R> extends BaseTable<R> {
-    protected BaseTableIndex(TableManager<R> manager,
-                             Index source, RowPredicateLock<R> indexLock)
+public abstract class StoredTableIndex<R> extends StoredTable<R> {
+    protected StoredTableIndex(TableManager<R> manager,
+                               Index source, RowPredicateLock<R> indexLock)
     {
         super(manager, source, indexLock);
     }
@@ -85,12 +85,12 @@ public abstract class BaseTableIndex<R> extends BaseTable<R> {
     }
 
     @Override
-    protected final BaseTableIndex<R> viewAlternateKey(String... columns) throws IOException {
+    protected final StoredTableIndex<R> viewAlternateKey(String... columns) throws IOException {
         throw new IllegalStateException();
     }
 
     @Override
-    protected final BaseTableIndex<R> viewSecondaryIndex(String... columns) throws IOException {
+    protected final StoredTableIndex<R> viewSecondaryIndex(String... columns) throws IOException {
         throw new IllegalStateException();
     }
 
@@ -118,7 +118,7 @@ public abstract class BaseTableIndex<R> extends BaseTable<R> {
 
     protected Updater<R> newJoinedUpdater(R row, Transaction txn,
                                           ScanController<R> controller,
-                                          BaseTable<R> primaryTable)
+                                          StoredTable<R> primaryTable)
         throws IOException
     {
         return primaryTable.newUpdater(row, txn, controller, this);
