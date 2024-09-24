@@ -52,9 +52,7 @@ import org.cojen.tupl.table.expr.Parser;
  *
  * @author Brian S. O'Neill
  */
-public final class JoinIdentityTable extends MultiCache<Object, Object, Object, IOException>
-    implements Table<Row>, Query<Row>
-{
+public final class JoinIdentityTable extends BaseTable<Row> implements Query<Row> {
     // Singleton instance.
     public static final JoinIdentityTable THE = new JoinIdentityTable();
 

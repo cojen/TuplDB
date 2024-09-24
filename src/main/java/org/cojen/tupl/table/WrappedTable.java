@@ -36,9 +36,7 @@ import org.cojen.tupl.table.expr.CompiledQuery;
  * @param <T> target row type
  * @author Brian S. O'Neill
  */
-public abstract class WrappedTable<S, T> extends MultiCache<Object, Object, Object, IOException>
-    implements Table<T>
-{
+public abstract class WrappedTable<S, T> extends BaseTable<T> {
     protected final Table<S> mSource;
 
     protected WrappedTable(Table<S> source) {

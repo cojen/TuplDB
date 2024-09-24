@@ -79,10 +79,7 @@ import static java.util.Spliterator.*;
  *
  * @author Brian S O'Neill
  */
-public abstract class StoredTable<R>
-    extends MultiCache<Object, Object, Object, IOException>
-    implements Table<R>, ScanControllerFactory<R>
-{
+public abstract class StoredTable<R> extends BaseTable<R> implements ScanControllerFactory<R> {
     final TableManager<R> mTableManager;
 
     protected final Index mSource;

@@ -35,7 +35,7 @@ import org.cojen.tupl.Scanner;
 import org.cojen.tupl.Table;
 import org.cojen.tupl.Transaction;
 
-import org.cojen.tupl.table.MultiCache;
+import org.cojen.tupl.table.BaseTable;
 import org.cojen.tupl.table.QueryLauncher;
 import org.cojen.tupl.table.RowInfo;
 import org.cojen.tupl.table.RowUtils;
@@ -48,9 +48,7 @@ import org.cojen.tupl.table.expr.CompiledQuery;
  * @author Brian S O'Neill
  * @see JoinTableMaker
  */
-public abstract class JoinTable<J> extends MultiCache<Object, Object, Object, IOException>
-    implements Table<J>
-{
+public abstract class JoinTable<J> extends BaseTable<J> {
     private final String mSpecStr;
     private SoftReference<JoinSpec> mSpecRef;
     private final Table[] mTables;
