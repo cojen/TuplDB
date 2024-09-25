@@ -1104,8 +1104,13 @@ final class FileStateLog extends Latch implements StateLog {
 
                 mClosed = true;
 
-                mMetadataLock.close();
-                mMetadataFile.close();
+                try {
+                    mMetadataLock.close();
+                } catch (Throwable e) {
+                    // Ignore.
+                }
+
+                Utils.closeQuietly(mMetadataFile);
 
                 for (Object key : mTermLogs) {
                     ((TermLog) key).close();
