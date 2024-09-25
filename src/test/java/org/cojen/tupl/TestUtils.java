@@ -163,7 +163,10 @@ public class TestUtils {
     }
 
     public static void closeTempDatabases(Class context) throws IOException {
-        TempFiles files = cTempFiles.get(context);
+        TempFiles files;
+        synchronized (cTempFiles) {
+            files = cTempFiles.get(context);
+        }
         if (files != null) {
             files.closeTempDatabases();
         }
@@ -495,7 +498,7 @@ public class TestUtils {
     }
 
     static class TempFiles {
-        private final Map<Database, File> mTempDatabases = new WeakHashMap<>();
+        private final Map<Database, File> mTempDatabases = new HashMap<>();
         private final Set<File> mTempBaseFiles = new HashSet<>();
 
         private final String mPrefix;
