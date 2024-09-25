@@ -49,7 +49,7 @@ class JavaFileIO extends AbstractFileIO {
     protected final File mFile;
     private final String mMode;
 
-    private volatile LocalPool<FileAccess> mFilePool;
+    private LocalPool<FileAccess> mFilePool;
 
     JavaFileIO(File file, EnumSet<OpenOption> options, int openFileCount) throws IOException {
         this(file, options, openFileCount, true);
@@ -346,10 +346,6 @@ class JavaFileIO extends AbstractFileIO {
     }
 
     private FileAccess openRaf() throws IOException {
-        if (mFilePool == null) {
-            throw new IOException("Closed");
-        }
-
         try {
             return new FileAccess(mFile, mMode);
         } catch (FileNotFoundException e) {
