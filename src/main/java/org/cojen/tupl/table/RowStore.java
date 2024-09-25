@@ -1327,7 +1327,15 @@ public final class RowStore {
                 // Check if the schema has changed.
                 schemaVersion = decodeIntLE(current.value(), 0);
 
-                // FIXME: Sometimes currentInfo is null, which causes NPE in checkSchema.
+                /* FIXME: Sometimes currentInfo is null, which causes NPE in checkSchema.
+
+                   Exception in thread "Runner-main-122" java.lang.NullPointerException: Cannot invoke "org.cojen.tupl.table.RowInfo.matches(org.cojen.tupl.table.ColumnSet)" because "oldInfo" is null
+                       at org.cojen.tupl.table.RowStore.checkSchema(RowStore.java:449)
+                       at org.cojen.tupl.table.RowStore.schemaVersion(RowStore.java:1334)
+                       at org.cojen.tupl.table.RowStore.updateSchemata(RowStore.java:756)
+                       at org.cojen.tupl.util.Runner$Loop.run(Runner.java:236)
+
+                */
                 RowInfo currentInfo = decodeExisting
                     (txn, info.name, indexId, current.value(), schemaVersion);
 
