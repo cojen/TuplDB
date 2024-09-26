@@ -42,7 +42,7 @@ import org.cojen.tupl.views.ViewUtils;
 class BasicUpdater<R> extends BasicScanner<R> implements Updater<R> {
     TreeSet<byte[]> mKeysToSkip;
 
-    BasicUpdater(BaseTable<R> table, ScanController<R> controller) {
+    BasicUpdater(StoredTable<R> table, ScanController<R> controller) {
         super(table, controller);
     }
 

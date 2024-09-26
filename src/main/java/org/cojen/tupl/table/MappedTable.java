@@ -54,6 +54,8 @@ import org.cojen.tupl.ViewConstraintException;
 
 import org.cojen.tupl.diag.QueryPlan;
 
+import org.cojen.tupl.table.expr.CompiledQuery;
+
 import org.cojen.tupl.table.filter.RowFilter;
 import org.cojen.tupl.table.filter.QuerySpec;
 import org.cojen.tupl.table.filter.TrueFilter;
@@ -86,16 +88,19 @@ public abstract class MappedTable<S, T> extends AbstractMappedTable<S, T>
         Objects.requireNonNull(targetType);
 
         var key = new FactoryKey(source.rowType(), targetType, mapper.getClass());
+        MethodHandle mh = cFactoryCache.obtain(key, null);
 
         try {
-            return (MappedTable<S, T>) cFactoryCache.obtain(key, null).invokeExact(source, mapper);
+            return (MappedTable<S, T>) mh.invokeExact(mh, source, mapper);
         } catch (Throwable e) {
             throw RowUtils.rethrow(e);
         }
     }
 
     /**
-     * MethodHandle signature: MappedTable<S, T> make(Table<S> source, Mapper<S, T> mapper)
+     * MethodHandle signature:
+     *
+     * MappedTable<S, T> make(MethodHandle self, Table<S> source, Mapper<S, T> mapper)
      */
     private static MethodHandle makeTableFactory(FactoryKey key) {
         Class<?> targetType = key.targetType();
@@ -105,15 +110,20 @@ public abstract class MappedTable<S, T> extends AbstractMappedTable<S, T>
             (MappedTable.class, targetType, "mapped").final_()
             .extend(MappedTable.class).implement(TableBasicsMaker.find(targetType));
 
-        {
-            MethodMaker ctor = tableMaker.addConstructor(Table.class, Mapper.class).private_();
-            var cacheVar = ctor.var(QueryFactoryCache.class).setExact(new QueryFactoryCache());
-            ctor.invokeSuperConstructor(cacheVar, ctor.param(0), ctor.param(1));
-        }
-
         // Keep a reference to the MethodHandle instance, to prevent it from being garbage
-        // collected as long as the generated table class still exists.
-        tableMaker.addField(Object.class, "_").static_().private_();
+        // collected as long as references to the generated table instances still exist.
+        tableMaker.addField(Object.class, "_").private_().final_();
+
+        // All MappedTable instances will refer to the exact same cache.
+        tableMaker.addField(QueryFactoryCache.class, "cache").private_().static_().final_()
+            .initExact(new QueryFactoryCache());
+
+        {
+            MethodMaker ctor = tableMaker.addConstructor
+                (MethodHandle.class, Table.class, Mapper.class).private_();
+            ctor.field("_").set(ctor.param(0));
+            ctor.invokeSuperConstructor(ctor.field("cache"), ctor.param(1), ctor.param(2));
+        }
 
         addMarkValuesUnset(key, info, tableMaker);
 
@@ -121,19 +131,10 @@ public abstract class MappedTable<S, T> extends AbstractMappedTable<S, T>
         Class<?> tableClass = lookup.lookupClass();
 
         MethodMaker mm = MethodMaker.begin
-            (lookup, MappedTable.class, null, Table.class, Mapper.class);
-        mm.return_(mm.new_(tableClass, mm.param(0), mm.param(1)));
+            (lookup, MappedTable.class, null, MethodHandle.class, Table.class, Mapper.class);
+        mm.return_(mm.new_(tableClass, mm.param(0), mm.param(1), mm.param(2)));
 
-        MethodHandle mh = mm.finish();
-
-        try {
-            // Assign the singleton reference.
-            lookup.findStaticVarHandle(tableClass, "_", Object.class).set(mh);
-        } catch (Throwable e) {
-            throw RowUtils.rethrow(e);
-        }
-
-        return mh;
+        return mm.finish();
     }
 
     private static void addMarkValuesUnset(FactoryKey key, RowInfo targetInfo, ClassMaker cm) {
@@ -163,7 +164,7 @@ public abstract class MappedTable<S, T> extends AbstractMappedTable<S, T>
                 continue;
             }
 
-            String sourceName = unescape(name.substring(ix + "_to_".length()));
+            String sourceName = RowMethodsMaker.unescape(name.substring(ix + "_to_".length()));
 
             if (ColumnSet.findColumn(sourceInfo.keyColumns, sourceName) == null) {
                 continue;
@@ -333,13 +334,24 @@ public abstract class MappedTable<S, T> extends AbstractMappedTable<S, T>
         return mSource.tryDelete(txn, sourceRow);
     }
 
-    @Override
-    protected final Query<T> newQuery(String query) throws IOException {
-        try {
-            return (Query<T>) mQueryFactoryCache.obtain(query, this).invoke(this);
-        } catch (Throwable e) {
-            throw RowUtils.rethrow(e);
+    @Override // MultiCache; see also WrappedTable
+    protected final Object cacheNewValue(Type type, Object key, Object helper)
+        throws IOException
+    {
+        if (type == TYPE_1) { // see the inherited query method
+            var queryStr = (String) key;
+            try {
+                return (Query<T>) mQueryFactoryCache.obtain(queryStr, this).invoke(this);
+            } catch (Throwable e) {
+                throw RowUtils.rethrow(e);
+            }
         }
+
+        if (type == TYPE_2) { // see the inherited derive method
+            return CompiledQuery.makeDerived(this, type, key, helper);
+        }
+
+        throw new AssertionError();
     }
 
     /**
@@ -484,7 +496,7 @@ public abstract class MappedTable<S, T> extends AbstractMappedTable<S, T>
 
         // Only attempt to check that the source columns are set if the source table type is
         // expected to have the special check methods defined.
-        boolean checkSet = BaseTable.class.isAssignableFrom(mSource.getClass());
+        boolean checkSet = StoredTable.class.isAssignableFrom(mSource.getClass());
 
         Class<?> sourceRowType = mSource.rowType();
         if (checkSet) {
@@ -762,6 +774,9 @@ public abstract class MappedTable<S, T> extends AbstractMappedTable<S, T>
             mm.return_(planVar);
         }
 
+        cm.addMethod(int.class, "argumentCount").public_()
+            .return_(targetQuery.filter().maxArgument());
+
         // Keep a reference to the MethodHandle instance, to prevent it from being garbage
         // collected as long as the generated query class still exists.
         cm.addField(Object.class, "handle").private_().static_();
@@ -803,7 +818,9 @@ public abstract class MappedTable<S, T> extends AbstractMappedTable<S, T>
             sourceOrder.put(sourceColumn.name, new OrderBy.Rule(sourceColumn, rule.type()));
         }
 
-        if (sourceOrder != null && sourceOrder.size() >= targetOrder.size()) {
+        if (!mMapper.performsFiltering()
+            && sourceOrder != null && sourceOrder.size() >= targetOrder.size())
+        {
             // Can push the entire sort operation to the source.
             plan.sourceOrder = sourceOrder;
             return plan;
@@ -909,10 +926,17 @@ public abstract class MappedTable<S, T> extends AbstractMappedTable<S, T>
             this.squery = null;
         }
 
+        @Override
+        public final Class<T> rowType() {
+            return table.rowType();
+        }
+
+        @Override
         public final QueryPlan scannerPlan(Transaction txn, Object... args) throws IOException {
             return plan(false, txn, args);
         }
 
+        @Override
         public final QueryPlan updaterPlan(Transaction txn, Object... args) throws IOException {
             return plan(true, txn, args);
         }

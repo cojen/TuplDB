@@ -38,6 +38,8 @@ import java.util.List;
 
 import org.cojen.tupl.core.SysInfo;
 
+import org.cojen.tupl.WriteFailureException;
+
 import org.cojen.tupl.util.LocalPool;
 
 /**
@@ -300,6 +302,8 @@ final class PosixFileIO extends AbstractFileIO {
             MemorySegment ms = e.get().mMemorySegment;
             MemorySegment.copy(buf, offset, ms, ValueLayout.JAVA_BYTE, 0, length);
             pwriteFd(fd(), ms.address(), length, pos);
+        } catch (IOException ex) {
+            writeFailure(ex);
         } finally {
             e.release();
         }
@@ -307,7 +311,18 @@ final class PosixFileIO extends AbstractFileIO {
 
     @Override
     protected void doWrite(long pos, long ptr, int length) throws IOException {
-        pwriteFd(fd(), ptr, length, pos);
+        try {
+            pwriteFd(fd(), ptr, length, pos);
+        } catch (IOException ex) {
+            writeFailure(ex);
+        }
+    }
+
+    private void writeFailure(IOException ex) throws IOException {
+        if (isReadOnly()) {
+            throw new WriteFailureException("File is read only", ex);
+        }
+        throw ex;
     }
 
     @Override

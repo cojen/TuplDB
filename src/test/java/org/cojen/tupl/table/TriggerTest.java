@@ -37,7 +37,7 @@ public class TriggerTest {
     @Before
     public void setup() throws Exception {
         mDb = Database.open(new DatabaseConfig());
-        mTable = (BaseTable<TestRow>) mDb.openTable(TestRow.class);
+        mTable = (StoredTable<TestRow>) mDb.openTable(TestRow.class);
     }
 
     @After
@@ -64,7 +64,7 @@ public class TriggerTest {
     }
 
     private Database mDb;
-    private BaseTable<TestRow> mTable;
+    private StoredTable<TestRow> mTable;
 
     @Test
     public void store() throws Exception {

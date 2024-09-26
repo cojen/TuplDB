@@ -25,7 +25,7 @@ import java.io.IOException;
  * @author Brian S O'Neill
  */
 class TxnResetScanner<R> extends BasicScanner<R> {
-    TxnResetScanner(BaseTable<R> table, ScanController<R> controller) {
+    TxnResetScanner(StoredTable<R> table, ScanController<R> controller) {
         super(table, controller);
     }
 

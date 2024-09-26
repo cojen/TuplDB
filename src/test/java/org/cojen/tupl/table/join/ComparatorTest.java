@@ -256,9 +256,11 @@ public class ComparatorTest {
     }
 
     public static interface A_B {
+        @Nullable
         A a();
         void a(A a);
 
+        @Nullable
         B b();
         void b(B b);
     }

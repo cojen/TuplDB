@@ -24,6 +24,8 @@ import java.util.function.Consumer;
 import java.lang.ref.ReferenceQueue;
 import java.lang.ref.SoftReference;
 
+import org.cojen.tupl.util.Latch;
+
 /**
  * Simple cache of softly referenced values. The keys must not strongly reference the values,
  * or else they won't get GC'd.
@@ -77,7 +79,7 @@ public class SoftCache<K, V, H> extends RefCache<K, V, H> {
         for (int i=0; i<entries.length; i++) {
             for (var e = entries[i]; e != null; e = e.mNext) {
                 V value = e.get();
-                if (value != null) {
+                if (value != null && !(value instanceof Latch)) {
                     c.accept(value);
                 }
             }
@@ -140,7 +142,7 @@ public class SoftCache<K, V, H> extends RefCache<K, V, H> {
             }
         }
 
-        if (mSize >= mEntries.length) {
+        if (mSize >= entries.length) {
             // Rehash.
             var newEntries = new Entry[entries.length << 1];
             int size = 0;
@@ -201,9 +203,8 @@ public class SoftCache<K, V, H> extends RefCache<K, V, H> {
      *
      * @param ref not null
      */
-    @Override
     @SuppressWarnings({"unchecked"})
-    protected void cleanup(Object ref) {
+    private void cleanup(Object ref) {
         var entries = mEntries;
         do {
             var cleared = (Entry<K, V>) ref;

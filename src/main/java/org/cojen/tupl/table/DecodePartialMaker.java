@@ -40,7 +40,7 @@ import org.cojen.tupl.table.codec.ColumnCodec;
  * Makes a call site which decodes rows partially.
  *
  * @author Brian S O'Neill
- * @see BaseTable#decodePartialHandle
+ * @see StoredTable#decodePartialHandle
  */
 public class DecodePartialMaker {
     private DecodePartialMaker() {

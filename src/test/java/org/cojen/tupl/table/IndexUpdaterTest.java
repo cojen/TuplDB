@@ -37,7 +37,7 @@ public class IndexUpdaterTest {
     @Before
     public void setup() throws Exception {
         mDb = Database.open(new DatabaseConfig());
-        mTable = (BaseTable<TestRow>) mDb.openTable(TestRow.class);
+        mTable = (StoredTable<TestRow>) mDb.openTable(TestRow.class);
         mIndex = mTable.viewSecondaryIndex("str1");
     }
 
@@ -48,8 +48,8 @@ public class IndexUpdaterTest {
     }
 
     private Database mDb;
-    private BaseTable<TestRow> mTable;
-    private BaseTable<TestRow> mIndex;
+    private StoredTable<TestRow> mTable;
+    private StoredTable<TestRow> mIndex;
 
     @PrimaryKey("id")
     @SecondaryIndex("str1")

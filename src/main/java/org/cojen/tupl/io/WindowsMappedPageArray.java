@@ -22,6 +22,8 @@ import java.io.IOException;
 
 import java.util.EnumSet;
 
+import org.cojen.tupl.diag.EventListener;
+
 /**
  * 
  *
@@ -39,7 +41,7 @@ class WindowsMappedPageArray extends MappedPageArray {
     private volatile boolean mEmpty;
 
     WindowsMappedPageArray(int pageSize, long pageCount,
-                           File file, EnumSet<OpenOption> options)
+                           File file, EnumSet<OpenOption> options, EventListener listener)
         throws IOException
     {
         super(pageSize, pageCount, options);
@@ -48,7 +50,7 @@ class WindowsMappedPageArray extends MappedPageArray {
         mOptions = options;
 
         if (file == null) {
-            setMappingPtr(WindowsFileIO.valloc(pageSize * pageCount));
+            setMappingPtr(WindowsFileIO.valloc(pageSize * pageCount, listener));
 
             mFileHandle = WindowsFileIO.INVALID_HANDLE_VALUE;
             mMappingHandle = WindowsFileIO.INVALID_HANDLE_VALUE;
@@ -83,7 +85,7 @@ class WindowsMappedPageArray extends MappedPageArray {
     @Override
     MappedPageArray doOpen() throws IOException {
         boolean empty = mEmpty;
-        var pa = new WindowsMappedPageArray(pageSize(), super.pageCount(), mFile, mOptions);
+        var pa = new WindowsMappedPageArray(pageSize(), super.pageCount(), mFile, mOptions, null);
         pa.mEmpty = empty;
         return pa;
     }

@@ -116,9 +116,16 @@ public abstract class CoreDatabase implements Database {
     public abstract EventListener eventListener();
 
     /**
+     * Performs a checkpoint if automatic checkpoints are currently enabled.
+     *
+     * @return false if no checkpoint was performed
+     */
+    public abstract boolean checkpointIfEnabled() throws IOException;
+
+    /**
      * Called by Checkpointer task.
      */
-    abstract void checkpoint(long sizeThreshold, long delayThresholdNanos) throws IOException;
+    abstract boolean checkpoint(long sizeThreshold, long delayThresholdNanos) throws IOException;
 
     /**
      * Called by ReplController.

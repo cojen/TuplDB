@@ -30,7 +30,7 @@ import org.cojen.tupl.diag.QueryPlan;
  */
 public interface Grouper<R, T> extends Closeable {
     /**
-     * Is called to generate a new {@link Grouper} instance for every query against the target
+     * Is used to generate a new {@link Grouper} instance for every query against the target
      * table.
      *
      * <p>To help query optimization, inverse mapping functions should be provided. They're
@@ -65,7 +65,8 @@ public interface Grouper<R, T> extends Closeable {
     }
 
     /**
-     * Called for the first source row in the group.
+     * Is called for the first source row in the group, and then the {@link #step step} method
+     * is called.
      *
      * @param source never null
      * @return the next source row instance to use, or null if it was kept by the grouper
@@ -73,7 +74,8 @@ public interface Grouper<R, T> extends Closeable {
     R begin(R source) throws IOException;
 
     /**
-     * Called for each source row in the group, other than the first one.
+     * Is called for each source row in the group, other than the first one, and then the
+     * {@link #step step} method is called.
      *
      * @param source never null
      * @return the next source row instance to use, or null if it was kept by the grouper
@@ -81,18 +83,15 @@ public interface Grouper<R, T> extends Closeable {
     R accumulate(R source) throws IOException;
 
     /**
-     * Is called when all source group rows have been provided, and the first row for the
-     * target group should be assigned. Returning null signals that the target group is empty,
-     * and the next source group can begin.
-     *
-     * @param target never null; all columns are initially unset
-     * @return null if target group is empty
+     * Is called after the last source row in the group has been provided, and then the {@link
+     * #step step} method is called.
      */
-    T process(T target) throws IOException;
+    default void finished() throws IOException {
+    }
 
     /**
-     * Is called to produce the next target group row. Returning null signals that no target
-     * rows remain, and the next source group can begin.
+     * Is called to produce the next target row. Returning null indicates that no target
+     * rows remain, and that reading of source group rows can resume.
      *
      * @param target never null; all columns are initially unset
      * @return null if no target rows remain

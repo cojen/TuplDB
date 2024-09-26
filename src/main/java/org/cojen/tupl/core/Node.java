@@ -30,8 +30,6 @@ import org.cojen.tupl.DatabaseException;
 import org.cojen.tupl.DatabaseFullException;
 import org.cojen.tupl.WriteFailureException;
 
-import org.cojen.tupl.diag.VerificationObserver;
-
 import org.cojen.tupl.util.Clutch;
 
 import static org.cojen.tupl.core.PageOps.*;
@@ -6179,24 +6177,31 @@ final class Node extends Clutch implements DatabaseAccess {
     }
 
     /**
-     * Caller must acquired shared latch before calling this method. Latch is
-     * released unless an exception is thrown. If an exception is thrown by the
-     * observer, the latch would have already been released.
+     * Caller must acquire a shared latch before calling this method, which always released,
+     * even if an exception is thrown. If verification passes, the latch is released before
+     * calling the observer. If it fails, the observer is called with the latch still held.
      *
-     * @param level passed to observer, if provided
-     * @param observer pass null to never release any latch, and to throw a
-     * CorruptDatabaseException if the node is invalid
-     * @return false if should stop
+     * @param level passed to observer
+     * @param observer required
+     * @return 0 if should stop, 1 if should continue, or 2 if should continue and large
+     * fragmented values were encountered
      */
-    boolean verifyTreeNode(int level, VerificationObserver observer) throws IOException {
-        return verifyTreeNode(level, observer, false);
+    int verifyTreeNode(int level, VerifyObserver observer) throws IOException {
+        observer.heldShared();
+        try {
+            return verifyTreeNode(level, observer, false);
+        } finally {
+            observer.releaseShared(this);
+        }
     }
 
     /**
      * @param fix true to ignore the current the garbage and tail segment fields and replace
      * them with the correct values instead
+     * @return 0 if should stop, 1 if should continue, or 2 if should continue and large
+     * fragmented values were encountered
      */
-    private boolean verifyTreeNode(int level, VerificationObserver observer, boolean fix)
+    private int verifyTreeNode(int level, VerifyObserver observer, boolean fix)
         throws IOException
     {
         int type = type() & ~(LOW_EXTREMITY | HIGH_EXTREMITY);
@@ -6249,6 +6254,7 @@ final class Node extends Clutch implements DatabaseAccess {
         int used = TN_HEADER_SIZE;
         int leftTail = TN_HEADER_SIZE;
         int rightTail = pageSize(page); // compute as inclusive
+        int largeKeyCount = 0;
         int largeValueCount = 0;
         int lastKeyLoc = 0;
 
@@ -6273,10 +6279,15 @@ final class Node extends Clutch implements DatabaseAccess {
             }
 
             int keyLen;
+            boolean keyFragmented = false;
             try {
                 keyLen = p_byteGet(page, loc++);
-                keyLen = keyLen >= 0 ? (keyLen + 1)
-                    : (((keyLen & 0x3f) << 8) | p_ubyteGet(page, loc++));
+                if (keyLen >= 0) {
+                    keyLen++;
+                } else {
+                    keyFragmented = (keyLen & ENTRY_FRAGMENTED) != 0;
+                    keyLen = ((keyLen & 0x3f) << 8) | p_ubyteGet(page, loc++);
+                }
             } catch (IndexOutOfBoundsException e) {
                 return verifyFailed(level, observer, "Key location out of bounds");
             }
@@ -6292,6 +6303,15 @@ final class Node extends Clutch implements DatabaseAccess {
                 if (result >= 0) {
                     return verifyFailed(level, observer, "Key order: " + result);
                 }
+            }
+
+            if (keyFragmented) {
+                largeKeyCount++;
+                // Obtaining the stats forces pages to be loaded, which performs minimal
+                // verification. If checksums are enabled, then page checksum verification is
+                // performed as a side effect.
+                var stats = new long[2];
+                getDatabase().reconstruct(page, keyLoc + 2, keyLen, stats);
             }
 
             lastKeyLoc = keyLoc;
@@ -6343,31 +6363,21 @@ final class Node extends Clutch implements DatabaseAccess {
             }
         }
 
-        if (observer == null) {
-            return true;
-        }
-
         int entryCount = numKeys();
         int freeBytes = availableBytes();
 
         long id = id();
-        releaseShared();
+        observer.releaseShared(this);
 
-        return observer.indexNodePassed(id, level, entryCount, freeBytes, largeValueCount);
+        boolean cont = observer.indexNodePassed
+            (id, level, entryCount, freeBytes,
+             // Large keys aren't really large "values", but count them as such anyhow.
+             largeValueCount + largeKeyCount);
+
+        return cont ? (largeValueCount != 0 ? 2 : 1) : 0;
     }
 
-    /**
-     * @throws CorruptDatabaseException if observer is null
-     */
-    private boolean verifyFailed(int level, VerificationObserver observer, String message)
-        throws CorruptDatabaseException
-    {
-        if (observer == null) {
-            throw new CorruptDatabaseException(message);
-        }
-        long id = id();
-        releaseShared();
-        observer.failed = true;
-        return observer.indexNodeFailed(id, level, message);
+    private int verifyFailed(int level, VerifyObserver observer, String message) {
+        return observer.indexNodeFailed(id(), level, message) ? 1 : 0;
     }
 }

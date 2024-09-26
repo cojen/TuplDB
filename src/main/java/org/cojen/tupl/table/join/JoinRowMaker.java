@@ -32,6 +32,8 @@ import org.cojen.maker.Label;
 import org.cojen.maker.MethodMaker;
 import org.cojen.maker.Variable;
 
+import org.cojen.tupl.Row;
+
 import org.cojen.tupl.table.ColumnInfo;
 import org.cojen.tupl.table.ComparatorMaker;
 import org.cojen.tupl.table.CompareUtils;
@@ -39,6 +41,7 @@ import org.cojen.tupl.table.OrderBy;
 import org.cojen.tupl.table.RowGen;
 import org.cojen.tupl.table.RowInfo;
 import org.cojen.tupl.table.RowMaker;
+import org.cojen.tupl.table.RowMethodsMaker;
 import org.cojen.tupl.table.WeakClassCache;
 
 /**
@@ -119,6 +122,10 @@ public class JoinRowMaker {
 
         // Add Comparable methods.
         addCompareTo();
+
+        if (Row.class.isAssignableFrom(mJoinType)) {
+            new RowMethodsMaker(mClassMaker, mJoinType, mJoinInfo).addMethods();
+        }
 
         return mClassMaker.finish();
     }

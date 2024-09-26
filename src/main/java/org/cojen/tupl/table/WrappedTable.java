@@ -24,18 +24,19 @@ import java.util.Set;
 
 import org.cojen.tupl.DurabilityMode;
 import org.cojen.tupl.Query;
+import org.cojen.tupl.Row;
 import org.cojen.tupl.Scanner;
 import org.cojen.tupl.Table;
 import org.cojen.tupl.Transaction;
+
+import org.cojen.tupl.table.expr.CompiledQuery;
 
 /**
  * @param <S> source row type
  * @param <T> target row type
  * @author Brian S. O'Neill
  */
-public abstract class WrappedTable<S, T> extends SoftCache<String, Query<T>, Object>
-    implements Table<T>
-{
+public abstract class WrappedTable<S, T> extends BaseTable<T> {
     protected final Table<S> mSource;
 
     protected WrappedTable(Table<S> source) {
@@ -82,19 +83,24 @@ public abstract class WrappedTable<S, T> extends SoftCache<String, Query<T>, Obj
     }
 
     @Override
+    @SuppressWarnings("unchecked")
     public final Query<T> query(String query) throws IOException {
-        return obtain(query, null);
+        return (Query<T>) cacheObtain(TYPE_1, query, null);
     }
 
-    // Defined in the SoftCache class.
     @Override
-    protected final Query<T> newValue(String query, Object unused) {
-        try {
-            return newQuery(query);
-        } catch (IOException e) {
-            throw RowUtils.rethrow(e);
-        }
+    @SuppressWarnings("unchecked")
+    public Table<Row> derive(String query, Object... args) throws IOException {
+        return ((CompiledQuery<Row>) cacheObtain(TYPE_2, query, this)).table(args);
     }
 
-    protected abstract Query<T> newQuery(String query) throws IOException;
+    @Override
+    @SuppressWarnings("unchecked")
+    public <D> Table<D> derive(Class<D> derivedType, String query, Object... args)
+        throws IOException
+    {
+        // See the cacheNewValue method.
+        var key = new CompiledQuery.DerivedKey(derivedType, query);
+        return ((CompiledQuery<D>) cacheObtain(TYPE_2, key, this)).table(args);
+    }
 }

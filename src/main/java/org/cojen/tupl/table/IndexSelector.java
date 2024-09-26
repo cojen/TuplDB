@@ -61,7 +61,7 @@ final class IndexSelector<R> {
     private boolean mMultipleSelections;
 
     private ColumnSet[] mSelectedIndexes;
-    private BaseTable[] mSelectedIndexTables;
+    private StoredTable[] mSelectedIndexTables;
     private QuerySpec[] mSelectedQueries;
     private boolean[] mSelectedReverse;
     private OrderBy mOrderBy;
@@ -74,7 +74,7 @@ final class IndexSelector<R> {
      * verification
      * @throws IOException only can be thrown if a table was provided
      */
-    IndexSelector(BaseTable<R> table, RowInfo primaryInfo, QuerySpec query, boolean forUpdate)
+    IndexSelector(StoredTable<R> table, RowInfo primaryInfo, QuerySpec query, boolean forUpdate)
         throws IOException
     {
         mPrimaryInfo = primaryInfo;
@@ -91,7 +91,7 @@ final class IndexSelector<R> {
                 break;
             }
 
-            BaseTable[] selectedIndexTables = new BaseTable[numSelected()];
+            StoredTable[] selectedIndexTables = new StoredTable[numSelected()];
 
             for (int i=0; i<selectedIndexTables.length; i++) {
                 ColumnSet subIndex = selectedIndex(i);
@@ -101,7 +101,7 @@ final class IndexSelector<R> {
                     continue;
                 }
 
-                BaseTable<R> subTable;
+                StoredTable<R> subTable;
 
                 if (mAlternateKeys.contains(subIndex)) {
                     // Alternate key.
@@ -412,7 +412,7 @@ final class IndexSelector<R> {
      * @throws NullPointerException if no base table was provided to the constructor
      */
     @SuppressWarnings("unchecked")
-    BaseTable<R> selectedIndexTable(int i) {
+    StoredTable<R> selectedIndexTable(int i) {
         return mSelectedIndexTables[i];
     }
 

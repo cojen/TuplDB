@@ -43,6 +43,8 @@ import org.cojen.tupl.ViewConstraintException;
 
 import org.cojen.tupl.diag.QueryPlan;
 
+import org.cojen.tupl.table.expr.CompiledQuery;
+
 import org.cojen.tupl.table.filter.QuerySpec;
 import org.cojen.tupl.table.filter.RowFilter;
 import org.cojen.tupl.table.filter.TrueFilter;
@@ -80,10 +82,10 @@ public abstract class GroupedTable<S, T> extends AbstractMappedTable<S, T>
 
         var key = new FactoryKey(source.rowType(), groupBy, orderBy,
                                  targetType, factory.getClass());
+        MethodHandle mh = cFactoryCache.obtain(key, source);
 
         try {
-            return (GroupedTable<S, T>) cFactoryCache.obtain(key, source)
-                .invokeExact(source, factory);
+            return (GroupedTable<S, T>) mh.invokeExact(mh, source, factory);
         } catch (Throwable e) {
             throw RowUtils.rethrow(e);
         }
@@ -92,7 +94,7 @@ public abstract class GroupedTable<S, T> extends AbstractMappedTable<S, T>
     /**
      * MethodHandle signature:
      *
-     *  GroupedTable<S, T> make(Table<S> source, Grouper.Factory<S, T>)
+     *  GroupedTable<S, T> make(MethodHandle self, Table<S> source, Grouper.Factory<S, T>)
      */
     private static MethodHandle makeTableFactory(FactoryKey key, Table<?> source) {
         Class<?> sourceType = key.sourceType();
@@ -123,34 +125,31 @@ public abstract class GroupedTable<S, T> extends AbstractMappedTable<S, T>
             (GroupedTable.class, targetType, "grouped").final_()
             .extend(GroupedTable.class).implement(TableBasicsMaker.find(targetType));
 
-        {
-            MethodMaker ctor = cm.addConstructor(Table.class, Grouper.Factory.class).private_();
-            var cacheVar = ctor.var(QueryFactoryCache.class).setExact(new QueryFactoryCache());
-            ctor.invokeSuperConstructor
-                (cacheVar, ctor.param(0), groupBySpec, orderBySpec, ctor.param(1));
-        }
-
         // Keep a reference to the MethodHandle instance, to prevent it from being garbage
-        // collected as long as the generated table class still exists.
-        cm.addField(Object.class, "_").static_().private_();
+        // collected as long as references to the generated table instances still exist.
+        cm.addField(Object.class, "_").private_().final_();
+
+        // All GroupedTable instances will refer to the exact same cache.
+        cm.addField(QueryFactoryCache.class, "cache").private_().static_().final_()
+            .initExact(new QueryFactoryCache());
+
+        {
+            MethodMaker ctor = cm.addConstructor
+                (MethodHandle.class, Table.class, Grouper.Factory.class).private_();
+            ctor.field("_").set(ctor.param(0));
+            ctor.invokeSuperConstructor
+                (ctor.field("cache"), ctor.param(1), groupBySpec, orderBySpec, ctor.param(2));
+        }
 
         MethodHandles.Lookup lookup = cm.finishLookup();
         Class<?> tableClass = lookup.lookupClass();
 
         MethodMaker mm = MethodMaker.begin
-            (lookup, GroupedTable.class, null, Table.class, Grouper.Factory.class);
-        mm.return_(mm.new_(tableClass, mm.param(0), mm.param(1)));
+            (lookup, GroupedTable.class, null,
+             MethodHandle.class, Table.class, Grouper.Factory.class);
+        mm.return_(mm.new_(tableClass, mm.param(0), mm.param(1), mm.param(2)));
 
-        MethodHandle mh = mm.finish();
-
-        try {
-            // Assign the singleton reference.
-            lookup.findStaticVarHandle(tableClass, "_", Object.class).set(mh);
-        } catch (Throwable e) {
-            throw RowUtils.rethrow(e);
-        }
-
-        return mh;
+        return mm.finish();
     }
 
     private final QueryFactoryCache mQueryFactoryCache;
@@ -215,13 +214,24 @@ public abstract class GroupedTable<S, T> extends AbstractMappedTable<S, T>
         return spec.isEmpty() ? null : OrderBy.splitSpec(spec);
     }
 
-    @Override
-    protected final Query<T> newQuery(String query) throws IOException {
-        try {
-            return (Query<T>) mQueryFactoryCache.obtain(query, this).invoke(this);
-        } catch (Throwable e) {
-            throw RowUtils.rethrow(e);
+    @Override // MultiCache; see also WrappedTable
+    protected final Object cacheNewValue(Type type, Object key, Object helper)
+        throws IOException
+    {
+        if (type == TYPE_1) { // see the inherited query method
+            var queryStr = (String) key;
+            try {
+                return (Query<T>) mQueryFactoryCache.obtain(queryStr, this).invoke(this);
+            } catch (Throwable e) {
+                throw RowUtils.rethrow(e);
+            }
         }
+
+        if (type == TYPE_2) { // see the inherited derive method
+            return CompiledQuery.makeDerived(this, type, key, helper);
+        }
+
+        throw new AssertionError();
     }
 
     @Override
@@ -253,7 +263,7 @@ public abstract class GroupedTable<S, T> extends AbstractMappedTable<S, T>
             // Subclass the GroupedScanner class and override the finish method.
 
             ClassMaker scMaker = targetInfo.rowGen().beginClassMaker
-                (GroupedTable.class, targetType, "scanner").final_().extend(GroupedScanner.class);
+                (GroupedTable.class, targetType, "scanner").final_().extend(scannerClass);
 
             MethodMaker ctor;
             if (targetRemainder == TrueFilter.THE) {
@@ -382,6 +392,9 @@ public abstract class GroupedTable<S, T> extends AbstractMappedTable<S, T>
             mm.return_(planVar);
         }
 
+        cm.addMethod(int.class, "argumentCount").public_()
+            .return_(targetQuery.filter().maxArgument());
+
         // Keep a reference to the MethodHandle instance, to prevent it from being garbage
         // collected as long as the generated query class still exists.
         cm.addField(Object.class, "handle").private_().static_();
@@ -478,13 +491,11 @@ public abstract class GroupedTable<S, T> extends AbstractMappedTable<S, T>
             this.table = table;
             this.squery = table.mSource.query(queryStr);
         }
-    }
 
-    /**
-     * Called by generated Query instances.
-     */
-    public final Grouper<S, T> newGrouper() throws IOException {
-        return mGrouperFactory.newGrouper();
+        @Override
+        public final Class<T> rowType() {
+            return table.rowType();
+        }
     }
 
     /**

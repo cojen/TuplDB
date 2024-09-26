@@ -270,7 +270,7 @@ public class MappedTest {
     public void withInverse() throws Exception {
         // Swap the str and num columns.
         Table<TestRow> mapped = mTable.map(TestRow.class, new Swapper());
-        
+
         assertTrue(mapped.isEmpty());
 
         TestRow row = mTable.newRow();
@@ -431,7 +431,10 @@ public class MappedTest {
             assertNull(scanner.step(row));
         }
 
-        var plan = (QueryPlan.Mapper) mapped.query("num == ? && str == ?").scannerPlan(null);
+        Query<TestRow> query = mapped.query("num == ? && str == ?");
+        assertEquals(TestRow.class, query.rowType());
+        assertEquals(2, query.argumentCount());
+        var plan = (QueryPlan.Mapper) query.scannerPlan(null);
         var sub1 = (QueryPlan.Filter) plan.source;
         assertEquals("num == ?4", sub1.expression);
         var sub2 = (QueryPlan.PrimaryJoin) sub1.source;
@@ -477,8 +480,9 @@ public class MappedTest {
             assertNull(scanner.step(row));
         }
 
-        plan = (QueryPlan.Mapper) mapped.query("{-id}").scannerPlan(null);
-        assertTrue(((QueryPlan.FullScan) plan.source).reverse);
+        // This is because the Swapper doesn't override the performsFiltering method. The map
+        // method can filter out results if a NumberFormatException is caught.
+        assertTrue(mapped.query("{-id}").scannerPlan(null) instanceof QueryPlan.Sort);
 
         try (var scanner = mapped.newScanner(null, "{-id, *}")) {
             row = scanner.row();
@@ -649,7 +653,10 @@ public class MappedTest {
             assertNull(scanner.step());
         }
 
-        var plan = (QueryPlan.Mapper) mapped.query("string > ? && number != ?").scannerPlan(null);
+        Query<Renamed> q = mapped.query("string > ? && number != ?");
+        assertEquals(Renamed.class, q.rowType());
+        assertEquals(2, q.argumentCount());
+        var plan = (QueryPlan.Mapper) q.scannerPlan(null);
         var sub1 = (QueryPlan.Filter) plan.source;
         assertEquals("str > ?3 && num != ?4", sub1.expression);
 
@@ -721,6 +728,11 @@ public class MappedTest {
             target.string(source.str());
             target.number(source.num());
             return target;
+        }
+
+        @Override
+        public boolean performsFiltering() {
+            return false;
         }
 
         @Override

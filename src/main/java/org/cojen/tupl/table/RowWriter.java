@@ -17,12 +17,13 @@
 
 package org.cojen.tupl.table;
 
-import java.io.DataOutput;
 import java.io.IOException;
 
 import java.util.HashMap;
 
 import java.util.Spliterator;
+
+import org.cojen.dirmi.Pipe;
 
 import org.cojen.tupl.Scanner;
 
@@ -36,7 +37,7 @@ import org.cojen.tupl.Scanner;
  * @see WriteRowMaker
  */
 public final class RowWriter<R> implements RowConsumer<R> {
-    private final DataOutput mOut;
+    private final Pipe mOut;
 
     // The active header is initially null, which implies a row header with no columns.
     private byte[] mActiveHeader;
@@ -50,7 +51,7 @@ public final class RowWriter<R> implements RowConsumer<R> {
 
     private boolean mWrittenCharacteristics;
 
-    RowWriter(DataOutput out) {
+    RowWriter(Pipe out) {
         mOut = out;
     }
 
@@ -97,7 +98,7 @@ public final class RowWriter<R> implements RowConsumer<R> {
      *      0: scan terminator
      *      1: same header as before
      *      2: new header (is followed by a RowHeader; first id is 0 and goes up by one each time)
-     *      3: reserved
+     *      3: exception terminator (is followed by a serialized Throwable)
      *      4: reserved
      * 5..254: refer to an existing header (id is 0..249)
      *    255: refer to an existing header (is followed by an int id)
@@ -142,6 +143,24 @@ public final class RowWriter<R> implements RowConsumer<R> {
         }
 
         mActiveHeader = header;
+    }
+
+    public void writeTerminator() throws IOException {
+        if (!mWrittenCharacteristics) {
+            writeCharacteristics(Spliterator.SIZED, 0);
+        }
+        mOut.writeByte(0);
+    }
+
+    /**
+     * Should be called instead of writing a header, and nothing more can be written.
+     */
+    public void writeTerminalException(Throwable e) throws IOException {
+        if (!mWrittenCharacteristics) {
+            writeCharacteristics(Spliterator.SIZED, 0);
+        }
+        mOut.writeByte(3);
+        mOut.writeObject(e);
     }
 
     public void writeRowLength(int length) throws IOException {

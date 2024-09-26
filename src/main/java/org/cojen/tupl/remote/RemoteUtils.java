@@ -66,7 +66,8 @@ public class RemoteUtils {
              Serializer.simple(Ordering.class),
              LockTimeoutExceptionSerializer.THE,
              DeadlockInfoSerializer.THE,
-             DeadlockExceptionSerializer.THE);
+             DeadlockExceptionSerializer.THE,
+             QueryExceptionSerializer.THE);
 
         return env;
     }

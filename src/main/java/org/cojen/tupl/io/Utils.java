@@ -19,6 +19,7 @@ package org.cojen.tupl.io;
 
 import java.io.Closeable;
 import java.io.EOFException;
+import java.io.File;
 import java.io.InputStream;
 import java.io.IOException;
 
@@ -517,6 +518,18 @@ public class Utils {
             cc.close(cause);
         } else {
             resource.close();
+        }
+    }
+
+    /**
+     * Attempt to delete file, throwing an IOException if the delete failed and the file still
+     * exists.
+     *
+     * @param file file to delete; can be null
+     */
+    public static void delete(File file) throws IOException {
+        if (file != null && !file.delete() && file.exists()) {
+            throw new IOException("Unable to delete file: " + file);
         }
     }
 

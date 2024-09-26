@@ -24,6 +24,8 @@ import java.util.zip.CRC32;
 import org.cojen.tupl.ClosedIndexException;
 import org.cojen.tupl.DeletedIndexException;
 
+import org.cojen.tupl.diag.EventListener;
+
 import static org.cojen.tupl.core.Node.*;
 
 import static org.cojen.tupl.core.Utils.*;
@@ -163,9 +165,12 @@ final class PageOps {
      * be deleted, and calling p_delete on arena pages does nothing. Call p_arenaDelete to
      * fully delete the entire arena when not used anymore.
      *
+     * @param listener optional
      * @return null if not supported
      */
-    static Object p_arenaAlloc(int pageSize, long pageCount) throws IOException {
+    static Object p_arenaAlloc(int pageSize, long pageCount, EventListener listener)
+        throws IOException
+    {
         return null;
     }
 

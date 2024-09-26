@@ -60,11 +60,11 @@ public abstract sealed class ColumnFilter extends TermFilter
         };
     }
 
-    static boolean hasEqualComponent(int op) {
+    public static boolean hasEqualComponent(int op) {
         return (op & 1) == 0;
     }
 
-    static int removeEqualComponent(int op) {
+    public static int removeEqualComponent(int op) {
         return switch (op) {
             case OP_EQ -> OP_NE;
             case OP_GE -> OP_GT;

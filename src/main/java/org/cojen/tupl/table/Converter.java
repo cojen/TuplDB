@@ -71,9 +71,9 @@ public class Converter {
      *
      * @see #convertExact
      */
-    static void convertLossy(final MethodMaker mm,
-                             final ColumnInfo srcInfo, final Variable srcVar,
-                             final ColumnInfo dstInfo, final Variable dstVar)
+    public static void convertLossy(final MethodMaker mm,
+                                    final ColumnInfo srcInfo, final Variable srcVar,
+                                    final ColumnInfo dstInfo, final Variable dstVar)
     {
         if (srcInfo.isCompatibleWith(dstInfo)) {
             dstVar.set(srcVar);
@@ -1009,6 +1009,12 @@ public class Converter {
             }
             break;
 
+        case TYPE_REFERENCE:
+            if (dstVar.classType().isAssignableFrom(srcVar.classType())) {
+                dstVar.set(srcVar);
+                break;
+            }
+
         default:
             handled = false;
         }
@@ -1044,23 +1050,8 @@ public class Converter {
                                                   ColumnInfo srcInfo, ColumnInfo dstInfo)
     {
         var messageVar = mm.var(String.class);
-        messageVar.set("Cannot convert " + typeName(srcInfo) + " to " + typeName(dstInfo));
+        messageVar.set("Cannot convert " + srcInfo.typeName() + " to " + dstInfo.typeName());
         mm.new_(ConversionException.class, messageVar, columnName).throw_();
-    }
-
-    private static String typeName(ColumnInfo info) {
-        String name;
-        if (!info.isArray()) {
-            name = info.boxedType().getSimpleName();
-        } else {
-            name = info.unboxedType().arrayType().getSimpleName();
-        }
-
-        if (info.isUnsigned()) {
-            return "unsigned " + name;
-        } else {
-            return name;
-        }
     }
 
     private static void convert(String methodName, Variable srcVar, Variable dstVar) {

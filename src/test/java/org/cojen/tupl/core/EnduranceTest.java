@@ -23,6 +23,7 @@ import static org.cojen.tupl.TestUtils.randomStr;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -37,8 +38,6 @@ import org.junit.After;
 import org.junit.Test;
 
 import org.cojen.tupl.*;
-
-import org.cojen.tupl.diag.VerificationObserver;
 
 public class EnduranceTest {
     public static void main(String[] args) {
@@ -436,7 +435,7 @@ public class EnduranceTest {
         mIx = mDb.openIndex("test");
 
         int numWorkers = 5;
-        // First populate Tupl so we have data exceeding the cache size
+        // First populate TuplDB so we have data exceeding the cache size
         Random random = ThreadLocalRandom.current();
         for (int i=0; i<150_000; i++) {
             byte[] key = randomStr(random, 10, 100);
@@ -471,9 +470,7 @@ public class EnduranceTest {
         assertFalse(failureRatePercentage > 0.1);
         // System.out.printf("NumOperations=%d, FailureRate = %.2f%%\n", numOperations, failureRatePercentage);
 
-        var observer = new VerificationObserver();
-        mIx.verify(observer);
-        assertFalse(observer.failed);
+        assertTrue(mIx.verify(null));
     }
 
     interface Worker extends Runnable {

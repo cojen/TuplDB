@@ -31,9 +31,9 @@ import org.cojen.tupl.io.Utils;
 import org.cojen.tupl.table.AggregatedTable;
 import org.cojen.tupl.table.ComparatorMaker;
 import org.cojen.tupl.table.GroupedTable;
+import org.cojen.tupl.table.JoinIdentityTable;
 import org.cojen.tupl.table.MappedTable;
 import org.cojen.tupl.table.PlainPredicateMaker;
-import org.cojen.tupl.table.ViewedTable;
 
 import org.cojen.tupl.table.join.JoinTableMaker;
 
@@ -145,6 +145,11 @@ public interface Table<R> extends Closeable {
     public boolean isSet(R row, String name);
 
     /**
+     * For the given row, performs an action for each column which is set.
+     */
+    public void forEach(R row, ColumnProcessor<? super R> action);
+
+    /**
      * Returns a new scanner for all rows of this table.
      *
      * @param txn optional transaction for the scanner to use; pass null for auto-commit mode
@@ -184,15 +189,16 @@ public interface Table<R> extends Closeable {
     /**
      * @hidden
      */
-    public Scanner<R> newScanner(R row, Transaction txn, String query, Object... args)
-        throws IOException;
+    public default Scanner<R> newScanner(R row, Transaction txn, String query, Object... args)
+        throws IOException
+    {
+        return query(query).newScanner(row, txn, args);
+    }
 
     /**
      * @hidden
      */
-    public default Scanner<R> newScanner(R row, Transaction txn, String query)
-        throws IOException
-    {
+    public default Scanner<R> newScanner(R row, Transaction txn, String query) throws IOException {
         return newScanner(row, txn, query, NO_ARGS);
     }
 
@@ -210,6 +216,13 @@ public interface Table<R> extends Closeable {
      * @throws IllegalStateException if transaction belongs to another database instance
      */
     public default Updater<R> newUpdater(Transaction txn) throws IOException {
+        return newUpdater(null, txn);
+    }
+
+    /**
+     * @hidden
+     */
+    public default Updater<R> newUpdater(R row, Transaction txn) throws IOException {
         throw new UnmodifiableViewException();
     }
 
@@ -230,7 +243,7 @@ public interface Table<R> extends Closeable {
     public default Updater<R> newUpdater(Transaction txn, String query, Object... args)
         throws IOException
     {
-        throw new UnmodifiableViewException();
+        return newUpdater(null, txn, query, args);
     }
 
     /**
@@ -238,6 +251,22 @@ public interface Table<R> extends Closeable {
      */
     public default Updater<R> newUpdater(Transaction txn, String query) throws IOException {
         return newUpdater(txn, query, NO_ARGS);
+    }
+
+    /**
+     * @hidden
+     */
+    public default Updater<R> newUpdater(R row, Transaction txn, String query, Object... args)
+        throws IOException
+    {
+        return query(query).newUpdater(row, txn, args);
+    }
+
+    /**
+     * @hidden
+     */
+    public default Updater<R> newUpdater(R row, Transaction txn, String query) throws IOException {
+        return newUpdater(row, txn, query, NO_ARGS);
     }
 
     /**
@@ -546,30 +575,13 @@ public interface Table<R> extends Closeable {
     }
 
     /**
-     * Returns a view backed by this table, whose rows and natural ordering are defined by the
-     * given query. The returned table instance will throw a {@link ViewConstraintException}
-     * for operations against rows which are restricted by the query, and closing the table has
-     * no effect.
-     */
-    public default Table<R> view(String query, Object... args) {
-        return ViewedTable.view(this, query, args);
-    }
-
-    /**
-     * @hidden
-     */
-    public default Table<R> view(String query) {
-        return view(query, NO_ARGS);
-    }
-
-    /**
      * Returns a view backed by this table, whose rows have been mapped to target rows. The
      * returned table instance will throw a {@link ViewConstraintException} for operations
      * against rows not supported by the mapper, and closing the table has no effect.
      *
      * @throws NullPointerException if any parameter is null
      */
-    public default <T> Table<T> map(Class<T> targetType, Mapper<R, T> mapper) {
+    public default <T> Table<T> map(Class<T> targetType, Mapper<R, T> mapper) throws IOException {
         return MappedTable.map(this, targetType, mapper);
     }
 
@@ -583,7 +595,9 @@ public interface Table<R> extends Closeable {
      * @throws NullPointerException if any parameter is null
      * @throws IllegalArgumentException if target primary key is malformed
      */
-    public default <T> Table<T> aggregate(Class<T> targetType, Aggregator.Factory<R, T> factory) {
+    public default <T> Table<T> aggregate(Class<T> targetType, Aggregator.Factory<R, T> factory)
+        throws IOException
+    {
         return AggregatedTable.aggregate(this, targetType, factory);
     }
 
@@ -603,6 +617,7 @@ public interface Table<R> extends Closeable {
      */
     public default <T> Table<T> group(String groupBy, String orderBy,
                                       Class<T> targetType, Grouper.Factory<R, T> factory)
+        throws IOException
     {
         return GroupedTable.group(this, groupBy, orderBy, targetType, factory);
     }
@@ -645,15 +660,71 @@ public interface Table<R> extends Closeable {
      * malformed, or if there are any table matching issues
      * @see Database#openJoinTable
      */
-    public static <J> Table<J> join(Class<J> joinType, String spec, Table<?>... tables) {
+    public static <J> Table<J> join(Class<J> joinType, String spec, Table<?>... tables)
+        throws IOException
+    {
         return JoinTableMaker.join(joinType, spec, tables);
+    }
+
+    /**
+     * Joins tables together into a generated join type class.
+     *
+     * @param spec join specification
+     * @throws NullPointerException if any parameters are null
+     * @throws IllegalArgumentException if the specification is malformed, or if there are any
+     * table matching issues
+     * @see #join(Class,String,Table...)
+     */
+    public static Table<Row> join(String spec, Table<?>... tables) throws IOException {
+        return JoinTableMaker.join(spec, tables);
+    }
+
+    /**
+     * Returns an unmodifiable table consisting of one row with no columns, representing the
+     * identity element when joining an empty set of tables. Calling {@link #derive derive}
+     * against the join identity table can be used to perform arbitrary expression evaluation.
+     */
+    public static Table<Row> join() {
+        return JoinIdentityTable.THE;
+    }
+
+    /**
+     * Returns a view backed by this table, specified by a fully-featured query expression. The
+     * returned table instance will throw a {@link ViewConstraintException} for operations
+     * against rows which are restricted by the query, and closing the table has no effect.
+     *
+     * @param derivedType the projected query columns must correspond to columns defined in the
+     * derived row type
+     */
+    public <D> Table<D> derive(Class<D> derivedType, String query, Object... args)
+        throws IOException;
+
+    /**
+     * @hidden
+     */
+    public default <D> Table<D> derive(Class<D> derivedType, String query) throws IOException {
+        return derive(derivedType, query, NO_ARGS);
+    }
+
+    /**
+     * Returns a view backed by this table, specified by a fully-featured query expression. The
+     * returned table instance will throw a {@link ViewConstraintException} for operations
+     * against rows which are restricted by the query, and closing the table has no effect.
+     */
+    public Table<Row> derive(String query, Object... args) throws IOException;
+
+    /**
+     * @hidden
+     */
+    public default Table<Row> derive(String query) throws IOException {
+        return derive(query, NO_ARGS);
     }
 
     /**
      * Returns a row comparator based on the given specification, which defines the ordering
      * columns. Each column name is prefixed with '+' or '-', to indicate ascending or
      * descending order. For example: {@code "+lastName+firstName-birthdate"}. By default,
-     * nulls are treated as higher non-nulls, but a '!' after the '+'/'-' character causes
+     * nulls are treated as higher than non-nulls, but a '!' after the '+'/'-' character causes
      * nulls to be treated as lower than non-nulls.
      *
      * @throws IllegalArgumentException if the specification is malformed

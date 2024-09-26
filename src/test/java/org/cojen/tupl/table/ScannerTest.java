@@ -20,10 +20,14 @@ package org.cojen.tupl.table;
 import java.util.HashSet;
 import java.util.Set;
 
+import java.util.concurrent.TimeUnit;
+
 import org.junit.*;
 import static org.junit.Assert.*;
 
 import org.cojen.tupl.*;
+
+import org.cojen.tupl.QueryException;
 
 /**
  * 
@@ -57,13 +61,22 @@ public class ScannerTest {
 
         verify(table.newScanner(null, "{}"), 1, 5);
         verify(table.newScanner(null, "{id}"), 1, 5, "id");
-        verify(table.newScanner(null, "{id, id}"), 1, 5, "id");
+
+        try {
+            verify(table.newScanner(null, "{id, id}"), 1, 5, "id");
+        } catch (QueryException e) {
+            assertTrue(e.getMessage().contains("Duplicate projection"));
+            assertEquals(5, e.startPos());
+            assertEquals(7, e.endPos());
+        }
+
         verify(table.newScanner(null, "{name, state}"), 1, 5, "name", "state");
 
         verify(table.newScanner(null, "{*}"), 1, 5, "id", "name", "path", "state");
-        verify(table.newScanner(null, "{~id, *}"), 1, 5, "name", "path", "state");
-        verify(table.newScanner(null, "{~id, ~id, *}"), 1, 5, "name", "path", "state");
-        verify(table.newScanner(null, "{~name, *, ~state}"), 1, 5, "id", "path");
+
+        verify(table.newScanner(null, "{~id, *}"), 1, 5, "id", "name", "path", "state");
+
+        verify(table.newScanner(null, "{~name, *, ~state}"), 1, 5, "id", "name", "path");
 
         verify(table.newScanner(null, "{} name == ?", "name-3"), 3, 3);
         verify(table.newScanner(null, "{path} name == ?", "name-3"), 3, 3, "path");
@@ -72,54 +85,133 @@ public class ScannerTest {
         verify(table.newScanner
                (null, "{*, ~path, ~state} name == ?", "name-3"), 3, 3, "id", "name");
 
-        if (table instanceof BaseTable<TestRow> btable) {
+        if (table instanceof StoredTable<TestRow> btable) {
             checkSecondary(btable);
         }
     }
 
-    private void checkSecondary(BaseTable<TestRow> table) throws Exception {
+    @Test
+    public void timeout() throws Exception {
+        Table<TestRow> table = mDb.openTable(TestRow.class);
+        fill(table, 1, 5);
+
+        // Lock the first row.
+        Transaction txn1 = mDb.newTransaction();
+        {
+            TestRow row = table.newRow();
+            row.id(1);
+            row.name("name-1");
+            table.load(txn1, row);
+        }
+
+        Transaction txn2 = mDb.newTransaction();
+        txn2.lockTimeout(10, TimeUnit.MILLISECONDS);
+
+        try {
+            table.newScanner(txn2);
+            fail();
+        } catch (LockTimeoutException e) {
+        }
+
+        try {
+            table.newScanner(txn2, "id == ? && name == ?", 1, "name-1");
+            fail();
+        } catch (LockTimeoutException e) {
+        }
+
+        // Lock the second row.
+        txn1.rollback();
+        {
+            TestRow row = table.newRow();
+            row.id(2);
+            row.name("name-2");
+            table.load(txn1, row);
+        }
+
+        Scanner<TestRow> s = table.newScanner(txn2);
+        assertEquals(1, s.row().id());
+
+        try {
+            s.step();
+            fail();
+        } catch (LockTimeoutException e) {
+        }
+
+        Query<TestRow> query = table.query("id == ? && name == ?");
+        assertEquals(2, query.argumentCount());
+        assertNull(query.newScanner(txn2, 1, "xxx").row());
+
+        s = query.newScanner(txn2, 1, "name-1");
+        assertEquals(1, s.row().id());
+
+        query = table.query("id >= ?");
+        s = query.newScanner(txn2, 1);
+        assertEquals(1, s.row().id());
+
+        try {
+            s.step();
+            fail();
+        } catch (LockTimeoutException e) {
+        }
+    }
+
+    private void checkSecondary(StoredTable<TestRow> table) throws Exception {
         var ix = table.viewSecondaryIndex("state");
 
         verify(ix.newScanner(null, "{}"), 1, 5);
         verify(ix.newScanner(null, "{id}"), 1, 5, "id");
-        verify(ix.newScanner(null, "{id, id}"), 1, 5, "id");
+
+        try {
+            ix.newScanner(null, "{id, id}");
+            fail();
+        } catch (IllegalArgumentException e) {
+            assertTrue(e.getMessage().contains("Duplicate projection"));
+        }
+
         verify(ix.newScanner(null, "{name, state}"), 1, 5, "name", "state");
 
         verify(ix.newScanner(null, "{*}"), 1, 5, "id", "name", "path", "state");
-        verify(ix.newScanner(null, "{~id, *}"), 1, 5, "name", "path", "state");
-        verify(ix.newScanner(null, "{*, ~id, ~id}"), 1, 5, "name", "path", "state");
-        verify(ix.newScanner(null, "{~name, ~state, *, *}"), 1, 5, "id", "path");
+
+        verify(ix.newScanner(null, "{~id, *}"), 1, 5, "id", "name", "path", "state");
+
+        try {
+            ix.newScanner(null, "{*, ~id, ~id}");
+            fail();
+        } catch (IllegalArgumentException e) {
+            assertTrue(e.getMessage().contains("already excluded"));
+        }
+
+        verify(ix.newScanner(null, "{*, ~id}"), 1, 5, "name", "path", "state");
+
+        verify(ix.newScanner(null, "{*, ~name, ~state}"), 1, 5, "id", "path");
 
         verify(ix.newScanner(null, "{} name == ?", "name-3"), 3, 3);
         verify(ix.newScanner(null, "{path} name == ?", "name-3"), 3, 3, "path");
         verify(ix.newScanner(null, "{name} id == ?", 3), 3, 3, "name");
         verify(ix.newScanner(null, "{name} id > ?", 3), 4, 5, "name");
-        verify(ix.newScanner
-               (null, "{~path, ~state, *} name == ?", "name-3"), 3, 3, "id", "name");
+        verify(ix.newScanner(null, "{*, ~path, ~state} name == ?", "name-3"), 3, 3, "id", "name");
 
         var ix2 = ix.viewUnjoined();
 
         verify(ix2.newScanner(null, "{}"), 1, 5);
         verify(ix2.newScanner(null, "{id}"), 1, 5, "id");
-        verify(ix2.newScanner(null, "{id, id}"), 1, 5, "id");
         verify(ix2.newScanner(null, "{name, state}"), 1, 5, "name", "state");
 
         verify(ix2.newScanner(null, "{*}"), 1, 5, "id", "name", "state");
-        verify(ix2.newScanner(null, "{~id, *}"), 1, 5, "name", "state");
-        verify(ix2.newScanner(null, "{~id, ~id, *}"), 1, 5, "name", "state");
-        verify(ix2.newScanner(null, "{~name, ~state, *, id}"), 1, 5, "id");
+        verify(ix2.newScanner(null, "{*, ~id}"), 1, 5, "name", "state");
+        verify(ix2.newScanner(null, "{*, ~name, ~state, id}"), 1, 5, "id");
 
         verify(ix2.newScanner(null, "{} name == ?", "name-3"), 3, 3);
         try {
             ix2.newScanner(null, "{path} name == ?", "name-3");
             fail();
         } catch (IllegalArgumentException e) {
-            assertTrue(e.getMessage().contains("unavailable for selection: path"));
+            assertTrue(e.getMessage().contains("Unknown column"));
+            assertTrue(e.getMessage().contains("path"));
         }
         verify(ix2.newScanner(null, "{name} id == ?", 3), 3, 3, "name");
         verify(ix2.newScanner(null, "{name} id > ?", 3), 4, 5, "name");
-        verify(ix2.newScanner
-               (null, "{~path, ~state, *} name == ?", "name-3"), 3, 3, "id", "name");
+        verify(ix2.newScanner(null, "{*, ~state} name == ?", "name-3"), 3, 3, "id", "name");
     }
 
     private static void verify(Scanner<TestRow> s, int start, int end, String... expect)
@@ -151,7 +243,7 @@ public class ScannerTest {
                     case "path" -> row.path();
                     case "state" -> row.state();
                     }
-                    fail(name);
+                    fail("" + row + ", " + name);
                 } catch (UnsetColumnException e) {
                     // Expected.
                 }

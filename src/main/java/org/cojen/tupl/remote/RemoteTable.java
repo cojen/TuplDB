@@ -47,7 +47,10 @@ public interface RemoteTable extends Remote, Disposable {
     public Pipe newUpdater(RemoteTransaction txn, Pipe pipe, String query, Object... args)
         throws IOException;
 
-    public void query(String query) throws IOException;
+    /**
+     * @return argCount
+     */
+    public int query(String query) throws IOException;
 
     public long deleteAll(RemoteTransaction txn, String query, Object... args) throws IOException;
 

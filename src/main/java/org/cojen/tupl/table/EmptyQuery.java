@@ -29,11 +29,20 @@ import org.cojen.tupl.diag.QueryPlan;
  * @author Brian S. O'Neill
  */
 public final class EmptyQuery<R> implements Query<R> {
-    public static final EmptyQuery THE = new EmptyQuery();
+    private final Class<R> mRowType;
 
-    @SuppressWarnings("unchecked")
-    public static <R> EmptyQuery<R> the() {
-        return THE;
+    public EmptyQuery(Class<R> rowType) {
+        mRowType = rowType;
+    }
+
+    @Override
+    public Class<R> rowType() {
+        return mRowType;
+    }
+
+    @Override
+    public int argumentCount() {
+        return 0;
     }
 
     @Override

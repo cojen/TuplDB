@@ -159,7 +159,7 @@ public class ColumnInfo implements Cloneable {
         return isUnsigned(typeCode);
     }
 
-    static boolean isUnsigned(int typeCode) {
+    public static boolean isUnsigned(int typeCode) {
         return plainTypeCode(typeCode) < 0b01000;
     }
 
@@ -167,8 +167,20 @@ public class ColumnInfo implements Cloneable {
         return isUnsignedInteger(typeCode);
     }
 
-    static boolean isUnsignedInteger(int typeCode) {
+    public static boolean isUnsignedInteger(int typeCode) {
         return isUnsigned(typeCode) && plainTypeCode(typeCode) != TYPE_BOOLEAN;
+    }
+
+    /**
+     * Returns true for integer primitive types and BigInteger. Can also be an array.
+     */
+    public boolean isInteger() {
+        return isInteger(typeCode);
+    }
+
+    public static boolean isInteger(int typeCode) {
+        int plain = plainTypeCode(typeCode);
+        return (TYPE_UBYTE <= plain && plain <= TYPE_LONG) || plain == TYPE_BIG_INTEGER;
     }
 
     public boolean isNullLow() {
@@ -215,6 +227,20 @@ public class ColumnInfo implements Cloneable {
      */
     public static boolean isPrimitive(int typeCode) {
         return (typeCode & ~TYPE_DESCENDING) < 0b11000;
+    }
+
+    /**
+     * @return true if type is primitive and possibly nullable
+     */
+    public boolean isPrimitiveOrBoxed() {
+        return isPrimitiveOrBoxed(typeCode);
+    }
+
+    /**
+     * @return true if type is primitive and possibly nullable
+     */
+    public static boolean isPrimitiveOrBoxed(int typeCode) {
+        return (typeCode & ~(TYPE_DESCENDING | TYPE_NULLABLE)) < 0b11000;
     }
 
     /**
@@ -454,6 +480,20 @@ public class ColumnInfo implements Cloneable {
         }
 
         return info;
+    }
+
+    public String typeName() {
+        if (type == null) {
+            assignType();
+        }
+
+        String name = type.getSimpleName();
+
+        if (isUnsignedInteger()) {
+            return "unsigned " + name;
+        } else {
+            return name;
+        }
     }
 
     @Override

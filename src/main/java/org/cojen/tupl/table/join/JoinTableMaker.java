@@ -19,19 +19,34 @@ package org.cojen.tupl.table.join;
 
 import java.io.IOException;
 
+import java.lang.invoke.CallSite;
+import java.lang.invoke.ConstantCallSite;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
 
-import org.cojen.maker.ClassMaker;
-import org.cojen.maker.MethodMaker;
+import java.util.Map;
+import java.util.TreeMap;
+import java.util.Set;
 
+import org.cojen.maker.ClassMaker;
+import org.cojen.maker.Label;
+import org.cojen.maker.MethodMaker;
+import org.cojen.maker.Variable;
+
+import org.cojen.tupl.ColumnProcessor;
 import org.cojen.tupl.Database;
+import org.cojen.tupl.Nullable;
+import org.cojen.tupl.Row;
 import org.cojen.tupl.Table;
+
+import org.cojen.tupl.core.TupleKey;
 
 import org.cojen.tupl.table.ColumnInfo;
 import org.cojen.tupl.table.RowGen;
 import org.cojen.tupl.table.RowInfo;
+import org.cojen.tupl.table.RowMethodsMaker;
 import org.cojen.tupl.table.RowUtils;
+import org.cojen.tupl.table.WeakCache;
 import org.cojen.tupl.table.WeakClassCache;
 
 import org.cojen.tupl.util.Canonicalizer;
@@ -44,6 +59,7 @@ import org.cojen.tupl.util.Canonicalizer;
 public class JoinTableMaker {
     private static final WeakClassCache<Class<?>> cClassCache;
     private static final Canonicalizer cInstanceCache;
+    private static final WeakCache<TupleKey, Class<Row>, Map<String, ColumnInfo>> cTypeCache;
 
     static {
         cClassCache = new WeakClassCache<>() {
@@ -54,6 +70,33 @@ public class JoinTableMaker {
         };
 
         cInstanceCache = new Canonicalizer();
+
+        cTypeCache = new WeakCache<>() {
+            @Override
+            protected Class<Row> newValue(TupleKey key, Map<String, ColumnInfo> columns) {
+                return makeJoinTypeClass(columns);
+            }
+        };
+    }
+
+    @SuppressWarnings("unchecked")
+    private static Class<Row> makeJoinTypeClass(Map<String, ColumnInfo> columns) {
+        ClassMaker cm = RowGen.beginClassMakerForRowType
+            (JoinTableMaker.class.getPackageName(), "Join");
+        cm.implement(Row.class);
+        cm.sourceFile(JoinTableMaker.class.getSimpleName());
+
+        for (ColumnInfo ci : columns.values()) {
+            MethodMaker mm = cm.addMethod(ci.type, ci.name).public_().abstract_();
+
+            if (ci.isNullable()) {
+                mm.addAnnotation(Nullable.class, true);
+            }
+
+            cm.addMethod(null, ci.name, ci.type).public_().abstract_();
+        }
+
+        return (Class<Row>) cm.finish();
     }
 
     /**
@@ -62,6 +105,34 @@ public class JoinTableMaker {
     public static <J> JoinTable<J> join(Class<J> joinType, String specStr, Table<?>... tables) {
         JoinSpec spec = JoinSpec.parse(RowInfo.find(joinType), specStr, tables);
         return join(joinType, spec);
+    }
+
+    /**
+     * @see Table#join
+     */
+    public static JoinTable<Row> join(String specStr, Table<?>... tables) {
+        var definedColumns = new TreeMap<String, ColumnInfo>();
+        JoinSpec spec = JoinSpec.parse(specStr, definedColumns, tables);
+
+        TupleKey cacheKey;
+        {
+            var pairs = new Object[definedColumns.size() * 2];
+            int i = 0;
+            for (ColumnInfo column : definedColumns.values()) {
+                String name = column.name.intern();
+                if (column.isNullable()) {
+                    pairs[i++] = name;
+                    pairs[i++] = column.type;
+                } else {
+                    pairs[i++] = column.type;
+                    pairs[i++] = name;
+                }
+            }
+            assert i == pairs.length;
+            cacheKey = TupleKey.make.with(pairs);
+        }
+
+        return join(cTypeCache.obtain(cacheKey, definedColumns), spec);
     }
 
     /**
@@ -169,6 +240,10 @@ public class JoinTableMaker {
             }
         }
 
+        // Add the cleanRow method. It doesn't need to do anything because there's no such
+        // thing as a dirty column in a join row.
+        mClassMaker.addMethod(null, "cleanRow", Object.class).public_();
+
         // Add the copyRow method.
         {
             MethodMaker mm = mClassMaker.addMethod
@@ -178,6 +253,22 @@ public class JoinTableMaker {
             for (ColumnInfo info : mJoinInfo.allColumns.values()) {
                 dstRowVar.invoke(info.name, srcRowVar.invoke(info.name));
             }
+        }
+
+        // Add the isSet method.
+        {
+            MethodMaker mm = mClassMaker.addMethod
+                (boolean.class, "isSet", Object.class, String.class).public_();
+            var indy = mm.var(JoinTableMaker.class).indy("indyIsSet", mJoinType);
+            mm.return_(indy.invoke(boolean.class, "isSet", null, mm.param(0), mm.param(1)));
+        }
+
+        // Add the forEach method.
+        {
+            MethodMaker mm = mClassMaker.addMethod
+                (null, "forEach", Object.class, ColumnProcessor.class).public_();
+            var indy = mm.var(JoinTableMaker.class).indy("indyForEach", mJoinType);
+            indy.invoke(null, "forEach", null, mm.param(0), mm.param(1));
         }
 
         return mClassMaker.finish();
@@ -192,5 +283,65 @@ public class JoinTableMaker {
         var tablesVar = mm.param(2);
 
         mm.invokeSuperConstructor(specStrVar, specVar, tablesVar);
+    }
+
+    public static CallSite indyIsSet(MethodHandles.Lookup lookup, String name, MethodType mt,
+                                     Class<?> rowType)
+    {
+        RowInfo rowInfo = RowInfo.find(rowType);
+
+        MethodMaker mm = MethodMaker.begin(lookup, name, mt);
+
+        var rowVar = mm.param(0).cast(rowType);
+        var colName = mm.param(1);
+
+        String[] cases = rowInfo.allColumns.keySet().toArray(String[]::new);
+        var labels = new Label[cases.length];
+
+        for (int i=0; i<labels.length; i++) {
+            labels[i] = mm.label();
+        }
+
+        var notFound = mm.label();
+        colName.switch_(notFound, cases, labels);
+
+        Variable valueVar = mm.var(Object.class);
+        Label check = mm.label();
+
+        for (int i=0; i<cases.length; i++) {
+            labels[i].here();
+            valueVar.set(rowVar.invoke(cases[i]));
+            check.goto_();
+        }
+
+        check.here();
+        mm.return_(valueVar.ne(null));
+
+        notFound.here();
+        mm.new_(IllegalArgumentException.class, mm.concat("Unknown column: ", colName)).throw_();
+
+        return new ConstantCallSite(mm.finish());
+    }
+
+    public static CallSite indyForEach(MethodHandles.Lookup lookup, String name, MethodType mt,
+                                       Class<?> rowType)
+    {
+        RowInfo rowInfo = RowInfo.find(rowType);
+
+        MethodMaker mm = MethodMaker.begin(lookup, name, mt);
+
+        var rowVar = mm.param(0).cast(rowType);
+        var consumerVar = mm.param(1);
+
+        for (String colName : rowInfo.allColumns.keySet()) {
+            Label next = mm.label();
+            var value = rowVar.invoke(colName);
+            value.ifEq(null, next);
+            String realName = RowMethodsMaker.unescape(colName);
+            consumerVar.invoke("accept", rowVar, realName, value);
+            next.here();
+        }
+
+        return new ConstantCallSite(mm.finish());
     }
 }

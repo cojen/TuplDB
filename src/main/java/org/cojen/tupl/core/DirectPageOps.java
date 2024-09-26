@@ -36,6 +36,8 @@ import java.util.zip.CRC32;
 import org.cojen.tupl.ClosedIndexException;
 import org.cojen.tupl.DeletedIndexException;
 
+import org.cojen.tupl.diag.EventListener;
+
 import org.cojen.tupl.io.MappedPageArray;
 
 import org.cojen.tupl.util.Latch;
@@ -51,10 +53,11 @@ import static org.cojen.tupl.core.Node.*;
  * @author Brian S O'Neill
  */
 public final class DirectPageOps {
-    private static final sun.misc.Unsafe UNSAFE;
-    private static final long BYTE_ARRAY_OFFSET;
+    //private static final sun.misc.Unsafe UNSAFE;
+    //private static final long BYTE_ARRAY_OFFSET;
 
     static {
+        /*
         try {
             var theUnsafe = sun.misc.Unsafe.class.getDeclaredField("theUnsafe");
             theUnsafe.setAccessible(true);
@@ -63,6 +66,7 @@ public final class DirectPageOps {
         } catch (Throwable e) {
             throw Utils.rethrow(e);
         }
+        */
     }
 
     static final int NODE_OVERHEAD = 100 - 24; // 6 fewer fields
@@ -219,9 +223,9 @@ public final class DirectPageOps {
 
         private long mNextPtr;
 
-        Arena(int pageSize, long pageCount) throws IOException {
+        Arena(int pageSize, long pageCount, EventListener listener) throws IOException {
             pageSize = Math.abs(pageSize);
-            mPageArray = MappedPageArray.open(pageSize, pageCount, null, null);
+            mPageArray = MappedPageArray.open(pageSize, pageCount, null, null, listener);
             mStartPtr = mPageArray.directPagePointer(0);
             mEndPtr = mStartPtr + (pageSize * pageCount);
             synchronized (this) {
@@ -358,9 +362,11 @@ public final class DirectPageOps {
         }
     }
 
-    static Object p_arenaAlloc(int pageSize, long pageCount) throws IOException {
+    static Object p_arenaAlloc(int pageSize, long pageCount, EventListener listener)
+        throws IOException
+    {
         try {
-            var arena = new Arena(pageSize, pageCount);
+            var arena = new Arena(pageSize, pageCount, listener);
             registerArena(arena);
             return arena;
         } catch (UnsupportedOperationException e) {

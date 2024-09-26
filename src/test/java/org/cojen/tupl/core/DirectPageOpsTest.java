@@ -38,7 +38,7 @@ public class DirectPageOpsTest {
         assumeTrue(MappedPageArray.isSupported());
 
         final int count = 10;
-        Object arena = DirectPageOps.p_arenaAlloc(4096, count);
+        Object arena = DirectPageOps.p_arenaAlloc(4096, count, null);
 
         try {
             long ptr = DirectPageOps.p_callocPage(arena, 100);
@@ -72,15 +72,15 @@ public class DirectPageOpsTest {
         assumeTrue(MappedPageArray.isSupported());
 
         var p1 = new long[10];
-        Object a1 = DirectPageOps.p_arenaAlloc(4096, p1.length);
+        Object a1 = DirectPageOps.p_arenaAlloc(4096, p1.length, null);
         allocAll(a1, p1, 4096);
 
         var p2 = new long[20];
-        Object a2 = DirectPageOps.p_arenaAlloc(4096, p2.length);
+        Object a2 = DirectPageOps.p_arenaAlloc(4096, p2.length, null);
         allocAll(a2, p2, 4096);
 
         var p3 = new long[30];
-        Object a3 = DirectPageOps.p_arenaAlloc(4096, p3.length);
+        Object a3 = DirectPageOps.p_arenaAlloc(4096, p3.length, null);
         allocAll(a3, p3, 4096);
 
         for (long p : p1) assertTrue(DirectPageOps.inArena(p));

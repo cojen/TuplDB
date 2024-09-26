@@ -28,8 +28,10 @@ import org.cojen.dirmi.ClosedException;
 import org.cojen.dirmi.Pipe;
 import org.cojen.dirmi.RemoteException;
 
+import org.cojen.tupl.ColumnProcessor;
 import org.cojen.tupl.DurabilityMode;
 import org.cojen.tupl.Query;
+import org.cojen.tupl.Row;
 import org.cojen.tupl.Scanner;
 import org.cojen.tupl.Table;
 import org.cojen.tupl.Transaction;
@@ -112,6 +114,11 @@ final class ClientTable<R> implements Table<R> {
     }
 
     @Override
+    public void forEach(R row, ColumnProcessor<? super R> action) {
+        mHelper.forEach(row, action);
+    }
+
+    @Override
     public Scanner<R> newScanner(R row, Transaction txn) throws IOException {
         return newScanner(mRemote.newScanner(mDb.remoteTransaction(txn), null), row);
     }
@@ -126,17 +133,7 @@ final class ClientTable<R> implements Table<R> {
     Scanner<R> newScanner(Pipe pipe, R row) throws IOException {
         try {
             pipe.flush();
-
-            return new RowReader<R, Pipe>(mType, pipe, row) {
-                @Override
-                protected void close(Pipe pipe, boolean finished) throws IOException {
-                    if (finished) {
-                        pipe.recycle();
-                    } else {
-                        pipe.close();
-                    }
-                }
-            };
+            return new RowReader<R>(mType, pipe, row);
         } catch (IOException e) {
             Utils.closeQuietly(pipe);
             throw e;
@@ -144,13 +141,15 @@ final class ClientTable<R> implements Table<R> {
     }
 
     @Override
-    public Updater<R> newUpdater(Transaction txn) throws IOException {
-        return newUpdater(mRemote.newUpdater(mDb.remoteTransaction(txn), null), null);
+    public Updater<R> newUpdater(R row, Transaction txn) throws IOException {
+        return newUpdater(mRemote.newUpdater(mDb.remoteTransaction(txn), null), row);
     }
 
     @Override
-    public Updater<R> newUpdater(Transaction txn, String query, Object... args) throws IOException {
-        return newUpdater(mRemote.newUpdater(mDb.remoteTransaction(txn), null, query, args), null);
+    public Updater<R> newUpdater(R row, Transaction txn, String query, Object... args)
+        throws IOException
+    {
+        return newUpdater(mRemote.newUpdater(mDb.remoteTransaction(txn), null, query, args), row);
     }
 
     ClientUpdater<R> newUpdater(Pipe pipe, R row) throws IOException {
@@ -193,8 +192,8 @@ final class ClientTable<R> implements Table<R> {
         // the server needs to be able to release the objects when memory is low. It will need
         // to use a SoftReference and some way of disposing the remote object in a way that
         // preserves restorability.
-        mRemote.query(query);
-        return new ClientQuery<>(this, query);
+        int argCount = mRemote.query(query);
+        return new ClientQuery<>(this, query, argCount);
     }
 
     @Override
@@ -277,6 +276,20 @@ final class ClientTable<R> implements Table<R> {
     @Override
     public boolean tryDelete(Transaction txn, R row) throws IOException {
         return mHelper.tryDelete(row, proxy().tryDelete(mDb.remoteTransaction(txn), null));
+    }
+
+    @Override
+    public <D> Table<D> derive(Class<D> derivedType, String query, Object... args)
+        throws IOException
+    {
+        // FIXME: derive
+        throw null;
+    }
+
+    @Override
+    public Table<Row> derive(String query, Object... args) throws IOException {
+        // FIXME: Should derive on the server side.
+        throw null;
     }
 
     private RemoteTableProxy proxy() throws IOException {

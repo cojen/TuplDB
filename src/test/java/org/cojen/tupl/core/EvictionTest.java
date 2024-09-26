@@ -35,8 +35,6 @@ import org.junit.runners.Parameterized.Parameters;
 
 import org.cojen.tupl.*;
 
-import org.cojen.tupl.diag.VerificationObserver;
-
 @RunWith(Parameterized.class)
 @net.jcip.annotations.NotThreadSafe
 public class EvictionTest {
@@ -163,11 +161,8 @@ public class EvictionTest {
         assertEquals(0, evictionFilter.mValues.size());
         txn.reset();
         
-        var observer = new VerificationObserver();
-        ix.verify(observer);
-        assertFalse(observer.failed);
+        assertTrue(ix.verify(null));
     }
-
 
     private String textOfLength(int prefix, char c, int len) {
         len-=6;

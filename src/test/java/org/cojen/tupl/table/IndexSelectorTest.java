@@ -22,7 +22,8 @@ import static org.junit.Assert.*;
 
 import org.cojen.tupl.*;
 
-import org.cojen.tupl.table.filter.Parser;
+import org.cojen.tupl.table.expr.Parser;
+
 import org.cojen.tupl.table.filter.QuerySpec;
 
 /**
@@ -90,11 +91,14 @@ public class IndexSelectorTest {
 
         verify("{c, b} c != ? || b == ? || d == ?",
                "+d+c+b+id", "{c, b} c != ?1 || b == ?2 || d == ?3");
+
+        // Note: The expression evaluation order is swapped because the column-to-column
+        // comparison is less likely to throw an exception at runtime. See BinaryOpExpr.make.
         verify("{c, b} c != ? || b == ? || d == c",
-               "+d+c+b+id", "{c, b} c != ?1 || b == ?2 || d == c");
+               "+d+c+b+id", "{c, b} d == c || c != ?1 || b == ?2");
         verify("{c, b} c != ? || b == ? || d == e",
-               "+id", "{c, b} c != ?1 || b == ?2 || d == e");
-        verify("{*} c != ? || b == ? || d == e", "+id", "c != ?1 || b == ?2 || d == e");
+               "+id", "{c, b} d == e || c != ?1 || b == ?2");
+        verify("{*} c != ? || b == ? || d == e", "+id", "d == e || c != ?1 || b == ?2");
 
         verify("a == ? || a == ?", "+a+id", "a == ?1 || a == ?2");
         verify("a == ? || b == ? || a == ?",
@@ -173,9 +177,11 @@ public class IndexSelectorTest {
         verify("c == ? && e < ? && a >= ?", "+c-e+id", "c == ?1 && e < ?2 && a >= ?3");
         verify("c == ? && a > ? && e <= ?", "+c+a+id", "c == ?1 && a > ?2 && e <= ?3");
 
-        verify("c == ? && a == d", "+c+a+id", "c == ?1 && a == d");
-        verify("c == ? && a == e", "+c+a+id", "c == ?1 && a == e");
-        verify("c == ? && e == a", "+c-e+id", "c == ?1 && e == a");
+        // Note: The expression evaluation order is swapped because the column-to-column
+        // comparison is less likely to throw an exception at runtime. See BinaryOpExpr.make.
+        verify("c == ? && a == d", "+c+a+id", "a == d && c == ?1");
+        verify("c == ? && a == e", "+c+a+id", "a == e && c == ?1");
+        verify("c == ? && e == a", "+c-e+id", "e == a && c == ?1");
 
         verify("e != ? && c > ? && c < ?", "+c-e+id", "e != ?1 && c > ?2 && c < ?3");
         verify("e != ? && c > ? && c < ? && c >= ?",
@@ -258,10 +264,12 @@ public class IndexSelectorTest {
     public static interface Type4 extends Type1 {
     }
 
+    private Class<?> mRowType;
     private RowInfo mInfo;
 
     private void withType(Class<?> type) {
         mInfo = RowInfo.find(type);
+        mRowType = type;
     }
 
     /**
@@ -291,7 +299,7 @@ public class IndexSelectorTest {
     }
 
     private QuerySpec parse(String filter) {
-        return new Parser(mInfo.allColumns, filter).parseQuery(null);
+        return Parser.parseQuerySpec(mRowType, filter);
     }
 
     private <R> IndexSelector<R> selector(String filter) throws Exception {

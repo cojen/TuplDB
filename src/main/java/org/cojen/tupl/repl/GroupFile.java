@@ -564,7 +564,7 @@ final class GroupFile extends Latch {
             releaseExclusive();
         }
 
-        // No need to check if delete failed.
+        // No need to check if the delete failed.
         oldFile.delete();
 
         return true;
@@ -1164,7 +1164,7 @@ final class GroupFile extends Latch {
 
         swapFiles(oldFile, newFile);
 
-        // No need to check if delete failed.
+        // No need to check if the delete failed.
         oldFile.delete();
     }
 

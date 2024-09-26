@@ -136,8 +136,8 @@ public class CodeUtils {
      * UnsetColumnException or NullPointerException (NPE is still thrown if initial row is null)
      * @return a local Variable or a Field
      */
-    public static Variable getColumnValue(Variable rowVar, ColumnInfo ci, boolean noException)
-    {
+    /*
+    public static Variable getColumnValue(Variable rowVar, ColumnInfo ci, boolean noException) {
         String prefix = ci.prefix();
 
         if (prefix == null && noException && ci.isScalarType()
@@ -190,6 +190,7 @@ public class CodeUtils {
 
         return columnVar;
     }
+    */
 
     /**
      * Generates code which follows a path to assign a column value. The generated code might
@@ -197,6 +198,7 @@ public class CodeUtils {
      *
      * @param rowVar can be a row type or row class
      */
+    /*
     public static void setColumnValue(Variable rowVar, ColumnInfo ci, Variable columnVar) {
         for (String prefix = ci.prefix(); prefix != null; prefix = ci.prefix()) {
             rowVar = rowVar.invoke(prefix);
@@ -205,4 +207,5 @@ public class CodeUtils {
         }
         rowVar.invoke(ci.name, columnVar);
     }
+    */
 }

@@ -86,7 +86,7 @@ public class IndexLockTest {
         // A Scanner cannot start when an open transaction has inserted a row into the range
         // that will be scanned.
 
-        var table = (BaseTable<R>) mDatabase.openTable(type);
+        var table = (StoredTable<R>) mDatabase.openTable(type);
 
         fill(table, 0, 3);
 
@@ -868,7 +868,7 @@ public class IndexLockTest {
         // entry is actually inserted, then this test should fail unless special attention is
         // given to covering indexes.
 
-        var table = (BaseTable<TestRow4>) mDatabase.openTable(TestRow4.class);
+        var table = (StoredTable<TestRow4>) mDatabase.openTable(TestRow4.class);
 
         for (int i=1; i<=3; i++) {
             TestRow4 row = table.newRow();
@@ -923,7 +923,7 @@ public class IndexLockTest {
         // before updating secondaries, and then acquire an exclusive row lock at the end.
         // This technique doesn't prevent deadlocks when using UPGRADABLE_READ, however.
 
-        var table = (BaseTable<TestRow2>) mDatabase.openTable(TestRow2.class);
+        var table = (StoredTable<TestRow2>) mDatabase.openTable(TestRow2.class);
         Table<TestRow2> ix = table.viewSecondaryIndex("name");
 
         fill(table, 1, 9);
@@ -988,7 +988,7 @@ public class IndexLockTest {
     public void filterLockRelease() throws Exception {
         // Test that secondary and primary row locks are released when row is filtered out.
 
-        var table = (BaseTable<TestRow3>) mDatabase.openTable(TestRow3.class);
+        var table = (StoredTable<TestRow3>) mDatabase.openTable(TestRow3.class);
         Table<TestRow3> nameIx = table.viewSecondaryIndex("name");
 
         for (int i=1; i<=3; i++) {
@@ -1062,7 +1062,7 @@ public class IndexLockTest {
         // Similar test as filterLockRelease, except the locks were already held before the
         // scanner started. They should be retained even when filtered out.
 
-        var table = (BaseTable<TestRow3>) mDatabase.openTable(TestRow3.class);
+        var table = (StoredTable<TestRow3>) mDatabase.openTable(TestRow3.class);
         Table<TestRow3> nameIx = table.viewSecondaryIndex("name");
 
         for (int i=1; i<=3; i++) {
@@ -1118,6 +1118,15 @@ public class IndexLockTest {
 
     @Test
     public void joinNullTxn() throws Exception {
+        joinNullTxn(false);
+    }
+
+    @Test
+    public void joinNullTxnUpdater() throws Exception {
+        joinNullTxn(true);
+    }
+
+    private void joinNullTxn(boolean withUpdater) throws Exception {
         // Test that a scanner over a secondary index with a null transaction acquires the
         // secondary lock first, and then acquires the primary lock while the secondary lock is
         // still held.
@@ -1128,8 +1137,8 @@ public class IndexLockTest {
                                   .lockTimeout(5, TimeUnit.SECONDS));
 
         Index tableSource = mDatabase.openIndex("test");
-        var table = (BaseTable<TestRow2>) tableSource.asTable(TestRow2.class);
-        var nameIx = (BaseTable<TestRow2>) table.viewSecondaryIndex("name");
+        var table = (StoredTable<TestRow2>) tableSource.asTable(TestRow2.class);
+        var nameIx = (StoredTable<TestRow2>) table.viewSecondaryIndex("name");
 
         Index nameIxSource = nameIx.mSource;
 
@@ -1154,10 +1163,18 @@ public class IndexLockTest {
         nameIxSource.lockExclusive(txn1, sk2);
 
         // Should be blocked on the secondary key lock until txn1 is reset.
-        Waiter w1 = start(() -> {
-            var scanner = nameIx.newScanner(null, "name == ?", "name-2");
-            fail("Obtained scanner instance: " + scanner + ", " + scanner.row());
-        }, "org.cojen.tupl.core.Lock", "tryLockShared");
+        Waiter w1;
+        if (!withUpdater) {
+            w1 = start(() -> {
+                var scanner = nameIx.newScanner(null, "name == ?", "name-2");
+                fail("Obtained scanner instance: " + scanner + ", " + scanner.row());
+            }, "org.cojen.tupl.core.Lock", "tryLockShared");
+        } else {
+            w1 = start(() -> {
+                var updater = nameIx.newUpdater(null, "name == ?", "name-2");
+                fail("Obtained updater instance: " + updater + ", " + updater.row());
+            }, "org.cojen.tupl.core.Lock", "tryLockUpgradable");
+        }
 
         assertEquals(Thread.State.TIMED_WAITING, w1.getState());
 

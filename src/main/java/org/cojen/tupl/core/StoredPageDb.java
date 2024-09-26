@@ -35,6 +35,7 @@ import java.util.function.Supplier;
 
 import java.util.zip.Checksum;
 
+import org.cojen.tupl.ChecksumException;
 import org.cojen.tupl.CorruptDatabaseException;
 import org.cojen.tupl.DatabaseException;
 import org.cojen.tupl.IncompleteRestoreException;
@@ -117,6 +118,9 @@ final class StoredPageDb extends PageDb {
     private int mCommitNumber;
 
     private final long mDatabaseId;
+
+    // Is non-zero only when the header was restored from a copy.
+    private int mHeaderOffset;
 
     /**
      * @param debugListener optional
@@ -208,12 +212,18 @@ final class StoredPageDb extends PageDb {
     private static PageArray decorate(PageArray pa,
                                       Supplier<Checksum> checksumFactory, Crypto crypto)
     {
-        if (checksumFactory != null) {
-            pa = ChecksumPageArray.open(pa, checksumFactory);
-        }
         if (crypto != null) {
             pa = new CryptoPageArray(pa, crypto);
         }
+
+        if (checksumFactory != null) {
+            // If encryption is also enabled, the checksum applies to the plaintext, and the
+            // checksum value gets encrypted. This provides some protection against tampering
+            // because the checksum value needs to change too, but it cannot be calculated
+            // without knowing the plaintext first.
+            pa = ChecksumPageArray.open(pa, checksumFactory);
+        }
+
         return pa;
     }
 
@@ -264,26 +274,26 @@ final class StoredPageDb extends PageDb {
 
                 try {
                     final /*P*/ byte[] header;
+                    final int headerOffset;
                     final int commitNumber;
                     boolean issues = false;
+
                     findHeader: {
-                        int pageSize0;
+                        int headerOffset0, headerOffset1;
                         int commitNumber0, commitNumber1;
-                        CorruptDatabaseException ex0;
+                        int pageSize0;
+                        ChecksumException ex0;
 
                         try {
-                            header0 = readHeader(0);
+                            header0 = readHeader(debugListener, 0);
+                            headerOffset0 = mHeaderOffset;
                             commitNumber0 = p_intGetLE(header0, I_COMMIT_NUMBER);
                             pageSize0 = p_intGetLE(header0, I_PAGE_SIZE);
                             ex0 = null;
-                        } catch (IncompleteRestoreException e) {
-                            throw e;
-                        } catch (CorruptDatabaseException e) {
-                            if (debugListener != null) {
-                                debugListener.notify(EventType.DEBUG, e.toString());
-                            }
+                        } catch (ChecksumException e) {
                             issues = true;
                             header0 = p_null();
+                            headerOffset0 = 0;
                             commitNumber0 = -1;
                             pageSize0 = pageSize;
                             ex0 = e;
@@ -294,20 +304,17 @@ final class StoredPageDb extends PageDb {
                         }
 
                         try {
-                            header1 = readHeader(1);
+                            header1 = readHeader(debugListener, 1);
+                            headerOffset1 = mHeaderOffset;
                             commitNumber1 = p_intGetLE(header1, I_COMMIT_NUMBER);
-                        } catch (IncompleteRestoreException e) {
-                            throw e;
-                        } catch (CorruptDatabaseException e) {
+                        } catch (ChecksumException e) {
                             if (ex0 != null) {
                                 // File is completely unusable.
                                 throw ex0;
                             }
-                            if (debugListener != null) {
-                                debugListener.notify(EventType.DEBUG, e.toString());
-                            }
                             issues = true;
                             header = header0;
+                            headerOffset = headerOffset0;
                             commitNumber = commitNumber0;
                             break findHeader;
                         }
@@ -320,15 +327,18 @@ final class StoredPageDb extends PageDb {
 
                         if (header0 == p_null()) {
                             header = header1;
+                            headerOffset = headerOffset1;
                             commitNumber = commitNumber1;
                         } else {
                             // Modulo comparison.
                             int diff = commitNumber1 - commitNumber0;
                             if (diff > 0) {
                                 header = header1;
+                                headerOffset = headerOffset1;
                                 commitNumber = commitNumber1;
                             } else if (diff < 0) {
                                 header = header0;
+                                headerOffset = headerOffset0;
                                 commitNumber = commitNumber0;
                             } else {
                                 throw new CorruptDatabaseException
@@ -339,6 +349,7 @@ final class StoredPageDb extends PageDb {
 
                     mHeaderLatch.acquireExclusive();
                     mCommitNumber = commitNumber;
+                    mHeaderOffset = headerOffset;
                     mHeaderLatch.releaseExclusive();
 
                     if (debugListener != null) {
@@ -699,7 +710,8 @@ final class StoredPageDb extends PageDb {
         try {
             mHeaderLatch.acquireShared();
             try {
-                readPartial(mCommitNumber & 1, I_EXTRA_DATA, extra, 0, extra.length);
+                int offset = mHeaderOffset + I_EXTRA_DATA;
+                readPartial(mCommitNumber & 1, offset, extra, 0, extra.length);
             } finally {
                 mHeaderLatch.releaseShared();
             }
@@ -761,9 +773,10 @@ final class StoredPageDb extends PageDb {
             long pageCount, redoPos;
             var header = p_allocPage(directPageSize());
             try {
-                mPageArray.readPage(mCommitNumber & 1, header, 0, MINIMUM_PAGE_SIZE);
-                pageCount = PageManager.readTotalPageCount(header, I_MANAGER_HEADER);
-                redoPos = LocalDatabase.readRedoPosition(header, I_EXTRA_DATA); 
+                int offset = mHeaderOffset;
+                mPageArray.readPage(mCommitNumber & 1, header, 0, offset + MINIMUM_PAGE_SIZE);
+                pageCount = PageManager.readTotalPageCount(header, offset + I_MANAGER_HEADER);
+                redoPos = LocalDatabase.readRedoPosition(header, offset + I_EXTRA_DATA); 
             } finally {
                 p_delete(header);
             }
@@ -1038,6 +1051,7 @@ final class StoredPageDb extends PageDb {
         try {
             array.writePage(commitNumber & 1, header);
             mCommitNumber = commitNumber;
+            mHeaderOffset = 0;
         } finally {
             mHeaderLatch.releaseExclusive();
         }
@@ -1054,30 +1068,71 @@ final class StoredPageDb extends PageDb {
         return checksum;
     }
 
-    private /*P*/ byte[] readHeader(int id) throws IOException {
+    private /*P*/ byte[] readHeader(EventListener debugListener, int id) throws IOException {
+        mHeaderOffset = 0;
         var header = p_allocPage(directPageSize());
 
+        ChecksumException ex;
+
         try {
-            try {
-                mPageArray.readPage(id, header, 0, MINIMUM_PAGE_SIZE);
-            } catch (EOFException e) {
-                throw new CorruptDatabaseException("File is smaller than expected");
-            }
-
-            checkMagicNumber(p_longGetLE(header, I_MAGIC_NUMBER));
-
-            int checksum = p_intGetLE(header, I_CHECKSUM);
-
-            int newChecksum = setHeaderChecksum(header);
-            if (newChecksum != checksum) {
-                throw new CorruptDatabaseException
-                    ("Header checksum mismatch: " + newChecksum + " != " + checksum);
-            }
-
+            doReadHeader(header, 0, id);
             return header;
+        } catch (ChecksumException e) {
+            if (debugListener != null) {
+                debugListener.notify(EventType.DEBUG, e.toString());
+            }
+            ex = e;
         } catch (Throwable e) {
             p_delete(header);
+            if (e instanceof EOFException) {
+                throw new CorruptDatabaseException("File is smaller than expected");
+            }
             throw e;
+        }
+
+        // Try to restore the header from one of the copies.
+
+        int offset = 0;
+        while (true) {
+            offset += MINIMUM_PAGE_SIZE;
+            if (offset + MINIMUM_PAGE_SIZE > pageSize()) {
+                break;
+            }
+            try {
+                doReadHeader(header, offset, id);
+                mHeaderOffset = offset;
+                return header;
+            } catch (ChecksumException e) {
+                if (debugListener != null) {
+                    debugListener.notify(EventType.DEBUG, e.toString());
+                }
+                // Try another copy.
+            } catch (Throwable e) {
+                break;
+            }
+        }
+
+        // Unable to restore the header.
+        p_delete(header);
+        throw ex;
+    }
+
+    private void doReadHeader(/*P*/ byte[] header, int offset, int id) throws IOException {
+        mPageArray.readPage(id, header, 0, offset + MINIMUM_PAGE_SIZE);
+
+        if (offset != 0) {
+            // A copy of the header was read; move it into position.
+            p_copy(header, offset, header, 0, MINIMUM_PAGE_SIZE);
+        }
+
+        checkMagicNumber(p_longGetLE(header, I_MAGIC_NUMBER));
+
+        int storedChecksum = p_intGetLE(header, I_CHECKSUM);
+
+        int computedChecksum = setHeaderChecksum(header);
+
+        if (storedChecksum != computedChecksum) {
+            throw new ChecksumException(id, storedChecksum, computedChecksum);
         }
     }
 
