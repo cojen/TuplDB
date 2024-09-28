@@ -17,6 +17,8 @@
 
 package org.cojen.tupl.table.expr;
 
+import java.lang.constant.Constable;
+
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.LinkedHashMap;
@@ -392,8 +394,7 @@ public abstract sealed class Expr
 
     public static boolean mustSetExact(Class<?> type, Object value) {
         return value != null && !(value instanceof Variable) && !type.isPrimitive()
-            && !String.class.isAssignableFrom(type)
-            && !Class.class.isAssignableFrom(type);
+            && !Constable.class.isAssignableFrom(type);
     }
 
     @FunctionalInterface
