@@ -1856,7 +1856,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
             }
             var eout = new EncodingOutputStream();
             eout.write(GroupJoiner.OP_ADDRESS);
-            eout.encodeStr(leaderPeer.mAddress.toString());
+            eout.encodeStr(GroupFile.addressToString(leaderPeer.mAddress));
             out.write(eout.toByteArray());
             return false;
         }
