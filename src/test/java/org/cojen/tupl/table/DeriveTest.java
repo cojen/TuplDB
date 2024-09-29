@@ -22,8 +22,6 @@ import static org.junit.Assert.*;
 
 import org.cojen.tupl.*;
 
-import org.cojen.tupl.QueryException;
-
 /**
  * 
  *
@@ -34,19 +32,28 @@ public class DeriveTest {
         org.junit.runner.JUnitCore.main(QueryTest.class.getName());
     }
 
-    private Database mDatabase;
+    protected Database mDb;
+
     private Table<TestRow> mTable;
 
     @Before
     public void before() throws Exception {
-        mDatabase = Database.open(new DatabaseConfig());
-        mTable = mDatabase.openTable(TestRow.class);
+        createTempDb();
+        mTable = mDb.openTable(TestRow.class);
+    }
+
+    protected void createTempDb() throws Exception {
+        mDb = Database.open(new DatabaseConfig());
+    }
+
+    protected boolean isLocalTest() {
+        return true;
     }
 
     @After
     public void teardown() throws Exception {
-        if (mDatabase != null) {
-            mDatabase.close();
+        if (mDb != null) {
+            mDb.close();
         }
     }
 
@@ -80,19 +87,30 @@ public class DeriveTest {
 
         Table<DerivedRow3> derived = mTable.derive(DerivedRow3.class, "{*}");
         assertEquals(DerivedRow3.class, derived.rowType());
-        assertTrue(derived.getClass().getName().toLowerCase().contains("mapped"));
+        if (isLocalTest()) {
+            assertTrue(isMapped(derived));
+        }
 
         try (Scanner<DerivedRow3> s = derived.newScanner(null)) {
             DerivedRow3 row = s.row();
+
             assertEquals(1L, row.id());
             assertEquals(2L, row.a());
             assertEquals("hello", row.b());
             assertEquals("3", row.c());
+
+            assertTrue(s.step() == null);
         }
 
         Table<TestRow> notDerived = mTable.derive(TestRow.class, "{*}");
         assertEquals(TestRow.class, notDerived.rowType());
-        assertFalse(notDerived.getClass().getName().toLowerCase().contains("mapped"));
+        if (isLocalTest()) {
+            assertFalse(isMapped(notDerived));
+        }
+    }
+
+    private static boolean isMapped(Table<?> table) {
+        return table.getClass().getName().toLowerCase().contains("mapped");
     }
 
     @PrimaryKey("id")

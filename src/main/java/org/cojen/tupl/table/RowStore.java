@@ -1647,13 +1647,26 @@ public final class RowStore {
         return info;
     }
 
-    static byte[] secondaryDescriptor(SecondaryInfo info) {
-        return secondaryDescriptor(info, info.isAltKey());
+    /**
+     * Encodes the key and value columns into a descriptor, but doesn't encode the secondary
+     * indexes or alternate keys.
+     */
+    public static byte[] primaryDescriptor(ColumnSet cs) {
+        return EncodedRowInfo.encodeDescriptor('P', cs);
+    }
+
+    /**
+     * Decodes a RowInfo object by parsing a binary descriptor which was created by the
+     * primaryDescriptor method. Secondary indexes and alternate keys aren't decoded.
+     */
+    public static RowInfo primaryRowInfo(String name, byte[] desc) {
+        var info = new RowInfo(name);
+        decodeRowInfo(null, desc, 1, info);
+        return info;
     }
 
     static byte[] secondaryDescriptor(ColumnSet cs, boolean isAltKey) {
-        var encoder = new Encoder(cs.allColumns.size() * 16); // with initial capacity guess
-        return EncodedRowInfo.encodeDescriptor(isAltKey ? 'A' : 'I', encoder, cs);
+        return EncodedRowInfo.encodeDescriptor(isAltKey ? 'A' : 'I', cs);
     }
 
     /**
@@ -1661,11 +1674,17 @@ public final class RowStore {
      * created by EncodedRowInfo.encodeDescriptor or secondaryDescriptor.
      */
     static SecondaryInfo secondaryRowInfo(RowInfo primaryInfo, byte[] desc) {
-        byte type = desc[0];
-        int offset = 1;
+        var info = new SecondaryInfo(primaryInfo, desc[0] == 'A');
+        decodeRowInfo(primaryInfo, desc, 1, info);
+        return info;
+    }
 
-        var info = new SecondaryInfo(primaryInfo, type == 'A');
-
+    /**
+     * @param primaryInfo pass null if decoding a primaryInfo
+     * @param info decoded results go here
+     * @return updated offset
+     */
+    private static int decodeRowInfo(RowInfo primaryInfo, byte[] desc, int offset, RowInfo info) {
         int numKeys = decodePrefixPF(desc, offset);
         offset += lengthPrefixPF(numKeys);
         info.keyColumns = new LinkedHashMap<>(numKeys);
@@ -1688,7 +1707,7 @@ public final class RowStore {
         info.allColumns = new TreeMap<>(info.keyColumns);
         info.allColumns.putAll(info.valueColumns);
 
-        return info;
+        return offset;
     }
 
     /**
@@ -1704,7 +1723,7 @@ public final class RowStore {
         String name = decodeStringUTF(desc, offset, nameLength);
         offset += nameLength;
 
-        ColumnInfo column = primaryInfo.allColumns.get(name);
+        ColumnInfo column = primaryInfo == null ? null : primaryInfo.allColumns.get(name);
 
         makeColumn: {
             if (column == null) {
@@ -2081,7 +2100,7 @@ public final class RowStore {
         EncodedRowInfo(RowInfo info) {
             names = new String[info.allColumns.size()];
             var columnNameMap = new HashMap<String, Integer>();
-            var encoder = new Encoder(names.length * 16); // with initial capacity guess
+            var encoder = new Encoder(names.length * 16); // initial capacity guess
             encoder.writeByte(1); // encoding version
 
             encoder.writePrefixPF(names.length);
@@ -2144,9 +2163,19 @@ public final class RowStore {
         }
 
         /**
-         * Encode a secondary index descriptor.
+         * Encode an index descriptor.
          *
-         * @param type 'A' or 'I'; alternate key descriptors are ordered first
+         * @param type 'A', 'I', or 'P'; alternate key descriptors are ordered first
+         */
+        private static byte[] encodeDescriptor(char type, ColumnSet cs) {
+            var encoder = new Encoder(cs.allColumns.size() * 16); // initial capacity guess
+            return encodeDescriptor('P', encoder, cs);
+        }
+
+        /**
+         * Encode an index descriptor.
+         *
+         * @param type 'A', 'I', or 'P'; alternate key descriptors are ordered first
          */
         private static byte[] encodeDescriptor(char type, Encoder encoder, ColumnSet cs) {
             encoder.reset(0);

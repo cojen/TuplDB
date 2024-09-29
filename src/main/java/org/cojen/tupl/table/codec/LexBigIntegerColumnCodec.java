@@ -17,6 +17,8 @@
 
 package org.cojen.tupl.table.codec;
 
+import java.util.function.Function;
+
 import org.cojen.maker.Label;
 import org.cojen.maker.MethodMaker;
 import org.cojen.maker.Variable;
@@ -58,8 +60,15 @@ final class LexBigIntegerColumnCodec extends BigIntegerColumnCodec {
     }
 
     @Override
-    public void encodePrepare() {
+    public boolean encodePrepare() {
         mBytesVar = maker.var(byte[].class);
+        return true;
+    }
+
+    @Override
+    public void encodeTransfer(ColumnCodec codec, Function<Variable, Variable> transfer) {
+        var dst = (LexBigIntegerColumnCodec) codec;
+        dst.mBytesVar = transfer.apply(mBytesVar);
     }
 
     @Override

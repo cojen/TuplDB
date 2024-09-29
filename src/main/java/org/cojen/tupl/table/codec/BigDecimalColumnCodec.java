@@ -19,6 +19,8 @@ package org.cojen.tupl.table.codec;
 
 import java.math.BigInteger;
 
+import java.util.function.Function;
+
 import org.cojen.maker.Label;
 import org.cojen.maker.MethodMaker;
 import org.cojen.maker.Variable;
@@ -71,10 +73,19 @@ final class BigDecimalColumnCodec extends ColumnCodec {
     }
 
     @Override
-    public void encodePrepare() {
+    public boolean encodePrepare() {
         mScaleVar = maker.var(int.class);
         mUnscaledVar = maker.var(BigInteger.class);
         mUnscaledCodec.encodePrepare();
+        return true;
+    }
+
+    @Override
+    public void encodeTransfer(ColumnCodec codec, Function<Variable, Variable> transfer) {
+        var dst = (BigDecimalColumnCodec) codec;
+        dst.mScaleVar = transfer.apply(mScaleVar);
+        dst.mUnscaledVar = transfer.apply(mUnscaledVar);
+        mUnscaledCodec.encodeTransfer(dst.mUnscaledCodec, transfer);
     }
 
     @Override

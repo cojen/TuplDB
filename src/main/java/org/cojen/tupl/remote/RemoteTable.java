@@ -65,6 +65,10 @@ public interface RemoteTable extends Remote, Disposable {
     public boolean isEmpty() throws IOException;
 
     @Restorable
+    public RemoteTable derive(String typeName, byte[] descriptor, String query, Object... args)
+        throws IOException;
+
+    @Restorable
     public RemoteTableProxy proxy(byte[] descriptor) throws IOException;
 
     @Serialized(filter="java.base/*;org.cojen.tupl.**")

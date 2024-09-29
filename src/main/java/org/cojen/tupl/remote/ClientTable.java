@@ -37,10 +37,14 @@ import org.cojen.tupl.Table;
 import org.cojen.tupl.Transaction;
 import org.cojen.tupl.Updater;
 
+import org.cojen.tupl.core.TupleKey;
+
 import org.cojen.tupl.io.Utils;
 
 import org.cojen.tupl.table.ClientTableHelper;
+import org.cojen.tupl.table.RowInfo;
 import org.cojen.tupl.table.RowReader;
+import org.cojen.tupl.table.RowStore;
 
 /**
  * 
@@ -282,8 +286,16 @@ final class ClientTable<R> implements Table<R> {
     public <D> Table<D> derive(Class<D> derivedType, String query, Object... args)
         throws IOException
     {
-        // FIXME: derive
-        throw null;
+        return ClientCache.get(TupleKey.make.with(this, derivedType, query, args), key -> {
+            try {
+                RowInfo info = RowInfo.find(derivedType);
+                byte[] descriptor = RowStore.primaryDescriptor(info);
+                RemoteTable rtable = mRemote.derive(info.name, descriptor, query, args);
+                return new ClientTable<D>(mDb, rtable, derivedType);
+            } catch (IOException e) {
+                throw Utils.rethrow(e);
+            }
+        });
     }
 
     @Override

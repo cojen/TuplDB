@@ -93,7 +93,7 @@ public final class RowWriter<R> implements RowConsumer<R> {
     }
 
     /**
-     * Header prefix byte:
+     * Writes a prefix possibly followed by the header. Each prefix begins with a format byte:
      *
      *      0: scan terminator
      *      1: same header as before
@@ -102,6 +102,9 @@ public final class RowWriter<R> implements RowConsumer<R> {
      *      4: reserved
      * 5..254: refer to an existing header (id is 0..249)
      *    255: refer to an existing header (is followed by an int id)
+     *
+     * Only formats 1, 2, and 5+ are actually written by this method. The writeTerminator
+     * method writes format 0, and writeTerminalException writes format 3.
      *
      * @see RowHeader
      */
@@ -179,6 +182,11 @@ public final class RowWriter<R> implements RowConsumer<R> {
             writeRowLength(rowLength + 4);
             mOut.writeInt(keyLength | (1 << 31));
         }
+    }
+
+    public <R> void writeRowEncode(R row, int length, Pipe.Encoder<R> encoder) throws IOException {
+        writeRowLength(length);
+        mOut.writeEncode(row, length, encoder);
     }
 
     public void writeBytes(byte[] bytes) throws IOException {

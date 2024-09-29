@@ -17,6 +17,8 @@
 
 package org.cojen.tupl.table.codec;
 
+import java.util.function.Function;
+
 import org.cojen.maker.Label;
 import org.cojen.maker.MethodMaker;
 import org.cojen.maker.Variable;
@@ -46,9 +48,17 @@ final class NullablePrimitiveArrayColumnCodec extends NonNullPrimitiveArrayColum
     }
 
     @Override
-    public void encodePrepare() {
+    public boolean encodePrepare() {
         super.encodePrepare();
         mBytesLengthVar = maker.var(int.class);
+        return true;
+    }
+
+    @Override
+    public void encodeTransfer(ColumnCodec codec, Function<Variable, Variable> transfer) {
+        super.encodeTransfer(codec, transfer);
+        var dst = (NullablePrimitiveArrayColumnCodec) codec;
+        dst.mBytesLengthVar = transfer.apply(mBytesLengthVar);
     }
 
     @Override

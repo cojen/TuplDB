@@ -921,6 +921,27 @@ public class RowInfo extends ColumnSet {
     }
 
     /**
+     * Returns a variant of this RowInfo in which all key columns are treated as value columns,
+     * and it does't have any alternate keys or secondary indexes.
+     */
+    public RowInfo plain() {
+        if (keyColumns.isEmpty() && alternateKeys.isEmpty() && secondaryIndexes.isEmpty()) {
+            return this;
+        }
+
+        var copy = new RowInfo(name);
+
+        copy.keyColumns = Collections.emptyMap();
+        copy.valueColumns = allColumns;
+        copy.allColumns = allColumns;
+
+        copy.alternateKeys = EmptyNavigableSet.the();
+        copy.secondaryIndexes = EmptyNavigableSet.the();
+
+        return copy;
+    }
+
+    /**
      * Makes a row type interface.
      */
     public Class<?> makeRowType(ClassMaker cm) {

@@ -201,7 +201,7 @@ public class RowGen {
     public static ClassMaker beginClassMakerForRowType(String basePackage, String typeName) {
         String name = basePackage + '.' + newSubPackage() + '.' + typeName;
 
-        ClassMaker cm = ClassMaker.begin(name, null, RowGen.MAKER_KEY);
+        ClassMaker cm = ClassMaker.begin(name, null, MAKER_KEY);
         cm.public_().interface_();
 
         // Make synthetic in order for new classes generated via beginClassMaker to use the
