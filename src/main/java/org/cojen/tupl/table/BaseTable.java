@@ -43,7 +43,7 @@ public abstract class BaseTable<R> extends MultiCache<Object, Object, Object, IO
      * binary encoded rows directly.
      */
     public void scanWrite(Transaction txn, Pipe out) throws IOException {
-        var writer = new RowWriter<R>(out);
+        var writer = new RowWriter.ForEncoder<R>(out);
 
         try {
             scanWrite(writer, newScanner(txn));
@@ -63,7 +63,7 @@ public abstract class BaseTable<R> extends MultiCache<Object, Object, Object, IO
     public void scanWrite(Transaction txn, Pipe out, String queryStr, Object... args)
         throws IOException
     {
-        var writer = new RowWriter<R>(out);
+        var writer = new RowWriter.ForEncoder<R>(out);
 
         try {
             scanWrite(writer, newScanner(txn, queryStr, args));
@@ -75,7 +75,7 @@ public abstract class BaseTable<R> extends MultiCache<Object, Object, Object, IO
         writer.writeTerminator();
     }
 
-    private void scanWrite(RowWriter<R> writer, Scanner<R> scanner) throws IOException {
+    private void scanWrite(RowWriter.ForEncoder<R> writer, Scanner<R> scanner) throws IOException {
         try {
             WriteRow<R> wr = WriteRow.find(rowType());
             writer.writeCharacteristics(scanner.characteristics(), scanner.estimateSize());

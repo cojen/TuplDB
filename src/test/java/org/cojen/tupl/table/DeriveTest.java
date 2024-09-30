@@ -107,6 +107,54 @@ public class DeriveTest {
         if (isLocalTest()) {
             assertFalse(isMapped(notDerived));
         }
+
+        derived = mTable.derive(DerivedRow3.class, "{id = id + 100}");
+
+        try (Scanner<DerivedRow3> s = derived.newScanner(null)) {
+            DerivedRow3 row = s.row();
+            assertEquals("{id=101}", row.toString());
+            assertTrue(s.step() == null);
+        }
+
+        try (Scanner<DerivedRow3> s = derived.newScanner(null, "id > ?", 100)) {
+            DerivedRow3 row = s.row();
+            assertEquals("{id=101}", row.toString());
+            assertTrue(s.step() == null);
+        }
+
+        Table<Row> empty = mTable.derive(Row.class, "{}");
+        try (Scanner<Row> s = empty.newScanner(null)) {
+            Row row = s.row();
+            assertEquals("{}", row.toString());
+            assertTrue(s.step() == null);
+        }
+
+        Table<DerivedRowBig> big = mTable.derive
+            (DerivedRowBig.class, "{a00=id, a05=5, a10=10, a16=16, a19=19}");
+        try (Scanner<DerivedRowBig> s = big.newScanner(null)) {
+            DerivedRowBig row = s.row();
+            assertEquals("{a00=1, a05=5, a10=10, a16=16, a19=19}", row.toString());
+            assertTrue(s.step() == null);
+        }
+
+        {
+            TestRow row = mTable.newRow();
+            row.id(2);
+            row.a(12);
+            row.b("world");
+            row.c(13L);
+            mTable.insert(null, row);
+        }
+
+        derived = mTable.derive(DerivedRow3.class, "{+id = id + 200, *}");
+
+        try (Scanner<DerivedRow3> s = derived.newScanner(null)) {
+            DerivedRow3 row = s.row();
+            assertEquals("{id=201, a=2, b=hello, c=3}", row.toString());
+            row = s.step(row);
+            assertEquals("{id=202, a=12, b=world, c=13}", row.toString());
+            assertTrue(s.step() == null);
+        }
     }
 
     private static boolean isMapped(Table<?> table) {
@@ -174,5 +222,67 @@ public class DeriveTest {
         @Nullable
         String c();
         void c(String c);
+    }
+
+    public interface DerivedRowBig {
+        long a00();
+        void a00(long v);
+
+        long a01();
+        void a01(long v);
+
+        long a02();
+        void a02(long v);
+
+        long a03();
+        void a03(long v);
+
+        long a04();
+        void a04(long v);
+
+        long a05();
+        void a05(long v);
+
+        long a06();
+        void a06(long v);
+
+        long a07();
+        void a07(long v);
+
+        long a08();
+        void a08(long v);
+
+        long a09();
+        void a09(long v);
+
+        long a10();
+        void a10(long v);
+
+        long a11();
+        void a11(long v);
+
+        long a12();
+        void a12(long v);
+
+        long a13();
+        void a13(long v);
+
+        long a14();
+        void a14(long v);
+
+        long a15();
+        void a15(long v);
+
+        long a16();
+        void a16(long v);
+
+        long a17();
+        void a17(long v);
+
+        long a18();
+        void a18(long v);
+
+        long a19();
+        void a19(long v);
     }
 }

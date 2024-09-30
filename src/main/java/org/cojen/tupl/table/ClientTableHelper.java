@@ -396,6 +396,11 @@ public abstract class ClientTableHelper<R> implements Table<R> {
             // caller must provide a full key up front.
 
             ColumnCodec[] codecs = rowGen.keyCodecs();
+
+            if (codecs.length == 0) {
+                break auto;
+            }
+
             ColumnInfo tailInfo = codecs[codecs.length - 1].info;
 
             if (tailInfo.type != int.class && tailInfo.type != long.class) {

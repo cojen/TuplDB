@@ -23,11 +23,13 @@ import java.lang.invoke.MethodType;
 
 import java.util.Arrays;
 import java.util.BitSet;
+import java.util.Map;
 
 import org.cojen.dirmi.Pipe;
 
 import org.cojen.maker.Bootstrap;
 import org.cojen.maker.ClassMaker;
+import org.cojen.maker.Label;
 import org.cojen.maker.MethodMaker;
 import org.cojen.maker.Variable;
 
@@ -55,7 +57,7 @@ public abstract class WriteRow<R> {
         return (WriteRow<R>) cCache.obtain(rowType, null);
     }
 
-    public abstract void writeRow(RowWriter writer, R row);
+    public abstract void writeRow(RowWriter.ForEncoder<R> writer, R row);
 
     /**
      * Returns an object suitable for writing resolved row objects. Unset columns aren't
@@ -78,7 +80,7 @@ public abstract class WriteRow<R> {
         mm.invokeSuperConstructor();
         mm.field("_").set(mm.this_());
 
-        mm = cm.addMethod(null, "writeRow", RowWriter.class, Object.class).public_();
+        mm = cm.addMethod(null, "writeRow", RowWriter.ForEncoder.class, Object.class).public_();
 
         var writerVar = mm.param(0);
         var rowVar = mm.param(1).cast(rowClass);
@@ -109,7 +111,7 @@ public abstract class WriteRow<R> {
     /**
      * Used by the makeWriteRow method.
      *
-     * MethodType is void (int state, RowWriter writer, Row row)
+     * MethodType is void (int state, RowWriter.ForEncoder writer, Row row)
      *
      * @param prevStates can be null to indicate an empty array
      */
@@ -121,14 +123,15 @@ public abstract class WriteRow<R> {
             Class<?> rowClass = RowMaker.find(rowType);
 
             MethodMaker mm = MethodMaker.begin
-                (lookup, null, "writeRow", RowWriter.class, rowClass);
+                (lookup, null, "writeRow", RowWriter.ForEncoder.class, rowClass);
 
             var writerVar = mm.param(0);
             var rowVar = mm.param(1).cast(rowClass);
 
             // Note that the "plain" RowInfo is used, in order to encode all columns using the
             // simpler "value" format instead of the "key" format.
-            RowInfo rowInfo = RowInfo.find(rowType).plain();
+            RowInfo originalRowInfo = RowInfo.find(rowType);
+            RowInfo rowInfo = originalRowInfo.plain();
             RowGen rowGen = rowInfo.rowGen();
             String[] stateFields = rowGen.stateFields();
 
@@ -160,10 +163,12 @@ public abstract class WriteRow<R> {
 
             // Examine the field states and determine which columns are to be encoded.
             var projSet = new BitSet(codecs.length);
+            Map<String, Integer> columnNumbers = originalRowInfo.rowGen().columnNumbers();
             for (int i=0; i<codecs.length; i++) {
-                int fieldNum = RowGen.stateFieldNum(i);
+                int num = columnNumbers.get(codecs[i].info.name);
+                int fieldNum = RowGen.stateFieldNum(num);
                 int colState = (fieldNum + 1 == stateFields.length) ? state : prevStates[fieldNum];
-                if ((colState & RowGen.stateFieldMask(i)) != 0) {
+                if ((colState & RowGen.stateFieldMask(num)) != 0) {
                     projSet.set(i);
                 }
             }
@@ -207,17 +212,29 @@ public abstract class WriteRow<R> {
             cm.implement(Pipe.Encoder.class);
             cm.addConstructor().private_();
 
-            Variable encoderVar;
+            var encoderField = writerVar.field("encoder");
+
+            final Variable encoderVar;
 
             if (hasPrepared) {
                 // Extra fields will need to be defined and filled in before it can be used.
-                encoderVar = mm.new_(cm);
+                encoderVar = mm.var(cm);
+                var currentEncoderVar = encoderField.get();
+                Label validInstance = mm.label();
+                currentEncoderVar.instanceOf(cm).ifTrue(validInstance);
+                encoderVar.set(mm.new_(cm));
+                encoderField.set(encoderVar);
+                Label ready = mm.label().goto_();
+                validInstance.here();
+                encoderVar.set(currentEncoderVar.cast(cm));
+                ready.here();
             } else {
-                // Stash a singleton instance.
+                // Use a singleton instance.
                 cm.addField(Pipe.Encoder.class, "_").private_().static_().final_();
                 MethodMaker clinit = cm.addClinit();
                 clinit.field("_").set(clinit.new_(cm));
                 encoderVar = mm.field("_");
+                encoderField.set(encoderVar);
             }
 
             {
@@ -243,7 +260,7 @@ public abstract class WriteRow<R> {
 
                         codec.encodeTransfer(encodeCodec, (Variable from) -> {
                             String fieldName = "f" + (numFields[0]++);
-                            cm.addField(from, fieldName);
+                            cm.addField(from, fieldName).private_();
                             encoderVar.field(fieldName).set(from);
                             return encode.field(fieldName);
                         });
@@ -268,7 +285,7 @@ public abstract class WriteRow<R> {
                 encode.return_(offsetVar);
             }
 
-            writerVar.invoke("writeRowEncode", rowVar, totalVar, encoderVar);
+            writerVar.invoke("writeRowEncode", rowVar, totalVar);
 
             return mm.finish();
         });
