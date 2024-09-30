@@ -159,7 +159,7 @@ public final class DerivedTable implements RemoteTable {
     }
 
     Class<Row> rowType() {
-        return RowTypeCache.find(mDescriptor);
+        return RowTypeCache.findRow(mDescriptor);
     }
 
     public static final class Serializer implements org.cojen.dirmi.Serializer {

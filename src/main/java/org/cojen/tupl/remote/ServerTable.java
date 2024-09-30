@@ -173,26 +173,26 @@ final class ServerTable<R> implements RemoteTable {
     public RemoteTable derive(String typeName, byte[] descriptor, String query, Object... args)
         throws IOException
     {
-        RowInfo info = RowStore.primaryRowInfo(typeName, descriptor);
-        Class rowType;
+        // Always generate a row type interface rather than trying to find the type by name.
+        // There's no reason to assume that the server will have an interface that the client
+        // has, and it might not match anyhow.
+        Class<?> rowType = RowTypeCache.findPlain(descriptor);
+        return new ServerTable((BaseTable) mTable.derive(rowType, query, args));
 
+        /* Attempt to find the interface by name.
         findRowType: {
             try {
                 rowType = Session.current().resolveClass(typeName);
                 RowInfo existing = RowInfo.find(rowType);
+                RowInfo info = RowStore.primaryRowInfo(typeName, descriptor);
                 if (existing.allColumns.equals(info.allColumns)) {
-                    info = existing;
                     break findRowType;
                 }
             } catch (ClassNotFoundException | IllegalArgumentException e) {
                 // Row type class doesn't exist or it's not a RowInfo.
             }
-
-            // FIXME: Use RowTypeCache. No need to preserve the type name.
-            throw new IllegalArgumentException("FIXME: Unknown type: " + typeName);
         }
-
-        return new ServerTable((BaseTable) mTable.derive(rowType, query, args));
+        */
     }
 
     @Override

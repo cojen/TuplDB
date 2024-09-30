@@ -23,9 +23,9 @@ import org.cojen.tupl.Row;
 
 import org.cojen.tupl.core.TupleKey;
 
+import org.cojen.tupl.table.MultiCache;
 import org.cojen.tupl.table.RowGen;
 import org.cojen.tupl.table.RowStore;
-import org.cojen.tupl.table.SoftCache;
 import org.cojen.tupl.table.Unpersisted;
 
 /**
@@ -33,27 +33,38 @@ import org.cojen.tupl.table.Unpersisted;
  *
  * @author Brian S. O'Neill
  */
-final class RowTypeCache extends SoftCache<TupleKey, Class<Row>, byte[]> {
+final class RowTypeCache extends MultiCache<TupleKey, Class<?>, byte[], RuntimeException> {
     private static final RowTypeCache THE = new RowTypeCache();
 
     /**
      * @param descriptor see RowStore#primaryRowInfo
      */
-    static Class<Row> find(byte[] descriptor) {
-        return THE.obtain(TupleKey.make.with(descriptor), descriptor);
+    static Class<?> findPlain(byte[] descriptor) {
+        return THE.cacheObtain(TYPE_1, TupleKey.make.with(descriptor), descriptor);
+    }
+
+    /**
+     * @param descriptor see RowStore#primaryRowInfo
+     */
+    @SuppressWarnings("unchecked")
+    static Class<Row> findRow(byte[] descriptor) {
+        return (Class<Row>) THE.cacheObtain(TYPE_2, TupleKey.make.with(descriptor), descriptor);
     }
 
     private RowTypeCache() {
     }
 
     @Override
-    @SuppressWarnings("unchecked")
-    protected Class<Row> newValue(TupleKey key, byte[] descriptor) {
+    protected Class<?> cacheNewValue(Type type, TupleKey key, byte[] descriptor) {
         ClassMaker cm = RowGen.beginClassMakerForRowType
             (DerivedTable.class.getPackageName(), DerivedTable.class.getSimpleName());
 
-        cm.implement(Row.class).addAnnotation(Unpersisted.class, true);
+        cm.addAnnotation(Unpersisted.class, true);
 
-        return (Class<Row>) RowStore.primaryRowInfo(cm.name(), descriptor).makeRowType(cm);
+        if (type == TYPE_2) {
+            cm.implement(Row.class);
+        }
+
+        return RowStore.primaryRowInfo(cm.name(), descriptor).makeRowType(cm);
     }
 }
