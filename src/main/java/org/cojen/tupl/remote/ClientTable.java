@@ -300,8 +300,14 @@ final class ClientTable<R> implements Table<R> {
 
     @Override
     public Table<Row> derive(String query, Object... args) throws IOException {
-        // FIXME: Should derive on the server side.
-        throw null;
+        return ClientCache.get(TupleKey.make.with(this, query, args), key -> {
+            try {
+                DerivedTable dtable = mRemote.derive(query, args);
+                return new ClientTable<Row>(mDb, dtable, dtable.rowType());
+            } catch (IOException e) {
+                throw Utils.rethrow(e);
+            }
+        });
     }
 
     private RemoteTableProxy proxy() throws IOException {

@@ -219,6 +219,44 @@ public class DeriveTest {
         }
     }
 
+    @Test
+    public void automaticRowType() throws Exception {
+        // Very basic tests.
+
+        {
+            TestRow row = mTable.newRow();
+            row.id(1);
+            row.a(2);
+            row.b("hello");
+            row.c(3L);
+            mTable.insert(null, row);
+
+            row.id(2);
+            row.a(12);
+            row.b("world");
+            row.c(13L);
+            mTable.insert(null, row);
+        }
+
+        Table<Row> derived = mTable.derive("{*}");
+
+        try (Scanner<Row> s = derived.newScanner(null)) {
+            Row row = s.row();
+            assertEquals("{a=2, id=1, c=3, b=hello}", row.toString());
+            row = s.step(row);
+            assertEquals("{a=12, id=2, c=13, b=world}", row.toString());
+            assertTrue(s.step() == null);
+        }
+
+        derived = mTable.derive("{id, sum = a + c} id > 1");
+
+        try (Scanner<Row> s = derived.newScanner(null)) {
+            Row row = s.row();
+            assertEquals("{id=2, sum=25}", row.toString());
+            assertTrue(s.step() == null);
+        }
+    }
+
     private static boolean isMapped(Table<?> table) {
         return table.getClass().getName().toLowerCase().contains("mapped");
     }

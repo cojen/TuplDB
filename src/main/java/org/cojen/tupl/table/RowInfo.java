@@ -973,7 +973,10 @@ public class RowInfo extends ColumnSet {
             cm.addMethod(null, ci.name, ci.type).public_().abstract_();
         }
 
-        cm.addAnnotation(PrimaryKey.class, true).put("value", makeKeyAnnotationValues(this, false));
+        if (!keyColumns.isEmpty()) {
+            cm.addAnnotation(PrimaryKey.class, true).put
+                ("value", makeKeyAnnotationValues(this, false));
+        }
 
         if (!alternateKeys.isEmpty()) {
             if (alternateKeys.size() == 1) {

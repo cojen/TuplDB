@@ -1662,6 +1662,8 @@ public final class RowStore {
     public static RowInfo primaryRowInfo(String name, byte[] desc) {
         var info = new RowInfo(name);
         decodeRowInfo(null, desc, 1, info);
+        info.alternateKeys = EmptyNavigableSet.the();
+        info.secondaryIndexes = EmptyNavigableSet.the();
         return info;
     }
 

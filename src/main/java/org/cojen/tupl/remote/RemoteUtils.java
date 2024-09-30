@@ -64,6 +64,7 @@ public class RemoteUtils {
              Serializer.simple(LockMode.class),
              Serializer.simple(LockResult.class),
              Serializer.simple(Ordering.class),
+             DerivedTable.Serializer.THE,
              LockTimeoutExceptionSerializer.THE,
              DeadlockInfoSerializer.THE,
              DeadlockExceptionSerializer.THE,

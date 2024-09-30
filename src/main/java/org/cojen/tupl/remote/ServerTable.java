@@ -188,13 +188,19 @@ final class ServerTable<R> implements RemoteTable {
                 // Row type class doesn't exist or it's not a RowInfo.
             }
 
-            // FIXME: Use RowGen.beginClassMakerForRowType and RowInfo.makeRowType. Also see
-            // TupleType. It seems that RowInfo.makeRowType is only currently used by
-            // RowInfoBuilderTest.
+            // FIXME: Use RowTypeCache. No need to preserve the type name.
             throw new IllegalArgumentException("FIXME: Unknown type: " + typeName);
         }
 
         return new ServerTable((BaseTable) mTable.derive(rowType, query, args));
+    }
+
+    @Override
+    @SuppressWarnings("unchecked")
+    public DerivedTable derive(String query, Object... args) throws IOException {
+        var table = (BaseTable) mTable.derive(query, args);
+        byte[] descriptor = RowStore.primaryDescriptor(RowInfo.find(table.rowType()));
+        return new DerivedTable(new ServerTable(table), descriptor);
     }
 
     @Override
