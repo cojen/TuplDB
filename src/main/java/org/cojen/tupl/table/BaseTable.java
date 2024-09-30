@@ -29,6 +29,8 @@ import org.cojen.tupl.io.Utils;
 
 import org.cojen.tupl.remote.RemoteTableProxy;
 
+import org.cojen.tupl.views.ViewUtils;
+
 /**
  * Base class for all generated server-side table classes.
  *
@@ -95,5 +97,9 @@ public abstract class BaseTable<R> extends MultiCache<Object, Object, Object, IO
      */
     public RemoteTableProxy newRemoteProxy(byte[] descriptor) throws IOException {
         return RemoteProxyMaker.make(this, 0, descriptor);
+    }
+
+    public Transaction enterScope(Transaction txn) throws IOException {
+        return ViewUtils.enterScope(this, txn);
     }
 }

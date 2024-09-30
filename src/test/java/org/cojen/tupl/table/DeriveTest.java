@@ -102,6 +102,68 @@ public class DeriveTest {
             assertTrue(s.step() == null);
         }
 
+        {
+            DerivedRow3 row = derived.newRow();
+
+            try {
+                derived.load(null, row);
+                fail();
+            } catch (IllegalStateException e) {
+                assertTrue(e.getMessage().contains("Primary key isn't fully specified"));
+            }
+
+            try {
+                derived.tryLoad(null, row);
+                fail();
+            } catch (IllegalStateException e) {
+                assertTrue(e.getMessage().contains("Primary key isn't fully specified"));
+            }
+
+            row.id(123);
+            assertFalse(derived.tryLoad(null, row));
+
+            try {
+                derived.load(null, row);
+                fail();
+            } catch (NoSuchRowException e) {
+            }
+
+            row.id(1);
+            derived.load(null, row);
+
+            assertEquals("{id=1, a=2, b=hello, c=3}", row.toString());
+
+            row.b("hello!!!");
+
+            try {
+                derived.store(null, row);
+                fail();
+            } catch (UnmodifiableViewException e) {
+            }
+
+            derived.update(null, row);
+
+            {
+                DerivedRow3 r = derived.newRow();
+                r.id(1);
+                derived.load(null, r);
+                assertEquals("{id=1, a=2, b=hello!!!, c=3}", r.toString());
+            }
+
+            {
+                TestRow r = mTable.newRow();
+                r.id(1);
+                r.c(333L);
+                mTable.update(null, r);
+            }
+
+            row.b("hello");
+
+            derived.merge(null, row);
+
+            assertEquals("{id=1, a=2, b=hello, c=333}", row.toString());
+        }
+
         Table<TestRow> notDerived = mTable.derive(TestRow.class, "{*}");
         assertEquals(TestRow.class, notDerived.rowType());
         if (isLocalTest()) {
@@ -150,7 +212,7 @@ public class DeriveTest {
 
         try (Scanner<DerivedRow3> s = derived.newScanner(null)) {
             DerivedRow3 row = s.row();
-            assertEquals("{id=201, a=2, b=hello, c=3}", row.toString());
+            assertEquals("{id=201, a=2, b=hello, c=333}", row.toString());
             row = s.step(row);
             assertEquals("{id=202, a=12, b=world, c=13}", row.toString());
             assertTrue(s.step() == null);

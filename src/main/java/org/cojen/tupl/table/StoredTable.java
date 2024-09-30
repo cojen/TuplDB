@@ -1041,6 +1041,7 @@ public abstract class StoredTable<R> extends BaseTable<R> implements ScanControl
         mIndexLock.redoPredicateMode(txn);
     }
 
+    @Override
     public final Transaction enterScope(Transaction txn) throws IOException {
         return ViewUtils.enterScope(mSource, txn);
     }
