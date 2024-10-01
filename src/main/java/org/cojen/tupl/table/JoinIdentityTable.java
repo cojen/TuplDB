@@ -178,7 +178,7 @@ public final class JoinIdentityTable extends BaseTable<Row> implements Query<Row
 
     @Override
     @SuppressWarnings("unchecked")
-    public final <D> Table<D> derive(Class<D> derivedType, String query, Object... args)
+    public <D> Table<D> derive(Class<D> derivedType, String query, Object... args)
         throws IOException
     {
         // See the cacheNewValue method.
@@ -251,7 +251,7 @@ public final class JoinIdentityTable extends BaseTable<Row> implements Query<Row
     }
 
     @Override // MultiCache
-    protected final Object cacheNewValue(Type type, Object key, Object helper) throws IOException {
+    protected Object cacheNewValue(Type type, Object key, Object helper) throws IOException {
         if (type == TYPE_1) { // see the query method
             var queryStr = (String) key;
             if (Parser.parse(queryStr).type().cardinality() != Cardinality.ZERO) {

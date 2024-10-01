@@ -82,7 +82,7 @@ public interface Index extends View, Closeable {
      * @param lowKey inclusive lowest key in the analysis range; pass null for open range
      * @param highKey exclusive highest key in the analysis range; pass null for open range
      */
-    public abstract IndexStats analyze(byte[] lowKey, byte[] highKey) throws IOException;
+    public IndexStats analyze(byte[] lowKey, byte[] highKey) throws IOException;
 
     /**
      * Verifies the integrity of the index.
