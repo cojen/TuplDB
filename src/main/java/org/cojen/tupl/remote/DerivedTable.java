@@ -47,8 +47,8 @@ public final class DerivedTable implements RemoteTable {
     }
 
     // FIXME: Must make this class be manually restorable. The client must pass the origin
-    // RemoteTable, the query, and the args into this object. The fields of the this class must
-    // not be final. The methods in the class need to catch exceptions, restore, and retry.
+    // RemoteTable, the query, and the args into this object. The fields of this class must not
+    // be final. The methods in the class need to catch exceptions, restore, and retry.
 
     @Override
     public Pipe newScanner(RemoteTransaction txn, Pipe pipe) throws IOException {

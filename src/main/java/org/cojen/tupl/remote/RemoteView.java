@@ -19,6 +19,7 @@ package org.cojen.tupl.remote;
 
 import java.io.IOException;
 
+import org.cojen.dirmi.AutoDispose;
 import org.cojen.dirmi.Batched;
 import org.cojen.dirmi.Remote;
 import org.cojen.dirmi.RemoteFailure;
@@ -35,6 +36,7 @@ import org.cojen.tupl.ViewConstraintException;
  *
  * @author Brian S O'Neill
  */
+@AutoDispose
 public interface RemoteView extends Remote, Disposable {
     @RemoteFailure(declared=false)
     public Ordering ordering();

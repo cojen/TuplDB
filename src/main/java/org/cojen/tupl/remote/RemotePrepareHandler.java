@@ -19,6 +19,7 @@ package org.cojen.tupl.remote;
 
 import java.io.IOException;
 
+import org.cojen.dirmi.AutoDispose;
 import org.cojen.dirmi.Remote;
 
 /**
@@ -26,6 +27,7 @@ import org.cojen.dirmi.Remote;
  *
  * @author Brian S O'Neill
  */
+@AutoDispose
 public interface RemotePrepareHandler extends Remote, Disposable {
     void prepare(RemoteTransaction txn, byte[] message) throws IOException;
 
