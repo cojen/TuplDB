@@ -300,8 +300,7 @@ final class ClientTable<R> implements Table<R> {
     public Table<Row> derive(String query, Object... args) throws IOException {
         return ClientCache.get(TupleKey.make.with(this, query, args), key -> {
             try {
-                DerivedTable dtable = mRemote.derive(query, args);
-                return new ClientTable<Row>(mDb, dtable, dtable.rowType());
+                return new ClientDerivedTable(this, query, args);
             } catch (IOException e) {
                 throw Utils.rethrow(e);
             }

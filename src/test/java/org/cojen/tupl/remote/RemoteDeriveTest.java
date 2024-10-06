@@ -20,6 +20,11 @@ package org.cojen.tupl.remote;
 import java.net.ServerSocket;
 
 import org.junit.*;
+import static org.junit.Assert.*;
+
+import org.cojen.dirmi.DisconnectedException;
+import org.cojen.dirmi.DisposedException;
+import org.cojen.dirmi.Session;
 
 import org.cojen.tupl.*;
 
@@ -60,5 +65,43 @@ public class RemoteDeriveTest extends DeriveTest {
             mServerDb = null;
         }
         super.teardown();
+    }
+
+    @Test
+    public void restore() throws Exception {
+        // Test that the ClientDerivedTable is able to restore after a reconnect.
+
+        assertTrue(mDb instanceof ClientDatabase);
+
+        {
+            TestRow row = mTable.newRow();
+            row.id(1);
+            row.a(2);
+            row.b("hello");
+            row.c(3L);
+            mTable.insert(null, row);
+        }
+
+        Table<Row> derived = mTable.derive("{id, sum = a + c}");
+
+        assertTrue(derived instanceof ClientDerivedTable);
+
+        Session session = ((ClientDatabase) mDb).session();
+        session.reconnect();
+
+        check: {
+            for (int i=0; i<100; i++) {
+                try (Scanner<Row> s = derived.newScanner(null)) {
+                    Row row = s.row();
+                    assertEquals("{id=1, sum=5}", row.toString());
+                    break check;
+                } catch (DisposedException | DisconnectedException e) {
+                }
+
+                Thread.sleep(100);
+            }
+
+            fail("Not restored: " + session.state());
+        }
     }
 }

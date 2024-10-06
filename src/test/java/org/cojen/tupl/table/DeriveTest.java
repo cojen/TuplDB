@@ -34,7 +34,7 @@ public class DeriveTest {
 
     protected Database mDb;
 
-    private Table<TestRow> mTable;
+    protected Table<TestRow> mTable;
 
     @Before
     public void before() throws Exception {

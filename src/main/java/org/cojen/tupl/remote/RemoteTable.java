@@ -70,8 +70,8 @@ public interface RemoteTable extends Remote, Disposable {
     public RemoteTable derive(String typeName, byte[] descriptor, String query, Object... args)
         throws IOException;
 
-    // Note: Cannot be @Restorable because DerivedTable is a serialized object.
-    public DerivedTable derive(String query, Object... args) throws IOException;
+    // Note: Cannot be @Restorable because DeriveResult is a serialized object.
+    public DeriveResult derive(String query, Object... args) throws IOException;
 
     @Restorable
     public RemoteTableProxy proxy(byte[] descriptor) throws IOException;

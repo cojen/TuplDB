@@ -197,10 +197,10 @@ final class ServerTable<R> implements RemoteTable {
 
     @Override
     @SuppressWarnings("unchecked")
-    public DerivedTable derive(String query, Object... args) throws IOException {
+    public DeriveResult derive(String query, Object... args) throws IOException {
         var table = (BaseTable) mTable.derive(query, args);
         byte[] descriptor = RowStore.primaryDescriptor(RowInfo.find(table.rowType()));
-        return new DerivedTable(new ServerTable(table), descriptor);
+        return new DeriveResult(new ServerTable(table), descriptor);
     }
 
     @Override

@@ -56,8 +56,7 @@ final class RowTypeCache extends MultiCache<TupleKey, Class<?>, byte[], RuntimeE
 
     @Override
     protected Class<?> cacheNewValue(Type type, TupleKey key, byte[] descriptor) {
-        ClassMaker cm = RowGen.beginClassMakerForRowType
-            (DerivedTable.class.getPackageName(), DerivedTable.class.getSimpleName());
+        ClassMaker cm = RowGen.beginClassMakerForRowType(getClass().getPackageName(), "Row");
 
         cm.addAnnotation(Unpersisted.class, true);
 
