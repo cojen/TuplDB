@@ -2171,7 +2171,7 @@ public final class RowStore {
          */
         private static byte[] encodeDescriptor(char type, ColumnSet cs) {
             var encoder = new Encoder(cs.allColumns.size() * 16); // initial capacity guess
-            return encodeDescriptor('P', encoder, cs);
+            return encodeDescriptor(type, encoder, cs);
         }
 
         /**
