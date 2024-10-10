@@ -106,6 +106,7 @@ public sealed class RowWriter<R> implements RowConsumer<R> {
      * Only formats 1, 2, and 5+ are actually written by this method. The writeTerminator
      * method writes format 0, and writeTerminalException writes format 3.
      *
+     * @param header must be constant since it will be used as an identity cache key
      * @see RowHeader
      */
     public final void writeHeader(byte[] header) throws IOException {
