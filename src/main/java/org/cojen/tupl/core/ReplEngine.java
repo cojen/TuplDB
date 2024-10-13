@@ -50,7 +50,6 @@ import org.cojen.tupl.repl.StreamReplicator;
 import org.cojen.tupl.table.RowStore;
 
 import org.cojen.tupl.util.Latch;
-import org.cojen.tupl.util.Parker;
 import org.cojen.tupl.util.Runner;
 import org.cojen.tupl.util.WeakPool;
 import org.cojen.tupl.util.Worker;
@@ -351,7 +350,7 @@ class ReplEngine implements RedoVisitor, ThreadFactory {
     private Thread newThread(Runnable r, String namePrefix) {
         var t = new Thread(r);
         t.setDaemon(true);
-        t.setName(namePrefix + '-' + Long.toUnsignedString(Parker.threadId(t)));
+        t.setName(namePrefix + '-' + Long.toUnsignedString(t.threadId()));
         t.setUncaughtExceptionHandler((thread, exception) -> fail(exception, true));
         return t;
     }

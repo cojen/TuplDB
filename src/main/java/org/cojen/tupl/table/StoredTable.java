@@ -362,6 +362,7 @@ public abstract class StoredTable<R> extends BaseTable<R> implements ScanControl
      * Scan and write all rows of this table to a remote endpoint. This method doesn't flush
      * the output stream.
      */
+    @Override
     @SuppressWarnings("unchecked")
     public final void scanWrite(Transaction txn, Pipe out) throws IOException {
         var writer = new RowWriter<R>(out);
@@ -387,6 +388,7 @@ public abstract class StoredTable<R> extends BaseTable<R> implements ScanControl
      * Scan and write a subset of rows from this table to a remote endpoint. This method
      * doesn't flush the output stream.
      */
+    @Override
     public final void scanWrite(Transaction txn, Pipe out, String queryStr, Object... args)
         throws IOException
     {
@@ -1008,6 +1010,7 @@ public abstract class StoredTable<R> extends BaseTable<R> implements ScanControl
         return cache.obtain(TupleKey.make.with(spec), spec);
     }
 
+    @Override
     public final RemoteTableProxy newRemoteProxy(byte[] descriptor) throws IOException {
         int schemaVersion;
         if (!isEvolvable()) {
@@ -1038,6 +1041,7 @@ public abstract class StoredTable<R> extends BaseTable<R> implements ScanControl
         mIndexLock.redoPredicateMode(txn);
     }
 
+    @Override
     public final Transaction enterScope(Transaction txn) throws IOException {
         return ViewUtils.enterScope(mSource, txn);
     }
@@ -1626,7 +1630,8 @@ public abstract class StoredTable<R> extends BaseTable<R> implements ScanControl
     }
 
     /**
-     * Note: Is overridden by StoredTableIndex.
+     * An evolvable table has a schema version encoded. This method is overridden by
+     * StoredTableIndex to always return false;
      */
     boolean isEvolvable() {
         return isEvolvable(rowType());

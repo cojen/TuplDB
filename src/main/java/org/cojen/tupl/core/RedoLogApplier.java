@@ -21,8 +21,6 @@ import java.io.IOException;
 
 import org.cojen.tupl.LockMode;
 
-import org.cojen.tupl.util.Parker;
-
 /**
  * Used to apply recovered transactions from the redo log, when database isn't replicated.
  * This class extends ReplEngine because it applies transactions using multiple threads,
@@ -63,7 +61,7 @@ final class RedoLogApplier extends ReplEngine {
     public Thread newThread(Runnable r) {
         var t = new Thread(r);
         t.setDaemon(true);
-        t.setName("Recovery-" + Long.toUnsignedString(Parker.threadId(t)));
+        t.setName("Recovery-" + Long.toUnsignedString(t.threadId()));
         t.setUncaughtExceptionHandler((thread, ex) -> Utils.closeQuietly(mDatabase, ex));
         return t;
     }

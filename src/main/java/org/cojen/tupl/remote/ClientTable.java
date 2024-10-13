@@ -37,10 +37,14 @@ import org.cojen.tupl.Table;
 import org.cojen.tupl.Transaction;
 import org.cojen.tupl.Updater;
 
+import org.cojen.tupl.core.TupleKey;
+
 import org.cojen.tupl.io.Utils;
 
 import org.cojen.tupl.table.ClientTableHelper;
+import org.cojen.tupl.table.RowInfo;
 import org.cojen.tupl.table.RowReader;
+import org.cojen.tupl.table.RowStore;
 
 /**
  * 
@@ -72,8 +76,6 @@ final class ClientTable<R> implements Table<R> {
         mDb = db;
         mRemote = remote;
         mType = type;
-
-        ClientCache.autoDispose(this, remote);
 
         mHelper = ClientTableHelper.find(type);
     }
@@ -130,7 +132,7 @@ final class ClientTable<R> implements Table<R> {
         return newScanner(mRemote.newScanner(mDb.remoteTransaction(txn), null, query, args), row);
     }
 
-    Scanner<R> newScanner(Pipe pipe, R row) throws IOException {
+    private Scanner<R> newScanner(Pipe pipe, R row) throws IOException {
         try {
             pipe.flush();
             return new RowReader<R>(mType, pipe, row);
@@ -152,7 +154,7 @@ final class ClientTable<R> implements Table<R> {
         return newUpdater(mRemote.newUpdater(mDb.remoteTransaction(txn), null, query, args), row);
     }
 
-    ClientUpdater<R> newUpdater(Pipe pipe, R row) throws IOException {
+    private ClientUpdater<R> newUpdater(Pipe pipe, R row) throws IOException {
         RemoteTableProxy proxy = proxy();
 
         pipe.writeObject(proxy);
@@ -282,14 +284,27 @@ final class ClientTable<R> implements Table<R> {
     public <D> Table<D> derive(Class<D> derivedType, String query, Object... args)
         throws IOException
     {
-        // FIXME: derive
-        throw null;
+        return ClientCache.get(TupleKey.make.with(this, derivedType, query, args), key -> {
+            try {
+                RowInfo info = RowInfo.find(derivedType);
+                byte[] descriptor = RowStore.primaryDescriptor(info);
+                RemoteTable rtable = mRemote.derive(info.name, descriptor, query, args);
+                return new ClientTable<D>(mDb, rtable, derivedType);
+            } catch (IOException e) {
+                throw Utils.rethrow(e);
+            }
+        });
     }
 
     @Override
     public Table<Row> derive(String query, Object... args) throws IOException {
-        // FIXME: Should derive on the server side.
-        throw null;
+        return ClientCache.get(TupleKey.make.with(this, query, args), key -> {
+            try {
+                return new ClientDerivedTable(this, query, args);
+            } catch (IOException e) {
+                throw Utils.rethrow(e);
+            }
+        });
     }
 
     private RemoteTableProxy proxy() throws IOException {

@@ -119,6 +119,8 @@ public abstract class TupleKey implements RandomAccess {
 
         public abstract TupleKey with(Object e0, Object e1);
 
+        public abstract TupleKey with(Object e0, Object e1, Object e2, Object e3);
+
         public abstract TupleKey with(Object e0, Object[] e1);
 
         public abstract TupleKey with(Object e0, Object e1, Object e2);

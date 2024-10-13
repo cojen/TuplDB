@@ -355,7 +355,7 @@ class StaticTableMaker extends TableMaker {
      * @param name method name
      */
     private void addCheckSet(String name, Map<String, ColumnInfo> columns) {
-        MethodMaker mm = mClassMaker.addMethod(boolean.class, name, mRowClass).static_();
+        MethodMaker mm = mClassMaker.addMethod(boolean.class, name, mRowClass).static_().public_();
         mRowGen.checkSet(mm, columns, mm.param(0));
     }
 
@@ -389,7 +389,7 @@ class StaticTableMaker extends TableMaker {
      * @param name method name
      */
     private void addRequireSet(String name, Map<String, ColumnInfo> columns) {
-        MethodMaker mm = mClassMaker.addMethod(null, name, mRowClass).static_();
+        MethodMaker mm = mClassMaker.addMethod(null, name, mRowClass).static_().public_();
         mRowGen.requireSet(mm, columns, mm.param(0));
     }
 

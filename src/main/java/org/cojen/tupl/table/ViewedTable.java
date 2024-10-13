@@ -253,7 +253,7 @@ public abstract sealed class ViewedTable<R> extends WrappedTable<R, R> {
     }
 
     @Override
-    public void forEach(R row, ColumnProcessor<? super R> action) {
+    public final void forEach(R row, ColumnProcessor<? super R> action) {
         mSource.forEach(row, action);
     }
 

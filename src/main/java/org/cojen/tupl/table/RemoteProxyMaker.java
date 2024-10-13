@@ -52,18 +52,18 @@ import org.cojen.tupl.table.codec.ColumnCodec;
  * @author Brian S O'Neill
  */
 public final class RemoteProxyMaker {
-    private static final SoftCache<TupleKey, MethodHandle, StoredTable> cCache = new SoftCache<>() {
+    private static final SoftCache<TupleKey, MethodHandle, BaseTable> cCache = new SoftCache<>() {
         @Override
-        protected MethodHandle newValue(TupleKey key, StoredTable table) {
+        protected MethodHandle newValue(TupleKey key, BaseTable table) {
             return new RemoteProxyMaker(table, (byte[]) key.get(1)).finish();
         }
     };
 
     /**
-     * @param schemaVersion is zero if table isn't evolvable
+     * @param schemaVersion is zero if the table isn't evolvable
      * @param descriptor encoding format is defined by RowHeader class
      */
-    static RemoteTableProxy make(StoredTable<?> table, int schemaVersion, byte[] descriptor) {
+    static RemoteTableProxy make(BaseTable<?> table, int schemaVersion, byte[] descriptor) {
         var mh = cCache.obtain(TupleKey.make.with(table.getClass(), descriptor), table);
         try {
             return (RemoteTableProxy) mh.invoke(table, schemaVersion);
@@ -72,7 +72,7 @@ public final class RemoteProxyMaker {
         }
     }
 
-    private final StoredTable mTable;
+    private final BaseTable mTable;
     private final Class<?> mRowType;
     private final Class<?> mRowClass;
     private final RowGen mRowGen;
@@ -85,7 +85,7 @@ public final class RemoteProxyMaker {
 
     private ColumnCodec[] mClientCodecs;
 
-    private RemoteProxyMaker(StoredTable table, byte[] descriptor) {
+    private RemoteProxyMaker(BaseTable table, byte[] descriptor) {
         mTable = table;
         mRowType = table.rowType();
         mRowClass = RowMaker.find(mRowType);
@@ -105,10 +105,18 @@ public final class RemoteProxyMaker {
         mAutoColumn = auto;
     }
 
+    private boolean isEvolvable() {
+        return mTable instanceof StoredTable st && st.isEvolvable();
+    }
+
+    private static boolean isEvolvable(Class<?> tableClass, Class<?> rowType) {
+        return StoredTable.class.isAssignableFrom(tableClass) && StoredTable.isEvolvable(rowType);
+    }
+
     /**
      * Returns a factory MethodHandle which constructs a RemoteTableProxy:
      *
-     *     RemoteTableProxy new(StoredTable table, int schemaVersion);
+     *     RemoteTableProxy new(BaseTable table, int schemaVersion);
      */
     private MethodHandle finish() {
         mClassMaker.addField(boolean.class, "assert").private_().static_().final_();
@@ -127,7 +135,9 @@ public final class RemoteProxyMaker {
 
         MethodHandles.Lookup lookup;
 
-        if (RowHeader.make(mRowGen).equals(mRowHeader)) {
+        if (!(mTable instanceof StoredTable) || !RowHeader.make(mRowGen).equals(mRowHeader)) {
+            lookup = makeConverter();
+        } else {
             // Define a singleton empty row which is needed by the trigger methods.
             {
                 mClassMaker.addField(mRowClass, "EMPTY_ROW").private_().static_().final_();
@@ -135,7 +145,7 @@ public final class RemoteProxyMaker {
                 mm.field("EMPTY_ROW").set(mm.new_(mRowClass));
             }
 
-            if (mTable.isEvolvable()) {
+            if (isEvolvable()) {
                 mClassMaker.addField(int.class, "prefixLength").private_().final_();
                 mClassMaker.addField(int.class, "schemaVersion").private_().final_();
 
@@ -154,12 +164,6 @@ public final class RemoteProxyMaker {
             }
 
             lookup = makeDirect();
-        } else {
-            if (!mTable.isEvolvable()) {
-                throw new IllegalStateException();
-            }
-
-            lookup = makeConverter();
         }
 
         try {
@@ -375,7 +379,7 @@ public final class RemoteProxyMaker {
     private Variable decodeValue(Variable makerVar, Variable pipeVar) {
         MethodMaker mm = makerVar.methodMaker();
         Variable valueVar;
-        if (mTable.isEvolvable()) {
+        if (isEvolvable()) {
             valueVar = makerVar.invoke("decodeValue", pipeVar, mm.field("prefixLength"));
             mm.var(RowUtils.class).invoke("encodePrefixPF", valueVar, 0, mm.field("schemaVersion"));
         } else {
@@ -530,7 +534,7 @@ public final class RemoteProxyMaker {
         Class rowClass = RowMaker.find(rowType);
 
         Variable schemaVersion;
-        if (StoredTable.isEvolvable(rowType)) {
+        if (isEvolvable(tableClass, rowType)) {
             schemaVersion = mm.field("proxy").field("schemaVersion");
             TableMaker.convertValueIfNecessary(tableVar, rowClass, schemaVersion, originalValueVar);
         } else {
@@ -845,7 +849,7 @@ public final class RemoteProxyMaker {
      * Convert the value to the current schema if necessary, and then call writeValue.
      */
     private void convertAndWriteValue(Variable pipeVar, Variable valueVar) {
-        if (mTable.isEvolvable()) {
+        if (isEvolvable()) {
             MethodMaker mm = pipeVar.methodMaker();
             var tableVar = mm.var(mTable.getClass());
             var schemaVersion = mm.field("schemaVersion");
@@ -861,7 +865,7 @@ public final class RemoteProxyMaker {
      */
     private void writeValue(Variable pipeVar, Variable valueVar) {
         MethodMaker mm = pipeVar.methodMaker();
-        if (mTable.isEvolvable()) {
+        if (isEvolvable()) {
             var prefixLengthVar = mm.field("prefixLength").get();
             var lengthVar = valueVar.alength().sub(prefixLengthVar);
             mm.var(RowUtils.class).invoke("encodePrefixPF", pipeVar, lengthVar);

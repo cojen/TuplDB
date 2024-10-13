@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2023 Cojen.org
+ *  Copyright (C) 2024 Cojen.org
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU Affero General Public License as
@@ -17,18 +17,26 @@
 
 package org.cojen.tupl.remote;
 
-import org.cojen.dirmi.AutoDispose;
-import org.cojen.dirmi.Disposer;
-import org.cojen.dirmi.Remote;
+import java.io.IOException;
+
+import java.util.Set;
+
+import org.cojen.dirmi.Pipe;
 import org.cojen.dirmi.RemoteException;
 
+import org.cojen.tupl.DurabilityMode;
+import org.cojen.tupl.Row;
+
+import org.cojen.tupl.diag.QueryPlan;
+
 /**
- * 
+ * Simple pairing of a derived table and the row type descriptor.
  *
- * @author Brian S O'Neill
+ * @author Brian S. O'Neill
+ * @see RemoteTable#derive
  */
-@AutoDispose
-public interface RemoteDeleteIndex extends Remote, Disposable {
-    @Disposer
-    void run() throws RemoteException;
+public record DeriveResult(RemoteTable table, byte[] descriptor) {
+    Class<Row> rowType() {
+        return RowTypeCache.findRow(descriptor);
+    }
 }

@@ -64,6 +64,7 @@ public class RemoteUtils {
              Serializer.simple(LockMode.class),
              Serializer.simple(LockResult.class),
              Serializer.simple(Ordering.class),
+             Serializer.simple(DeriveResult.class),
              LockTimeoutExceptionSerializer.THE,
              DeadlockInfoSerializer.THE,
              DeadlockExceptionSerializer.THE,

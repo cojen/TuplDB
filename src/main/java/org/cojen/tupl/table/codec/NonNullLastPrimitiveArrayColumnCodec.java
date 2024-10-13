@@ -17,6 +17,8 @@
 
 package org.cojen.tupl.table.codec;
 
+import java.util.function.Function;
+
 import org.cojen.maker.MethodMaker;
 import org.cojen.maker.Variable;
 
@@ -46,7 +48,12 @@ class NonNullLastPrimitiveArrayColumnCodec extends PrimitiveArrayColumnCodec {
     }
 
     @Override
-    public void encodePrepare() {
+    public boolean encodePrepare() {
+        return false;
+    }
+
+    @Override
+    public void encodeTransfer(ColumnCodec codec, Function<Variable, Variable> transfer) {
     }
 
     @Override

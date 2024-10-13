@@ -35,7 +35,6 @@ final class ClientPrepareHandler implements PrepareHandler {
     ClientPrepareHandler(ClientDatabase db, RemotePrepareHandler remote) {
         mDb = db;
         mRemote = remote;
-        ClientCache.autoDispose(this, remote);
     }
 
     @Override

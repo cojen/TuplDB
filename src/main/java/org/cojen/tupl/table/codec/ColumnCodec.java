@@ -24,6 +24,8 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.Objects;
 
+import java.util.function.Function;
+
 import org.cojen.maker.FieldMaker;
 import org.cojen.maker.Label;
 import org.cojen.maker.MethodMaker;
@@ -346,8 +348,21 @@ public abstract class ColumnCodec {
     /**
      * Makes code which declares all necessary variables used for encoding. Must be called
      * before calling any other encode methods.
+     *
+     * @return false if nothing was prepared
      */
-    public abstract void encodePrepare();
+    public abstract boolean encodePrepare();
+
+    /**
+     * Transfers any variables created by the encodePrepare method over to another matching
+     * codec which is bound to another method.
+     *
+     * @param codec destination codec
+     * @param transfer receives a variable bound to the this codec and returns an assigned
+     * variable bound to the new method
+     * @throws ClassCastException if the codec isn't of the correct type
+     */
+    public abstract void encodeTransfer(ColumnCodec codec, Function<Variable, Variable> transfer);
 
     /**
      * Called when the column won't be encoded, but any variables that would be used by the
@@ -383,7 +398,8 @@ public abstract class ColumnCodec {
      * @param offsetVar int type; is incremented as a side-effect
      * @param endVar end offset, which when null implies the end of the array
      */
-    public abstract void decode(Variable dstVar, Variable srcVar, Variable offsetVar, Variable endVar);
+    public abstract void decode(Variable dstVar,
+                                Variable srcVar, Variable offsetVar, Variable endVar);
 
     /**
      * Makes code which skips the column instead of decoding it.
