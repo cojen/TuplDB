@@ -74,7 +74,7 @@ final class PendingTxnFinisher extends Latch implements Runnable {
     @Override
     public void run() {
         while (true) {
-            boolean waited = false;
+            int awaitResult = 1; // signaled
             PendingTxn pending;
             acquireExclusive();
             try {
@@ -89,7 +89,8 @@ final class PendingTxnFinisher extends Latch implements Runnable {
                         }
                         break;
                     }
-                    if (waited) {
+
+                    if (awaitResult <= 0) { // interrupted or timed out
                         mTotalThreads--;
                         return;
                     }
@@ -99,9 +100,7 @@ final class PendingTxnFinisher extends Latch implements Runnable {
                     // closely match the amount that's needed.
                     long nanosTimeout = 10_000_000_000L;
                     long nanosEnd = System.nanoTime() + nanosTimeout;
-                    mIdleCondition.priorityAwait(this, nanosTimeout, nanosEnd);
-
-                    waited = true;
+                    awaitResult = mIdleCondition.priorityAwait(this, nanosTimeout, nanosEnd);
                 }
             } finally {
                 releaseExclusive();
