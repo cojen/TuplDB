@@ -75,18 +75,17 @@ final class PendingTxnFinisher extends Latch implements Runnable {
     public void run() {
         while (true) {
             int awaitResult = 1; // signaled
-            PendingTxn pending;
+
+            PendingTxn first, last;
+
             acquireExclusive();
             try {
                 while (true) {
-                    pending = mFirst;
-                    if (pending != null) {
-                        if (pending == mLast) {
-                            mFirst = null;
-                            mLast = null;
-                        } else {
-                            mFirst = pending.getNextPlain();
-                        }
+                    first = mFirst;
+                    if (first != null) {
+                        last = mLast;
+                        mFirst = null;
+                        mLast = null;
                         break;
                     }
 
@@ -106,7 +105,18 @@ final class PendingTxnFinisher extends Latch implements Runnable {
                 releaseExclusive();
             }
 
-            pending.run();
+            while (true) {
+                try {
+                    first.run();
+                } catch (Throwable e) {
+                    // PendingTxn should catch and report any exceptions, but just in case
+                    // something leaks out, ignore it and move on.
+                }
+                if (first == last) {
+                    break;
+                }
+                first = first.getNextPlain();
+            }
         }
     }
 }
