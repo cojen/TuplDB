@@ -141,7 +141,7 @@ final class PendingTxnFinisher extends Latch {
 
         void interrupt() {
             acquireExclusive();
-            mIdleCondition.signal(this);
+            mIdleCondition.clear();
             releaseExclusive();
         }
 
