@@ -1069,6 +1069,11 @@ final class FileTermLog extends Latch implements TermLog {
                 if (startPosition != startSegment.mStartPosition || startSegment.mMaxLength != 0) {
                     throw new AssertionError(startSegment);
                 }
+                // Wait for all work tasks to complete, ensuring that the truncate operation
+                // against the segment is finished before attempting to untruncate it.
+                synchronized (mWorker) {
+                    mWorker.join(false);
+                }
                 startSegment.untruncate(maxLength);
                 segment = startSegment;
             }
