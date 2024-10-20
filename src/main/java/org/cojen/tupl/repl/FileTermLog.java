@@ -688,7 +688,7 @@ final class FileTermLog extends Latch implements TermLog {
             if (endPosition < commitPosition && commitPosition > mLogStartPosition) {
                 throw new IllegalStateException
                     ("Cannot finish term below commit position: " + endPosition
-                     + " < " + commitPosition);
+                     + " < " + commitPosition + "; term: " + mLogTerm);
             }
 
             if (endPosition == mLogEndPosition) {
@@ -1102,7 +1102,8 @@ final class FileTermLog extends Latch implements TermLog {
 
             if (position < commitPosition) {
                 throw new InvalidReadException
-                    ("Position is too low: " + position + " < " + commitPosition);
+                    ("Position is too low: " + position + " < " + commitPosition +
+                     "; term: " + mLogTerm);
             }
         } finally {
             releaseExclusive();
