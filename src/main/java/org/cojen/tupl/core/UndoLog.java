@@ -1636,9 +1636,9 @@ final class UndoLog implements DatabaseAccess {
      *
      * @return optional set with transaction id keys and null values
      */
-    LHashTable.Obj<Object> findCommitted() throws IOException {
+    LHashSet findCommitted() throws IOException {
         var finder = new Visitor() {
-            LHashTable.Obj<Object> mTxns;
+            LHashSet mTxns;
 
             @Override
             public int accept(Node node, byte op, int pos) {
@@ -1650,9 +1650,9 @@ final class UndoLog implements DatabaseAccess {
             public void payload(Node node, byte[] payload) {
                 long txnId = decodeLongLE(payload, 0);
                 if (mTxns == null) {
-                    mTxns = new LHashTable.Obj<>(4);
+                    mTxns = new LHashSet(4);
                 }
-                mTxns.put(txnId);
+                mTxns.add(txnId);
             }
         };
 
@@ -1665,7 +1665,7 @@ final class UndoLog implements DatabaseAccess {
      * Updates all references to the given transaction ids in this master undo log to be
      * uncommitted. Caller must hold db commit lock.
      */
-    void markUncommitted(LHashTable.Obj<Object> uncommitted) throws IOException {
+    void markUncommitted(LHashSet uncommitted) throws IOException {
         // Note that it's safe to blindly re-write the nodes. The nodes were intended for a
         // checkpoint which failed, and so nothing refers to them.
 
@@ -1689,7 +1689,7 @@ final class UndoLog implements DatabaseAccess {
             @Override
             public void payload(Node node, byte[] payload) throws IOException {
                 long txnId = decodeLongLE(payload, 0);
-                if (uncommitted.get(txnId) != null) {
+                if (uncommitted.contains(txnId)) {
                     Node opNode = mMatched.getLast();
                     if (node == opNode) {
                         // Payload didn't span nodes.
