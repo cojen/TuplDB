@@ -1202,6 +1202,37 @@ public class FileTermLogTest {
         reader.release();
     }
 
+    @Test
+    public void writeTruncateExtend3() throws Exception {
+        // Truncate and extend over non-contiguous ranges.
+
+        LogWriter writer1 = mLog.openWriter(0);
+        var data1 = new byte[100];
+        Arrays.fill(data1, (byte) 1);
+        write(writer1, data1, 2000);
+
+        LogWriter writer2 = mLog.openWriter(200);
+        var data2 = new byte[100];
+        Arrays.fill(data2, (byte) 2);
+        write(writer2, data2, 2000);
+
+        LogWriter writer3 = mLog.openWriter(400);
+        var data3 = new byte[100];
+        Arrays.fill(data3, (byte) 3);
+        write(writer3, data3, 2000);
+
+        mLog.finishTerm(250);
+        mLog.finishTerm(275);
+
+        // Fill in the first gap.
+        Arrays.fill(data1, (byte) 4);
+        write(writer1, data1, 2000);
+
+        var info = new LogInfo();
+        mLog.captureHighest(info);
+        assertEquals(250, info.mHighestPosition);
+    }
+
     private static void write(LogWriter writer, byte[] data) throws IOException {
         assertTrue(writer.write(data, 0, data.length, writer.position() + data.length) > 0);
     }

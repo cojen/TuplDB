@@ -699,6 +699,11 @@ final class FileTermLog extends Latch implements TermLog {
             mLogVersion++;
 
             if (endPosition >= mLogEndPosition) {
+                // Wait for all work tasks to complete, ensuring that any lingering truncate
+                // operations are finished before extending the term.
+                synchronized (mWorker) {
+                    mWorker.join(false);
+                }
                 mLogEndPosition = endPosition;
                 releaseExclusive();
                 return;
@@ -725,13 +730,46 @@ final class FileTermLog extends Latch implements TermLog {
             }
 
             if (!mNonContigWriters.isEmpty()) {
+                List<SegmentWriter> replacements = null;
+
                 Iterator<SegmentWriter> it = mNonContigWriters.iterator();
                 while (it.hasNext()) {
                     SegmentWriter writer = it.next();
                     if (writer.mWriterStartPosition >= endPosition) {
+                        // The writer is completely ahead of the term end position.
                         it.remove();
-                    } else if (endPosition < writer.mWriterHighestPosition) {
+                        continue;
+                    }
+
+                    if (endPosition < writer.mWriterHighestPosition) {
                         writer.mWriterHighestPosition = endPosition;
+                    }
+
+                    if (endPosition <= writer.mWriterPosition) {
+                        // The writer overlaps the term end position. Remove it from the queue
+                        // and replace it with a non-cached instance to be used for gap filling
+                        // later. If the writer isn't removed, and the term is later extended,
+                        // then the contiguous region might falsely advance too far ahead.
+                        it.remove();
+
+                        var replacement = new SegmentWriter();
+                        replacement.mWriterVersion = writer.mWriterVersion;
+                        replacement.mWriterPrevTerm = writer.mWriterPrevTerm;
+                        replacement.mWriterStartPosition = writer.mWriterStartPosition;
+                        replacement.mWriterPosition = endPosition;
+                        replacement.mWriterHighestPosition = writer.mWriterHighestPosition;
+
+                        if (replacements == null) {
+                            replacements = new ArrayList<>();
+                        }
+
+                        replacements.add(replacement);
+                    }
+                }
+
+                if (replacements != null) {
+                    for (SegmentWriter writer : replacements) {
+                        mNonContigWriters.add(writer);
                     }
                 }
             }
@@ -1069,11 +1107,6 @@ final class FileTermLog extends Latch implements TermLog {
                 if (startPosition != startSegment.mStartPosition || startSegment.mMaxLength != 0) {
                     throw new AssertionError(startSegment);
                 }
-                // Wait for all work tasks to complete, ensuring that the truncate operation
-                // against the segment is finished before attempting to untruncate it.
-                synchronized (mWorker) {
-                    mWorker.join(false);
-                }
                 startSegment.untruncate(maxLength);
                 segment = startSegment;
             }
@@ -1156,6 +1189,8 @@ final class FileTermLog extends Latch implements TermLog {
             if (currentPosition > contigPosition) {
                 contigPosition = currentPosition;
 
+                long fallbackHighest = 0;
+
                 // Remove non-contiguous writers that are now in the contiguous region.
                 while (true) {
                     SegmentWriter next = mNonContigWriters.peek();
@@ -1175,9 +1210,25 @@ final class FileTermLog extends Latch implements TermLog {
                     if (nextHighest > highestPosition && highestPosition <= contigPosition) {
                         highestPosition = nextHighest;
                     }
+
+                    fallbackHighest = Math.max(fallbackHighest, nextHighest);
+                }
+
+                if (contigPosition > endPosition) {
+                    // Although the contigPosition could be clamped to the endPosition, this
+                    // case shouldn't happen unless there's something wrong with the term
+                    // extension logic.
+                    releaseExclusive();
+                    throw new AssertionError(contigPosition + " > " + endPosition);
                 }
 
                 mLogContigPosition = contigPosition;
+
+                if (highestPosition > contigPosition) {
+                    // It won't be applied if too high, so try to use a highest position which
+                    // was observed earlier.
+                    highestPosition = fallbackHighest;
+                }
             }
 
             applyHighest: {
