@@ -25,6 +25,7 @@ import java.util.concurrent.ThreadLocalRandom;
 import org.cojen.tupl.io.Utils;
 
 import org.cojen.tupl.util.Latch;
+import org.cojen.tupl.util.Parker;
 import org.cojen.tupl.util.Runner;
 
 /**
@@ -97,14 +98,14 @@ final class PendingTxnFinisher extends Latch {
             }
         }
 
-        private final Latch.Condition mIdleCondition;
+        private static final int STATE_NONE = 0, STATE_WORKING = 1, STATE_PARKED = 2;
 
         private PendingTxn mFirst, mLast;
         private long mCommitPos;
-        private boolean mRunning;
+        private int mState;
+        private Thread mThread;
 
         private Worker() {
-            mIdleCondition = new Latch.Condition();
             mCommitPos = Long.MAX_VALUE;
         }
 
@@ -124,15 +125,18 @@ final class PendingTxnFinisher extends Latch {
 
                 mLast = last;
 
-                if (!mRunning) {
+                int state = mState;
+                if (state != STATE_WORKING) {
                     try {
-                        Runner.start("PendingTxnFinisher", this);
-                        mRunning = true;
+                        if (state == STATE_NONE) {
+                            Runner.start("PendingTxnFinisher", this);
+                        } else {
+                            Parker.unpark(mThread);
+                        }
+                        mState = STATE_WORKING;
                     } catch (Throwable e) {
                         // Possibly out of memory. Try again later.
                     }
-                } else {
-                    mIdleCondition.signal(this);
                 }
             } finally {
                 releaseExclusive();
@@ -141,14 +145,19 @@ final class PendingTxnFinisher extends Latch {
 
         void interrupt() {
             acquireExclusive();
-            mIdleCondition.clear();
+            if (mThread != null) {
+                mThread.interrupt();
+            }
             releaseExclusive();
         }
 
         @Override
         public void run() {
+            acquireExclusive();
+            mThread = Thread.currentThread();
+            releaseExclusive();
+
             while (true) {
-                int awaitResult = 1; // signaled
                 long delta = 0;
 
                 PendingTxn first, last;
@@ -168,14 +177,37 @@ final class PendingTxnFinisher extends Latch {
                         // Indicate that this worker is all caught up.
                         cCommitPosHandle.setOpaque(this, Long.MAX_VALUE);
 
-                        if (awaitResult <= 0) { // interrupted or timed out
-                            mRunning = false;
-                            return;
-                        }
+                        mState = STATE_PARKED;
 
                         long nanosTimeout = 10_000_000_000L;
                         long nanosEnd = System.nanoTime() + nanosTimeout;
-                        awaitResult = mIdleCondition.await(this, nanosTimeout, nanosEnd);
+
+                        while (true) {
+                            releaseExclusive();
+
+                            try {
+                                Parker.parkNanos(this, nanosTimeout);
+                            } catch (Throwable e) {
+                                acquireExclusive();
+                                mState = STATE_NONE;
+                                mThread = null;
+                                throw e;
+                            }
+
+                            acquireExclusive();
+
+                            if (mState == STATE_WORKING) {
+                                break;
+                            }
+
+                            if (Thread.interrupted() ||
+                                (nanosTimeout = nanosEnd - System.nanoTime()) <= 0)
+                            {
+                                mState = STATE_NONE;
+                                mThread = null;
+                                return;
+                            }
+                        }
                     }
                 } finally {
                     releaseExclusive();
