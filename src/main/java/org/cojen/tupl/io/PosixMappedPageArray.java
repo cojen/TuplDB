@@ -33,9 +33,6 @@ import org.cojen.tupl.diag.EventType;
  * @author Brian S O'Neill
  */
 class PosixMappedPageArray extends MappedPageArray {
-    private final File mFile;
-    private final EnumSet<OpenOption> mOptions;
-
     private final int mFileDescriptor;
 
     private volatile boolean mEmpty;
@@ -45,9 +42,6 @@ class PosixMappedPageArray extends MappedPageArray {
         throws IOException
     {
         super(pageSize, pageCount, options);
-
-        mFile = file;
-        mOptions = options;
 
         int prot = 1; // PROT_READ
         if (!options.contains(OpenOption.READ_ONLY)) {
@@ -169,14 +163,6 @@ class PosixMappedPageArray extends MappedPageArray {
     @Override
     public void truncatePageCount(long count) {
         mEmpty = count == 0;
-    }
-
-    @Override
-    MappedPageArray doOpen() throws IOException {
-        boolean empty = mEmpty;
-        var pa = new PosixMappedPageArray(pageSize(), super.pageCount(), mFile, mOptions, null);
-        pa.mEmpty = empty;
-        return pa;
     }
 
     void doSync(long mappingPtr, boolean metadata) throws IOException {

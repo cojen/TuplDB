@@ -477,7 +477,6 @@ final class LocalDatabase extends CoreDatabase {
                 if (dataPageArray == null) {
                     mPageDb = new NonPageDb(pageSize);
                 } else {
-                    dataPageArray = dataPageArray.open();
                     Crypto crypto = launcher.mDataCrypto;
                     mPageDb = StoredPageDb.open(debugListener, dataPageArray,
                                                 launcher.mChecksumFactory, crypto, destroy);
@@ -2403,7 +2402,6 @@ final class LocalDatabase extends CoreDatabase {
                 throw new UnsupportedOperationException(PageDb.unsupportedMessage("Restore"));
             }
 
-            dataPageArray = dataPageArray.open();
             dataPageArray.truncatePageCount(0);
 
             // Delete old redo log files.

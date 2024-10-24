@@ -244,11 +244,6 @@ public abstract class MappedPageArray extends PageArray {
         }
     }
 
-    @Override
-    public MappedPageArray open() throws IOException {
-        return mMappingPtr == 0 ? doOpen() : this;
-    }
-
     void setMappingPtr(long ptr) throws IOException {
         while (!cMappingPtrHandle.compareAndSet(this, 0, ptr)) {
             if (mMappingPtr != 0) {
@@ -256,8 +251,6 @@ public abstract class MappedPageArray extends PageArray {
             }
         }
     }
-
-    abstract MappedPageArray doOpen() throws IOException;
 
     abstract void doSync(long mappingPtr, boolean metadata) throws IOException;
 

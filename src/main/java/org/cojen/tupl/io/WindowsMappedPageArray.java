@@ -32,9 +32,6 @@ import org.cojen.tupl.diag.EventListener;
  * @author Brian S O'Neill
  */
 class WindowsMappedPageArray extends MappedPageArray {
-    private final File mFile;
-    private final EnumSet<OpenOption> mOptions;
-
     private final WinNT.HANDLE mFileHandle;
     private final WinNT.HANDLE mMappingHandle;
 
@@ -47,9 +44,6 @@ class WindowsMappedPageArray extends MappedPageArray {
         throws IOException
     {
         super(pageSize, pageCount, options);
-
-        mFile = file;
-        mOptions = options;
 
         if (file == null) {
             setMappingPtr(WindowsFileIO.valloc(pageSize * pageCount, listener));
@@ -82,14 +76,6 @@ class WindowsMappedPageArray extends MappedPageArray {
     @Override
     public void truncatePageCount(long count) {
         mEmpty = count == 0;
-    }
-
-    @Override
-    MappedPageArray doOpen() throws IOException {
-        boolean empty = mEmpty;
-        var pa = new WindowsMappedPageArray(pageSize(), super.pageCount(), mFile, mOptions, null);
-        pa.mEmpty = empty;
-        return pa;
     }
 
     @Override

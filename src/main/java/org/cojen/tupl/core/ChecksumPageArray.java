@@ -95,12 +95,6 @@ abstract class ChecksumPageArray extends TransformedPageArray {
         mSource.close(cause);
     }
 
-    @Override
-    public PageArray open() throws IOException {
-        PageArray array = mSource.open();
-        return array == mSource ? this : ChecksumPageArray.open(array, mSupplier);
-    }
-
     static void check(long index, int storedChecksum, Checksum checksum) throws ChecksumException { 
         // Note that checksum failures of header pages (0 and 1) are ignored. StoredPageDb
         // performs an independent check and selects the correct header.
