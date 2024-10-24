@@ -70,7 +70,6 @@ loadScripts(document, 'script');</script>
 <li><a href="#parkNow(java.lang.Object)" tabindex="0">parkNow(Object)</a></li>
 <li><a href="#parkNanos(java.lang.Object,long)" tabindex="0">parkNanos(Object, long)</a></li>
 <li><a href="#parkNanosNow(java.lang.Object,long)" tabindex="0">parkNanosNow(Object, long)</a></li>
-<li><a href="#threadId(java.lang.Thread)" tabindex="0">threadId(Thread)</a></li>
 </ol>
 </li>
 </ol>
@@ -127,12 +126,9 @@ loadScripts(document, 'script');</script>
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4">
 <div class="block">Park without performing more checks than necessary.</div>
 </div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code>static long</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code><a href="#threadId(java.lang.Thread)" class="member-name-link">threadId</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/23/docs/api/java.base/java/lang/Thread.html" title="class or interface in java.lang" class="external-link">Thread</a>&nbsp;thread)</code></div>
+<div class="col-first even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code>static void</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code><a href="#unpark(java.lang.Thread)" class="member-name-link">unpark</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/23/docs/api/java.base/java/lang/Thread.html" title="class or interface in java.lang" class="external-link">Thread</a>&nbsp;thread)</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4">&nbsp;</div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code>static void</code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code><a href="#unpark(java.lang.Thread)" class="member-name-link">unpark</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/23/docs/api/java.base/java/lang/Thread.html" title="class or interface in java.lang" class="external-link">Thread</a>&nbsp;thread)</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4">&nbsp;</div>
 </div>
 </div>
 </div>
@@ -195,14 +191,6 @@ loadScripts(document, 'script');</script>
  long&nbsp;nanos)</span></div>
 <div class="block">Park without performing more checks than necessary. Should be used when caller has
  already performed checks to determine that parking is necessary.</div>
-</div>
-</section>
-</li>
-<li>
-<section class="detail" id="threadId(java.lang.Thread)">
-<h3>threadId</h3>
-<div class="horizontal-scroll">
-<div class="member-signature"><span class="modifiers">public static</span>&nbsp;<span class="return-type">long</span>&nbsp;<span class="element-name">threadId</span><wbr><span class="parameters">(<a href="https://docs.oracle.com/en/java/javase/23/docs/api/java.base/java/lang/Thread.html" title="class or interface in java.lang" class="external-link">Thread</a>&nbsp;thread)</span></div>
 </div>
 </section>
 </li>
