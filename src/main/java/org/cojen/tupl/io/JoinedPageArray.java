@@ -59,7 +59,7 @@ public class JoinedPageArray extends PageArray {
         return new JoinedPageArray(first, joinIndex, second);
     }
 
-    private PageArray mFirst, mSecond;
+    private final PageArray mFirst, mSecond;
     private final long mJoinIndex;
     private final int mDirectPageSize;
     private final boolean mReadOnly;
@@ -288,13 +288,6 @@ public class JoinedPageArray extends PageArray {
         if (ex != null) {
             throw ex;
         }
-    }
-
-    @Override
-    public PageArray open() throws IOException {
-        mFirst = mFirst.open();
-        mSecond = mSecond.open();
-        return this;
     }
 
     private static interface Task {

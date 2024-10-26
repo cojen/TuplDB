@@ -477,7 +477,6 @@ final class LocalDatabase extends CoreDatabase {
                 if (dataPageArray == null) {
                     mPageDb = new NonPageDb(pageSize);
                 } else {
-                    dataPageArray = dataPageArray.open();
                     Crypto crypto = launcher.mDataCrypto;
                     mPageDb = StoredPageDb.open(debugListener, dataPageArray,
                                                 launcher.mChecksumFactory, crypto, destroy);
@@ -2403,7 +2402,6 @@ final class LocalDatabase extends CoreDatabase {
                 throw new UnsupportedOperationException(PageDb.unsupportedMessage("Restore"));
             }
 
-            dataPageArray = dataPageArray.open();
             dataPageArray.truncatePageCount(0);
 
             // Delete old redo log files.
@@ -6220,7 +6218,7 @@ final class LocalDatabase extends CoreDatabase {
             return;
         }
 
-        LHashTable.Obj<Object> committed;
+        LHashSet committed;
         CommitLock.Shared shared = mCommitLock.acquireSharedUnchecked();
         try {
             if (isClosed()) {
@@ -6237,7 +6235,7 @@ final class LocalDatabase extends CoreDatabase {
             return;
         }
 
-        LHashTable.Obj<Object> uncommitted = null;
+        LHashSet uncommitted = null;
 
         for (TransactionContext txnContext : mTxnContexts) {
             uncommitted = txnContext.moveUncommitted(uncommitted);
@@ -6262,7 +6260,7 @@ final class LocalDatabase extends CoreDatabase {
      * @param committed can be null if empty
      * @return false if database is closed
      */
-    private boolean waitForCommitted(LHashTable.Obj<Object> committed) {
+    private boolean waitForCommitted(LHashSet committed) {
         if (committed == null) {
             return true;
         }
@@ -6304,7 +6302,7 @@ final class LocalDatabase extends CoreDatabase {
         mCommitLock.acquireExclusive();
         mCommitLock.releaseExclusive();
 
-        LHashTable.Obj<Object> committed = null;
+        LHashSet committed = null;
         for (TransactionContext txnContext : mTxnContexts) {
             committed = txnContext.gatherCommitted(committed);
         }

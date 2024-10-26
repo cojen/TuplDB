@@ -21,6 +21,7 @@ import java.io.*;
 import java.net.*;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Function;
 
 import org.cojen.tupl.core.Utils;
 
@@ -43,8 +44,6 @@ public class TestUtils {
 
     private static File cBaseDir;
     private static volatile File cDeleteTempDir;
-
-    static volatile boolean traceUndo = false;
 
     static {
         // Force this class to be loaded early, to avoid shutdown hook loading
@@ -128,16 +127,38 @@ public class TestUtils {
     }
 
     public static Database reopenTempDatabase(Class context, Database db,
+                                              Function<File, DatabaseConfig> configFactory)
+        throws IOException
+    {
+        return tempFilesFor(context).reopenTempDatabase(db, configFactory, false, false);
+    }
+
+    public static Database reopenTempDatabase(Class context, Database db,
                                               DatabaseConfig config, boolean deleteRedo)
         throws IOException
     {
         return tempFilesFor(context).reopenTempDatabase(db, config, deleteRedo, false);
     }
 
+    public static Database reopenTempDatabase(Class context, Database db,
+                                              Function<File, DatabaseConfig> configFactory,
+                                              boolean deleteRedo)
+        throws IOException
+    {
+        return tempFilesFor(context).reopenTempDatabase(db, configFactory, deleteRedo, false);
+    }
+
     public static Database destroyTempDatabase(Class context, Database db, DatabaseConfig config)
         throws IOException
     {
         return tempFilesFor(context).reopenTempDatabase(db, config, false, true);
+    }
+
+    public static Database destroyTempDatabase(Class context, Database db,
+                                               Function<File, DatabaseConfig> configFactory)
+        throws IOException
+    {
+        return tempFilesFor(context).reopenTempDatabase(db, configFactory, false, true);
     }
 
     public static File newTempBaseFile(Class context) throws IOException {
@@ -599,6 +620,13 @@ public class TestUtils {
                                     boolean deleteRedo, boolean destroy)
             throws IOException
         {
+            return reopenTempDatabase(db, (file) -> config.baseFile(file), deleteRedo, destroy);
+        }
+
+        Database reopenTempDatabase(Database db, Function<File, DatabaseConfig> configFactory,
+                                    boolean deleteRedo, boolean destroy)
+            throws IOException
+        {
             File baseFile;
             synchronized (this) {
                 baseFile = mTempDatabases.remove(db);
@@ -615,16 +643,12 @@ public class TestUtils {
                 }
             }
 
-            if (traceUndo) {
-                var props = new HashMap<String, Object>();
-                props.put("traceUndo", true);
-                config.debugOpen(null, props);
-            }
+            DatabaseConfig config = configFactory.apply(baseFile);
 
             if (destroy) {
-                db = Database.destroy(config.baseFile(baseFile));
+                db = Database.destroy(config);
             } else {
-                db = Database.open(config.baseFile(baseFile));
+                db = Database.open(config);
             }
 
             synchronized (this) {

@@ -153,11 +153,17 @@ final class PendingTxn extends Locker implements Runnable {
         }
     }
 
+    /**
+     * Note: Doesn't do anything if this PendingTxn has been enqueued into ReplWriter.
+     * Instead, PendingTxnFinisher will complete the rollback.
+     */
     RuntimeException rollback(Throwable cause) {
-        try {
-            doRollback();
-        } catch (Throwable e) {
-            Utils.suppress(cause, e);
+        if (commitPos() == 0) {
+            try {
+                doRollback();
+            } catch (Throwable e) {
+                Utils.suppress(cause, e);
+            }
         }
         throw Utils.rethrow(cause);
     }
