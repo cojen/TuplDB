@@ -42,11 +42,7 @@ public final class Scheduler {
 
     public static synchronized Scheduler daemon() {
         if (cDaemon == null) {
-            cDaemon = new Scheduler(Executors.newCachedThreadPool(r -> {
-                var t = new Thread(r);
-                t.setDaemon(true);
-                return t;
-            }));
+            cDaemon = new Scheduler(null, true);
         }
 
         return cDaemon;
@@ -54,6 +50,21 @@ public final class Scheduler {
 
     public Scheduler() {
         this(Executors.newCachedThreadPool());
+    }
+
+    /**
+     * @param namePrefix optional name prefix to assign to each thread
+     * @param daemon pass true to create daemon threads
+     */
+    public Scheduler(String namePrefix, boolean daemon) {
+        this(Executors.newCachedThreadPool(r -> {
+            var t = new Thread(r);
+            if (namePrefix != null) {
+                t.setName(namePrefix + '-' + Long.toUnsignedString(t.threadId()));
+            }
+            t.setDaemon(daemon);
+            return t;
+        }));
     }
 
     public Scheduler(ExecutorService executor) {

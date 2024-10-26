@@ -35,7 +35,8 @@ import org.cojen.tupl.DatabaseException;
 import org.cojen.tupl.table.codec.ColumnCodec;
 
 /**
- * Makes a call site for implementing the RowEvaluator.writeRow method.
+ * Makes a call site for implementing the RowEvaluator.writeRow method. Use WriteRow for
+ * writing rows which aren't binary encoded.
  *
  * @author Brian S O'Neill
  */
@@ -46,7 +47,7 @@ public class WriteRowMaker {
      *
      * MethodType is void (int schemaVersion, RowWriter writer, byte[] key, byte[] value)
      *
-     * @param projectionSpec can be null if all columns are projected
+     * @param projectionSpec can be null if all columns are projected; see DecodePartialMaker
      */
     public static SwitchCallSite indyWriteRow(MethodHandles.Lookup lookup,
                                               String name, MethodType mt,
@@ -84,7 +85,7 @@ public class WriteRowMaker {
      *
      * MethodType is void (int schemaVersion, RowWriter writer, byte[] key, byte[] value)
      *
-     * @param projectionSpec can be null if all columns are projected
+     * @param projectionSpec can be null if all columns are projected; see DecodePartialMaker
      */
     public static MethodHandle makeWriteRowHandle(WeakReference<RowStore> storeRef,
                                                   Class<?> rowType, long tableId,
@@ -106,7 +107,7 @@ public class WriteRowMaker {
      *
      * MethodType is void (RowWriter writer, byte[] key, byte[] value)
      *
-     * @param projectionSpec can be null if all columns are projected
+     * @param projectionSpec can be null if all columns are projected; see DecodePartialMaker
      */
     public static MethodHandle makeWriteRowHandle(RowInfo rowInfo, byte[] projectionSpec) {
         // Because no special access is required, the local lookup is sufficient.
@@ -127,7 +128,7 @@ public class WriteRowMaker {
      *
      * @param rowInfo describes the key and value encoding
      * @param valueOffset start offset of the source binary value
-     * @param projectionSpec can be null if all columns are projected
+     * @param projectionSpec can be null if all columns are projected; see DecodePartialMaker
      */
     public static void makeWriteRow(MethodMaker mm, RowInfo rowInfo, int valueOffset,
                                     byte[] projectionSpec)

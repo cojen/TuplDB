@@ -64,7 +64,7 @@ final class TransactionContext extends Latch implements Flushable {
     private volatile long mHighTxnId;
     private UndoLog mTopUndoLog;
     private int mUndoLogCount;
-    private LHashTable.Obj<Object> mUncommitted;
+    private LHashSet mUncommitted;
 
     // Access to these fields is protected by the inherited latch.
     private final byte[] mRedoBuffer;
@@ -1269,9 +1269,9 @@ final class TransactionContext extends Latch implements Flushable {
      */
     synchronized void uncommitted(long txnId) {
         if (mUncommitted == null) {
-            mUncommitted = new LHashTable.Obj<>(4);
+            mUncommitted = new LHashSet(4);
         }
-        mUncommitted.put(txnId);
+        mUncommitted.add(txnId);
     }
 
     /**
@@ -1281,9 +1281,9 @@ final class TransactionContext extends Latch implements Flushable {
      * @param committed set with transaction id keys
      * @return true if at least one of the given transactions is active
      */
-    synchronized boolean anyActive(LHashTable.Obj<Object> committed) {
+    synchronized boolean anyActive(LHashSet committed) {
         for (UndoLog log = mTopUndoLog; log != null; log = log.mPrev) {
-            if (committed.get(log.mTxnId) != null && log.isCommitted()) {
+            if (committed.contains(log.mTxnId) && log.isCommitted()) {
                 return true;
             }
         }
@@ -1296,18 +1296,15 @@ final class TransactionContext extends Latch implements Flushable {
      * @param dest set with transaction id keys; can be null initially
      * @return exiting or new set
      */
-    synchronized LHashTable.Obj<Object> moveUncommitted(LHashTable.Obj<Object> dest) {
-        final LHashTable.Obj<Object> uncommitted = mUncommitted;
+    synchronized LHashSet moveUncommitted(LHashSet dest) {
+        final LHashSet uncommitted = mUncommitted;
 
         if (uncommitted != null) {
             mUncommitted = null;
             if (dest == null) {
                 return uncommitted;
             }
-            uncommitted.traverse(e -> {
-                dest.put(e.key);
-                return false;
-            });
+            dest.addAll(uncommitted);
         }
 
         return dest;
@@ -1328,13 +1325,13 @@ final class TransactionContext extends Latch implements Flushable {
      * @param dest set with transaction id keys; can be null initially
      * @return exiting or new set
      */
-    synchronized LHashTable.Obj<Object> gatherCommitted(LHashTable.Obj<Object> dest) {
+    synchronized LHashSet gatherCommitted(LHashSet dest) {
         for (UndoLog log = mTopUndoLog; log != null; log = log.mPrev) {
             if (log.isCommitted()) {
                 if (dest == null) {
-                    dest = new LHashTable.Obj<>(4);
+                    dest = new LHashSet(4);
                 }
-                dest.put(log.mTxnId);
+                dest.add(log.mTxnId);
             }
         }
         return dest;

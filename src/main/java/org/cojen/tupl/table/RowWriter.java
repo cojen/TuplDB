@@ -17,12 +17,13 @@
 
 package org.cojen.tupl.table;
 
-import java.io.DataOutput;
 import java.io.IOException;
 
 import java.util.HashMap;
 
 import java.util.Spliterator;
+
+import org.cojen.dirmi.Pipe;
 
 import org.cojen.tupl.Scanner;
 
@@ -35,8 +36,8 @@ import org.cojen.tupl.Scanner;
  * @see RowReader
  * @see WriteRowMaker
  */
-public final class RowWriter<R> implements RowConsumer<R> {
-    private final DataOutput mOut;
+public sealed class RowWriter<R> implements RowConsumer<R> {
+    protected final Pipe mOut;
 
     // The active header is initially null, which implies a row header with no columns.
     private byte[] mActiveHeader;
@@ -50,7 +51,7 @@ public final class RowWriter<R> implements RowConsumer<R> {
 
     private boolean mWrittenCharacteristics;
 
-    RowWriter(DataOutput out) {
+    RowWriter(Pipe out) {
         mOut = out;
     }
 
@@ -61,7 +62,7 @@ public final class RowWriter<R> implements RowConsumer<R> {
      * @param size only applicable when SIZED characteristic is set
      * @throws IllegalStateException if characteristics have already been written
      */
-    public void writeCharacteristics(int characteristics, long size) throws IOException {
+    public final void writeCharacteristics(int characteristics, long size) throws IOException {
         if (mWrittenCharacteristics) {
             throw new IllegalStateException();
         }
@@ -73,7 +74,7 @@ public final class RowWriter<R> implements RowConsumer<R> {
     }
 
     @Override
-    public void beginBatch(Scanner scanner, RowEvaluator<R> evaluator) throws IOException {
+    public final void beginBatch(Scanner scanner, RowEvaluator<R> evaluator) throws IOException {
         mEvaluator = evaluator;
 
         if (!mWrittenCharacteristics) {
@@ -87,24 +88,28 @@ public final class RowWriter<R> implements RowConsumer<R> {
     }
 
     @Override
-    public void accept(byte[] key, byte[] value) throws IOException {
+    public final void accept(byte[] key, byte[] value) throws IOException {
         mEvaluator.writeRow(this, key, value);
     }
 
     /**
-     * Header prefix byte:
+     * Writes a prefix possibly followed by the header. Each prefix begins with a format byte:
      *
      *      0: scan terminator
      *      1: same header as before
      *      2: new header (is followed by a RowHeader; first id is 0 and goes up by one each time)
-     *      3: reserved
+     *      3: exception terminator (is followed by a serialized Throwable)
      *      4: reserved
      * 5..254: refer to an existing header (id is 0..249)
      *    255: refer to an existing header (is followed by an int id)
      *
+     * Only formats 1, 2, and 5+ are actually written by this method. The writeTerminator
+     * method writes format 0, and writeTerminalException writes format 3.
+     *
+     * @param header must be constant since it will be used as an identity cache key
      * @see RowHeader
      */
-    public void writeHeader(byte[] header) throws IOException {
+    public final void writeHeader(byte[] header) throws IOException {
         if (header == mActiveHeader) {
             // same header as before
             mOut.writeByte(1);
@@ -144,7 +149,25 @@ public final class RowWriter<R> implements RowConsumer<R> {
         mActiveHeader = header;
     }
 
-    public void writeRowLength(int length) throws IOException {
+    public final void writeTerminator() throws IOException {
+        if (!mWrittenCharacteristics) {
+            writeCharacteristics(Spliterator.SIZED, 0);
+        }
+        mOut.writeByte(0);
+    }
+
+    /**
+     * Should be called instead of writing a header, and nothing more can be written.
+     */
+    public final void writeTerminalException(Throwable e) throws IOException {
+        if (!mWrittenCharacteristics) {
+            writeCharacteristics(Spliterator.SIZED, 0);
+        }
+        mOut.writeByte(3);
+        mOut.writeObject(e);
+    }
+
+    public final void writeRowLength(int length) throws IOException {
         if (length <= 32767) {
             mOut.writeShort(length);
         } else {
@@ -152,7 +175,7 @@ public final class RowWriter<R> implements RowConsumer<R> {
         }
     }
 
-    public void writeRowAndKeyLength(int rowLength, int keyLength) throws IOException {
+    public final void writeRowAndKeyLength(int rowLength, int keyLength) throws IOException {
         if (keyLength <= 127) {
             writeRowLength(rowLength + 1);
             mOut.writeByte(keyLength);
@@ -162,15 +185,35 @@ public final class RowWriter<R> implements RowConsumer<R> {
         }
     }
 
-    public void writeBytes(byte[] bytes) throws IOException {
+    public final void writeBytes(byte[] bytes) throws IOException {
         mOut.write(bytes);
     }
 
-    public void writeBytes(byte[] bytes, int offset) throws IOException {
+    public final void writeBytes(byte[] bytes, int offset) throws IOException {
         mOut.write(bytes, offset, bytes.length - offset);
     }
 
-    public void writeBytes(byte[] bytes, int offset, int length) throws IOException {
+    public final void writeBytes(byte[] bytes, int offset, int length) throws IOException {
         mOut.write(bytes, offset, length);
+    }
+
+    /**
+     * A special subclass which allows the {@link WriteRow} implementation to stash a generated
+     * encoder instance. As such, ForEncoder instances cannot be shared by multiple threads.
+     */
+    public static final class ForEncoder<R> extends RowWriter<R> {
+        public Pipe.Encoder<R> encoder;
+
+        ForEncoder(Pipe out) {
+            super(out);
+        }
+
+        /**
+         * Note: The encoder field must be set.
+         */
+        public void writeRowEncode(R row, int length) throws IOException {
+            writeRowLength(length);
+            mOut.writeEncode(row, length, encoder);
+        }
     }
 }

@@ -446,6 +446,10 @@ public final class ClientDatabase implements Database {
         }
     }
 
+    Session session() {
+        return Session.access(mRemote);
+    }
+
     RemoteIndex remoteIndex(Index ix) throws ClosedIndexException {
         if (ix == null) {
             return null;

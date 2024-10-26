@@ -54,7 +54,7 @@ public abstract sealed class RowFilter implements Comparable<RowFilter>
     }
 
     /**
-     * @return 0 if filter has no arguments
+     * @return max if filter has no arguments
      */
     protected abstract int maxArgument(int max);
 

@@ -17,6 +17,8 @@
 
 package org.cojen.tupl.table.codec;
 
+import java.util.function.Function;
+
 import org.cojen.maker.MethodMaker;
 import org.cojen.maker.Variable;
 
@@ -53,8 +55,15 @@ class NonNullStringColumnCodec extends StringColumnCodec {
     }
 
     @Override
-    public void encodePrepare() {
+    public boolean encodePrepare() {
         mLengthVar = maker.var(int.class);
+        return true;
+    }
+
+    @Override
+    public void encodeTransfer(ColumnCodec codec, Function<Variable, Variable> transfer) {
+        var dst = (NonNullStringColumnCodec) codec;
+        dst.mLengthVar = transfer.apply(mLengthVar);
     }
 
     @Override

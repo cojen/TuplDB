@@ -57,11 +57,11 @@ public class IndexingTest {
     public void basic() throws Exception {
         Database db = Database.open(new DatabaseConfig().directPageAccess(false).
                                     lockTimeout(100, TimeUnit.MILLISECONDS));
-        var table = (BaseTable<TestRow>) db.openTable(TestRow.class);
+        var table = (StoredTable<TestRow>) db.openTable(TestRow.class);
 
         Table<TestRow> alt = table.viewAlternateKey("path").viewUnjoined();
-        var ix1 = (BaseTable<TestRow>) table.viewSecondaryIndex("name").viewUnjoined();
-        var ix2 = (BaseTable<TestRow>) table.viewSecondaryIndex("num", "name").viewUnjoined();
+        var ix1 = (StoredTable<TestRow>) table.viewSecondaryIndex("name").viewUnjoined();
+        var ix2 = (StoredTable<TestRow>) table.viewSecondaryIndex("num", "name").viewUnjoined();
 
         try {
             ix1.viewAlternateKey("path");
@@ -473,7 +473,7 @@ public class IndexingTest {
         Class t2 = cm.finish();
         var accessors2 = access(spec, t2);
         var setters2 = accessors2[1];
-        var table2 = (BaseTable) db.openIndex("test").asTable(t2);
+        var table2 = (StoredTable) db.openIndex("test").asTable(t2);
 
         Table nameTable = null, numTable = null;
         for (int i=0; i<1000; i++) {
@@ -599,7 +599,7 @@ public class IndexingTest {
         Class t2 = cm.finish();
         var accessors2 = access(spec, t2);
         var setters2 = accessors2[1];
-        var table2 = (BaseTable) db.openIndex("test").asTable(t2);
+        var table2 = (StoredTable) db.openIndex("test").asTable(t2);
 
         sleep(1000);
         try {
@@ -719,7 +719,7 @@ public class IndexingTest {
         }
 
         fence(leaderRepl, replicaRepl);
-        var replicaTable = (BaseTable) replicaDb.openIndex("test").asTable(t1);
+        var replicaTable = (StoredTable) replicaDb.openIndex("test").asTable(t1);
 
         // Define the table again, with a secondary index added.
 
@@ -732,7 +732,7 @@ public class IndexingTest {
         Class t2 = cm.finish();
         var accessors2 = access(spec, t2);
         var setters2 = accessors2[1];
-        var table2 = (BaseTable) leaderDb.openIndex("test").asTable(t2);
+        var table2 = (StoredTable) leaderDb.openIndex("test").asTable(t2);
 
         Table numTable = null;
         for (int i=0; i<1000; i++) {
@@ -875,7 +875,7 @@ public class IndexingTest {
         Class t2 = cm.finish();
         var accessors2 = access(spec, t2);
         var setters2 = accessors2[1];
-        var table2 = (BaseTable) db.openIndex("test").asTable(t2);
+        var table2 = (StoredTable) db.openIndex("test").asTable(t2);
 
         Table nameTable = null;
         for (int i=0; i<1000; i++) {
@@ -946,7 +946,7 @@ public class IndexingTest {
         Class t1 = cm.finish();
         var accessors1 = access(spec, t1);
         var setters1 = accessors1[1];
-        var table1 = (BaseTable) db.openIndex("test").asTable(t1);
+        var table1 = (StoredTable) db.openIndex("test").asTable(t1);
 
         // Fill 'er up.
 
@@ -970,7 +970,7 @@ public class IndexingTest {
         var nameTable = table1.viewSecondaryIndex("name").viewUnjoined();
         verifyIndex(nameTable, table1, 0);
         assertEquals(fillAmount, nameTable.newStream(null).count());
-        long nameTableId = ((BaseTable) nameTable).mSource.id();
+        long nameTableId = ((StoredTable) nameTable).mSource.id();
 
         assertNotNull(db.indexById(nameTableId));
 
@@ -988,7 +988,7 @@ public class IndexingTest {
         Class t2 = newRowType(typeName, spec);
         var accessors2 = access(spec, t2);
         var setters2 = accessors2[1];
-        var table2 = (BaseTable) db.openIndex("test").asTable(t2);
+        var table2 = (StoredTable) db.openIndex("test").asTable(t2);
 
         try {
             table2.viewSecondaryIndex("name");
@@ -1088,7 +1088,7 @@ public class IndexingTest {
         Class t1 = cm.finish();
         var accessors1 = access(spec, t1);
         var setters1 = accessors1[1];
-        var table1 = (BaseTable) leaderDb.openIndex("test").asTable(t1);
+        var table1 = (StoredTable) leaderDb.openIndex("test").asTable(t1);
 
         // Fill 'er up.
 
@@ -1112,16 +1112,16 @@ public class IndexingTest {
         var nameTable = table1.viewSecondaryIndex("name").viewUnjoined();
         verifyIndex(nameTable, table1, 0);
         assertEquals(fillAmount, nameTable.newStream(null).count());
-        long nameTableId = ((BaseTable) nameTable).mSource.id();
+        long nameTableId = ((StoredTable) nameTable).mSource.id();
 
         assertNotNull(leaderDb.indexById(nameTableId));
 
         fence(leaderRepl, replicaRepl);
 
-        var replicaTable = (BaseTable) replicaDb.openIndex("test").asTable(t1);
+        var replicaTable = (StoredTable) replicaDb.openIndex("test").asTable(t1);
 
         var replicaNameTable = replicaTable.viewSecondaryIndex("name").viewUnjoined();
-        assertEquals(nameTableId, ((BaseTable) replicaNameTable).mSource.id());
+        assertEquals(nameTableId, ((StoredTable) replicaNameTable).mSource.id());
 
         verifyIndex(replicaNameTable, replicaTable, 0);
         assertEquals(fillAmount, replicaNameTable.newStream(null).count());
@@ -1131,7 +1131,7 @@ public class IndexingTest {
         Class t2 = newRowType(typeName, spec);
         var accessors2 = access(spec, t2);
         var setters2 = accessors2[1];
-        var table2 = (BaseTable) leaderDb.openIndex("test").asTable(t2);
+        var table2 = (StoredTable) leaderDb.openIndex("test").asTable(t2);
 
         try {
             table2.viewSecondaryIndex("name");
@@ -1275,7 +1275,7 @@ public class IndexingTest {
         // defines it as the value portion.
 
         Database db = Database.open(new DatabaseConfig().directPageAccess(false));
-        var table = (BaseTable<TestRow2>) db.openTable(TestRow2.class);
+        var table = (StoredTable<TestRow2>) db.openTable(TestRow2.class);
         Table<TestRow2> ix = table.viewSecondaryIndex("name", "id", "num").viewUnjoined();
 
         TestRow2 row = table.newRow();
@@ -1313,7 +1313,7 @@ public class IndexingTest {
     @Test
     public void loadJoin() throws Exception {
         Database db = Database.open(new DatabaseConfig().directPageAccess(false));
-        var table = (BaseTable<TestRow>) db.openTable(TestRow.class);
+        var table = (StoredTable<TestRow>) db.openTable(TestRow.class);
 
         Table<TestRow> alt = table.viewAlternateKey("path");
         Table<TestRow> ix1 = table.viewSecondaryIndex("name");
@@ -1436,8 +1436,8 @@ public class IndexingTest {
 
         Database db = Database.open(new DatabaseConfig().lockTimeout(2, TimeUnit.SECONDS));
         Index ix = db.openIndex("test");
-        var table = (BaseTable<TestRow>) ix.asTable(TestRow.class);
-        var alt = (BaseTable<TestRow>) table.viewAlternateKey("path");
+        var table = (StoredTable<TestRow>) ix.asTable(TestRow.class);
+        var alt = (StoredTable<TestRow>) table.viewAlternateKey("path");
 
         {
             TestRow row = table.newRow();
@@ -1537,7 +1537,7 @@ public class IndexingTest {
         Table secondary = null;
         for (int i=0; i<1000; i++) {
             try {
-                secondary = ((BaseTable) table2).viewSecondaryIndex("name").viewUnjoined();
+                secondary = ((StoredTable) table2).viewSecondaryIndex("name").viewUnjoined();
                 break;
             } catch (IllegalStateException e) {
                 assertTrue(e.getMessage().contains("not found"));
@@ -1684,7 +1684,7 @@ public class IndexingTest {
         Table secondary;
         while (true) {
             try {
-                secondary = ((BaseTable) table2).viewSecondaryIndex("name").viewUnjoined();
+                secondary = ((StoredTable) table2).viewSecondaryIndex("name").viewUnjoined();
                 break;
             } catch (IllegalStateException e) {
                 assertTrue(e.getMessage().contains("not found"));

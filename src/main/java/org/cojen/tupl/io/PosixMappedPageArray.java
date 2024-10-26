@@ -24,27 +24,24 @@ import java.util.EnumSet;
 
 import com.sun.jna.Platform;
 
+import org.cojen.tupl.diag.EventListener;
+import org.cojen.tupl.diag.EventType;
+
 /**
  * 
  *
  * @author Brian S O'Neill
  */
 class PosixMappedPageArray extends MappedPageArray {
-    private final File mFile;
-    private final EnumSet<OpenOption> mOptions;
-
     private final int mFileDescriptor;
 
     private volatile boolean mEmpty;
 
     PosixMappedPageArray(int pageSize, long pageCount,
-                         File file, EnumSet<OpenOption> options)
+                         File file, EnumSet<OpenOption> options, EventListener listener)
         throws IOException
     {
         super(pageSize, pageCount, options);
-
-        mFile = file;
-        mOptions = options;
 
         int prot = 1; // PROT_READ
         if (!options.contains(OpenOption.READ_ONLY)) {
@@ -58,13 +55,7 @@ class PosixMappedPageArray extends MappedPageArray {
             long mappingSize = pageSize * pageCount;
             long addr = PosixFileIO.mmapFd(mappingSize, prot, flags, -1, 0);
 
-            if (mappingSize >= (1L << 30) && Platform.isLinux()) {
-                try {
-                    PosixFileIO.madvisePtr(addr, mappingSize, 14); // 14 = MADV_HUGEPAGE
-                } catch (IOException e) {
-                    // Ignore if it doesn't work.
-                }
-            }
+            hugePages(addr, mappingSize, listener);
 
             setMappingPtr(addr);
 
@@ -128,6 +119,14 @@ class PosixMappedPageArray extends MappedPageArray {
             if (options.contains(OpenOption.RANDOM_ACCESS)) {
                 PosixFileIO.madvisePtr(addr, mappingSize, 1); // 1 = POSIX_MADV_RANDOM
             }
+
+            /* Performance appears to be worse with this option.
+            if (options.contains(OpenOption.NON_DURABLE)) {
+                // Only works when /sys/kernel/mm/transparent_hugepage/shmem_enabled is set to
+                // 'advise' or some other appropriate value.
+                hugePages(addr, mappingSize, listener);
+            }
+            */
         } catch (IOException e) {
             try {
                 PosixFileIO.closeFd(fd);
@@ -142,6 +141,20 @@ class PosixMappedPageArray extends MappedPageArray {
         setMappingPtr(addr);
     }
 
+    private static void hugePages(long addr, long mappingSize, EventListener listener) {
+        if (mappingSize >= (1L << 30) && Platform.isLinux()) {
+            try {
+                PosixFileIO.madvisePtr(addr, mappingSize, 14); // 14 = MADV_HUGEPAGE
+            } catch (IOException e) {
+                if (listener != null) {
+                    listener.notify
+                        (EventType.CACHE_INIT_INFO,
+                         "Unable to allocate using transparent huge pages");
+                }
+            }
+        }
+    }
+
     @Override
     public long pageCount() {
         return mEmpty ? 0 : super.pageCount();
@@ -150,14 +163,6 @@ class PosixMappedPageArray extends MappedPageArray {
     @Override
     public void truncatePageCount(long count) {
         mEmpty = count == 0;
-    }
-
-    @Override
-    MappedPageArray doOpen() throws IOException {
-        boolean empty = mEmpty;
-        var pa = new PosixMappedPageArray(pageSize(), super.pageCount(), mFile, mOptions);
-        pa.mEmpty = empty;
-        return pa;
     }
 
     void doSync(long mappingPtr, boolean metadata) throws IOException {

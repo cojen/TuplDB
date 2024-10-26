@@ -76,13 +76,10 @@ final class RedoLog extends RedoWriter {
     private OutputStream mOut;
     private volatile FileChannel mChannel;
 
-    private int mTermRndSeed;
-
     private long mNextLogId;
     private long mNextPosition;
     private OutputStream mNextOut;
     private FileChannel mNextChannel;
-    private int mNextTermRndSeed;
 
     private volatile OutputStream mOldOut;
     private volatile FileChannel mOldChannel;
@@ -224,9 +221,6 @@ final class RedoLog extends RedoWriter {
         OutputStream nextOut;
         FileChannel nextChannel;
 
-        // Zero indicates that Xorshift random numbers aren't used for terminators anymore.
-        int nextTermRndSeed = 0;
-
         try {
             fout = new FileOutputStream(file);
             nextChannel = fout.getChannel();
@@ -245,7 +239,7 @@ final class RedoLog extends RedoWriter {
             encodeLongLE(header, offset, MAGIC_NUMBER); offset += 8;
             encodeIntLE(header, offset, ENCODING_VERSION); offset += 4;
             encodeLongLE(header, offset, logId); offset += 8;
-            encodeIntLE(header, offset, nextTermRndSeed); offset += 4;
+            encodeIntLE(header, offset, 0); offset += 4; // reserved field
             if (offset != header.length) {
                 throw new AssertionError();
             }
@@ -256,14 +250,17 @@ final class RedoLog extends RedoWriter {
             FileIO.dirSync(file);
         } catch (IOException e) {
             closeQuietly(fout);
-            file.delete();
+            try {
+                Utils.delete(file);
+            } catch (IOException e2) {
+                e.addSuppressed(e2);
+            }
             throw WriteFailureException.from(e);
         }
 
         mNextLogId = logId;
         mNextOut = nextOut;
         mNextChannel = nextChannel;
-        mNextTermRndSeed = nextTermRndSeed;
     }
 
     private void applyNextFile(TransactionContext... contexts) throws IOException {
@@ -290,7 +287,6 @@ final class RedoLog extends RedoWriter {
 
             mOut = mNextOut;
             mChannel = mNextChannel;
-            mTermRndSeed = mNextTermRndSeed;
             mLogId = mNextLogId;
 
             mNextOut = null;
@@ -582,11 +578,6 @@ final class RedoLog extends RedoWriter {
         // Recovery handler can only be invoked when restarting the database.
     }
 
-    // Caller must hold exclusive latch (replay is exempt)
-    int nextTermRnd() {
-        return mTermRndSeed = nextRandom(mTermRndSeed);
-    }
-
     private boolean replay(DataIn in, RedoVisitor visitor, EventListener listener)
         throws IOException
     {
@@ -615,10 +606,11 @@ final class RedoLog extends RedoWriter {
                 ("Expected redo log identifier of " + mLogId + ", but actual is: " + id);
         }
 
-        mTermRndSeed = in.readIntLE();
+        // Skip a field which was originally used to initialize the terminator sequence.
+        in.readIntLE();
 
         try {
-            return new RedoLogDecoder(this, in, listener).run(visitor);
+            return new RedoLogDecoder(in, listener).run(visitor);
         } catch (EOFException e) {
             if (listener != null) {
                 listener.notify(EventType.RECOVERY_REDO_LOG_CORRUPTION, "Unexpected end of file");

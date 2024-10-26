@@ -42,6 +42,8 @@ public class GroupedScanner<S, T> implements Scanner<T> {
     private S mSourceRow;
     private T mTargetRow;
 
+    private boolean mBegin;
+
     public GroupedScanner(GroupedTable<S, T> groupedTable, Scanner<S> source,
                           T targetRow, Grouper<S, T> grouper)
         throws IOException
@@ -90,17 +92,19 @@ public class GroupedScanner<S, T> implements Scanner<T> {
             return null;
         }
 
-        T actualTargetRow = mTargetRow;
+        if (targetRow == null) {
+            targetRow = mGroupedTable.newRow();
+        } else {
+            mGroupedTable.unsetRow(targetRow);
+        }
 
-        doStep: try {
-            S sourceRow;
-
-            if (actualTargetRow == null) {
-                sourceRow = mSourceRow;
-            } else {
-                targetRow = prepareTargetRow(targetRow);
-
-                while ((actualTargetRow = grouper.step(targetRow)) != null) {
+        try {
+            loop: while (true) {
+                while (true) {
+                    T actualTargetRow = grouper.step(targetRow);
+                    if (actualTargetRow == null) {
+                        break;
+                    }
                     if (finish(actualTargetRow)) {
                         mGroupedTable.cleanRow(actualTargetRow);
                         mTargetRow = actualTargetRow;
@@ -108,51 +112,38 @@ public class GroupedScanner<S, T> implements Scanner<T> {
                     }
                 }
 
-                sourceRow = mSourceRow;
-
-                if (sourceRow == null) {
-                    break doStep;
-                }
-
-                mGroupedTable.source().copyRow(sourceRow, mHeader);
-                sourceRow = grouper.begin(sourceRow);
-            }
-
-            while (true) {
-                if ((sourceRow = mSource.step(sourceRow)) != null
-                    && mComparator.compare(mHeader, sourceRow) == 0)
-                {
-                    sourceRow = grouper.accumulate(sourceRow);
-                    continue;
-                }
-
-                mSourceRow = sourceRow;
-                targetRow = prepareTargetRow(targetRow);
-                actualTargetRow = grouper.process(targetRow);
-
-                if (actualTargetRow != null) {
-                    if (finish(actualTargetRow)) {
-                        mGroupedTable.cleanRow(actualTargetRow);
-                        mTargetRow = actualTargetRow;
-                        return actualTargetRow;
-                    }
-
-                    while ((actualTargetRow = grouper.step(targetRow)) != null) {
-                        if (finish(actualTargetRow)) {
-                            mGroupedTable.cleanRow(actualTargetRow);
-                            mTargetRow = actualTargetRow;
-                            return actualTargetRow;
+                doSource: {
+                    if (mBegin) {
+                        S sourceRow = mSource.row();
+                        if (sourceRow != null) {
+                            mSourceRow = grouper.begin(sourceRow);
+                            mBegin = false;
+                            break doSource;
+                        } else if (mHeader != null) {
+                            mHeader = null;
+                        } else {
+                            break loop;
                         }
+                    } else {
+                        S sourceRow = mSource.step(mSourceRow);
+                        if (sourceRow != null) {
+                            if (mComparator.compare(mHeader, sourceRow) == 0) {
+                                mSourceRow = grouper.accumulate(sourceRow);
+                                break doSource;
+                            }
+                            mGroupedTable.source().copyRow(sourceRow, mHeader);
+                        } else if (mHeader != null) {
+                            mHeader = null;
+                        } else {
+                            break loop;
+                        }
+                        mBegin = true;
                     }
+
+                    grouper.finished();
                 }
 
-                if (sourceRow == null) {
-                    mTargetRow = actualTargetRow;
-                    break;
-                }
-
-                mGroupedTable.source().copyRow(sourceRow, mHeader);
-                sourceRow = grouper.begin(sourceRow);
+                mGroupedTable.unsetRow(targetRow);
             }
         } catch (Throwable e) {
             try {
@@ -164,34 +155,15 @@ public class GroupedScanner<S, T> implements Scanner<T> {
         }
 
         mGrouper = null;
-        mHeader = null;
+        mTargetRow = null;
 
         try {
             grouper.close();
         } catch (Throwable e) {
-            mTargetRow = null;
             throw e;
         }
 
-        return actualTargetRow;
-    }
-
-    private T prepareTargetRow(T targetRow) {
-        if (targetRow == null) {
-            targetRow = mGroupedTable.newRow();
-        } else {
-            mGroupedTable.unsetRow(targetRow);
-        }
-        return targetRow;
-    }
-
-    /**
-     * Override to apply a custom finishing operation to the target row.
-     *
-     * @return false if filtered out
-     */
-    protected boolean finish(T targetRow) {
-        return true;
+        return null;
     }
 
     @Override
@@ -218,5 +190,14 @@ public class GroupedScanner<S, T> implements Scanner<T> {
     @Override
     public final int characteristics() {
         return NONNULL;
+    }
+
+    /**
+     * Override to apply a custom finishing operation to the target row.
+     *
+     * @return false if filtered out
+     */
+    protected boolean finish(T targetRow) {
+        return true;
     }
 }

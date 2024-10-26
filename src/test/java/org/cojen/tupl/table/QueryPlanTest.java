@@ -39,12 +39,12 @@ public class QueryPlanTest {
     }
 
     private Database mDatabase;
-    private BaseTable<TestRow> mTable, mIndexA, mIndexB, mIndexC;
+    private StoredTable<TestRow> mTable, mIndexA, mIndexB, mIndexC;
 
     @Before
     public void before() throws Exception {
         mDatabase = Database.open(new DatabaseConfig());
-        mTable = (BaseTable<TestRow>) mDatabase.openTable(TestRow.class);
+        mTable = (StoredTable<TestRow>) mDatabase.openTable(TestRow.class);
 
         mIndexA = mTable.viewAlternateKey("a");
         mIndexB = mTable.viewSecondaryIndex("b");
@@ -60,10 +60,15 @@ public class QueryPlanTest {
 
     @Test
     public void primaryKey() throws Exception {
-        QueryPlan plan = mTable.query("id == ?1 && id != ?1").scannerPlan(null);
+        Query<TestRow> query = mTable.query("id == ?1 && id != ?1");
+        assertEquals(TestRow.class, query.rowType());
+        assertEquals(0, query.argumentCount());
+        QueryPlan plan = query.scannerPlan(null);
         comparePlans(new QueryPlan.Empty(), plan);
 
-        plan = mTable.query("id == ?1 && id != ?1 && a == ?").scannerPlan(null);
+        query = mTable.query("id == ?1 && id != ?1 && a == ?");
+        assertEquals(0, query.argumentCount());
+        plan = query.scannerPlan(null);
         comparePlans(new QueryPlan.Empty(), plan);
 
         plan = mTable.queryAll().scannerPlan(null);
@@ -90,7 +95,9 @@ public class QueryPlanTest {
                       new String[] {"+id"}, false, "id >= ?1", null),
                      plan);
 
-        plan = mTable.query("id >= ? && id < ?").scannerPlan(null);
+        query = mTable.query("id >= ? && id < ?");
+        assertEquals(2, query.argumentCount());
+        plan = query.scannerPlan(null);
         comparePlans(new QueryPlan.RangeScan
                      (TestRow.class.getName(), "primary key",
                       new String[] {"+id"}, false, "id >= ?1", "id < ?2"),
@@ -279,7 +286,10 @@ public class QueryPlanTest {
 
     @Test
     public void alternateKey() throws Exception {
-        QueryPlan plan = mIndexA.query("a == ?1 && a != ?1").scannerPlan(null);
+        Query<TestRow> query = mIndexA.query("a == ?1 && a != ?1");
+        assertEquals(TestRow.class, query.rowType());
+        assertEquals(0, query.argumentCount());
+        QueryPlan plan = query.scannerPlan(null);
         comparePlans(new QueryPlan.Empty(), plan);
 
         plan = mIndexA.query("a == ?1 && a != ?1 && id == ?").scannerPlan(null);
@@ -658,9 +668,12 @@ public class QueryPlanTest {
 
     @Test
     public void joinedDoubleCheck() throws Exception {
-        QueryPlan plan = mIndexB.query
-            ("(b == ? && id != ? && c != ?) || (b == ? && c > ?)")
-            .scannerPlan(Transaction.BOGUS);
+        Query<TestRow> query = mIndexB.query("(b == ? && id != ? && c != ?) || (b == ? && c > ?)");
+
+        assertEquals(TestRow.class, query.rowType());
+        assertEquals(5, query.argumentCount());
+
+        QueryPlan plan = query.scannerPlan(Transaction.BOGUS);
 
         comparePlans(new QueryPlan.RangeUnion
                      (new QueryPlan.Filter
@@ -853,7 +866,7 @@ public class QueryPlanTest {
 
     @Test
     public void covering2() throws Exception {
-        var table = (BaseTable<TestRow2>) mDatabase.openTable(TestRow2.class);
+        var table = (StoredTable<TestRow2>) mDatabase.openTable(TestRow2.class);
         var index = table.viewSecondaryIndex("b", "a", "c");
 
         QueryPlan plan = index.query("b == ? && c == ?").scannerPlan(null);

@@ -21,7 +21,7 @@ import java.io.IOException;
 
 import java.security.GeneralSecurityException;
 
-import org.cojen.tupl.DatabaseException;
+import org.cojen.tupl.CorruptDatabaseException;
 
 import org.cojen.tupl.ext.Crypto;
 
@@ -88,7 +88,7 @@ final class CryptoPageArray extends TransformedPageArray {
             mSource.readPage(index, dst);
             mCrypto.decryptPage(index, pageSize(), dst, 0);
         } catch (GeneralSecurityException e) {
-            throw new DatabaseException(e);
+            throw new CorruptDatabaseException(e);
         }
     }
 
@@ -112,7 +112,7 @@ final class CryptoPageArray extends TransformedPageArray {
             mSource.readPage(index, dstPtr);
             mCrypto.decryptPage(index, pageSize(), dstPtr, 0);
         } catch (GeneralSecurityException e) {
-            throw new DatabaseException(e);
+            throw new CorruptDatabaseException(e);
         }
     }
 
@@ -143,7 +143,7 @@ final class CryptoPageArray extends TransformedPageArray {
             mCrypto.encryptPage(index, pageSize, src, offset, encrypted, 0);
             mSource.writePage(index, encrypted, 0);
         } catch (GeneralSecurityException e) {
-            throw new DatabaseException(e);
+            throw new CorruptDatabaseException(e);
         }
     }
 
@@ -160,7 +160,7 @@ final class CryptoPageArray extends TransformedPageArray {
                 DirectPageOps.p_delete(encrypted);
             }
         } catch (GeneralSecurityException e) {
-            throw new DatabaseException(e);
+            throw new CorruptDatabaseException(e);
         }
     }
 
@@ -170,7 +170,7 @@ final class CryptoPageArray extends TransformedPageArray {
             // Page is being evicted, and so buf contents can be destroyed.
             mCrypto.encryptPage(index, pageSize(), buf, 0);
         } catch (GeneralSecurityException e) {
-            throw new DatabaseException(e);
+            throw new CorruptDatabaseException(e);
         }
 
         try {
@@ -193,7 +193,7 @@ final class CryptoPageArray extends TransformedPageArray {
             // Page is being evicted, and so buf contents can be destroyed.
             mCrypto.encryptPage(index, pageSize(), bufPtr, 0);
         } catch (GeneralSecurityException e) {
-            throw new DatabaseException(e);
+            throw new CorruptDatabaseException(e);
         }
 
         try {

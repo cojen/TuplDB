@@ -65,6 +65,13 @@ public class BasicJoinTest {
     }
 
     @Test
+    public void identity() throws Exception {
+        try (var scanner = Table.join().derive("{a=1}").newScanner(null)) {
+            assertEquals(1, scanner.row().get_int("a"));
+        }
+    }
+
+    @Test
     public void crossJoin() throws Exception {
         join("department : employee");
 
@@ -855,6 +862,150 @@ public class BasicJoinTest {
              "department.id == employee.departmentId && company.id == department.companyId");
     }
 
+    @Test
+    @SuppressWarnings("unchecked")
+    public void generated() throws Exception {
+        // Test against a generated join class.
+
+        mJoin = Table.join("emp : dept", mEmployee, mDepartment);
+        assertTrue(Row.class.isAssignableFrom(mJoin.rowType()));
+
+        // First run a basic test like with the innerJoin test.
+
+        var plan = """
+            - nested loops join
+              - first
+                - full scan over primary key: org.cojen.tupl.table.join.Employee
+                  key columns: +id
+                assignments: ?1 = emp.departmentId
+              - join
+                - load one using primary key: org.cojen.tupl.table.join.Department
+                  key columns: +id
+                  filter: id == ?1
+            """;
+
+        var results = new String[] {
+            "{dept={id=31, companyId=1, name=Sales}, emp={departmentId=31, country=Australia, lastName=Rafferty}}",
+            "{dept={id=33, companyId=2, name=Engineering}, emp={departmentId=33, country=Australia, lastName=Jones}}",
+            "{dept={id=33, companyId=2, name=Engineering}, emp={departmentId=33, country=Australia, lastName=Heisenberg}}",
+            "{dept={id=34, companyId=1, name=Clerical}, emp={departmentId=34, country=United States, lastName=Robinson}}",
+            "{dept={id=34, companyId=1, name=Clerical}, emp={departmentId=34, country=Germany, lastName=Smith}}",
+        };
+
+        eval(true, plan, results, "dept.id == emp.departmentId");
+
+        // Test again with a view.
+
+        mJoin = mJoin.derive(mJoin.rowType(), "dept.id < ?", 34);
+        assertTrue(Row.class.isAssignableFrom(mJoin.rowType()));
+
+        plan = """
+            - nested loops join
+              - first
+                - reverse range scan over primary key: org.cojen.tupl.table.join.Department
+                  key columns: +id
+                  range: .. id < ?1
+                assignments: ?2 = dept.id
+              - join
+                - filter: departmentId == ?2
+                  - full scan over primary key: org.cojen.tupl.table.join.Employee
+                    key columns: +id
+            """;
+
+        results = new String[] {
+            "{dept={id=33, companyId=2, name=Engineering}, emp={departmentId=33, country=Australia, lastName=Jones}}",
+            "{dept={id=33, companyId=2, name=Engineering}, emp={departmentId=33, country=Australia, lastName=Heisenberg}}",
+            "{dept={id=31, companyId=1, name=Sales}, emp={departmentId=31, country=Australia, lastName=Rafferty}}",
+        };
+
+        eval(true, plan, results, "dept.id == emp.departmentId");
+
+        // Test accessing column paths.
+
+        assertTrue(Row.class.isAssignableFrom(Department.class));
+        assertFalse(Row.class.isAssignableFrom(Employee.class));
+
+        String queryStr = "dept.id == ? && emp.lastName == ?";
+
+        try (var scanner = mJoin.newScanner(null, queryStr, 31, "Williams")) {
+            for (var row = (Row) scanner.row(); row != null; row = (Row) scanner.step()) {
+                assertEquals(int.class, row.columnType("dept.id"));
+                assertEquals(Integer.class, row.columnType("dept.companyId"));
+                assertEquals(String.class, row.columnType("dept.name"));
+
+                assertEquals("id", row.columnMethodName("dept.id"));
+                assertEquals("companyId", row.columnMethodName("dept.companyId"));
+                assertEquals("name", row.columnMethodName("dept.name"));
+
+                assertEquals(31, row.get_int("dept.id"));
+                assertEquals(1, row.get_int("dept.companyId"));
+                assertEquals("Sales", row.getString("dept.name"));
+
+                try {
+                    row.get("dept.fake.id");
+                    fail();
+                } catch (IllegalArgumentException e) {
+                    assertEquals("Column name isn't found: fake.id", e.getMessage());
+                }
+
+                row.set("dept.id", 123L);
+                row.set("dept.companyId", (Integer) null);
+                row.set("dept.name", "none");
+
+                assertEquals(123, row.get_int("dept.id"));
+                assertEquals(null, row.getInteger("dept.companyId"));
+                assertEquals("none", row.getString("dept.name"));
+
+                assertEquals(int.class, row.columnType("emp.id"));
+                assertEquals(Integer.class, row.columnType("emp.departmentId"));
+                assertEquals(String.class, row.columnType("emp.country"));
+                assertEquals(String.class, row.columnType("emp.lastName"));
+
+                assertEquals("id", row.columnMethodName("emp.id"));
+                assertEquals("departmentId", row.columnMethodName("emp.departmentId"));
+                assertEquals("country", row.columnMethodName("emp.country"));
+                assertEquals("lastName", row.columnMethodName("emp.lastName"));
+
+                assertEquals(null, row.get("emp.departmentId"));
+                assertEquals("Germany", row.get("emp.country"));
+                assertEquals("Williams", row.get("emp.lastName"));
+
+                row.set("emp.id", 10);
+                row.set("emp.departmentId", 100);
+                row.set("emp.country", "nowhere");
+                row.set("emp.lastName", "what");
+
+                assertEquals(10, row.get("emp.id"));
+                assertEquals(100, row.get("emp.departmentId"));
+                assertEquals("nowhere", row.get("emp.country"));
+                assertEquals("what", row.get("emp.lastName"));
+            }
+        }
+
+        // Test path access against a joined row which is null.
+
+        {
+            var row = (Row) mJoin.newRow();
+
+            assertNull(row.getInteger("dept.id"));
+            assertNull(row.getInteger("dept.companyId"));
+
+            try {
+                row.get_int("dept.companyId");
+                fail();
+            } catch (ConversionException e) {
+                assertEquals("Column path joins to a null row: dept", e.getMessage());
+            }
+
+            try {
+                row.get_int("dept.id");
+                fail();
+            } catch (ConversionException e) {
+                assertEquals("Column path joins to a null row: dept", e.getMessage());
+            }
+        }
+    }
+
     private void join(String spec) throws Exception {
         mJoin = mDb.openJoinTable(EmployeeJoinDepartment.class, spec);
     }
@@ -863,20 +1014,58 @@ public class BasicJoinTest {
         mJoin = mDb.openJoinTable(EmployeeJoinDepartmentJoinCompany.class, spec);
     }
 
-    @SuppressWarnings("unchecked")
-    private void eval(String plan, String[] results, String query, Object... args)
+    private void eval(String plan, String[] results, String queryStr, Object... args)
         throws Exception 
     {
-        String actualPlan = mJoin.query(query).scannerPlan(null, args).toString();
+        eval(false, plan, results, queryStr, args);
+    }
+
+    @SuppressWarnings("unchecked")
+    private void eval(boolean isRow, String plan, String[] results, String queryStr, Object... args)
+        throws Exception 
+    {
+        Query query = mJoin.query(queryStr);
+        assertEquals(mJoin.rowType(), query.rowType());
+        assertEquals(args.length, query.argumentCount());
+
+        String actualPlan = query.scannerPlan(null, args).toString();
         assertEquals(plan, actualPlan);
 
         int resultNum = 0;
+        var numRef = new int[1];
+        var nameRef = new String[1];
 
-        try (var scanner = mJoin.newScanner(null, query, args)) {
+        try (var scanner = mJoin.newScanner(null, queryStr, args)) {
             for (var row = scanner.row(); row != null; row = scanner.step(row)) {
+                if (isRow) {
+                    assertTrue(row instanceof Row);
+                }
+
                 String result = results[resultNum++];
                 String actualResult = row.toString();
                 assertEquals(result, actualResult);
+
+                numRef[0] = 0;
+
+                mJoin.forEach(row, (r, name, value) -> {
+                    assertTrue(result.contains(name + '=' + value));
+                    numRef[0]++;
+
+                    assertTrue(mJoin.isSet(r, name));
+
+                    nameRef[0] = name;
+                });
+
+                assertTrue(numRef[0] > 0);
+
+                mJoin.unsetRow(row);
+                assertFalse(mJoin.isSet(row, nameRef[0]));
+                try {
+                    mJoin.isSet(row, "xxxxxxxxx");
+                    fail();
+                } catch (IllegalArgumentException e) {
+                    assertTrue(e.getMessage().contains("Unknown column"));
+                }
             }
         }
     }

@@ -87,7 +87,7 @@ public class DynamicTableMaker extends TableMaker {
 
     /**
      * Return a constructor which accepts a (TableManager, Index, RowPredicateLock) and returns
-     * a BaseTable or BaseTableIndex implementation.
+     * a StoredTable or StoredTableIndex implementation.
      */
     MethodHandle finish() {
         String suffix = isPrimaryTable() ? "table" : "unjoined";

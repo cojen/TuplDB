@@ -17,6 +17,8 @@
 
 package org.cojen.tupl.table;
 
+import java.util.HashMap;
+
 import org.junit.*;
 import static org.junit.Assert.*;
 
@@ -74,6 +76,12 @@ public class RowCrudTest {
         mTable.unsetRow(row);
         assertTrue(row.toString().endsWith("{}"));
 
+        assertFalse(mTable.isSet(row, "id"));
+
+        mTable.forEach(row, (r, n, v) -> {
+            fail();
+        });
+
         try {
             row.id();
             fail();
@@ -100,6 +108,18 @@ public class RowCrudTest {
 
         row.str1("hello");
         assertEquals("hello", row.str1());
+        assertTrue(mTable.isSet(row, "str1"));
+
+        var found = new HashMap<String, Object>();
+
+        mTable.forEach(row, (r, n, v) -> {
+            assertSame(row, r);
+            found.put(n, v);
+        });
+
+        assertEquals(1, found.size());
+        assertEquals("hello", found.get("str1"));
+        found.clear();
 
         try {
             mTable.load(null, row);
@@ -144,6 +164,18 @@ public class RowCrudTest {
         row.str2(null);
         row.num1(100);
         assertTrue(row.toString().endsWith("{*id=1, *num1=100, *str1=hello, *str2=null}"));
+
+        mTable.forEach(row, (r, n, v) -> {
+            assertSame(row, r);
+            found.put(n, v);
+        });
+
+        assertEquals(4, found.size());
+        assertEquals(1L, found.get("id"));
+        assertEquals("hello", found.get("str1"));
+        assertEquals(null, found.get("str2"));
+        assertEquals(100, found.get("num1"));
+        found.clear();
 
         mTable.insert(null, row);
         assertTrue(row.toString().endsWith("{id=1, num1=100, str1=hello, str2=null}"));

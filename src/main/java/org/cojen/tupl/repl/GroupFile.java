@@ -35,6 +35,7 @@ import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
 
 import java.net.InetAddress;
+import java.net.Inet6Address;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.net.UnknownHostException;
@@ -564,7 +565,7 @@ final class GroupFile extends Latch {
             releaseExclusive();
         }
 
-        // No need to check if delete failed.
+        // No need to check if the delete failed.
         oldFile.delete();
 
         return true;
@@ -589,7 +590,7 @@ final class GroupFile extends Latch {
         // necessary. The risk is that a registered callback might get dropped when putting a
         // new one in, but they could also be chained.
         eout.encodeLongLE(ThreadLocalRandom.current().nextLong());
-        eout.encodeStr(address == null ? "" : address.toString());
+        eout.encodeStr(address == null ? "" : addressToString(address));
 
         byte[] message = eout.toByteArray();
 
@@ -1164,7 +1165,7 @@ final class GroupFile extends Latch {
 
         swapFiles(oldFile, newFile);
 
-        // No need to check if delete failed.
+        // No need to check if the delete failed.
         oldFile.delete();
     }
 
@@ -1186,10 +1187,27 @@ final class GroupFile extends Latch {
     {
         w.write(Long.toUnsignedString(memberId));
         w.write(" = ");
-        w.write(addr.toString());
+        w.write(addressToString(addr));
         w.write(" | ");
         w.write(role.toString());
         w.newLine();
+    }
+
+    static String addressToString(SocketAddress sa) {
+        if (sa instanceof InetSocketAddress isa &&
+            isa.getAddress() instanceof Inet6Address i6a &&
+            (i6a.getScopeId() != 0 || i6a.getScopedInterface() != null))
+        {
+            // Strip off the scoped address.
+            try {
+                var ia = InetAddress.getByAddress(i6a.getHostName(), i6a.getAddress());
+                sa = new InetSocketAddress(ia, isa.getPort());
+            } catch (UnknownHostException e) {
+                throw new IllegalStateException(e);
+            }
+        }
+
+        return sa.toString();
     }
 
     /**

@@ -63,7 +63,10 @@ public class UpdaterTest {
         {
             // Full scan with a projection might choose the secondary index because it has
             // fewer columns.
-            QueryPlan plan = table.query("{name, id} id == ? || name == ?").scannerPlan(null);
+            Query<TestRow> query = table.query("{name, id} id == ? || name == ?");
+            assertEquals(TestRow.class, query.rowType());
+            assertEquals(2, query.argumentCount());
+            QueryPlan plan = query.scannerPlan(null);
             assertEquals(new QueryPlan.Filter
                          ("id == ?1 || name == ?2", new QueryPlan.FullScan
                           (TestRow.class.getName(), "secondary index",
@@ -97,7 +100,7 @@ public class UpdaterTest {
 
         assertEquals(5, count(table));
 
-        if (table instanceof BaseTable<TestRow> btable) {
+        if (table instanceof StoredTable<TestRow> btable) {
             var ix = btable.viewSecondaryIndex("state");
             assertEquals(5, count(ix.viewUnjoined()));
             assertEquals(5, count(ix));
@@ -170,7 +173,7 @@ public class UpdaterTest {
             row = u.update(row);
         }
 
-        if (table instanceof BaseTable<TestRow> btable) {
+        if (table instanceof StoredTable<TestRow> btable) {
             var ix = btable.viewSecondaryIndex("state");
 
             {

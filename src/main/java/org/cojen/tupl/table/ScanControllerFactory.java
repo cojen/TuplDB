@@ -27,6 +27,8 @@ import org.cojen.tupl.diag.QueryPlan;
  * @author Brian S O'Neill
  */
 public interface ScanControllerFactory<R> {
+    int argumentCount();
+
     /**
      * Returns true if the ScanController attempts to load exactly one row.
      */

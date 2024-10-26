@@ -39,7 +39,7 @@ import org.cojen.tupl.table.codec.ColumnCodec;
 import org.cojen.tupl.views.ViewUtils;
 
 /**
- * Makes Table classes that extend BaseTable for primary tables and for unjoined secondary
+ * Makes Table classes that extend StoredTable for primary tables and for unjoined secondary
  * index tables. The classes are "static" in that they have no dynamic code generation which
  * depends on RowStore and tableId constants. Without dynamic code generation, schema evolution
  * isn't supported.
@@ -75,7 +75,7 @@ class StaticTableMaker extends TableMaker {
     }
 
     /**
-     * Obtains an abstract primary table class, which extends BaseTable, and has one constructor:
+     * Obtains an abstract primary table class, which extends StoredTable, and has one constructor:
      *
      *    (TableManager, Index, RowPredicateLock)
      *
@@ -86,7 +86,7 @@ class StaticTableMaker extends TableMaker {
     }
 
     /**
-     * Obtains an abstract unjoined secondary index table class, which extends BaseTableIndex,
+     * Obtains an abstract unjoined secondary index table class, which extends StoredTableIndex,
      * and has one constructor:
      *
      *    (TableManager, Index, RowPredicateLock)
@@ -133,7 +133,7 @@ class StaticTableMaker extends TableMaker {
     }
 
     /**
-     * The generated class is a BaseTable or BaseTableIndex, and the constructor params are:
+     * The generated class is a StoredTable or StoredTableIndex, and the constructor params are:
      *
      *    (TableManager, Index, RowPredicateLock)
      */
@@ -144,10 +144,10 @@ class StaticTableMaker extends TableMaker {
 
             if (isPrimaryTable()) {
                 suffix = "table";
-                baseClass = BaseTable.class;
+                baseClass = StoredTable.class;
             } else {
                 suffix = "unjoined";
-                baseClass = BaseTableIndex.class;
+                baseClass = StoredTableIndex.class;
             }
 
             mClassMaker = mCodecGen.beginClassMaker(getClass(), mRowType, suffix)
@@ -332,7 +332,8 @@ class StaticTableMaker extends TableMaker {
 
         if (!isPrimaryTable()) {
             addSecondaryDescriptorMethod();
-        } else if (!isEvolvable()) {
+        }
+        if (!isEvolvable()) {
             addUnfilteredMethods(0);
         }
 
@@ -354,7 +355,7 @@ class StaticTableMaker extends TableMaker {
      * @param name method name
      */
     private void addCheckSet(String name, Map<String, ColumnInfo> columns) {
-        MethodMaker mm = mClassMaker.addMethod(boolean.class, name, mRowClass).static_();
+        MethodMaker mm = mClassMaker.addMethod(boolean.class, name, mRowClass).static_().public_();
         mRowGen.checkSet(mm, columns, mm.param(0));
     }
 
@@ -388,7 +389,7 @@ class StaticTableMaker extends TableMaker {
      * @param name method name
      */
     private void addRequireSet(String name, Map<String, ColumnInfo> columns) {
-        MethodMaker mm = mClassMaker.addMethod(null, name, mRowClass).static_();
+        MethodMaker mm = mClassMaker.addMethod(null, name, mRowClass).static_().public_();
         mRowGen.requireSet(mm, columns, mm.param(0));
     }
 
@@ -446,7 +447,7 @@ class StaticTableMaker extends TableMaker {
     }
 
     private void addDecodePartialHandle() {
-        // Specified by BaseTable.
+        // Specified by StoredTable.
         MethodMaker mm = mClassMaker.addMethod
             (MethodHandle.class, "makeDecodePartialHandle", byte[].class, int.class).protected_();
 
@@ -726,7 +727,7 @@ class StaticTableMaker extends TableMaker {
                                     Variable txnVar, Variable rowVar,
                                     Variable keyVar, Variable valueVar)
     {
-        // Call protected method inherited from BaseTable.
+        // Call protected method inherited from StoredTable.
         return mm.invoke(variant + "NoTrigger", txnVar, rowVar, keyVar, valueVar);
     }
 

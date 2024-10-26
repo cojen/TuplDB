@@ -35,7 +35,6 @@ import org.cojen.tupl.diag.EventListener;
 import org.cojen.tupl.diag.EventType;
 
 import org.cojen.tupl.util.Latch;
-import org.cojen.tupl.util.Parker;
 
 /**
  * Runs the background task to checkpoint databases, and also tracks all the database shutdown
@@ -130,7 +129,7 @@ final class Checkpointer extends Latch implements Runnable {
     private static Thread newThread(Runnable r) {
         var t = new Thread(r);
         t.setDaemon(true);
-        t.setName("Checkpointer-" + Long.toUnsignedString(Parker.threadId(t)));
+        t.setName("Checkpointer-" + Long.toUnsignedString(t.threadId()));
         return t;
     }
 
@@ -266,6 +265,13 @@ final class Checkpointer extends Latch implements Runnable {
         } finally {
             releaseExclusive();
         }
+    }
+
+    /**
+     * Returns true if automatic checkpoints are currently enabled.
+     */
+    boolean isEnabled() {
+        return mRateNanos >= 0 && isStarted() && !isSuspended();
     }
 
     /**

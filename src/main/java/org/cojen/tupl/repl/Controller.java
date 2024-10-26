@@ -195,7 +195,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
     {
         mEventListener = config.mEventListener;
         mStateLog = log;
-        mScheduler = new Scheduler();
+        mScheduler = new Scheduler("Replicator", false);
         mChanMan = new ChannelManager(config.mSocketFactory, mScheduler, groupToken1, groupToken2,
                                       gf == null ? 0 : gf.groupId(), config.mChecksumSockets,
                                       this::uncaught);
@@ -1856,7 +1856,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
             }
             var eout = new EncodingOutputStream();
             eout.write(GroupJoiner.OP_ADDRESS);
-            eout.encodeStr(leaderPeer.mAddress.toString());
+            eout.encodeStr(GroupFile.addressToString(leaderPeer.mAddress));
             out.write(eout.toByteArray());
             return false;
         }

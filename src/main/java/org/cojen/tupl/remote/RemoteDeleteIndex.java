@@ -17,6 +17,7 @@
 
 package org.cojen.tupl.remote;
 
+import org.cojen.dirmi.AutoDispose;
 import org.cojen.dirmi.Disposer;
 import org.cojen.dirmi.Remote;
 import org.cojen.dirmi.RemoteException;
@@ -26,6 +27,7 @@ import org.cojen.dirmi.RemoteException;
  *
  * @author Brian S O'Neill
  */
+@AutoDispose
 public interface RemoteDeleteIndex extends Remote, Disposable {
     @Disposer
     void run() throws RemoteException;

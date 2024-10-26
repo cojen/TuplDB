@@ -42,8 +42,10 @@ import org.cojen.tupl.Transaction;
 
 import org.cojen.tupl.diag.QueryPlan;
 
+import org.cojen.tupl.table.expr.CompiledQuery;
+import org.cojen.tupl.table.expr.Parser;
+
 import org.cojen.tupl.table.filter.ComplexFilterException;
-import org.cojen.tupl.table.filter.Parser;
 import org.cojen.tupl.table.filter.QuerySpec;
 import org.cojen.tupl.table.filter.RowFilter;
 import org.cojen.tupl.table.filter.TrueFilter;
@@ -78,10 +80,10 @@ public abstract class AggregatedTable<S, T> extends WrappedTable<S, T>
         Objects.requireNonNull(targetType);
 
         var key = new FactoryKey(source.rowType(), targetType, factory.getClass());
+        MethodHandle mh = cFactoryCache.obtain(key, source);
 
         try {
-            return (AggregatedTable<S, T>) cFactoryCache.obtain(key, source)
-                .invokeExact(source, factory);
+            return (AggregatedTable<S, T>) mh.invokeExact(mh, source, factory);
         } catch (Throwable e) {
             throw RowUtils.rethrow(e);
         }
@@ -90,7 +92,7 @@ public abstract class AggregatedTable<S, T> extends WrappedTable<S, T>
     /**
      * MethodHandle signature:
      *
-     *  AggregatedTable<S, T> make(Table<S> source, Aggregator.Factory<S, T>)
+     *  AggregatedTable<S, T> make(MethodHandle self, Table<S> source, Aggregator.Factory<S, T>)
      */
     private static MethodHandle makeTableFactory(FactoryKey key, Table<?> source) {
         Class<?> sourceType = key.sourceType();
@@ -121,15 +123,20 @@ public abstract class AggregatedTable<S, T> extends WrappedTable<S, T>
             (AggregatedTable.class, targetType, "aggregated").final_()
             .extend(AggregatedTable.class).implement(TableBasicsMaker.find(targetType));
 
-        {
-            MethodMaker ctor = cm.addConstructor(Table.class, Aggregator.Factory.class).private_();
-            var cacheVar = ctor.var(QueryFactoryCache.class).setExact(new QueryFactoryCache());
-            ctor.invokeSuperConstructor(cacheVar, ctor.param(0), ctor.param(1));
-        }
-
         // Keep a reference to the MethodHandle instance, to prevent it from being garbage
-        // collected as long as the generated table class still exists.
-        cm.addField(Object.class, "_").static_().private_();
+        // collected as long as references to the generated table instances still exist.
+        cm.addField(Object.class, "_").private_().final_();
+
+        // All AggregatedTable instances will refer to the exact same cache.
+        cm.addField(QueryFactoryCache.class, "cache").private_().static_().final_()
+            .initExact(new QueryFactoryCache());
+
+        {
+            MethodMaker ctor = cm.addConstructor
+                (MethodHandle.class, Table.class, Aggregator.Factory.class).private_();
+            ctor.field("_").set(ctor.param(0));
+            ctor.invokeSuperConstructor(ctor.field("cache"), ctor.param(1), ctor.param(2));
+        }
 
         // Add the compareSourceRows method.
         {
@@ -233,36 +240,11 @@ public abstract class AggregatedTable<S, T> extends WrappedTable<S, T>
         Class<?> tableClass = lookup.lookupClass();
 
         MethodMaker mm = MethodMaker.begin
-            (lookup, AggregatedTable.class, null, Table.class, Aggregator.Factory.class);
-        mm.return_(mm.new_(tableClass, mm.param(0), mm.param(1)));
+            (lookup, AggregatedTable.class, null,
+             MethodHandle.class, Table.class, Aggregator.Factory.class);
+        mm.return_(mm.new_(tableClass, mm.param(0), mm.param(1), mm.param(2)));
 
-        MethodHandle mh = mm.finish();
-
-        try {
-            // Assign the singleton reference.
-            lookup.findStaticVarHandle(tableClass, "_", Object.class).set(mh);
-        } catch (Throwable e) {
-            throw RowUtils.rethrow(e);
-        }
-
-        return mh;
-    }
-
-    private static String groupByString(Collection<ColumnInfo> columns) {
-        var bob = new StringBuilder();
-
-        for (ColumnInfo column : columns) {
-            if (bob.length() != 0) {
-                bob.append(", ");
-            }
-            bob.append(column.isDescending() ? '-' : '+');
-            if (column.isNullLow()) {
-                bob.append('!');
-            }
-            bob.append(column.name);
-        }
-
-        return bob.toString();
+        return mm.finish();
     }
 
     private static String queryString(Collection<ColumnInfo> columns) {
@@ -347,13 +329,24 @@ public abstract class AggregatedTable<S, T> extends WrappedTable<S, T>
         return (source.characteristics() & ~(SIZED | SUBSIZED)) | ORDERED | SORTED;
     }
 
-    @Override
-    protected final Query<T> newQuery(String query) throws IOException {
-        try {
-            return (Query<T>) mQueryFactoryCache.obtain(query, this).invoke(this);
-        } catch (Throwable e) {
-            throw RowUtils.rethrow(e);
+    @Override // MultiCache; see also WrappedTable
+    protected final Object cacheNewValue(Type type, Object key, Object helper)
+        throws IOException
+    {
+        if (type == TYPE_1) { // see the inherited query method
+            var queryStr = (String) key;
+            try {
+                return (Query<T>) mQueryFactoryCache.obtain(queryStr, this).invoke(this);
+            } catch (Throwable e) {
+                throw RowUtils.rethrow(e);
+            }
         }
+
+        if (type == TYPE_2) { // see the inherited derive method
+            return CompiledQuery.makeDerived(this, type, key, helper);
+        }
+
+        throw new AssertionError();
     }
 
     @Override
@@ -368,7 +361,7 @@ public abstract class AggregatedTable<S, T> extends WrappedTable<S, T>
             if (proj == null) {
                 sourceQuery = new QuerySpec(null, null, TrueFilter.THE);
             } else {
-                sourceQuery = new Parser(sourceInfo.allColumns, '{' + proj + '}').parseQuery(null);
+                sourceQuery = Parser.parseQuerySpec(sourceType, '{' + proj + '}');
             }
         }
 
@@ -608,13 +601,16 @@ public abstract class AggregatedTable<S, T> extends WrappedTable<S, T>
             this.table = table;
             this.squery = table.mSource.query(queryStr);
         }
-    }
 
-    /**
-     * Called by generated Query instances.
-     */
-    public final Aggregator<S, T> newAggregator() throws IOException {
-        return mAggregatorFactory.newAggregator();
+        @Override
+        public final Class<T> rowType() {
+            return table.rowType();
+        }
+
+        @Override
+        public final int argumentCount() {
+            return squery.argumentCount();
+        }
     }
 
     /**

@@ -102,7 +102,7 @@ public final class Runner extends AbstractExecutorService {
     }
 
     private static void setThreadName(Thread t, String namePrefix) {
-        t.setName(namePrefix + '-' + Long.toUnsignedString(Parker.threadId(t)));
+        t.setName(namePrefix + '-' + Long.toUnsignedString(t.threadId()));
     }
 
     private final ThreadGroup mGroup;

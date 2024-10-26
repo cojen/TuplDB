@@ -39,7 +39,7 @@ final class JoinedUpdater<R> extends BasicScanner<R> implements Updater<R> {
 
     private Cursor mPrimaryCursor;
 
-    JoinedUpdater(BaseTableIndex<R> table, ScanController<R> controller,
+    JoinedUpdater(StoredTableIndex<R> table, ScanController<R> controller,
                   BasicUpdater<R> primaryUpdater)
     {
         super(table, controller);

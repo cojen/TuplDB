@@ -47,6 +47,7 @@ import org.cojen.tupl.Automatic;
 import org.cojen.tupl.Hidden;
 import org.cojen.tupl.Nullable;
 import org.cojen.tupl.PrimaryKey;
+import org.cojen.tupl.Row;
 import org.cojen.tupl.SecondaryIndex;
 import org.cojen.tupl.Unsigned;
 
@@ -395,6 +396,20 @@ public class RowInfo extends ColumnSet {
                         }
                         info.mutator = method;
                         break lookup;
+                    }
+                }
+
+                if (method.getDeclaringClass() == Row.class) {
+                    continue;
+                }
+
+                if (Row.class.isAssignableFrom(rowType)) {
+                    // The inherited Row method might have been explicitly overridden.
+                    try {
+                        if (Row.class.getDeclaredMethod(name, params).getReturnType() == type) {
+                            continue;
+                        }
+                    } catch (NoSuchMethodException e) {
                     }
                 }
 
@@ -906,6 +921,27 @@ public class RowInfo extends ColumnSet {
     }
 
     /**
+     * Returns a variant of this RowInfo in which all key columns are treated as value columns,
+     * and it does't have any alternate keys or secondary indexes.
+     */
+    public RowInfo plain() {
+        if (keyColumns.isEmpty() && alternateKeys.isEmpty() && secondaryIndexes.isEmpty()) {
+            return this;
+        }
+
+        var copy = new RowInfo(name);
+
+        copy.keyColumns = Collections.emptyMap();
+        copy.valueColumns = allColumns;
+        copy.allColumns = allColumns;
+
+        copy.alternateKeys = EmptyNavigableSet.the();
+        copy.secondaryIndexes = EmptyNavigableSet.the();
+
+        return copy;
+    }
+
+    /**
      * Makes a row type interface.
      */
     public Class<?> makeRowType(ClassMaker cm) {
@@ -937,7 +973,10 @@ public class RowInfo extends ColumnSet {
             cm.addMethod(null, ci.name, ci.type).public_().abstract_();
         }
 
-        cm.addAnnotation(PrimaryKey.class, true).put("value", makeKeyAnnotationValues(this, false));
+        if (!keyColumns.isEmpty()) {
+            cm.addAnnotation(PrimaryKey.class, true).put
+                ("value", makeKeyAnnotationValues(this, false));
+        }
 
         if (!alternateKeys.isEmpty()) {
             if (alternateKeys.size() == 1) {

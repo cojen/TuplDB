@@ -21,6 +21,7 @@ import java.io.*;
 import java.net.*;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Function;
 
 import org.cojen.tupl.core.Utils;
 
@@ -43,8 +44,6 @@ public class TestUtils {
 
     private static File cBaseDir;
     private static volatile File cDeleteTempDir;
-
-    static volatile boolean traceUndo = false;
 
     static {
         // Force this class to be loaded early, to avoid shutdown hook loading
@@ -128,10 +127,25 @@ public class TestUtils {
     }
 
     public static Database reopenTempDatabase(Class context, Database db,
+                                              Function<File, DatabaseConfig> configFactory)
+        throws IOException
+    {
+        return tempFilesFor(context).reopenTempDatabase(db, configFactory, false, false);
+    }
+
+    public static Database reopenTempDatabase(Class context, Database db,
                                               DatabaseConfig config, boolean deleteRedo)
         throws IOException
     {
         return tempFilesFor(context).reopenTempDatabase(db, config, deleteRedo, false);
+    }
+
+    public static Database reopenTempDatabase(Class context, Database db,
+                                              Function<File, DatabaseConfig> configFactory,
+                                              boolean deleteRedo)
+        throws IOException
+    {
+        return tempFilesFor(context).reopenTempDatabase(db, configFactory, deleteRedo, false);
     }
 
     public static Database destroyTempDatabase(Class context, Database db, DatabaseConfig config)
@@ -140,15 +154,22 @@ public class TestUtils {
         return tempFilesFor(context).reopenTempDatabase(db, config, false, true);
     }
 
+    public static Database destroyTempDatabase(Class context, Database db,
+                                               Function<File, DatabaseConfig> configFactory)
+        throws IOException
+    {
+        return tempFilesFor(context).reopenTempDatabase(db, configFactory, false, true);
+    }
+
     public static File newTempBaseFile(Class context) throws IOException {
         return tempFilesFor(context).newTempBaseFile();
     }
 
-    public static void deleteTempDatabase(Class context, Database db) {
+    public static void deleteTempDatabase(Class context, Database db) throws IOException {
         tempFilesFor(context).deleteTempDatabase(db);
     }
 
-    public static void deleteTempDatabases(Class context) {
+    public static void deleteTempDatabases(Class context) throws IOException {
         TempFiles files = removeTempFilesFor(context);
         if (files != null) {
             files.deleteTempDatabases();
@@ -162,8 +183,11 @@ public class TestUtils {
         }
     }
 
-    public static void closeTempDatabases(Class context) {
-        TempFiles files = cTempFiles.get(context);
+    public static void closeTempDatabases(Class context) throws IOException {
+        TempFiles files;
+        synchronized (cTempFiles) {
+            files = cTempFiles.get(context);
+        }
         if (files != null) {
             files.closeTempDatabases();
         }
@@ -182,7 +206,7 @@ public class TestUtils {
         return cTempFiles.remove(context);
     }
 
-    public static void deleteRecursively(File file) {
+    public static void deleteRecursively(File file) throws IOException {
         if (file.isDirectory()) {
             File[] dirs = file.listFiles();
             if (dirs != null) {
@@ -192,24 +216,19 @@ public class TestUtils {
             }
         }
 
-        if (file.exists()) {
-            file.delete();
-        }
+        Utils.delete(file);
     }
 
-    private static void deleteDbFiles(File baseFile) {
+    private static void deleteDbFiles(File baseFile) throws IOException {
         deleteDbFile(baseFile, ".db");
         deleteDbFile(baseFile, ".lock");
         deleteDbFile(baseFile, ".primer");
-        try {
-            Utils.deleteNumberedFiles(baseFile, ".redo.");
-        } catch (IOException e) {
-        }
+        Utils.deleteNumberedFiles(baseFile, ".redo.");
     }
 
-    private static void deleteDbFile(File baseFile, String suffix) {
+    private static void deleteDbFile(File baseFile, String suffix) throws IOException {
         var f = new File(baseFile.getParentFile(), baseFile.getName() + suffix);
-        f.delete();
+        Utils.delete(f);
     }
 
     public static byte[] randomStr(Random rnd, int size) {
@@ -500,7 +519,7 @@ public class TestUtils {
     }
 
     static class TempFiles {
-        private final Map<Database, File> mTempDatabases = new WeakHashMap<>();
+        private final Map<Database, File> mTempDatabases = new HashMap<>();
         private final Set<File> mTempBaseFiles = new HashSet<>();
 
         private final String mPrefix;
@@ -601,6 +620,13 @@ public class TestUtils {
                                     boolean deleteRedo, boolean destroy)
             throws IOException
         {
+            return reopenTempDatabase(db, (file) -> config.baseFile(file), deleteRedo, destroy);
+        }
+
+        Database reopenTempDatabase(Database db, Function<File, DatabaseConfig> configFactory,
+                                    boolean deleteRedo, boolean destroy)
+            throws IOException
+        {
             File baseFile;
             synchronized (this) {
                 baseFile = mTempDatabases.remove(db);
@@ -617,16 +643,12 @@ public class TestUtils {
                 }
             }
 
-            if (traceUndo) {
-                var props = new HashMap<String, Object>();
-                props.put("traceUndo", true);
-                config.debugOpen(null, props);
-            }
+            DatabaseConfig config = configFactory.apply(baseFile);
 
             if (destroy) {
-                db = Database.destroy(config.baseFile(baseFile));
+                db = Database.destroy(config);
             } else {
-                db = Database.open(config.baseFile(baseFile));
+                db = Database.open(config);
             }
 
             synchronized (this) {
@@ -641,15 +663,12 @@ public class TestUtils {
             return baseFile;
         }
 
-        void deleteTempDatabase(Database db) {
+        void deleteTempDatabase(Database db) throws IOException {
             if (db == null) {
                 return;
             }
 
-            try {
-                db.close();
-            } catch (IOException e) {
-            }
+            db.close();
 
             File baseFile;
             synchronized (this) {
@@ -662,16 +681,13 @@ public class TestUtils {
             }
         }
 
-        synchronized void closeTempDatabases() {
+        synchronized void closeTempDatabases() throws IOException {
             for (Database db : mTempDatabases.keySet()) {
-                try {
-                    db.close();
-                } catch (IOException e) {
-                }
+                db.close();
             }
         }
 
-        synchronized void deleteTempDatabases() {
+        synchronized void deleteTempDatabases() throws IOException {
             closeTempDatabases();
 
             for (File baseFile : mTempBaseFiles) {

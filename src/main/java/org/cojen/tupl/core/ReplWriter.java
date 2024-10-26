@@ -122,7 +122,7 @@ class ReplWriter extends RedoWriter {
             mBuffer = new byte[65536];
 
             mConsumer = new Thread(this::consume);
-            mConsumer.setName("WriteConsumer-" + Parker.threadId(mConsumer));
+            mConsumer.setName("WriteConsumer-" + Long.toUnsignedString(mConsumer.threadId()));
             mConsumer.setDaemon(true);
             mConsumer.start();
         } finally {

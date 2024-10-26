@@ -66,7 +66,7 @@ final class SortedQueryLauncher<R> extends QueryLauncher<R> {
         return c.apply(Set.of(projection.toArray(String[]::new)));
     }
 
-    final BaseTable<R> mTable;
+    final StoredTable<R> mTable;
     final QueryLauncher<R> mSource;
     final Set<String> mProjection;
     final String mSpec;
@@ -80,7 +80,7 @@ final class SortedQueryLauncher<R> extends QueryLauncher<R> {
     /**
      * @param projection can be null to indicate all columns
      */
-    SortedQueryLauncher(BaseTable<R> table, QueryLauncher<R> source,
+    SortedQueryLauncher(StoredTable<R> table, QueryLauncher<R> source,
                         Set<String> projection, OrderBy orderBy)
     {
         mTable = table;
@@ -88,6 +88,16 @@ final class SortedQueryLauncher<R> extends QueryLauncher<R> {
         mProjection = canonicalize(projection);
         mSpec = orderBy.spec();
         mComparator = table.comparator(mSpec);
+    }
+
+    @Override
+    public Class<R> rowType() {
+        return mTable.rowType();
+    }
+
+    @Override
+    public int argumentCount() {
+        return mSource.argumentCount();
     }
 
     @Override
@@ -155,8 +165,13 @@ final class SortedQueryLauncher<R> extends QueryLauncher<R> {
     }
 
     @Override
-    public void closeIndexes() throws IOException {
+    protected void closeIndexes() throws IOException {
         mSource.closeIndexes();
         mTable.close();
+    }
+
+    @Override
+    protected void clearCache() {
+        mSource.clearCache();
     }
 }

@@ -27,6 +27,9 @@ import static org.junit.Assert.*;
 
 import org.cojen.tupl.table.ColumnInfo;
 
+import org.cojen.tupl.table.expr.Parser;
+import org.cojen.tupl.table.expr.TupleType;
+
 /**
  * 
  *
@@ -56,7 +59,7 @@ public class RowFilterTest {
         var colMap = newColMap();
 
         {
-            RowFilter f1 = new Parser(colMap, "a < ?").parseFilter();
+            RowFilter f1 = parse(colMap, "a < ?");
 
             RowFilter f2 = f1.retain(subPredicate(colMap, "a"), true, TrueFilter.THE);
             assertEquals(f1, f2);
@@ -72,8 +75,7 @@ public class RowFilterTest {
         }
 
         {
-            RowFilter f1 = new Parser(colMap, "(a == ? || (b == ? && a != ?)) && (c == ?)")
-                .parseFilter();
+            RowFilter f1 = parse(colMap, "(a == ? || (b == ? && a != ?)) && (c == ?)");
 
             RowFilter f2 = f1.retain(subPredicate(colMap, "a", "b", "c"), true, TrueFilter.THE);
             assertEquals(f1, f2);
@@ -98,8 +100,7 @@ public class RowFilterTest {
         }
 
         {
-            RowFilter f1 = new Parser(colMap, "(a == ? && (b == ? || a != ?)) || (c == ?)")
-                .parseFilter();
+            RowFilter f1 = parse(colMap, "(a == ? && (b == ? || a != ?)) || (c == ?)");
 
             RowFilter f3 = f1.retain(subPredicate(colMap, "b", "c"), true, TrueFilter.THE);
             assertEquals(TrueFilter.THE, f3);
@@ -121,7 +122,7 @@ public class RowFilterTest {
         }
 
         {
-            RowFilter f1 = new Parser(colMap, "(a == ? && b == a) || c == ?").parseFilter();
+            RowFilter f1 = parse(colMap, "(a == ? && b == a) || c == ?");
             RowFilter f2 = f1.retain(subPredicate(colMap, "b", "c"), false, TrueFilter.THE);
             assertEquals("b == a || c == ?2", f2.toString());
         }
@@ -132,7 +133,7 @@ public class RowFilterTest {
         var colMap = newColMap();
 
         {
-            RowFilter f0 = new Parser(colMap, "(a==?&&b==?&&c==?&&d==?)||a==?").parseFilter();
+            RowFilter f0 = parse(colMap, "(a==?&&b==?&&c==?&&d==?)||a==?");
             RowFilter f1 = f0.cnf();
 
             var split = new RowFilter[2];
@@ -162,7 +163,7 @@ public class RowFilterTest {
         }
 
         {
-            RowFilter f0 = new Parser(colMap, "a == b").parseFilter();
+            RowFilter f0 = parse(colMap, "a == b");
 
             var split = new RowFilter[2];
             f0.split(subMap(colMap, "a"), split);
@@ -187,5 +188,10 @@ public class RowFilterTest {
                                                   String... names)
     {
         return subMap(colMap, names)::containsKey;
+    }
+
+    static RowFilter parse(Map<String, ColumnInfo> colMap, String filter) {
+        Class<?> rowType = TupleType.makeForColumns(colMap.values()).clazz();
+        return Parser.parseQuerySpec(rowType, filter).filter();
     }
 }

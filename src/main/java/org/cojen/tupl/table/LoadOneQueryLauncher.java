@@ -30,7 +30,7 @@ import org.cojen.tupl.diag.QueryPlan;
  * @author Brian S O'Neill
  */
 public final class LoadOneQueryLauncher<R> extends ScanQueryLauncher<R> {
-    LoadOneQueryLauncher(BaseTable<R> table, ScanControllerFactory<R> factory) {
+    LoadOneQueryLauncher(StoredTable<R> table, ScanControllerFactory<R> factory) {
         super(table, factory);
     }
 

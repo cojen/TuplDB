@@ -81,17 +81,6 @@ public class Utils extends org.cojen.tupl.io.Utils {
     }
 
     /**
-     * @param seed ideally not zero (zero will be returned if so)
-     * @return next random number using Xorshift RNG by George Marsaglia (also next seed)
-     */
-    public static int nextRandom(int seed) {
-        seed ^= seed << 13;
-        seed ^= seed >>> 17;
-        seed ^= seed << 5;
-        return seed;
-    }
-
-    /**
      * Returns a strong non-zero hash code for the given value.
      */
     public static int nzHash(long v) {
@@ -817,15 +806,6 @@ public class Utils extends org.cojen.tupl.io.Utils {
         }
 
         return bob.toString();
-    }
-
-    /**
-     * @throws IOException if unable to delete the file
-     */
-    public static void delete(File file) throws IOException {
-        if (!file.delete() && file.exists()) {
-            throw new IOException("Unable to delete file: " + file);
-        }
     }
 
     /**

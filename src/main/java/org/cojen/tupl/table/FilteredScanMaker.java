@@ -65,7 +65,7 @@ import static java.util.Spliterator.*;
 public class FilteredScanMaker<R> {
     private final WeakReference<RowStore> mStoreRef;
     private final byte[] mSecondaryDescriptor;
-    private final BaseTable<R> mTable;
+    private final StoredTable<R> mTable;
     private final Class<?> mPrimaryTableClass;
     private final SingleScanController<R> mUnfiltered;
     private final Class<?> mPredicateClass;
@@ -104,7 +104,7 @@ public class FilteredScanMaker<R> {
      * @param joinFilter the filter to apply after joining, or null if none
      * @param projection null if all columns are to be decoded
      */
-    public FilteredScanMaker(WeakReference<RowStore> storeRef, BaseTable<R> table, RowGen rowGen,
+    public FilteredScanMaker(WeakReference<RowStore> storeRef, StoredTable<R> table, RowGen rowGen,
                              SingleScanController<R> unfiltered,
                              Class<? extends RowPredicate> predClass,
                              RowFilter lowBound, RowFilter highBound,
@@ -320,6 +320,24 @@ public class FilteredScanMaker<R> {
                 (ScanControllerFactory.class, "reverse").public_();
             // Invoke the reverse scan copy constructor.
             mm.return_(mm.new_(mFilterMaker, mm.this_()));
+        }
+
+        {
+            // Specified by ScanControllerFactory.
+            MethodMaker mm = mFilterMaker.addMethod(int.class, "argumentCount").public_();
+
+            int max = mLowBound == null ? 0 : mLowBound.maxArgument();
+            if (mHighBound != null) {
+                max = Math.max(max, mHighBound.maxArgument());
+            }
+            if (mFilter != null) {
+                max = Math.max(max, mFilter.maxArgument());
+            }
+            if (mJoinFilter != null) {
+                max = Math.max(max, mJoinFilter.maxArgument());
+            }
+
+            mm.return_(max);
         }
 
         if (loadsOne) {
@@ -890,7 +908,7 @@ public class FilteredScanMaker<R> {
             } else {
                 filter = mFilterRef.get();
                 if (filter == null) {
-                    filter = BaseTable.parseFilter(mRowType, mFilterStr);
+                    filter = StoredTable.parseFilter(mRowType, mFilterStr);
                     mFilterRef = new WeakReference<>(filter);
                 }
             }
@@ -916,7 +934,7 @@ public class FilteredScanMaker<R> {
                         .invokeExact(schemaVersion);
                 } else {
                     // Obtain the MethodHandle which decodes the key and value columns.
-                    BaseTable<?> table = store.findTable(mIndexId, mRowType);
+                    StoredTable<?> table = store.findTable(mIndexId, mRowType);
                     decoder = table.decodePartialHandle(mProjectionSpec, schemaVersion);
                     valueDecoder = null;
                 }
@@ -1014,7 +1032,7 @@ public class FilteredScanMaker<R> {
         var keyVar = mm.param(1);
         var valueVar = mm.param(2);
 
-        BaseTable<R> table = mTable;
+        StoredTable<R> table = mTable;
 
         if (mAlwaysJoin) {
             table = table.joinedPrimaryTable();

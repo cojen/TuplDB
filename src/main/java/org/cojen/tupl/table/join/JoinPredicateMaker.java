@@ -44,11 +44,12 @@ import org.cojen.tupl.table.RowInfo;
 import org.cojen.tupl.table.RowUtils;
 import org.cojen.tupl.table.WeakCache;
 
+import org.cojen.tupl.table.expr.Parser;
+
 import org.cojen.tupl.table.filter.AndFilter;
 import org.cojen.tupl.table.filter.ColumnToArgFilter;
 import org.cojen.tupl.table.filter.ColumnToColumnFilter;
 import org.cojen.tupl.table.filter.OrFilter;
-import org.cojen.tupl.table.filter.Parser;
 import org.cojen.tupl.table.filter.RowFilter;
 import org.cojen.tupl.table.filter.Visitor;
 
@@ -134,9 +135,7 @@ public final class JoinPredicateMaker implements Visitor {
         mJoinInfo = RowInfo.find(joinType);
 
         if (filter == null) {
-            var parser = new Parser(mJoinInfo.allColumns, queryStr);
-            parser.skipProjection();
-            filter = parser.parseFilter();
+            filter = Parser.parseQuerySpec(joinType, queryStr).filter();
         }
 
         mFilter = filter;

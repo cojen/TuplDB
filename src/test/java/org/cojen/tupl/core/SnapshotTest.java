@@ -20,6 +20,7 @@ package org.cojen.tupl.core;
 import java.io.*;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Supplier;
 
 import org.cojen.tupl.io.MappedPageArray;
 import org.cojen.tupl.io.OpenOption;
@@ -398,14 +399,20 @@ public class SnapshotTest {
 
         assertEquals(expectedLength, snapshotFile.length());
 
-        MappedPageArray map = MappedPageArray.open
-            (4096, 25_000, restoredBase, EnumSet.of(OpenOption.CREATE));
+        Supplier<MappedPageArray> openMap = () -> {
+            try {
+                return MappedPageArray.open
+                    (4096, 25_000, restoredBase, EnumSet.of(OpenOption.CREATE));
+            } catch (IOException e) {
+                throw Utils.rethrow(e);
+            }
+        };
 
         // Note that no base file is provided. This means no redo logging.
         var restoredConfig = new DatabaseConfig()
             .directPageAccess(false)
             .pageSize(4096)
-            .dataPageArray(map)
+            .dataPageArray(openMap.get())
             .minCacheSize(10_000_000).maxCacheSize(100_000_000)
             .durabilityMode(DurabilityMode.NO_FLUSH)
             .checkpointRate(-1, null);
@@ -429,7 +436,10 @@ public class SnapshotTest {
         restoredIx.store(null, "hello".getBytes(), "world".getBytes());
         fastAssertArrayEquals("world".getBytes(), restoredIx.load(null, "hello".getBytes()));
 
-        restored = reopenTempDatabase(getClass(), restored, restoredConfig);
+        restored = reopenTempDatabase
+            (getClass(), restored,
+             (file) -> restoredConfig.baseFile(file).dataPageArray(openMap.get()));
+
         restoredIx = restored.openIndex("test1");
         assertEquals(indexId, restoredIx.id());
 

@@ -24,6 +24,7 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 
+import java.nio.channels.ClosedChannelException;
 import java.nio.channels.FileLock;
 import java.nio.channels.OverlappingFileLockException;
 
@@ -45,30 +46,35 @@ final class LockedFile implements Closeable {
         } catch (IOException e) {
         }
 
-        RandomAccessFile raf;
+        RandomAccessFile raf = null;
         FileLock lock;
 
         try {
-            raf = new RandomAccessFile(file, readOnly ? "r" : "rw");
-            lock = raf.getChannel().tryLock(8, Long.MAX_VALUE - 8, readOnly);
-            if (lock == null) {
-                String message = "Database is open and locked by another process";
-                try {
-                    message = message + ": " + raf.readLong();
-                } catch (EOFException e) {
-                    // Ignore.
+            try {
+                raf = new RandomAccessFile(file, readOnly ? "r" : "rw");
+                lock = raf.getChannel().tryLock(8, Long.MAX_VALUE - 8, readOnly);
+                if (lock == null) {
+                    String message = "Database is open and locked by another process";
+                    try {
+                        message = message + ": " + raf.readLong();
+                    } catch (EOFException e) {
+                        // Ignore.
+                    }
+                    throw new DatabaseException(message);
                 }
-                throw new DatabaseException(message);
+            } catch (FileNotFoundException e) {
+                if (readOnly) {
+                    raf = null;
+                    lock = null;
+                } else {
+                    throw e;
+                }
+            } catch (OverlappingFileLockException e) {
+                throw new DatabaseException("Database is already open in the current process");
             }
-        } catch (FileNotFoundException e) {
-            if (readOnly) {
-                raf = null;
-                lock = null;
-            } else {
-                throw e;
-            }
-        } catch (OverlappingFileLockException e) {
-            throw new DatabaseException("Database is already open in the current process");
+        } catch (Throwable e) {
+            Utils.closeQuietly(raf);
+            throw e;
         }
 
         mRaf = raf;
@@ -82,8 +88,13 @@ final class LockedFile implements Closeable {
     @Override
     public void close() throws IOException {
         if (mLock != null) {
-            mLock.close();
+            try {
+                mLock.close();
+            } catch (ClosedChannelException e) {
+                // Ignore.
+            }
         }
+
         if (mRaf != null) {
             mRaf.close();
         }
@@ -97,7 +108,17 @@ final class LockedFile implements Closeable {
      */
     IOException delete(String path, IOException ex) {
         ex = Utils.closeQuietly(ex, this);
-        new File(path).delete();
+
+        try {
+            Utils.delete(new File(path));
+        } catch (IOException e) {
+            if (ex == null) {
+                ex = e;
+            } else {
+                ex.addSuppressed(e);
+            }
+        }
+
         return ex;
     }
 }

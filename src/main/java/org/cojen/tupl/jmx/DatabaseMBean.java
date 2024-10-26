@@ -43,6 +43,8 @@ public interface DatabaseMBean {
 
     long getReplicationBacklog();
 
+    boolean isLeader();
+
     void flush();
 
     void sync();
@@ -52,4 +54,6 @@ public interface DatabaseMBean {
     void compactFile(double target);
 
     void verify();
+
+    boolean failover();
 }

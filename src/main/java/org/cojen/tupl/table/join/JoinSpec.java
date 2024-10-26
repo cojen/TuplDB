@@ -21,7 +21,6 @@ import java.io.IOException;
 
 import java.util.Arrays;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
@@ -65,7 +64,21 @@ public final class JoinSpec {
      */
     static JoinSpec parse(RowInfo joinInfo, String spec, Table... tables) {
         try {
-            return new JoinSpec(new Parser(joinInfo.allColumns, spec, tables, null).parse());
+            return new JoinSpec(new Parser(joinInfo.allColumns, spec, tables).parse());
+        } catch (IOException e) {
+            // Not expected.
+            throw RowUtils.rethrow(e);
+        }
+    }
+
+    /**
+     * Variant which defines columns based on the join spec.
+     *
+     * @param definedColumns initially empty map which is filled in with the defined columns
+     */
+    static JoinSpec parse(String spec, Map<String, ColumnInfo> definedColumns, Table... tables) {
+        try {
+            return new JoinSpec(new Parser(spec, definedColumns, tables).parse());
         } catch (IOException e) {
             // Not expected.
             throw RowUtils.rethrow(e);
@@ -76,7 +89,7 @@ public final class JoinSpec {
      * Variant which opens tables automatically.
      */
     static JoinSpec parse(RowInfo joinInfo, String spec, Database db) throws IOException {
-        return new JoinSpec(new Parser(joinInfo.allColumns, spec, null, db).parse());
+        return new JoinSpec(new Parser(joinInfo.allColumns, spec, db).parse());
     }
 
     private final Node mRoot;
@@ -651,13 +664,18 @@ public final class JoinSpec {
     public static sealed class Column extends Node implements Source {
         private final Table mTable;
         private final ColumnInfo mColumn;
+        private final boolean mDefined;
 
         private boolean mNullable;
 
-        Column(Table table, ColumnInfo column, boolean nullable) {
+        Column(Table table, ColumnInfo column, boolean defined, boolean nullable) {
             mTable = table;
             mColumn = column;
+            mDefined = defined;
             mNullable = nullable;
+            if (!defined) {
+                nullableCheck();
+            }
         }
 
         @Override
@@ -810,7 +828,14 @@ public final class JoinSpec {
 
         @Override
         void nullable() {
-            mNullable = true;
+            if (!mNullable) {
+                mNullable = true;
+                if (mDefined) {
+                    mColumn.typeCode |= ColumnInfo.TYPE_NULLABLE;
+                } else {
+                    nullableCheck();
+                }
+            }
         }
 
         @Override
@@ -822,6 +847,12 @@ public final class JoinSpec {
         final void appendGroupedTo(StringBuilder b) {
             // No need for parens around a single column.
             appendTo(b);
+        }
+
+        private void nullableCheck() {
+            if (mNullable && !mColumn.isNullable()) {
+                throw new IllegalArgumentException("Column must be declared nullable: " + name());
+            }
         }
     }
 
@@ -843,7 +874,7 @@ public final class JoinSpec {
         private long mFilterScore;
 
         PlannedColumn(Column column) {
-            super(column.mTable, column.mColumn, column.mNullable);
+            super(column.mTable, column.mColumn, column.mDefined, column.mNullable);
         }
 
         @Override
@@ -1381,7 +1412,7 @@ public final class JoinSpec {
 
     private static final class Parser extends SimpleParser {
         private final Map<String, ColumnInfo> mAllColumns;
-        private final Set<String> mAvailableNames;
+        private final Map<String, ColumnInfo> mSelectedColumns;
         private final Table[] mTables;
         private final Database mDb;
 
@@ -1389,13 +1420,26 @@ public final class JoinSpec {
 
         private int mFullOrdinal;
 
-        /**
-         * @param db optional; pass a database instance to open tables automatically
-         */
-        Parser(Map<String, ColumnInfo> allColumns, String spec, Table[] tables, Database db) {
+        Parser(Map<String, ColumnInfo> allColumns, String spec, Table[] tables) {
+            this(spec, allColumns, new HashMap<>(), tables, null);
+        }
+
+        Parser(String spec, Map<String, ColumnInfo> definedColumns, Table[] tables) {
+            this(spec, null, definedColumns, tables, null);
+        }
+
+        Parser(Map<String, ColumnInfo> allColumns, String spec, Database db) {
+            this(spec, allColumns, new HashMap<>(), null, db);
+        }
+
+        private Parser(String spec,
+                       Map<String, ColumnInfo> allColumns,
+                       Map<String, ColumnInfo> selectedColumns,
+                       Table[] tables, Database db)
+        {
             super(spec);
             mAllColumns = allColumns;
-            mAvailableNames = new HashSet<>(allColumns.keySet());
+            mSelectedColumns = selectedColumns;
             mTables = tables;
             mDb = db;
         }
@@ -1408,6 +1452,10 @@ public final class JoinSpec {
 
             if (mPos < mText.length()) {
                 throw error("Unexpected trailing characters");
+            }
+
+            if (mTables != null && mNumTables != mTables.length) {
+                throw error("Not all tables were joined");
             }
 
             return root;
@@ -1489,14 +1537,29 @@ public final class JoinSpec {
             } while (Character.isJavaIdentifierPart(c));
 
             String name = mText.substring(start, --mPos);
-            ColumnInfo column = mAllColumns.get(name);
 
-            if (column == null) {
-                mPos = start;
-                throw error("Unknown column");
+            ColumnInfo column;
+            boolean defined;
+
+            if (mAllColumns != null) {
+                column = mAllColumns.get(name);
+                if (column == null) {
+                    mPos = start;
+                    throw error("Unknown column");
+                }
+                defined = false;
+            } else {
+                if (mNumTables >= mTables.length) {
+                    throw new IllegalArgumentException("Not enough tables provided");
+                }
+                column = new ColumnInfo();
+                column.name = name;
+                column.type = mTables[mNumTables].rowType();
+                column.typeCode = ColumnInfo.TYPE_REFERENCE;
+                defined = true;
             }
 
-            if (!mAvailableNames.remove(name)) {
+            if (mSelectedColumns.putIfAbsent(name, column) != null) {
                 mPos = start;
                 throw error("Duplicate column");
             }
@@ -1518,7 +1581,7 @@ public final class JoinSpec {
 
             mNumTables++;
 
-            return new Column(table, column, nullable);
+            return new Column(table, column, defined, nullable);
         }
 
         /**

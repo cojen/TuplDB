@@ -471,7 +471,9 @@ public class ValueAccessorTest {
 
         accessor.close();
 
-        assertTrue(ix.verify(null));
+        if (fullCheck) {
+            assertTrue(ix.verify(null));
+        }
 
         ix.delete(Transaction.BOGUS, key);
     }

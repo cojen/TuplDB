@@ -132,6 +132,7 @@ final class FileTermLog extends Latch implements TermLog {
      */
     static TermLog newTerm(Caches caches, Worker worker, File base, long prevTerm, long term,
                            long startPosition, long commitPosition)
+        throws IOException
     {
         if (base != null) {
             base = checkBase(base);
@@ -154,6 +155,7 @@ final class FileTermLog extends Latch implements TermLog {
     static TermLog openTerm(Caches caches, Worker worker, File base, long prevTerm, long term,
                             long startPosition, long commitPosition, long highestPosition,
                             List<String> segmentFileNames)
+        throws IOException
     {
         base = checkBase(base);
 
@@ -202,6 +204,7 @@ final class FileTermLog extends Latch implements TermLog {
     private FileTermLog(Caches caches, Worker worker, File base, long prevTerm, long term,
                         long startPosition, final long commitPosition, final long highestPosition,
                         List<String> segmentFileNames)
+        throws IOException
     {
         if (term < 0) {
             throw new IllegalArgumentException("Illegal term: " + term);
@@ -326,7 +329,11 @@ final class FileTermLog extends Latch implements TermLog {
             if (seg.endPosition() <= mLogStartPosition
                 || seg.mStartPosition >= mLogHighestPosition)
             {
-                seg.file().delete();
+                try {
+                    Utils.delete(seg.file());
+                } catch (IOException e) {
+                    throw Utils.rethrow(e);
+                }
                 mSegments.remove(seg);
             }
             return true;
@@ -681,7 +688,7 @@ final class FileTermLog extends Latch implements TermLog {
             if (endPosition < commitPosition && commitPosition > mLogStartPosition) {
                 throw new IllegalStateException
                     ("Cannot finish term below commit position: " + endPosition
-                     + " < " + commitPosition);
+                     + " < " + commitPosition + "; term: " + mLogTerm);
             }
 
             if (endPosition == mLogEndPosition) {
@@ -692,6 +699,11 @@ final class FileTermLog extends Latch implements TermLog {
             mLogVersion++;
 
             if (endPosition >= mLogEndPosition) {
+                // Wait for all work tasks to complete, ensuring that any lingering truncate
+                // operations are finished before extending the term.
+                synchronized (mWorker) {
+                    mWorker.join(false);
+                }
                 mLogEndPosition = endPosition;
                 releaseExclusive();
                 return;
@@ -718,13 +730,46 @@ final class FileTermLog extends Latch implements TermLog {
             }
 
             if (!mNonContigWriters.isEmpty()) {
+                List<SegmentWriter> replacements = null;
+
                 Iterator<SegmentWriter> it = mNonContigWriters.iterator();
                 while (it.hasNext()) {
                     SegmentWriter writer = it.next();
                     if (writer.mWriterStartPosition >= endPosition) {
+                        // The writer is completely ahead of the term end position.
                         it.remove();
-                    } else if (endPosition < writer.mWriterHighestPosition) {
+                        continue;
+                    }
+
+                    if (endPosition < writer.mWriterHighestPosition) {
                         writer.mWriterHighestPosition = endPosition;
+                    }
+
+                    if (endPosition <= writer.mWriterPosition) {
+                        // The writer overlaps the term end position. Remove it from the queue
+                        // and replace it with a non-cached instance to be used for gap filling
+                        // later. If the writer isn't removed, and the term is later extended,
+                        // then the contiguous region might falsely advance too far ahead.
+                        it.remove();
+
+                        var replacement = new SegmentWriter();
+                        replacement.mWriterVersion = writer.mWriterVersion;
+                        replacement.mWriterPrevTerm = writer.mWriterPrevTerm;
+                        replacement.mWriterStartPosition = writer.mWriterStartPosition;
+                        replacement.mWriterPosition = endPosition;
+                        replacement.mWriterHighestPosition = writer.mWriterHighestPosition;
+
+                        if (replacements == null) {
+                            replacements = new ArrayList<>();
+                        }
+
+                        replacements.add(replacement);
+                    }
+                }
+
+                if (replacements != null) {
+                    for (SegmentWriter writer : replacements) {
+                        mNonContigWriters.add(writer);
                     }
                 }
             }
@@ -1095,7 +1140,8 @@ final class FileTermLog extends Latch implements TermLog {
 
             if (position < commitPosition) {
                 throw new InvalidReadException
-                    ("Position is too low: " + position + " < " + commitPosition);
+                    ("Position is too low: " + position + " < " + commitPosition +
+                     "; term: " + mLogTerm);
             }
         } finally {
             releaseExclusive();
@@ -1143,6 +1189,8 @@ final class FileTermLog extends Latch implements TermLog {
             if (currentPosition > contigPosition) {
                 contigPosition = currentPosition;
 
+                long fallbackHighest = 0;
+
                 // Remove non-contiguous writers that are now in the contiguous region.
                 while (true) {
                     SegmentWriter next = mNonContigWriters.peek();
@@ -1162,9 +1210,25 @@ final class FileTermLog extends Latch implements TermLog {
                     if (nextHighest > highestPosition && highestPosition <= contigPosition) {
                         highestPosition = nextHighest;
                     }
+
+                    fallbackHighest = Math.max(fallbackHighest, nextHighest);
+                }
+
+                if (contigPosition > endPosition) {
+                    // Although the contigPosition could be clamped to the endPosition, this
+                    // case shouldn't happen unless there's something wrong with the term
+                    // extension logic.
+                    releaseExclusive();
+                    throw new AssertionError(contigPosition + " > " + endPosition);
                 }
 
                 mLogContigPosition = contigPosition;
+
+                if (highestPosition > contigPosition) {
+                    // It won't be applied if too high, so try to use a highest position which
+                    // was observed earlier.
+                    highestPosition = fallbackHighest;
+                }
             }
 
             applyHighest: {
@@ -2215,10 +2279,7 @@ final class FileTermLog extends Latch implements TermLog {
                 }
 
                 if (io == null) {
-                    File file = file();
-                    if (file != null) {
-                        file.delete();
-                    }
+                    Utils.delete(file());
                     return;
                 }
 

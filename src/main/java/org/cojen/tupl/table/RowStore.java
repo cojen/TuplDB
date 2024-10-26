@@ -280,7 +280,7 @@ public final class RowStore {
     public Object toRow(Index ix, byte[] key) {
         var manager = (TableManager<?>) mTableManagers.get(ix);
         if (manager != null) {
-            BaseTable<?> table = manager.mostRecentTable();
+            StoredTable<?> table = manager.mostRecentTable();
             if (table != null) {
                 try {
                     return table.toRow(key);
@@ -344,14 +344,14 @@ public final class RowStore {
     }
 
     @SuppressWarnings("unchecked")
-    private <R> BaseTable<R> openTable(Index ix, Class<R> type) throws IOException {
+    private <R> StoredTable<R> openTable(Index ix, Class<R> type) throws IOException {
         return ((TableManager<R>) tableManager(ix)).asTable(this, ix, type);
     }
 
     /**
      * @throws DeletedIndexException if not found
      */
-    <R> BaseTable<R> findTable(long indexId, Class<R> type) throws IOException {
+    <R> StoredTable<R> findTable(long indexId, Class<R> type) throws IOException {
         Index ix = mDatabase.indexById(indexId);
         if (ix == null) {
             throw new DeletedIndexException();
@@ -366,9 +366,9 @@ public final class RowStore {
      * @param consumer called with lock held, to accept the newly made table
      */
     @SuppressWarnings("unchecked")
-    <R> BaseTable<R> makeTable(TableManager<R> manager, Index ix, Class<R> type,
-                               Supplier<BaseTable<R>> doubleCheck,
-                               Consumer<BaseTable<R>> consumer)
+    <R> StoredTable<R> makeTable(TableManager<R> manager, Index ix, Class<R> type,
+                                 Supplier<StoredTable<R>> doubleCheck,
+                                 Consumer<StoredTable<R>> consumer)
         throws IOException
     {
         // Throws an exception if type is malformed.
@@ -380,7 +380,7 @@ public final class RowStore {
 
         boolean evolvable = type != Entry.class;
 
-        BaseTable<R> table;
+        StoredTable<R> table;
 
         // Can use NO_FLUSH because transaction will be only used for reading data.
         Transaction txn = mSchemata.newTransaction(DurabilityMode.NO_FLUSH);
@@ -405,10 +405,10 @@ public final class RowStore {
             try {
                 if (evolvable) {
                     var mh = new DynamicTableMaker(type, info.rowGen(), this, ix.id()).finish();
-                    table = (BaseTable) mh.invoke(manager, ix, indexLock);
+                    table = (StoredTable) mh.invoke(manager, ix, indexLock);
                 } else {
                     Class tableClass = StaticTableMaker.obtain(type, info.rowGen());
-                    table = (BaseTable) tableClass.getConstructor
+                    table = (StoredTable) tableClass.getConstructor
                         (TableManager.class, Index.class, RowPredicateLock.class)
                         .newInstance(manager, ix, indexLock);
                 }
@@ -551,15 +551,15 @@ public final class RowStore {
     /**
      * @throws NoSuchIndexException if not found or isn't available
      */
-    public <R> BaseTableIndex<R> indexTable
-        (BaseTable<R> primaryTable, boolean alt, String... columns)
+    public <R> StoredTableIndex<R> indexTable
+        (StoredTable<R> primaryTable, boolean alt, String... columns)
         throws IOException
     {
         Object key = TupleKey.make.with(primaryTable.rowType(), alt, columns);
-        WeakCache<Object, BaseTableIndex<R>, Object> indexTables =
+        WeakCache<Object, StoredTableIndex<R>, Object> indexTables =
             primaryTable.mTableManager.indexTables();
 
-        BaseTableIndex<R> table = indexTables.get(key);
+        StoredTableIndex<R> table = indexTables.get(key);
 
         if (table == null) {
             synchronized (indexTables) {
@@ -584,9 +584,9 @@ public final class RowStore {
      * @return null if not found
      */
     @SuppressWarnings("unchecked")
-    private <R> BaseTableIndex<R> makeIndexTable
-        (WeakCache<Object, BaseTableIndex<R>, Object> indexTables,
-         BaseTable<R> primaryTable,
+    private <R> StoredTableIndex<R> makeIndexTable
+        (WeakCache<Object, StoredTableIndex<R>, Object> indexTables,
+         StoredTable<R> primaryTable,
          boolean alt, String... columns)
         throws IOException
     {
@@ -632,7 +632,7 @@ public final class RowStore {
 
         Object key = TupleKey.make.with(rowType, descriptor);
 
-        BaseTableIndex<R> table = indexTables.get(key);
+        StoredTableIndex<R> table = indexTables.get(key);
 
         if (table != null) {
             return table;
@@ -655,13 +655,13 @@ public final class RowStore {
                 (rowType, rowInfo.rowGen(), indexRowInfo.rowGen(), descriptor,
                  this, primaryTable.mSource.id());
             var mh = maker.finish();
-            var unjoined = (BaseTable<R>) mh.invoke(primaryTable.mTableManager, ix, indexLock);
+            var unjoined = (StoredTable<R>) mh.invoke(primaryTable.mTableManager, ix, indexLock);
 
             var maker2 = new JoinedTableMaker
                 (rowType, rowInfo.rowGen(), indexRowInfo.rowGen(), descriptor,
                  primaryTable.getClass(), unjoined.getClass());
             mh = maker2.finish();
-            table = (BaseTableIndex<R>) mh.invoke(ix, indexLock, primaryTable, unjoined);
+            table = (StoredTableIndex<R>) mh.invoke(ix, indexLock, primaryTable, unjoined);
         } catch (Throwable e) {
             throw rethrow(e);
         }
@@ -749,7 +749,7 @@ public final class RowStore {
         if (managers != null) {
             try {
                 for (var manager : managers) {
-                    BaseTable<?> table = manager.mostRecentTable();
+                    StoredTable<?> table = manager.mostRecentTable();
                     if (table != null) {
                         RowInfo info = RowInfo.find(table.rowType());
                         long indexId = manager.mPrimaryIndex.id();
@@ -951,7 +951,7 @@ public final class RowStore {
             // With NO_REDO, need a checkpoint to ensure durability. If the database is closed
             // before it finishes, the whole backfill process starts over when the database is
             // later reopened.
-            mDatabase.checkpoint();
+            mDatabase.checkpointIfEnabled();
         }
     }
 
@@ -1327,7 +1327,15 @@ public final class RowStore {
                 // Check if the schema has changed.
                 schemaVersion = decodeIntLE(current.value(), 0);
 
-                // FIXME: Sometimes currentInfo is null, which causes NPE in checkSchema.
+                /* FIXME: Sometimes currentInfo is null, which causes NPE in checkSchema.
+
+                   Exception in thread "Runner-main-122" java.lang.NullPointerException: Cannot invoke "org.cojen.tupl.table.RowInfo.matches(org.cojen.tupl.table.ColumnSet)" because "oldInfo" is null
+                       at org.cojen.tupl.table.RowStore.checkSchema(RowStore.java:449)
+                       at org.cojen.tupl.table.RowStore.schemaVersion(RowStore.java:1334)
+                       at org.cojen.tupl.table.RowStore.updateSchemata(RowStore.java:756)
+                       at org.cojen.tupl.util.Runner$Loop.run(Runner.java:236)
+
+                */
                 RowInfo currentInfo = decodeExisting
                     (txn, info.name, indexId, current.value(), schemaVersion);
 
@@ -1639,13 +1647,28 @@ public final class RowStore {
         return info;
     }
 
-    static byte[] secondaryDescriptor(SecondaryInfo info) {
-        return secondaryDescriptor(info, info.isAltKey());
+    /**
+     * Encodes the key and value columns into a descriptor, but doesn't encode the secondary
+     * indexes or alternate keys.
+     */
+    public static byte[] primaryDescriptor(ColumnSet cs) {
+        return EncodedRowInfo.encodeDescriptor('P', cs);
+    }
+
+    /**
+     * Decodes a RowInfo object by parsing a binary descriptor which was created by the
+     * primaryDescriptor method. Secondary indexes and alternate keys aren't decoded.
+     */
+    public static RowInfo primaryRowInfo(String name, byte[] desc) {
+        var info = new RowInfo(name);
+        decodeRowInfo(null, desc, 1, info);
+        info.alternateKeys = EmptyNavigableSet.the();
+        info.secondaryIndexes = EmptyNavigableSet.the();
+        return info;
     }
 
     static byte[] secondaryDescriptor(ColumnSet cs, boolean isAltKey) {
-        var encoder = new Encoder(cs.allColumns.size() * 16); // with initial capacity guess
-        return EncodedRowInfo.encodeDescriptor(isAltKey ? 'A' : 'I', encoder, cs);
+        return EncodedRowInfo.encodeDescriptor(isAltKey ? 'A' : 'I', cs);
     }
 
     /**
@@ -1653,11 +1676,17 @@ public final class RowStore {
      * created by EncodedRowInfo.encodeDescriptor or secondaryDescriptor.
      */
     static SecondaryInfo secondaryRowInfo(RowInfo primaryInfo, byte[] desc) {
-        byte type = desc[0];
-        int offset = 1;
+        var info = new SecondaryInfo(primaryInfo, desc[0] == 'A');
+        decodeRowInfo(primaryInfo, desc, 1, info);
+        return info;
+    }
 
-        var info = new SecondaryInfo(primaryInfo, type == 'A');
-
+    /**
+     * @param primaryInfo pass null if decoding a primaryInfo
+     * @param info decoded results go here
+     * @return updated offset
+     */
+    private static int decodeRowInfo(RowInfo primaryInfo, byte[] desc, int offset, RowInfo info) {
         int numKeys = decodePrefixPF(desc, offset);
         offset += lengthPrefixPF(numKeys);
         info.keyColumns = new LinkedHashMap<>(numKeys);
@@ -1680,7 +1709,7 @@ public final class RowStore {
         info.allColumns = new TreeMap<>(info.keyColumns);
         info.allColumns.putAll(info.valueColumns);
 
-        return info;
+        return offset;
     }
 
     /**
@@ -1696,7 +1725,7 @@ public final class RowStore {
         String name = decodeStringUTF(desc, offset, nameLength);
         offset += nameLength;
 
-        ColumnInfo column = primaryInfo.allColumns.get(name);
+        ColumnInfo column = primaryInfo == null ? null : primaryInfo.allColumns.get(name);
 
         makeColumn: {
             if (column == null) {
@@ -2073,7 +2102,7 @@ public final class RowStore {
         EncodedRowInfo(RowInfo info) {
             names = new String[info.allColumns.size()];
             var columnNameMap = new HashMap<String, Integer>();
-            var encoder = new Encoder(names.length * 16); // with initial capacity guess
+            var encoder = new Encoder(names.length * 16); // initial capacity guess
             encoder.writeByte(1); // encoding version
 
             encoder.writePrefixPF(names.length);
@@ -2136,9 +2165,19 @@ public final class RowStore {
         }
 
         /**
-         * Encode a secondary index descriptor.
+         * Encode an index descriptor.
          *
-         * @param type 'A' or 'I'; alternate key descriptors are ordered first
+         * @param type 'A', 'I', or 'P'; alternate key descriptors are ordered first
+         */
+        private static byte[] encodeDescriptor(char type, ColumnSet cs) {
+            var encoder = new Encoder(cs.allColumns.size() * 16); // initial capacity guess
+            return encodeDescriptor(type, encoder, cs);
+        }
+
+        /**
+         * Encode an index descriptor.
+         *
+         * @param type 'A', 'I', or 'P'; alternate key descriptors are ordered first
          */
         private static byte[] encodeDescriptor(char type, Encoder encoder, ColumnSet cs) {
             encoder.reset(0);

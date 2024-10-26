@@ -21,7 +21,6 @@ import java.util.function.Function;
 
 import org.cojen.dirmi.RemoteException;
 
-import org.cojen.tupl.table.CommonCleaner;
 import org.cojen.tupl.table.WeakCache;
 
 /**
@@ -39,20 +38,6 @@ final class ClientCache extends WeakCache<Object, Object, Function<Object, Objec
     @SuppressWarnings("unchecked")
     public static <K, C> C get(K key, Function<K, C> factory) {
         return (C) THE.obtain(key, (Function) factory);
-    }
-
-    /**
-     * Registers a cleaning action which disposes the remote object when the client object
-     * isn't referenced anymore.
-     */
-    public static void autoDispose(Object clientObj, Disposable remoteObj) {
-        CommonCleaner.access().register(clientObj, () -> {
-            try {
-                remoteObj.dispose();
-            } catch (RemoteException e) {
-                // Ignore.
-            }
-        });
     }
 
     /**

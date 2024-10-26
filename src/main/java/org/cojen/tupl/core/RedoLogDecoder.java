@@ -33,20 +33,17 @@ import org.cojen.tupl.util.Latch;
  */
 /*P*/
 final class RedoLogDecoder extends RedoDecoder {
-    private final RedoLog mLog;
     private final EventListener mListener;
 
-    RedoLogDecoder(RedoLog log, DataIn in, EventListener listener) {
+    RedoLogDecoder(DataIn in, EventListener listener) {
         super(true, 0, in, new Latch());
-        mLog = log;
         mListener = listener;
     }
 
     @Override
     boolean verifyTerminator(DataIn in) throws IOException {
         try {
-            int term = in.readIntLE();
-            if (term == mLog.nextTermRnd() || term == Utils.nzHash(mTxnId)) {
+            if (in.readIntLE() == Utils.nzHash(mTxnId)) {
                 return true;
             }
             if (mListener != null) {

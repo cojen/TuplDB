@@ -21,12 +21,13 @@ import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
 
-import java.io.DataInput;
 import java.io.IOException;
 
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Spliterator;
+
+import org.cojen.dirmi.Pipe;
 
 import org.cojen.maker.ClassMaker;
 import org.cojen.maker.Label;
@@ -43,7 +44,7 @@ import org.cojen.tupl.table.codec.ColumnCodec;
  * @author Brian S O'Neill
  * @see RowWriter
  */
-public abstract class RowReader<R, DIN extends DataInput> implements Scanner<R> {
+public class RowReader<R> implements Scanner<R> {
     private static final WeakCache<CacheKey, Decoder, Object> cDecoders;
 
     static {
@@ -57,7 +58,7 @@ public abstract class RowReader<R, DIN extends DataInput> implements Scanner<R> 
     }
 
     private final Class<R> mRowType;
-    private DIN mIn;
+    private Pipe mIn;
     private final long mSize;
     private final int mCharacteristics;
 
@@ -70,7 +71,10 @@ public abstract class RowReader<R, DIN extends DataInput> implements Scanner<R> 
     private Decoder[] mDecoders;
     private int mNumDecoders;
 
-    public RowReader(Class<R> rowType, DIN in, R row) throws IOException {
+    /**
+     * @throws IOException or an unchecked exception from processing the query
+     */
+    public RowReader(Class<R> rowType, Pipe in, R row) throws IOException {
         mRowType = rowType;
         mIn = in;
         try {
@@ -99,6 +103,9 @@ public abstract class RowReader<R, DIN extends DataInput> implements Scanner<R> 
         return mRow;
     }
 
+    /**
+     * @throws IOException or an unchecked exception from processing the query
+     */
     @Override
     public final R step(R row) throws IOException {
         try {
@@ -114,25 +121,27 @@ public abstract class RowReader<R, DIN extends DataInput> implements Scanner<R> 
     }
 
     private void close(boolean finished) throws IOException {
-        DIN in = mIn;
+        Pipe in = mIn;
         if (in != null) {
             mIn = null;
             mDecoder = null;
             mRow = null;
             mRowData = null;
             mDecoders = null;
-            close(in, finished);
+            if (finished) {
+                in.recycle();
+            } else {
+                in.close();
+            }
         }
     }
 
     /**
-     * @param finished true when all rows were scanned; false when closed prematurely
+     * @throws IOException or an unchecked exception from processing the query
      */
-    protected abstract void close(DIN in, boolean finished) throws IOException;
-
     @SuppressWarnings("unchecked")
     private R doStep(R row) throws IOException {
-        DataInput in = mIn;
+        Pipe in = mIn;
         if (in == null) {
             return null;
         }
@@ -141,10 +150,11 @@ public abstract class RowReader<R, DIN extends DataInput> implements Scanner<R> 
         int prefix = in.readUnsignedByte();
 
         if (prefix != 1) {
-            if (prefix == 0) {
+            switch (prefix) {
+            case 0:
                 close(true);
                 return null;
-            } else if (prefix == 2) {
+            case 2:
                 var key = new CacheKey(mRowType, RowHeader.readFrom(in));
                 var decoder = (Decoder<R>) cDecoders.obtain(key, null);
                 int decoderId;
@@ -167,13 +177,23 @@ public abstract class RowReader<R, DIN extends DataInput> implements Scanner<R> 
 
                 mDecoder = decoder;
                 mDecoderId = decoderId;
-            } else {
-                int decoderId = prefix < 255 ? (prefix - 5) : in.readInt();
+                break;
+            case 3:
+                var e = (Throwable) in.readThrowable();
+                try {
+                    close(true);
+                } catch (Throwable e2) {
+                    RowUtils.suppress(e, e2);
+                }
+                throw RowUtils.rethrow(e);
+            default:
+                decoderId = prefix < 255 ? (prefix - 5) : in.readInt();
                 if (mDecoders != null) {
                     mDecoder = mDecoders[decoderId];
                 } else if (decoderId != 0) {
                     throw new IllegalStateException();
                 }
+                break;
             }
         }
 

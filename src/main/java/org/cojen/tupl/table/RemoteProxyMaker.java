@@ -60,7 +60,7 @@ public final class RemoteProxyMaker {
     };
 
     /**
-     * @param schemaVersion is zero if table isn't evolvable
+     * @param schemaVersion is zero if the table isn't evolvable
      * @param descriptor encoding format is defined by RowHeader class
      */
     static RemoteTableProxy make(BaseTable<?> table, int schemaVersion, byte[] descriptor) {
@@ -105,6 +105,14 @@ public final class RemoteProxyMaker {
         mAutoColumn = auto;
     }
 
+    private boolean isEvolvable() {
+        return mTable instanceof StoredTable st && st.isEvolvable();
+    }
+
+    private static boolean isEvolvable(Class<?> tableClass, Class<?> rowType) {
+        return StoredTable.class.isAssignableFrom(tableClass) && StoredTable.isEvolvable(rowType);
+    }
+
     /**
      * Returns a factory MethodHandle which constructs a RemoteTableProxy:
      *
@@ -127,7 +135,9 @@ public final class RemoteProxyMaker {
 
         MethodHandles.Lookup lookup;
 
-        if (RowHeader.make(mRowGen).equals(mRowHeader)) {
+        if (!(mTable instanceof StoredTable) || !RowHeader.make(mRowGen).equals(mRowHeader)) {
+            lookup = makeConverter();
+        } else {
             // Define a singleton empty row which is needed by the trigger methods.
             {
                 mClassMaker.addField(mRowClass, "EMPTY_ROW").private_().static_().final_();
@@ -135,7 +145,7 @@ public final class RemoteProxyMaker {
                 mm.field("EMPTY_ROW").set(mm.new_(mRowClass));
             }
 
-            if (mTable.isEvolvable()) {
+            if (isEvolvable()) {
                 mClassMaker.addField(int.class, "prefixLength").private_().final_();
                 mClassMaker.addField(int.class, "schemaVersion").private_().final_();
 
@@ -154,12 +164,6 @@ public final class RemoteProxyMaker {
             }
 
             lookup = makeDirect();
-        } else {
-            if (!mTable.isEvolvable()) {
-                throw new IllegalStateException();
-            }
-
-            lookup = makeConverter();
         }
 
         try {
@@ -375,7 +379,7 @@ public final class RemoteProxyMaker {
     private Variable decodeValue(Variable makerVar, Variable pipeVar) {
         MethodMaker mm = makerVar.methodMaker();
         Variable valueVar;
-        if (mTable.isEvolvable()) {
+        if (isEvolvable()) {
             valueVar = makerVar.invoke("decodeValue", pipeVar, mm.field("prefixLength"));
             mm.var(RowUtils.class).invoke("encodePrefixPF", valueVar, 0, mm.field("schemaVersion"));
         } else {
@@ -446,7 +450,7 @@ public final class RemoteProxyMaker {
             // Make sure the updaterFactoryVar is bound to this method.
             var updaterFactoryVar = mm.var(MethodHandle.class).set(mUpdaterFactoryVar);
             updaterVar = updaterFactoryVar.invoke
-                (BaseTable.ValueUpdater.class, "invokeExact", (Object[]) null, params);
+                (StoredTable.ValueUpdater.class, "invokeExact", (Object[]) null, params);
         }
 
         var resultVar = makerVar.invoke(variant, mm.field("table"), txnVar, mm.field("EMPTY_ROW"),
@@ -485,7 +489,7 @@ public final class RemoteProxyMaker {
         RowGen rowGen = rowInfo.rowGen();
 
         ClassMaker cm = ClassMaker.begin(proxyClass.getName(), lookup);
-        cm.implement(BaseTable.ValueUpdater.class);
+        cm.implement(StoredTable.ValueUpdater.class);
 
         int numStateFields = (rowInfo.allColumns.size() + 15) / 16;
 
@@ -530,7 +534,7 @@ public final class RemoteProxyMaker {
         Class rowClass = RowMaker.find(rowType);
 
         Variable schemaVersion;
-        if (BaseTable.isEvolvable(rowType)) {
+        if (isEvolvable(tableClass, rowType)) {
             schemaVersion = mm.field("proxy").field("schemaVersion");
             TableMaker.convertValueIfNecessary(tableVar, rowClass, schemaVersion, originalValueVar);
         } else {
@@ -684,7 +688,7 @@ public final class RemoteProxyMaker {
             throw RowUtils.rethrow(e);
         }
 
-        return factory.asType(ctorType.changeReturnType(BaseTable.ValueUpdater.class));
+        return factory.asType(ctorType.changeReturnType(StoredTable.ValueUpdater.class));
     }
 
     /**
@@ -845,7 +849,7 @@ public final class RemoteProxyMaker {
      * Convert the value to the current schema if necessary, and then call writeValue.
      */
     private void convertAndWriteValue(Variable pipeVar, Variable valueVar) {
-        if (mTable.isEvolvable()) {
+        if (isEvolvable()) {
             MethodMaker mm = pipeVar.methodMaker();
             var tableVar = mm.var(mTable.getClass());
             var schemaVersion = mm.field("schemaVersion");
@@ -861,7 +865,7 @@ public final class RemoteProxyMaker {
      */
     private void writeValue(Variable pipeVar, Variable valueVar) {
         MethodMaker mm = pipeVar.methodMaker();
-        if (mTable.isEvolvable()) {
+        if (isEvolvable()) {
             var prefixLengthVar = mm.field("prefixLength").get();
             var lengthVar = valueVar.alength().sub(prefixLengthVar);
             mm.var(RowUtils.class).invoke("encodePrefixPF", pipeVar, lengthVar);
@@ -940,7 +944,7 @@ public final class RemoteProxyMaker {
      *
      * @return the loaded value; if non-null, the caller must write the response, etc.
      */
-    public static byte[] tryLoad(BaseTable table, Transaction txn, byte[] key, Pipe pipe)
+    public static byte[] tryLoad(StoredTable table, Transaction txn, byte[] key, Pipe pipe)
         throws IOException
     {
         attempt: {
@@ -969,7 +973,7 @@ public final class RemoteProxyMaker {
     /**
      * Called by generated code.
      */
-    public static void exists(BaseTable table, Transaction txn, byte[] key, Pipe pipe)
+    public static void exists(StoredTable table, Transaction txn, byte[] key, Pipe pipe)
         throws IOException
     {
         attempt: {
@@ -992,7 +996,7 @@ public final class RemoteProxyMaker {
      * Called by generated code.
      */
     @SuppressWarnings("unchecked")
-    public static void store(BaseTable table, Transaction txn, Object row,
+    public static void store(StoredTable table, Transaction txn, Object row,
                              byte[] key, byte[] value, Pipe pipe)
         throws IOException
     {
@@ -1017,7 +1021,7 @@ public final class RemoteProxyMaker {
      * @return the old value; if non-null, the caller must write the response, etc.
      */
     @SuppressWarnings("unchecked")
-    public static byte[] exchange(BaseTable table, Transaction txn, Object row,
+    public static byte[] exchange(StoredTable table, Transaction txn, Object row,
                                   byte[] key, byte[] value, Pipe pipe)
         throws IOException
     {
@@ -1048,7 +1052,7 @@ public final class RemoteProxyMaker {
      * Called by generated code.
      */
     @SuppressWarnings("unchecked")
-    public static void tryInsert(BaseTable table, Transaction txn, Object row,
+    public static void tryInsert(StoredTable table, Transaction txn, Object row,
                                  byte[] key, byte[] value, Pipe pipe)
         throws IOException
     {
@@ -1072,7 +1076,7 @@ public final class RemoteProxyMaker {
      * Called by generated code.
      */
     @SuppressWarnings("unchecked")
-    public static void tryReplace(BaseTable table, Transaction txn, Object row,
+    public static void tryReplace(StoredTable table, Transaction txn, Object row,
                                   byte[] key, byte[] value, Pipe pipe)
         throws IOException
     {
@@ -1096,8 +1100,8 @@ public final class RemoteProxyMaker {
      * Called by generated code.
      */
     @SuppressWarnings("unchecked")
-    public static void tryUpdate(BaseTable table, Transaction txn, Object row,
-                                 byte[] key, BaseTable.ValueUpdater updater, Pipe pipe)
+    public static void tryUpdate(StoredTable table, Transaction txn, Object row,
+                                 byte[] key, StoredTable.ValueUpdater updater, Pipe pipe)
         throws IOException
     {
         attempt: {
@@ -1122,8 +1126,8 @@ public final class RemoteProxyMaker {
      * @return the new value; if non-null, the caller must write the response, etc.
      */
     @SuppressWarnings("unchecked")
-    public static byte[] tryMerge(BaseTable table, Transaction txn, Object row,
-                                  byte[] key, BaseTable.ValueUpdater updater, Pipe pipe)
+    public static byte[] tryMerge(StoredTable table, Transaction txn, Object row,
+                                  byte[] key, StoredTable.ValueUpdater updater, Pipe pipe)
         throws IOException
     {
         attempt: {
@@ -1155,7 +1159,7 @@ public final class RemoteProxyMaker {
      * @return true if the caller must write the response, etc.
      */
     @SuppressWarnings("unchecked")
-    public static boolean mergeReplace(BaseTable table, Transaction txn, Object row,
+    public static boolean mergeReplace(StoredTable table, Transaction txn, Object row,
                                        byte[] key, byte[] value, Pipe pipe)
         throws IOException
     {
@@ -1186,7 +1190,7 @@ public final class RemoteProxyMaker {
      * Called by generated code.
      */
     @SuppressWarnings("unchecked")
-    public static void tryDelete(BaseTable table, Transaction txn, byte[] key, Pipe pipe)
+    public static void tryDelete(StoredTable table, Transaction txn, byte[] key, Pipe pipe)
         throws IOException
     {
         attempt: {
@@ -1209,7 +1213,7 @@ public final class RemoteProxyMaker {
      * Called by generated code.
      */
     @SuppressWarnings("unchecked")
-    public static void storeAuto(BaseTable table, AutomaticKeyGenerator autogen,
+    public static void storeAuto(StoredTable table, AutomaticKeyGenerator autogen,
                                  Transaction txn, Object row, byte[] key, byte[] value, Pipe pipe)
         throws IOException
     {

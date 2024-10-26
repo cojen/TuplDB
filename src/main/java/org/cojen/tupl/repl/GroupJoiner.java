@@ -107,7 +107,7 @@ class GroupJoiner {
         try {
             doJoin(seeds, timeoutMillis, out -> {
                 out.write(OP_ADDRESS);
-                out.encodeStr(mLocalAddress.toString());
+                out.encodeStr(GroupFile.addressToString(mLocalAddress));
             });
         } finally {
             close();
@@ -137,7 +137,7 @@ class GroupJoiner {
         try {
             doJoin(seeds, timeoutMillis, out -> {
                 out.write(OP_UNJOIN_ADDRESS);
-                out.encodeStr(memberAddr.toString());
+                out.encodeStr(GroupFile.addressToString(memberAddr));
             });
         } finally {
             close();

@@ -34,10 +34,22 @@ import org.cojen.tupl.diag.QueryPlan;
 final class ClientQuery<R> implements Query<R> {
     final ClientTable<R> mTable;
     final String mQuery;
+    final int mArgCount;
 
-    ClientQuery(ClientTable<R> table, String query) {
+    ClientQuery(ClientTable<R> table, String query, int argCount) {
         mTable = table;
         mQuery = query;
+        mArgCount = argCount;
+    }
+
+    @Override
+    public Class<R> rowType() {
+        return mTable.rowType();
+    }
+
+    @Override
+    public int argumentCount() {
+        return mArgCount;
     }
 
     @Override

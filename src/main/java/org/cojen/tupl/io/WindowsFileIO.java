@@ -35,6 +35,9 @@ import com.sun.jna.platform.win32.WinNT;
 
 import com.sun.jna.win32.W32APIOptions;
 
+import org.cojen.tupl.diag.EventListener;
+import org.cojen.tupl.diag.EventType;
+
 /**
  * 
  *
@@ -184,21 +187,34 @@ final class WindowsFileIO extends JavaFileIO {
         }
     }
 
-    static long valloc(long length) throws IOException {
+    static long valloc(long length, EventListener listener) throws IOException {
         // Try to allocate large pages.
-        if (length >= (1L << 30) && requestSeLockMemoryPrivilege()) {
-            // Round up if necessary.
-            long largePageSize = cKernel.GetLargePageMinimum();
-            long largeLength = ((length + largePageSize - 1) / largePageSize) * largePageSize;
+        if (length >= (1L << 30)) {
+            if (!requestSeLockMemoryPrivilege()) {
+                if (listener != null) {
+                    listener.notify(EventType.CACHE_INIT_INFO,
+                                    "Unable to lock pages in memory for supporting large pages");
+                    
+                }
+            } else {
+                // Round up if necessary.
+                long largePageSize = cKernel.GetLargePageMinimum();
+                long largeLength = ((length + largePageSize - 1) / largePageSize) * largePageSize;
 
-            long addr = cKernel.VirtualAlloc
-                (0, // lpAddress
-                 largeLength,
-                 0x1000 | 0x2000 | 0x20000000, // MEM_COMMIT | MEM_RESERVE | MEM_LARGE_PAGES
-                 0x04); // PAGE_READWRITE
+                long addr = cKernel.VirtualAlloc
+                    (0, // lpAddress
+                     largeLength,
+                     0x1000 | 0x2000 | 0x20000000, // MEM_COMMIT | MEM_RESERVE | MEM_LARGE_PAGES
+                     0x04); // PAGE_READWRITE
 
-            if (addr != 0) {
-                return addr;
+                if (addr != 0) {
+                    return addr;
+                }
+
+                if (listener != null) {
+                    listener.notify(EventType.CACHE_INIT_INFO,
+                                    "Unable to allocate using large pages");
+                }
             }
         }
 

@@ -292,6 +292,12 @@ public class Registration {
         }
 
         @Override
+        public boolean isLeader() {
+            Database db = db();
+            return db == null ? false : db.isLeader();
+        }
+
+        @Override
         public void flush() {
             asyncOp(db -> {
                 try {
@@ -374,6 +380,16 @@ public class Registration {
                     message = "failed";
                 }
                 return message;
+            }
+        }
+
+        @Override
+        public boolean failover() {
+            try {
+                Database db = db();
+                return db == null ? false : db.failover();
+            } catch (IOException e) {
+                return false;
             }
         }
 

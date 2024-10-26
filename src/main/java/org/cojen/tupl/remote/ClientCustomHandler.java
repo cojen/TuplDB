@@ -35,7 +35,6 @@ final class ClientCustomHandler implements CustomHandler {
     ClientCustomHandler(ClientDatabase db, RemoteCustomHandler remote) {
         mDb = db;
         mRemote = remote;
-        ClientCache.autoDispose(this, remote);
     }
 
     @Override

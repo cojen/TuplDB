@@ -19,6 +19,7 @@ package org.cojen.tupl.remote;
 
 import java.io.IOException;
 
+import org.cojen.dirmi.AutoDispose;
 import org.cojen.dirmi.Batched;
 import org.cojen.dirmi.Disposer;
 import org.cojen.dirmi.Pipe;
@@ -36,6 +37,7 @@ import org.cojen.tupl.diag.QueryPlan;
  *
  * @author Brian S O'Neill
  */
+@AutoDispose
 public interface RemoteTable extends Remote, Disposable {
     public Pipe newScanner(RemoteTransaction txn, Pipe pipe) throws IOException;
 
@@ -47,7 +49,10 @@ public interface RemoteTable extends Remote, Disposable {
     public Pipe newUpdater(RemoteTransaction txn, Pipe pipe, String query, Object... args)
         throws IOException;
 
-    public void query(String query) throws IOException;
+    /**
+     * @return argCount
+     */
+    public int query(String query) throws IOException;
 
     public long deleteAll(RemoteTransaction txn, String query, Object... args) throws IOException;
 
@@ -60,6 +65,13 @@ public interface RemoteTable extends Remote, Disposable {
     public RemoteTransaction newTransaction(DurabilityMode dm);
 
     public boolean isEmpty() throws IOException;
+
+    @Restorable
+    public RemoteTable derive(String typeName, byte[] descriptor, String query, Object... args)
+        throws IOException;
+
+    // Note: Cannot be @Restorable because DeriveResult is a serialized object.
+    public DeriveResult derive(String query, Object... args) throws IOException;
 
     @Restorable
     public RemoteTableProxy proxy(byte[] descriptor) throws IOException;

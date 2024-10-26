@@ -271,13 +271,4 @@ public abstract class PageArray implements CauseCloseable {
      */
     @Override
     public abstract void close(Throwable cause) throws IOException;
-
-    /**
-     * Attempt to open or reopen the page array.
-     *
-     * @return existing or new page array
-     */
-    public PageArray open() throws IOException {
-        return this;
-    }
 }

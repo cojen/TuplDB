@@ -36,11 +36,6 @@ public class VerificationObserver {
     protected int height;
 
     /**
-     * @hidden
-     */
-    public boolean failed;
-
-    /**
      * Called before full index verification begins. Default implementation
      * records the index and height, and then returns true.
      *

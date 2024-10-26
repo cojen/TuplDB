@@ -31,6 +31,8 @@ import com.sun.jna.Native;
 
 import org.cojen.tupl.DatabaseFullException;
 
+import org.cojen.tupl.diag.EventListener;
+
 import org.cojen.tupl.unsafe.UnsafeAccess;
 
 import static org.cojen.tupl.io.Utils.rethrow;
@@ -75,6 +77,20 @@ public abstract class MappedPageArray extends PageArray {
                                        File file, EnumSet<OpenOption> options)
         throws IOException
     {
+        return open(pageSize, pageCount, file, options, null);
+    }
+
+    /**
+     * @param file file to store pages, or null if anonymous
+     * @param listener optional
+     * @throws UnsupportedOperationException if not running on a 64-bit platform
+     * @hidden
+     */
+    public static MappedPageArray open(int pageSize, long pageCount,
+                                       File file, EnumSet<OpenOption> options,
+                                       EventListener listener)
+        throws IOException
+    {
         if (pageSize < 1 || pageCount < 0 || pageCount > Long.MAX_VALUE / pageSize) {
             throw new IllegalArgumentException();
         }
@@ -88,9 +104,9 @@ public abstract class MappedPageArray extends PageArray {
         }
 
         if (System.getProperty("os.name").startsWith("Windows")) {
-            return new WindowsMappedPageArray(pageSize, pageCount, file, options);
+            return new WindowsMappedPageArray(pageSize, pageCount, file, options, listener);
         } else {
-            return new PosixMappedPageArray(pageSize, pageCount, file, options);
+            return new PosixMappedPageArray(pageSize, pageCount, file, options, listener);
         }
     }
 
@@ -228,11 +244,6 @@ public abstract class MappedPageArray extends PageArray {
         }
     }
 
-    @Override
-    public MappedPageArray open() throws IOException {
-        return mMappingPtr == 0 ? doOpen() : this;
-    }
-
     void setMappingPtr(long ptr) throws IOException {
         while (!cMappingPtrHandle.compareAndSet(this, 0, ptr)) {
             if (mMappingPtr != 0) {
@@ -240,8 +251,6 @@ public abstract class MappedPageArray extends PageArray {
             }
         }
     }
-
-    abstract MappedPageArray doOpen() throws IOException;
 
     abstract void doSync(long mappingPtr, boolean metadata) throws IOException;
 

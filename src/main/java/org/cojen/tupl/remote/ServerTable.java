@@ -20,6 +20,7 @@ package org.cojen.tupl.remote;
 import java.io.IOException;
 
 import org.cojen.dirmi.Pipe;
+import org.cojen.dirmi.Session;
 
 import org.cojen.tupl.DurabilityMode;
 import org.cojen.tupl.Query;
@@ -30,6 +31,8 @@ import org.cojen.tupl.diag.QueryPlan;
 import org.cojen.tupl.io.Utils;
 
 import org.cojen.tupl.table.BaseTable;
+import org.cojen.tupl.table.RowInfo;
+import org.cojen.tupl.table.RowStore;
 import org.cojen.tupl.table.WeakCache;
 
 /**
@@ -132,9 +135,9 @@ final class ServerTable<R> implements RemoteTable {
     }
 
     @Override
-    public void query(String query) throws IOException {
+    public int query(String query) throws IOException {
         // This just validates the query.
-        mTable.query(query);
+        return mTable.query(query).argumentCount();
     }
 
     @Override
@@ -163,6 +166,41 @@ final class ServerTable<R> implements RemoteTable {
     @Override
     public boolean isEmpty() throws IOException {
         return mTable.isEmpty();
+    }
+
+    @Override
+    @SuppressWarnings("unchecked")
+    public RemoteTable derive(String typeName, byte[] descriptor, String query, Object... args)
+        throws IOException
+    {
+        // Always generate a row type interface rather than trying to find the type by name.
+        // There's no reason to assume that the server will have an interface that the client
+        // has, and it might not match anyhow.
+        Class<?> rowType = RowTypeCache.findPlain(descriptor);
+        return new ServerTable((BaseTable) mTable.derive(rowType, query, args));
+
+        /* Attempt to find the interface by name.
+        findRowType: {
+            try {
+                rowType = Session.current().resolveClass(typeName);
+                RowInfo existing = RowInfo.find(rowType);
+                RowInfo info = RowStore.primaryRowInfo(typeName, descriptor);
+                if (existing.allColumns.equals(info.allColumns)) {
+                    break findRowType;
+                }
+            } catch (ClassNotFoundException | IllegalArgumentException e) {
+                // Row type class doesn't exist or it's not a RowInfo.
+            }
+        }
+        */
+    }
+
+    @Override
+    @SuppressWarnings("unchecked")
+    public DeriveResult derive(String query, Object... args) throws IOException {
+        var table = (BaseTable) mTable.derive(query, args);
+        byte[] descriptor = RowStore.primaryDescriptor(RowInfo.find(table.rowType()));
+        return new DeriveResult(new ServerTable(table), descriptor);
     }
 
     @Override

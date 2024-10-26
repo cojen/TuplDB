@@ -47,8 +47,8 @@ public final class TableManager<R> {
     final WeakReference<RowStore> mRowStoreRef;
     final Index mPrimaryIndex;
 
-    private final WeakClassCache<BaseTable<R>> mTables;
-    private volatile WeakReference<BaseTable<R>> mMostRecentTable;
+    private final WeakClassCache<StoredTable<R>> mTables;
+    private volatile WeakReference<StoredTable<R>> mMostRecentTable;
 
     private final ConcurrentSkipListMap<byte[], WeakReference<SecondaryInfo>> mIndexInfos;
 
@@ -56,7 +56,7 @@ public final class TableManager<R> {
 
     private volatile WeakReference<Worker> mWorkerRef;
 
-    private volatile WeakCache<Object, BaseTableIndex<R>, Object> mIndexTables;
+    private volatile WeakCache<Object, StoredTableIndex<R>, Object> mIndexTables;
 
     private long mTableVersion;
 
@@ -81,7 +81,7 @@ public final class TableManager<R> {
         }
     }
 
-    BaseTable<R> asTable(RowStore rs, Index ix, Class<R> type) throws IOException {
+    StoredTable<R> asTable(RowStore rs, Index ix, Class<R> type) throws IOException {
         var table = tryFindTable(type);
 
         if (table != null) {
@@ -106,9 +106,9 @@ public final class TableManager<R> {
         return table;
     }
 
-    private BaseTable<R> tryFindTable(Class<R> type) {
-        WeakReference<BaseTable<R>> ref = mTables.getRef(type);
-        BaseTable<R> table;
+    private StoredTable<R> tryFindTable(Class<R> type) {
+        WeakReference<StoredTable<R>> ref = mTables.getRef(type);
+        StoredTable<R> table;
 
         if (ref == null || (table = ref.get()) == null) {
             synchronized (mTables) {
@@ -127,8 +127,8 @@ public final class TableManager<R> {
     /**
      * Returns a cache of secondary indexes, as tables. See the RowStore.indexTable method.
      */
-    WeakCache<Object, BaseTableIndex<R>, Object> indexTables() {
-        WeakCache<Object, BaseTableIndex<R>, Object> indexTables = mIndexTables;
+    WeakCache<Object, StoredTableIndex<R>, Object> indexTables() {
+        WeakCache<Object, StoredTableIndex<R>, Object> indexTables = mIndexTables;
         if (indexTables == null) {
             synchronized (this) {
                 indexTables = mIndexTables;
@@ -154,11 +154,11 @@ public final class TableManager<R> {
      * tables, as this would create odd race conditions as different tables are GC'd
      * unpredictably.
      */
-    BaseTable<R> mostRecentTable() {
-        WeakReference<BaseTable<R>> ref = mMostRecentTable;
+    StoredTable<R> mostRecentTable() {
+        WeakReference<StoredTable<R>> ref = mMostRecentTable;
 
         if (ref != null) {
-            BaseTable<R> table = ref.get();
+            StoredTable<R> table = ref.get();
             if (table != null) {
                 return table;
             }
@@ -191,7 +191,7 @@ public final class TableManager<R> {
      * necessary query caches, which must be run after the transaction commits. The task isn't
      * expected to be slow, and so it can run in the current thread. Running the task before
      * the transaction commits can lead to deadlock. The deadlock is caused by a combination of
-     * the transaction lock and synchronized methods in QueryLauncher.Delegate.
+     * the transaction lock and synchronized methods in StoredQueryLauncher.
      *
      * @param tableVersion non-zero current table definition version
      * @param rs used to open secondary indexes
@@ -211,7 +211,7 @@ public final class TableManager<R> {
 
         Runnable task;
 
-        List<BaseTable<R>> tables = mTables.copyValues();
+        List<StoredTable<R>> tables = mTables.copyValues();
 
         if (tables != null) {
             for (var table : tables) {
@@ -219,7 +219,7 @@ public final class TableManager<R> {
                 RowInfo primaryInfo = RowInfo.find(rowType);
                 update(table, rowType, primaryInfo, rs, txn, secondaries);
             }
-            task = () -> tables.forEach(BaseTable::clearQueryCache);
+            task = () -> tables.forEach(StoredTable::clearQueryCache);
         } else {
             RowInfo primaryInfo = rs.decodeExisting(txn, null, mPrimaryIndex.id());
             if (primaryInfo != null) {
@@ -239,7 +239,7 @@ public final class TableManager<R> {
      * @param primaryInfo required
      * @param secondaries key is secondary index descriptor, value is index id and state
      */
-    private void update(BaseTable<R> table, Class<R> rowType, RowInfo primaryInfo,
+    private void update(StoredTable<R> table, Class<R> rowType, RowInfo primaryInfo,
                         RowStore rs, Transaction txn, View secondaries)
         throws IOException
     {

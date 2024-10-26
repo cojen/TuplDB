@@ -364,7 +364,7 @@ public class RowPredicateMaker {
     {
         RowFilter filter = filterRef.get();
         if (filter == null) {
-            filter = BaseTable.parseFilter(rowType, filterStr);
+            filter = StoredTable.parseFilter(rowType, filterStr);
         }
         MethodMaker mm = MethodMaker.begin(lookup, name, mt);
         var tm = new RowTestMaker(mm, mm.param(0), mm.param(1), false);
@@ -569,7 +569,7 @@ public class RowPredicateMaker {
                 RowFilter filter = mFilterRef.get();
 
                 if (filter == null) {
-                    filter = BaseTable.parseFilter(mRowType, mFilterStr);
+                    filter = StoredTable.parseFilter(mRowType, mFilterStr);
                     mFilterRef = new WeakReference<>(filter);
                 }
 
@@ -642,7 +642,7 @@ public class RowPredicateMaker {
 
                 RowFilter filter = filterRef.get();
                 if (filter == null) {
-                    filter = BaseTable.parseFilter(rowType, filterStr);
+                    filter = StoredTable.parseFilter(rowType, filterStr);
                 }
 
                 // DecodeVisitor assumes that the second parameter is a byte[] value, but if
@@ -664,7 +664,7 @@ public class RowPredicateMaker {
     {
         RowFilter filter = filterRef.get();
         if (filter == null) {
-            filter = BaseTable.parseFilter(rowType, filterStr);
+            filter = StoredTable.parseFilter(rowType, filterStr);
         }
         MethodMaker mm = MethodMaker.begin(lookup, name, mt);
         // Cannot define the parameter as the rowPredicateClass itself because it might be a
@@ -693,7 +693,7 @@ public class RowPredicateMaker {
         public void visit(OrFilter filter) {
             RowFilter[] subFilters = filter.subFilters();
             if (subFilters.length == 0) {
-                mBuilderVar = mBuilderVar.invoke("append", 'F');
+                mBuilderVar = mBuilderVar.invoke("append", "false");
             } else {
                 appendGroupFilter(filter, subFilters);
             }
@@ -703,7 +703,7 @@ public class RowPredicateMaker {
         public void visit(AndFilter filter) {
             RowFilter[] subFilters = filter.subFilters();
             if (subFilters.length == 0) {
-                mBuilderVar = mBuilderVar.invoke("append", 'T');
+                mBuilderVar = mBuilderVar.invoke("append", "true");
             } else {
                 appendGroupFilter(filter, subFilters);
             }
