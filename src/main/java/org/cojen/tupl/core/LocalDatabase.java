@@ -1023,7 +1023,7 @@ final class LocalDatabase extends CoreDatabase {
      */
     @SuppressWarnings("unchecked")
     private void finishInit2(Launcher launcher) throws IOException {
-        mCheckpointer.start(false);
+        mCheckpointer.start();
 
         BTree trashed = openNextTrashedTree(null);
 
