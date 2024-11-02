@@ -884,7 +884,7 @@ final class LocalDatabase extends CoreDatabase {
                         // before last checkpoint could delete them.
                         deleteNumberedFiles(mBaseFile, REDO_FILE_SUFFIX, 0, logId - 1);
 
-                        boolean doCheckpoint = txns.size() != 0;
+                        boolean doCheckpoint = txns.size() != 0 || launcher.mForceCheckpoint;
 
                         var applier = new RedoLogApplier
                             (launcher.mMaxReplicaThreads, this, txns, cursors);
@@ -925,6 +925,8 @@ final class LocalDatabase extends CoreDatabase {
 
                             // Only cleanup after successful checkpoint.
                             deleteReverseOrder(redoFiles);
+
+                            launcher.mForceCheckpoint = false;
                         }
                     }
 
@@ -1023,6 +1025,11 @@ final class LocalDatabase extends CoreDatabase {
      */
     @SuppressWarnings("unchecked")
     private void finishInit2(Launcher launcher) throws IOException {
+        if (launcher.mForceCheckpoint) {
+            forceCheckpoint();
+            launcher.mForceCheckpoint = false;
+        }
+
         mCheckpointer.start();
 
         BTree trashed = openNextTrashedTree(null);
@@ -3686,17 +3693,21 @@ final class LocalDatabase extends CoreDatabase {
         }
 
         if (repl == null) {
-            if (replEncoding != 0 && !hasRedoLogFiles()) {
-                // Conversion to non-replicated mode is allowed by simply touching redo file 0.
-                throw new DatabaseException
-                    ("Database must be configured with a replicator, " +
-                     "identified by: " + replEncoding);
+            if (replEncoding != 0) {
+                if (!hasRedoLogFiles()) {
+                    // Conversion to non-replicated mode is possible by touching redo file 0.
+                    throw new DatabaseException
+                        ("Database must be configured with a replicator, " +
+                         "identified by: " + replEncoding);
+                }
+
+                launcher.mForceCheckpoint = true;
             }
         } else if (replEncoding == 0) {
             // Check if conversion to replicated mode is allowed. The replication log must have
             // data starting at position 0, and no redo log files can exist.
 
-            String msg = "Database was created initially without a replicator. " +
+            String msg = "Database is currently configured without a replicator. " +
                 "Conversion isn't possible ";
 
             if (!repl.isReadable(0)) {
@@ -3713,9 +3724,11 @@ final class LocalDatabase extends CoreDatabase {
             // header might be higher. Since we have the header data passed to us already, we
             // can modify it without persisting it.
             encodeLongLE(header, I_REDO_POSITION, 0);
+
+            launcher.mForceCheckpoint = true;
         } else if (replEncoding != repl.encoding()) {
             throw new DatabaseException
-                ("Database was created initially with a different replicator, " +
+                ("Database is configured with a different replicator, " +
                  "identified by: " + replEncoding);
         }
 

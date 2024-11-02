@@ -116,6 +116,9 @@ public final class Launcher implements Cloneable {
     long mReplInitialPosition;
     long mReplInitialTxnId;
 
+    // This field is set when converting to/from replicated mode.
+    boolean mForceCheckpoint;
+
     public Launcher() {
         createFilePath(true);
         durabilityMode(null);
