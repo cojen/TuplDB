@@ -1368,7 +1368,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
                 // Only request missing data when the set of control connections changes. If
                 // data is simply delayed, then don't request it again. Limit the number of
                 // times the request is denied, in case data is missing for another reason.
-                // The most common other reason is due to relaying, where the relayer needed to
+                // The most common other reason is due to proxying, where the proxy needed to
                 // request missing data, but no connections changed here.
                 if (mChanMan.checkControlVersion(1)) for (int i=0; i<collector.mSize; ) {
                     long startPosition = collector.mRanges[i++];
@@ -1382,6 +1382,10 @@ final class Controller extends Latch implements StreamReplicator, Channel {
     }
 
     private void requestMissingData(final long startPosition, final long endPosition) {
+        // Note: Missing data can be caused by the ChannelManager closing a client channel due
+        // to a write timeout, which then creates a gap until a new channel is established.
+        // See ChannelManager.SocketChannel::maxWriteTagCount
+
         event(EventType.REPLICATION_DEBUG, () ->
               String.format("Requesting missing data: %1$,d bytes @[%2$d, %3$d)",
                             endPosition - startPosition, startPosition, endPosition));
