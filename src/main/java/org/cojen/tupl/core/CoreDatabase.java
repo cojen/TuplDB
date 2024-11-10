@@ -98,6 +98,8 @@ public abstract class CoreDatabase implements Database {
 
     public abstract boolean isInTrash(Transaction txn, long treeId) throws IOException;
 
+    abstract long databaseId();
+
     abstract boolean isDirectPageAccess();
 
     abstract boolean isCacheOnly();
@@ -109,6 +111,20 @@ public abstract class CoreDatabase implements Database {
     abstract Supplier<Checksum> checksumFactory();
 
     abstract Tree registry();
+
+    abstract Tree registryKeyMap();
+
+    abstract boolean scanAllIndexes(ScanVisitor visitor) throws IOException;
+
+    abstract Index anyIndexById(long id) throws IOException;
+
+    /**
+     * Copies all entries from a source index into a new temporary index, which can be null if
+     * empty. No threads should be active in the source index.
+     *
+     * @param workerCount maximum parallelism; must be at least 1
+     */
+    abstract Tree parallelCopy(Index source, int workerCount) throws IOException;
 
     /**
      * @return null if none

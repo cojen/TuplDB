@@ -265,7 +265,7 @@ final class CompressedPageArray extends PageArray implements Supplier<PageCompre
             try (var snapDb = launcher.open(false, null)) {
                 snapArray = new CompressedPageArray
                     (pageSize(), snapDb, snapDb.registry(), mCompressorFactory);
-                var snapPageDb = StoredPageDb.open(null, snapArray, null, null, false);
+                var snapPageDb = StoredPageDb.open(null, snapArray, null, null, false, 0);
                 redoPos = snapPageDb.snapshotRedoPos();
             }
         }

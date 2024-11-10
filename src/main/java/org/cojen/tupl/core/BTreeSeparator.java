@@ -71,6 +71,7 @@ abstract class BTreeSeparator extends LongAdder {
     }
 
     /**
+     * @param db is only used for calling newTemporaryIndex
      * @param executor used for parallel separation; pass null to use only the starting thread
      * @param workerCount maximum parallelism; must be at least 1
      */
@@ -135,11 +136,31 @@ abstract class BTreeSeparator extends LongAdder {
 
     /**
      * Called when separation has finished. When finished normally (not stopped), then all
-     * source trees are empty, but not deleted.
+     * source trees are empty, but not deleted, unless the transfer and skip methods are
+     * overridden.
      *
      * @param firstRange first separated range; the ranges are ordered lowest to highest.
      */
     protected abstract void finished(Chain<BTree> firstRange);
+
+    /**
+     * Copies (or moves) the current entry from the source cursor to the unpositioned target
+     * cursor, and advance the source cursor to the next key. The source cursor value isn't
+     * autoloaded.
+     *
+     * Note: When this method is overridden, the skip method should be overridden too.
+     */
+    protected void transfer(BTreeCursor source, BTreeCursor target) throws IOException {
+        target.appendTransfer(source);
+    }
+
+    /**
+     * Skips (and possibly deletes) the current entry.
+     */
+    protected void skip(BTreeCursor source) throws IOException {
+        source.store(null);
+        source.next();
+    }
 
     private void startWorker(Worker from, int spawnCount, byte[] lowKey, byte[] highKey) {
         var worker = new Worker(spawnCount, lowKey, highKey, mSources.length);
@@ -341,8 +362,7 @@ abstract class BTreeSeparator extends LongAdder {
                         scursor.reset();
                     } else {
                         if (selector.mSkip) {
-                            scursor.store(null);
-                            scursor.next();
+                            skip(scursor);
                             selector.mSkip = false;
                         } else {
                             if (tcursor == null) {
@@ -351,7 +371,7 @@ abstract class BTreeSeparator extends LongAdder {
                                 tcursor.mKeyOnly = true;
                                 tcursor.firstLeaf();
                             }
-                            tcursor.appendTransfer(scursor);
+                            transfer(scursor, tcursor);
                             if (++count == 0) {
                                 // Inherited from LongAdder.
                                 add(256);

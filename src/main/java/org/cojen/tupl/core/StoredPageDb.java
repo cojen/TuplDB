@@ -126,18 +126,20 @@ final class StoredPageDb extends PageDb {
      * @param debugListener optional
      * @param checksumFactory optional
      * @param crypto optional
+     * @param databaseId pass 0 to assign the database id automatically
      */
     static StoredPageDb open(EventListener debugListener,
                              boolean explicitPageSize, int pageSize,
                              File[] files, EnumSet<OpenOption> options,
-                             Supplier<Checksum> checksumFactory, Crypto crypto, boolean destroy)
+                             Supplier<Checksum> checksumFactory, Crypto crypto,
+                             boolean destroy, long databaseId)
         throws IOException
     {
         while (true) {
             try {
                 PageArray pa = openPageArray(pageSize, files, options);
                 pa = decorate(pa, checksumFactory, crypto);
-                return new StoredPageDb(debugListener, pa, crypto, destroy);
+                return new StoredPageDb(debugListener, pa, crypto, destroy, databaseId);
             } catch (WrongPageSize e) {
                 if (explicitPageSize) {
                     throw e.rethrow();
@@ -152,14 +154,16 @@ final class StoredPageDb extends PageDb {
      * @param debugListener optional
      * @param checksumFactory optional
      * @param crypto optional
+     * @param databaseId pass 0 to assign the database id automatically
      */
     static StoredPageDb open(EventListener debugListener, PageArray rawArray,
-                             Supplier<Checksum> checksumFactory, Crypto crypto, boolean destroy)
+                             Supplier<Checksum> checksumFactory, Crypto crypto,
+                             boolean destroy, long databaseId)
         throws IOException
     {
         try {
             PageArray pa = decorate(rawArray, checksumFactory, crypto);
-            return new StoredPageDb(debugListener, pa, crypto, destroy);
+            return new StoredPageDb(debugListener, pa, crypto, destroy, databaseId);
         } catch (WrongPageSize e) {
             throw e.rethrow();
         }
@@ -230,7 +234,8 @@ final class StoredPageDb extends PageDb {
     /**
      * @param pa must already be fully decorated
      */
-    private StoredPageDb(EventListener debugListener, PageArray pa, Crypto crypto, boolean destroy)
+    private StoredPageDb(EventListener debugListener, PageArray pa, Crypto crypto,
+                         boolean destroy, long databaseId)
         throws IOException, WrongPageSize
     {
         mCrypto = crypto;
@@ -245,7 +250,12 @@ final class StoredPageDb extends PageDb {
                 // Newly created file.
                 mPageManager = new PageManager(mPageArray);
                 mCommitNumber = -1;
-                mDatabaseId = generateDatabaseId(new SecureRandom());
+
+                if (databaseId == 0) {
+                    databaseId = generateDatabaseId(new SecureRandom());
+                }
+
+                mDatabaseId = databaseId;
 
                 // Commit twice to ensure both headers have valid data.
                 var header = p_callocPage(mPageArray.directPageSize());
@@ -991,7 +1001,7 @@ final class StoredPageDb extends PageDb {
         logicalArray.sync(true);
 
         try {
-            return new StoredPageDb(null, logicalArray, crypto, false);
+            return new StoredPageDb(null, logicalArray, crypto, false, 0);
         } catch (WrongPageSize e) {
             throw e.rethrow();
         }

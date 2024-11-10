@@ -30,6 +30,8 @@ import java.nio.charset.StandardCharsets;
 
 import javax.net.ssl.SSLContext;
 
+import org.cojen.tupl.core.Rebuilder;
+
 import org.cojen.tupl.diag.CompactionObserver;
 import org.cojen.tupl.diag.DatabaseStats;
 import org.cojen.tupl.diag.EventListener;
@@ -115,6 +117,26 @@ public interface Database extends CauseCloseable, Flushable {
         throws IOException
     {
         return ClientDatabase.connect(addr, context, tokens);
+    }
+
+    /**
+     * Open an existing database and copy all the data into a new database, which can have a
+     * different configuration.
+     *
+     * @param numThreads pass 0 for default, or if negative, the actual number will be {@code
+     * (-numThreads * availableProcessors)}.
+     * @return the newly built database
+     * @throws IllegalStateException if the new database already exists
+     */
+    public static Database rebuild(DatabaseConfig oldConfig, DatabaseConfig newConfig,
+                                   int numThreads)
+        throws IOException
+    {
+        if (numThreads <= 0) {
+            int procs = Runtime.getRuntime().availableProcessors();
+            numThreads = numThreads == 0 ? procs : procs * -numThreads;
+        }
+        return new Rebuilder(oldConfig.mLauncher, newConfig.mLauncher, numThreads).run();
     }
 
     /**

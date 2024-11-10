@@ -472,14 +472,17 @@ final class LocalDatabase extends CoreDatabase {
                 debugListener = mEventListener;
             }
 
+            long databaseId = launcher.mDatabaseId;
+
             if (dataFiles == null) {
                 PageArray dataPageArray = launcher.mDataPageArray;
                 if (dataPageArray == null) {
                     mPageDb = new NonPageDb(pageSize);
                 } else {
                     Crypto crypto = launcher.mDataCrypto;
-                    mPageDb = StoredPageDb.open(debugListener, dataPageArray,
-                                                launcher.mChecksumFactory, crypto, destroy);
+                    mPageDb = StoredPageDb.open
+                        (debugListener, dataPageArray,
+                         launcher.mChecksumFactory, crypto, destroy, databaseId);
                     /*P*/ // [|
                     /*P*/ // fullyMapped = crypto == null && dataPageArray.isFullyMapped();
                     /*P*/ // ]
@@ -491,7 +494,7 @@ final class LocalDatabase extends CoreDatabase {
                 try {
                     pageDb = StoredPageDb.open
                         (debugListener, explicitPageSize, pageSize, dataFiles, options,
-                         launcher.mChecksumFactory, launcher.mDataCrypto, destroy);
+                         launcher.mChecksumFactory, launcher.mDataCrypto, destroy, databaseId);
                 } catch (FileNotFoundException e) {
                     if (!mReadOnly) {
                         throw e;
@@ -1335,6 +1338,7 @@ final class LocalDatabase extends CoreDatabase {
     /**
      * Allows access to internal indexes which can use the redo log.
      */
+    @Override
     Index anyIndexById(long id) throws IOException {
         return anyIndexById(null, id);
     }
@@ -2366,6 +2370,13 @@ final class LocalDatabase extends CoreDatabase {
     }
 
     @Override
+    Tree parallelCopy(Index source, int workerCount) throws IOException {
+        var copier = new BTreeCopier(this, (BTree) source, Runner.current(), workerCount);
+        copier.start();
+        return copier.result();
+    }
+
+    @Override
     public void capacityLimit(long bytes) {
         mPageDb.pageLimit(bytes < 0 ? -1 : (bytes / mPageSize));
     }
@@ -2983,7 +2994,8 @@ final class LocalDatabase extends CoreDatabase {
     /**
      * @return false if stopped
      */
-    private boolean scanAllIndexes(ScanVisitor visitor) throws IOException {
+    @Override
+    boolean scanAllIndexes(ScanVisitor visitor) throws IOException {
         if (!scan(visitor, mRegistry) || !scan(visitor, mRegistryKeyMap)
             || !scan(visitor, openFragmentedTrash(false))
             || !scan(visitor, openCursorRegistry(false))
@@ -6185,6 +6197,11 @@ final class LocalDatabase extends CoreDatabase {
     }
 
     @Override
+    long databaseId() {
+        return mPageDb.databaseId();
+    }
+
+    @Override
     boolean isDirectPageAccess() {
         /*P*/ // [
         return false;
@@ -6216,6 +6233,11 @@ final class LocalDatabase extends CoreDatabase {
     @Override
     Tree registry() {
         return mRegistry;
+    }
+
+    @Override
+    Tree registryKeyMap() {
+        return mRegistryKeyMap;
     }
 
     @Override
