@@ -20,6 +20,9 @@ package org.cojen.tupl.core;
 import java.io.InterruptedIOException;
 import java.io.IOException;
 
+import java.util.Queue;
+
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.Executor;
 
 import java.util.function.Supplier;
@@ -127,6 +130,8 @@ final class BTreeCopier extends BTreeSeparator implements Supplier<byte[]> {
     }
 
     final class Copier extends Worker {
+        private Queue<Task> mTasks;
+
         Copier(int spawnCount, byte[] lowKey, byte[] highKey, int numSources) {
             super(spawnCount, lowKey, highKey, numSources);
         }
@@ -141,36 +146,115 @@ final class BTreeCopier extends BTreeSeparator implements Supplier<byte[]> {
                 source.load();
                 target.store(source.value());
             } else {
+                target.valueLength(length);
                 largeTransfer(source, target, 0, length);
+
+                Queue<Task> tasks = mTasks;
+                if (tasks != null) {
+                    int total = 0;
+                    Task task;
+                    while ((task = tasks.poll()) != null) {
+                        task.await();
+                        total++;
+                    }
+                    if (total > 0) {
+                        // Restore the spawn count such that BTreeSeparator can continue
+                        // splitting up the work as intended.
+                        cSpawnCountHandle.getAndAdd(this, total);
+                    }
+                }
             }
 
             source.next();
         }
 
-        private void largeTransfer(BTreeCursor source, BTreeCursor target, long pos, long length)
+        private void largeTransfer(BTreeCursor source, BTreeCursor target, long start, long end)
             throws IOException
         {
-            target.valueLength(length);
-
             LocalPool.Entry<byte[]> entry = mBufferPool.access();
             byte[] buf = entry.get();
 
             try {
                 while (true) {
-                    int amt = source.valueRead(pos, buf, 0, buf.length);
-                    target.valueWrite(pos, buf, 0, amt);
-                    pos += amt;
-                    if (amt < buf.length) {
+                    int amount = (int) Math.min(buf.length, (end - start));
+                    int actual = source.valueRead(start, buf, 0, amount);
+                    if (actual < amount) {
+                        throw new IOException("Value isn't fully copied");
+                    }
+                    target.valueWrite(start, buf, 0, actual);
+                    start += actual;
+                    if (start >= end) {
                         break;
+                    }
+
+                    int spawnCount = (int) cSpawnCountHandle.getOpaque(this);
+
+                    if (spawnCount > 0 && (end - start) > buf.length * 8 &&
+                        cSpawnCountHandle.compareAndSet(this, spawnCount, spawnCount - 1))
+                    {
+                        // Split the work with another thread.
+
+                        long mid = start + ((end - start) / 2);
+                        long taskEnd = end;
+                        end = mid;
+
+                        Queue<Task> tasks = mTasks;
+                        if (tasks == null) {
+                            mTasks = tasks = new ConcurrentLinkedQueue<>();
+                        }
+
+                        var task = new Task() {
+                            @Override
+                            void doRun() throws IOException {
+                                largeTransfer(source, target, mid, taskEnd);
+                            }
+                        };
+
+                        mExecutor.execute(task);
+
+                        mTasks.add(task);
                     }
                 }
             } finally {
                 entry.release();
             }
+        }
 
-            if (pos != length) {
-                throw new AssertionError("Value isn't fully copied");
+        private static abstract class Task extends Latch implements Runnable {
+            private final Latch.Condition mCondition = new Latch.Condition();
+
+            private Object mDone;
+
+            public void run() {
+                acquireExclusive();
+                try {
+                    doRun();
+                    mDone = true;
+                } catch (Throwable e) {
+                    mDone = e;
+                } finally {
+                    mCondition.signalAll(this);
+                    releaseExclusive();
+                }
             }
+
+            public void await() throws IOException {
+                acquireExclusive();
+                try {
+                    while (mDone == null) {
+                        if (mCondition.await(this) < 0) {
+                            throw new InterruptedIOException();
+                        }
+                    }
+                    if (mDone instanceof Throwable e) {
+                        throw Utils.rethrow(e);
+                    }
+                } finally {
+                    releaseExclusive();
+                }
+            }
+
+            abstract void doRun() throws IOException;
         }
 
         @Override
