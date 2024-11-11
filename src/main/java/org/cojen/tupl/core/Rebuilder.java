@@ -74,8 +74,8 @@ public final class Rebuilder {
         }
 
         if (!mOldLauncher.mReadOnly) {
-            // Open and shutdown to perform recovery, and then re-open as read-only.
-            mOldLauncher.open(false, null).shutdown(); // destroy = false
+            // Open and close to perform recovery, and then re-open as read-only.
+            mOldLauncher.open(false, null).close(); // destroy = false
             mOldLauncher.mReadOnly = true;
         }
 
