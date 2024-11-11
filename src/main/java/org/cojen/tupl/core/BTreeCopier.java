@@ -22,9 +22,12 @@ import java.io.IOException;
 
 import java.util.concurrent.Executor;
 
+import java.util.function.Supplier;
+
 import org.cojen.tupl.Index;
 
 import org.cojen.tupl.util.Latch;
+import org.cojen.tupl.util.LocalPool;
 
 /**
  * Parallel tree copying utility. All entries from the source tree are copied into a new target
@@ -33,13 +36,14 @@ import org.cojen.tupl.util.Latch;
  * @author Brian S. O'Neill
  */
 /*P*/
-final class BTreeCopier extends BTreeSeparator {
+final class BTreeCopier extends BTreeSeparator implements Supplier<byte[]> {
     private final int mPageSize;
+    private final int mBufferSize;
+
+    private final LocalPool<byte[]> mBufferPool;
 
     private final Latch mLatch;
     private final Latch.Condition mCondition;
-
-    private byte[] mBuf;
 
     private BTree mMerged;
     private IOException mException;
@@ -52,6 +56,8 @@ final class BTreeCopier extends BTreeSeparator {
     BTreeCopier(LocalDatabase dest, BTree source, Executor executor, int workerCount) {
         super(dest, new BTree[] {source}, executor, workerCount);
         mPageSize = dest.stats().pageSize;
+        mBufferSize = Math.max(source.mDatabase.stats().pageSize, mPageSize);
+        mBufferPool = new LocalPool<>(this, workerCount);
         mLatch = new Latch();
         mCondition = new Latch.Condition();
     }
@@ -59,7 +65,7 @@ final class BTreeCopier extends BTreeSeparator {
     /**
      * Returns a new temporary index with all the results, or null if empty.
      */
-    BTree result() throws IOException {
+    public BTree result() throws IOException {
         mLatch.acquireExclusive();
         try {
             while (true) {
@@ -77,6 +83,11 @@ final class BTreeCopier extends BTreeSeparator {
         } finally {
             mLatch.releaseExclusive();
         }
+    }
+
+    @Override // Supplier
+    public byte[] get() {
+        return new byte[mBufferSize];
     }
 
     @Override
@@ -111,31 +122,50 @@ final class BTreeCopier extends BTreeSeparator {
     }
 
     @Override
-    protected void transfer(BTreeCursor source, BTreeCursor target) throws IOException {
-        target.findNearby(source.key());
+    protected Worker newWorker(int spawnCount, byte[] lowKey, byte[] highKey, int numSources) {
+        return new Copier(spawnCount, lowKey, highKey, numSources);
+    }
 
-        long length = source.valueLength();
+    final class Copier extends Worker {
+        Copier(int spawnCount, byte[] lowKey, byte[] highKey, int numSources) {
+            super(spawnCount, lowKey, highKey, numSources);
+        }
 
-        if (length <= mPageSize) {
-            source.load();
-            target.store(source.value());
-        } else {
-            byte[] buf = mBuf;
+        @Override
+        protected void transfer(BTreeCursor source, BTreeCursor target) throws IOException {
+            target.findNearby(source.key());
 
-            if (buf == null) {
-                mBuf = buf = new byte[Math.max(source.mTree.mDatabase.stats().pageSize, mPageSize)];
+            long length = source.valueLength();
+
+            if (length <= mPageSize) {
+                source.load();
+                target.store(source.value());
+            } else {
+                largeTransfer(source, target, 0, length);
             }
 
+            source.next();
+        }
+
+        private void largeTransfer(BTreeCursor source, BTreeCursor target, long pos, long length)
+            throws IOException
+        {
             target.valueLength(length);
 
-            long pos = 0;
-            while (true) {
-                int amt = source.valueRead(pos, buf, 0, buf.length);
-                target.valueWrite(pos, buf, 0, amt);
-                pos += amt;
-                if (amt < buf.length) {
-                    break;
+            LocalPool.Entry<byte[]> entry = mBufferPool.access();
+            byte[] buf = entry.get();
+
+            try {
+                while (true) {
+                    int amt = source.valueRead(pos, buf, 0, buf.length);
+                    target.valueWrite(pos, buf, 0, amt);
+                    pos += amt;
+                    if (amt < buf.length) {
+                        break;
+                    }
                 }
+            } finally {
+                entry.release();
             }
 
             if (pos != length) {
@@ -143,11 +173,9 @@ final class BTreeCopier extends BTreeSeparator {
             }
         }
 
-        source.next();
-    }
-
-    @Override
-    protected void skip(BTreeCursor source) throws IOException {
-        source.next();
+        @Override
+        protected void skip(BTreeCursor source) throws IOException {
+            source.next();
+        }
     }
 }

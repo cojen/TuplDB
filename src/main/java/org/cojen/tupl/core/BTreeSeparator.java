@@ -143,27 +143,8 @@ abstract class BTreeSeparator extends LongAdder {
      */
     protected abstract void finished(Chain<BTree> firstRange);
 
-    /**
-     * Copies (or moves) the current entry from the source cursor to the unpositioned target
-     * cursor, and advance the source cursor to the next key. The source cursor value isn't
-     * autoloaded.
-     *
-     * Note: When this method is overridden, the skip method should be overridden too.
-     */
-    protected void transfer(BTreeCursor source, BTreeCursor target) throws IOException {
-        target.appendTransfer(source);
-    }
-
-    /**
-     * Skips (and possibly deletes) the current entry.
-     */
-    protected void skip(BTreeCursor source) throws IOException {
-        source.store(null);
-        source.next();
-    }
-
     private void startWorker(Worker from, int spawnCount, byte[] lowKey, byte[] highKey) {
-        var worker = new Worker(spawnCount, lowKey, highKey, mSources.length);
+        var worker = newWorker(spawnCount, lowKey, highKey, mSources.length);
  
         Worker[] hashtable = mWorkerHashtable;
         int slot = worker.mHash & (hashtable.length - 1);
@@ -192,6 +173,10 @@ abstract class BTreeSeparator extends LongAdder {
         } else {
             mExecutor.execute(worker);
         }
+    }
+
+    protected Worker newWorker(int spawnCount, byte[] lowKey, byte[] highKey, int numSources) {
+        return new Worker(spawnCount, lowKey, highKey, numSources);
     }
 
     /**
@@ -279,7 +264,7 @@ abstract class BTreeSeparator extends LongAdder {
         finished(first);
     }
 
-    private final class Worker implements Runnable, Chain<BTree> {
+    class Worker implements Runnable, Chain<BTree> {
         final int mHash;
         final byte[] mLowKey;
         byte[] mHighKey;
@@ -290,6 +275,7 @@ abstract class BTreeSeparator extends LongAdder {
 
         // Linked list of workers, ordered by the range of keys they act upon.
         Worker mNext;
+
         /**
          * @param lowKey inclusive lowest key in the worker range; pass null for open range
          * @param highKey exclusive highest key in the worker range; pass null for open range
@@ -304,7 +290,7 @@ abstract class BTreeSeparator extends LongAdder {
         }
 
         @Override
-        public void run() {
+        public final void run() {
             try {
                 doRun();
             } catch (Throwable e) {
@@ -320,12 +306,12 @@ abstract class BTreeSeparator extends LongAdder {
         }
 
         @Override
-        public BTree element() {
+        public final BTree element() {
             return mTarget;
         }
 
         @Override
-        public Worker next() {
+        public final Worker next() {
             return mNext;
         }
 
@@ -429,6 +415,25 @@ abstract class BTreeSeparator extends LongAdder {
             }
 
             add(count & 0xffL);
+        }
+
+        /**
+         * Copies (or moves) the current entry from the source cursor to the unpositioned
+         * target cursor, and advance the source cursor to the next key. The source cursor
+         * value isn't autoloaded.
+         *
+         * Note: When this method is overridden, the skip method should be overridden too.
+         */
+        protected void transfer(BTreeCursor source, BTreeCursor target) throws IOException {
+            target.appendTransfer(source);
+        }
+
+        /**
+         * Skips (and possibly deletes) the current entry.
+         */
+        protected void skip(BTreeCursor source) throws IOException {
+            source.store(null);
+            source.next();
         }
     }
 
