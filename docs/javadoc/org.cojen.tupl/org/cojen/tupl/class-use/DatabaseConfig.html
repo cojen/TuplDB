@@ -287,9 +287,17 @@ loadScripts(document, 'script');</script>
 <div class="block">Open a database, creating it if necessary.</div>
 </div>
 <div class="col-first even-row-color"><code>static <a href="../Database.html" title="interface in org.cojen.tupl">Database</a></code></div>
-<div class="col-second even-row-color"><span class="type-name-label">Database.</span><code><a href="../Database.html#restoreFromSnapshot(org.cojen.tupl.DatabaseConfig,java.io.InputStream)" class="member-name-link">restoreFromSnapshot</a><wbr>(<a href="../DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a>&nbsp;config,
- <a href="https://docs.oracle.com/en/java/javase/23/docs/api/java.base/java/io/InputStream.html" title="class or interface in java.io" class="external-link">InputStream</a>&nbsp;in)</code></div>
+<div class="col-second even-row-color"><span class="type-name-label">Database.</span><code><a href="../Database.html#rebuild(org.cojen.tupl.DatabaseConfig,org.cojen.tupl.DatabaseConfig,int)" class="member-name-link">rebuild</a><wbr>(<a href="../DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a>&nbsp;oldConfig,
+ <a href="../DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a>&nbsp;newConfig,
+ int&nbsp;numThreads)</code></div>
 <div class="col-last even-row-color">
+<div class="block">Open an existing database and copy all the data into a new database, which can have a
+ different configuration.</div>
+</div>
+<div class="col-first odd-row-color"><code>static <a href="../Database.html" title="interface in org.cojen.tupl">Database</a></code></div>
+<div class="col-second odd-row-color"><span class="type-name-label">Database.</span><code><a href="../Database.html#restoreFromSnapshot(org.cojen.tupl.DatabaseConfig,java.io.InputStream)" class="member-name-link">restoreFromSnapshot</a><wbr>(<a href="../DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a>&nbsp;config,
+ <a href="https://docs.oracle.com/en/java/javase/23/docs/api/java.base/java/io/InputStream.html" title="class or interface in java.io" class="external-link">InputStream</a>&nbsp;in)</code></div>
+<div class="col-last odd-row-color">
 <div class="block">Restore from a <a href="../Database.html#beginSnapshot()">snapshot</a>, into the data files defined by the
  given configuration.</div>
 </div>

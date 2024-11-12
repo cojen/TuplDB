@@ -68,6 +68,7 @@ loadScripts(document, 'script');</script>
 <li><a href="#open(org.cojen.tupl.DatabaseConfig)" tabindex="0">open(DatabaseConfig)</a></li>
 <li><a href="#destroy(org.cojen.tupl.DatabaseConfig)" tabindex="0">destroy(DatabaseConfig)</a></li>
 <li><a href="#connect(java.net.SocketAddress,javax.net.ssl.SSLContext,long...)" tabindex="0">connect(SocketAddress, SSLContext, long...)</a></li>
+<li><a href="#rebuild(org.cojen.tupl.DatabaseConfig,org.cojen.tupl.DatabaseConfig,int)" tabindex="0">rebuild(DatabaseConfig, DatabaseConfig, int)</a></li>
 <li><a href="#openIndex(byte%5B%5D)" tabindex="0">openIndex(byte[])</a></li>
 <li><a href="#openIndex(java.lang.String)" tabindex="0">openIndex(String)</a></li>
 <li><a href="#findIndex(byte%5B%5D)" tabindex="0">findIndex(byte[])</a></li>
@@ -400,61 +401,69 @@ Index data = db.openIndex("mydata");
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
 <div class="block">Returns a handler instance suitable for preparing transactions.</div>
 </div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code>void</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#renameIndex(org.cojen.tupl.Index,byte%5B%5D)" class="member-name-link">renameIndex</a><wbr>(<a href="Index.html" title="interface in org.cojen.tupl">Index</a>&nbsp;index,
- byte[]&nbsp;newName)</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
-<div class="block">Renames the given index to the one given.</div>
-</div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default void</code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#renameIndex(org.cojen.tupl.Index,java.lang.String)" class="member-name-link">renameIndex</a><wbr>(<a href="Index.html" title="interface in org.cojen.tupl">Index</a>&nbsp;index,
- <a href="https://docs.oracle.com/en/java/javase/23/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;newName)</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
-<div class="block">Renames the given index to the one given.</div>
-</div>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab1"><code>static <a href="Database.html" title="interface in org.cojen.tupl">Database</a></code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab1"><code><a href="#restoreFromSnapshot(org.cojen.tupl.DatabaseConfig,java.io.InputStream)" class="member-name-link">restoreFromSnapshot</a><wbr>(<a href="DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a>&nbsp;config,
- <a href="https://docs.oracle.com/en/java/javase/23/docs/api/java.base/java/io/InputStream.html" title="class or interface in java.io" class="external-link">InputStream</a>&nbsp;in)</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab1"><code><a href="#rebuild(org.cojen.tupl.DatabaseConfig,org.cojen.tupl.DatabaseConfig,int)" class="member-name-link">rebuild</a><wbr>(<a href="DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a>&nbsp;oldConfig,
+ <a href="DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a>&nbsp;newConfig,
+ int&nbsp;numThreads)</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab1">
+<div class="block">Open an existing database and copy all the data into a new database, which can have a
+ different configuration.</div>
+</div>
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code>void</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#renameIndex(org.cojen.tupl.Index,byte%5B%5D)" class="member-name-link">renameIndex</a><wbr>(<a href="Index.html" title="interface in org.cojen.tupl">Index</a>&nbsp;index,
+ byte[]&nbsp;newName)</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
+<div class="block">Renames the given index to the one given.</div>
+</div>
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default void</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#renameIndex(org.cojen.tupl.Index,java.lang.String)" class="member-name-link">renameIndex</a><wbr>(<a href="Index.html" title="interface in org.cojen.tupl">Index</a>&nbsp;index,
+ <a href="https://docs.oracle.com/en/java/javase/23/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;newName)</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
+<div class="block">Renames the given index to the one given.</div>
+</div>
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab1"><code>static <a href="Database.html" title="interface in org.cojen.tupl">Database</a></code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab1"><code><a href="#restoreFromSnapshot(org.cojen.tupl.DatabaseConfig,java.io.InputStream)" class="member-name-link">restoreFromSnapshot</a><wbr>(<a href="DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a>&nbsp;config,
+ <a href="https://docs.oracle.com/en/java/javase/23/docs/api/java.base/java/io/InputStream.html" title="class or interface in java.io" class="external-link">InputStream</a>&nbsp;in)</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab1">
 <div class="block">Restore from a <a href="#beginSnapshot()">snapshot</a>, into the data files defined by the
  given configuration.</div>
 </div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code>void</code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#resumeCheckpoints()" class="member-name-link">resumeCheckpoints</a>()</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code>void</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#resumeCheckpoints()" class="member-name-link">resumeCheckpoints</a>()</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
 <div class="block">Resume automatic checkpoints after having been temporarily <a href="#suspendCheckpoints()"><code>suspended</code></a>.</div>
 </div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code>void</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#shutdown()" class="member-name-link">shutdown</a>()</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code>void</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#shutdown()" class="member-name-link">shutdown</a>()</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
 <div class="block">Cleanly closes the database, ensuring durability of all modifications.</div>
 </div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="diag/DatabaseStats.html" title="class in org.cojen.tupl.diag">DatabaseStats</a></code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#stats()" class="member-name-link">stats</a>()</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="diag/DatabaseStats.html" title="class in org.cojen.tupl.diag">DatabaseStats</a></code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#stats()" class="member-name-link">stats</a>()</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
 <div class="block">Returns a collection of database statistics.</div>
 </div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code>void</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#suspendCheckpoints()" class="member-name-link">suspendCheckpoints</a>()</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code>void</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#suspendCheckpoints()" class="member-name-link">suspendCheckpoints</a>()</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
 <div class="block">Temporarily suspend automatic checkpoints and wait for any in-progress checkpoint to
  complete.</div>
 </div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code>void</code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#sync()" class="member-name-link">sync</a>()</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code>void</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#sync()" class="member-name-link">sync</a>()</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
 <div class="block">Durably flushes all committed transactions.</div>
 </div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code>void</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#uponLeader(java.lang.Runnable,java.lang.Runnable)" class="member-name-link">uponLeader</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/23/docs/api/java.base/java/lang/Runnable.html" title="class or interface in java.lang" class="external-link">Runnable</a>&nbsp;acquired,
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code>void</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#uponLeader(java.lang.Runnable,java.lang.Runnable)" class="member-name-link">uponLeader</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/23/docs/api/java.base/java/lang/Runnable.html" title="class or interface in java.lang" class="external-link">Runnable</a>&nbsp;acquired,
  <a href="https://docs.oracle.com/en/java/javase/23/docs/api/java.base/java/lang/Runnable.html" title="class or interface in java.lang" class="external-link">Runnable</a>&nbsp;lost)</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
 <div class="block">Registers the given task to start in a separate thread when the database instance has
  become the leader.</div>
 </div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code>boolean</code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#verify(org.cojen.tupl.diag.VerificationObserver)" class="member-name-link">verify</a><wbr>(<a href="diag/VerificationObserver.html" title="class in org.cojen.tupl.diag">VerificationObserver</a>&nbsp;observer)</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code>boolean</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#verify(org.cojen.tupl.diag.VerificationObserver)" class="member-name-link">verify</a><wbr>(<a href="diag/VerificationObserver.html" title="class in org.cojen.tupl.diag">VerificationObserver</a>&nbsp;observer)</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
 <div class="block">Verifies the integrity of the database and all indexes.</div>
 </div>
 </div>
@@ -515,6 +524,29 @@ Index data = db.openIndex("mydata");
 <dd><code>context</code> - optionally pass a context to open a secure connection</dd>
 <dt>Throws:</dt>
 <dd><code><a href="https://docs.oracle.com/en/java/javase/23/docs/api/java.base/java/lang/IllegalArgumentException.html" title="class or interface in java.lang" class="external-link">IllegalArgumentException</a></code> - if not given one or two tokens</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/23/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
+</dl>
+</div>
+</section>
+</li>
+<li>
+<section class="detail" id="rebuild(org.cojen.tupl.DatabaseConfig,org.cojen.tupl.DatabaseConfig,int)">
+<h3>rebuild</h3>
+<div class="horizontal-scroll">
+<div class="member-signature"><span class="modifiers">static</span>&nbsp;<span class="return-type"><a href="Database.html" title="interface in org.cojen.tupl">Database</a></span>&nbsp;<span class="element-name">rebuild</span><wbr><span class="parameters">(<a href="DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a>&nbsp;oldConfig,
+ <a href="DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a>&nbsp;newConfig,
+ int&nbsp;numThreads)</span>
+                 throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/23/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
+<div class="block">Open an existing database and copy all the data into a new database, which can have a
+ different configuration.</div>
+<dl class="notes">
+<dt>Parameters:</dt>
+<dd><code>numThreads</code> - pass 0 for default, or if negative, the actual number will be <code>
+ (-numThreads * availableProcessors)</code>.</dd>
+<dt>Returns:</dt>
+<dd>the newly built database</dd>
+<dt>Throws:</dt>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/23/docs/api/java.base/java/lang/IllegalStateException.html" title="class or interface in java.lang" class="external-link">IllegalStateException</a></code> - if the new database already exists</dd>
 <dd><code><a href="https://docs.oracle.com/en/java/javase/23/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
 </dl>
 </div>
