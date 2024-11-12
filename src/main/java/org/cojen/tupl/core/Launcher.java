@@ -400,6 +400,10 @@ public final class Launcher implements Cloneable {
         return options;
     }
 
+    boolean isReplicated() {
+        return mRepl != null || mReplConfig != null;
+    }
+
     /**
      * @return true if mRepl was assigned a new replicator
      */

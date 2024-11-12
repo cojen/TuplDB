@@ -126,7 +126,7 @@ public interface Database extends CauseCloseable, Flushable {
      * @param numThreads pass 0 for default, or if negative, the actual number will be {@code
      * (-numThreads * availableProcessors)}.
      * @return the newly built database
-     * @throws IllegalStateException if the new database already exists
+     * @throws IllegalStateException if the new database already exists or if either is replicated
      */
     public static Database rebuild(DatabaseConfig oldConfig, DatabaseConfig newConfig,
                                    int numThreads)

@@ -60,6 +60,12 @@ public final class Rebuilder {
     private void doRun() throws IOException {
         // Prepare configuration and perform basic configuration checks.
 
+        if (mOldLauncher.isReplicated() || mNewLauncher.isReplicated()) {
+            // Both databases must not be concurrently modified by any other threads. This is
+            // always possible with a replicated database.
+            throw new IllegalStateException("Cannot rebuild a replicated database");
+        }
+
         // Page access mode must be consistent in order for the parallelCopy method to work.
         if (mNewLauncher.mDirectPageAccess == null) {
             mNewLauncher.mDirectPageAccess = mOldLauncher.mDirectPageAccess;
