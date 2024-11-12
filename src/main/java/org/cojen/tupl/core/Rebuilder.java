@@ -60,6 +60,13 @@ public final class Rebuilder {
     private void doRun() throws IOException {
         // Prepare configuration and perform basic configuration checks.
 
+        // Page access mode must be consistent in order for the parallelCopy method to work.
+        if (mNewLauncher.mDirectPageAccess == null) {
+            mNewLauncher.mDirectPageAccess = mOldLauncher.mDirectPageAccess;
+        } else {
+            mOldLauncher.mDirectPageAccess = mNewLauncher.mDirectPageAccess;
+        }
+
         mOldLauncher.mMkdirs = false;
         mOldLauncher.dataFiles();
 
