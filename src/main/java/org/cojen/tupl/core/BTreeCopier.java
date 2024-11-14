@@ -259,7 +259,8 @@ final class BTreeCopier extends BTreeSeparator implements Supplier<byte[]> {
 
         @Override
         protected void skip(BTreeCursor source) throws IOException {
-            source.next();
+            // Nothing should be skipped.
+            throw new AssertionError();
         }
     }
 }
