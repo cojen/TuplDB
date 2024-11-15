@@ -106,7 +106,7 @@ loadScripts(document, 'script');</script>
 <li><a href="#resumeCheckpoints()" tabindex="0">resumeCheckpoints()</a></li>
 <li><a href="#commitLock()" tabindex="0">commitLock()</a></li>
 <li><a href="#compactFile(org.cojen.tupl.diag.CompactionObserver,double)" tabindex="0">compactFile(CompactionObserver, double)</a></li>
-<li><a href="#verify(org.cojen.tupl.diag.VerificationObserver)" tabindex="0">verify(VerificationObserver)</a></li>
+<li><a href="#verify(org.cojen.tupl.diag.VerificationObserver,int)" tabindex="0">verify(VerificationObserver, int)</a></li>
 <li><a href="#isLeader()" tabindex="0">isLeader()</a></li>
 <li><a href="#uponLeader(java.lang.Runnable,java.lang.Runnable)" tabindex="0">uponLeader(Runnable, Runnable)</a></li>
 <li><a href="#failover()" tabindex="0">failover()</a></li>
@@ -462,7 +462,8 @@ Index data = db.openIndex("mydata");
  become the leader.</div>
 </div>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code>boolean</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#verify(org.cojen.tupl.diag.VerificationObserver)" class="member-name-link">verify</a><wbr>(<a href="diag/VerificationObserver.html" title="class in org.cojen.tupl.diag">VerificationObserver</a>&nbsp;observer)</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#verify(org.cojen.tupl.diag.VerificationObserver,int)" class="member-name-link">verify</a><wbr>(<a href="diag/VerificationObserver.html" title="class in org.cojen.tupl.diag">VerificationObserver</a>&nbsp;observer,
+ int&nbsp;numThreads)</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
 <div class="block">Verifies the integrity of the database and all indexes.</div>
 </div>
@@ -546,7 +547,7 @@ Index data = db.openIndex("mydata");
 <dt>Returns:</dt>
 <dd>the newly built database</dd>
 <dt>Throws:</dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/23/docs/api/java.base/java/lang/IllegalStateException.html" title="class or interface in java.lang" class="external-link">IllegalStateException</a></code> - if the new database already exists</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/23/docs/api/java.base/java/lang/IllegalStateException.html" title="class or interface in java.lang" class="external-link">IllegalStateException</a></code> - if the new database already exists or if either is replicated</dd>
 <dd><code><a href="https://docs.oracle.com/en/java/javase/23/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
 </dl>
 </div>
@@ -1244,15 +1245,19 @@ Index data = db.openIndex("mydata");
 </section>
 </li>
 <li>
-<section class="detail" id="verify(org.cojen.tupl.diag.VerificationObserver)">
+<section class="detail" id="verify(org.cojen.tupl.diag.VerificationObserver,int)">
 <h3>verify</h3>
 <div class="horizontal-scroll">
-<div class="member-signature"><span class="return-type">boolean</span>&nbsp;<span class="element-name">verify</span><wbr><span class="parameters">(<a href="diag/VerificationObserver.html" title="class in org.cojen.tupl.diag">VerificationObserver</a>&nbsp;observer)</span>
+<div class="member-signature"><span class="return-type">boolean</span>&nbsp;<span class="element-name">verify</span><wbr><span class="parameters">(<a href="diag/VerificationObserver.html" title="class in org.cojen.tupl.diag">VerificationObserver</a>&nbsp;observer,
+ int&nbsp;numThreads)</span>
         throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/23/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
-<div class="block">Verifies the integrity of the database and all indexes.</div>
+<div class="block">Verifies the integrity of the database and all indexes. Using multiple threads speeds up
+ verification, even though some nodes might be visited multiple times.</div>
 <dl class="notes">
 <dt>Parameters:</dt>
 <dd><code>observer</code> - optional observer; pass null for default</dd>
+<dd><code>numThreads</code> - pass 0 for default, or if negative, the actual number will be <code>
+ (-numThreads * availableProcessors)</code>.</dd>
 <dt>Returns:</dt>
 <dd>true if verification passed</dd>
 <dt>Throws:</dt>
