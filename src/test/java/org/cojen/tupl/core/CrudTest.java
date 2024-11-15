@@ -52,7 +52,7 @@ public class CrudTest {
     }
 
     protected boolean verify(View ix) throws Exception {
-        return ((Index) ix).verify(null);
+        return ((Index) ix).verify(null, 1);
     }
 
     protected <T extends Thread> T startAndWaitUntilBlocked(T t) throws InterruptedException {

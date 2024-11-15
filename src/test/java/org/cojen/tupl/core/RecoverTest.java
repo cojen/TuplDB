@@ -527,12 +527,12 @@ public class RecoverTest {
         }
 
         mDb = reopenTempDatabase(getClass(), mDb, mConfig);
-        assertTrue(mDb.verify(null));
+        assertTrue(mDb.verify(null, 1));
 
         ix1 = mDb.openIndex("test1");
-        assertTrue(ix1.verify(null));
+        assertTrue(ix1.verify(null, 1));
         ix2 = mDb.openIndex("test2");
-        assertTrue(ix2.verify(null));
+        assertTrue(ix2.verify(null, 1));
 
         if (!commit) {
             assertEquals(0, CrudTest.count(ix1));

@@ -653,7 +653,7 @@ public class CloseTest {
         }
 
         try {
-            ix.verify(null);
+            ix.verify(null, 1);
             fail();
         } catch (ClosedIndexException e) {
             if (delete) {

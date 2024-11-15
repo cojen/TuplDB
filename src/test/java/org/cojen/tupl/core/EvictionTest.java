@@ -161,7 +161,7 @@ public class EvictionTest {
         assertEquals(0, evictionFilter.mValues.size());
         txn.reset();
         
-        assertTrue(ix.verify(null));
+        assertTrue(ix.verify(null, 1));
     }
 
     private String textOfLength(int prefix, char c, int len) {

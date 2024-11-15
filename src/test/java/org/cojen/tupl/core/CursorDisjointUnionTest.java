@@ -48,7 +48,7 @@ public class CursorDisjointUnionTest extends CursorNonDurableTest {
     protected boolean verify(View view) throws Exception {
         boolean result = true;
         for (Index ix : mViews.get(view)) {
-            result &= ix.verify(null);
+            result &= ix.verify(null, 1);
         }
         return result;
     }

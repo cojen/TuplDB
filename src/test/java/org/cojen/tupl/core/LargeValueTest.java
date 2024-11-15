@@ -138,7 +138,7 @@ public class LargeValueTest {
         // Assuming 4096 byte nodes, the inline content length is still between 1 and 128.
         ix.store(Transaction.BOGUS, k, new byte[4121]);
 
-        assertTrue(ix.verify(null));
+        assertTrue(ix.verify(null, 0));
     }
 
     @Test
@@ -238,7 +238,7 @@ public class LargeValueTest {
         ix.store(null, key(2500, 2), new byte[3000]);
 
         // Without the fix, this would fail because the garbage field didn't match actual usage.
-        assertTrue(ix.verify(new VerificationObserver()));
+        assertTrue(ix.verify(new VerificationObserver(), 0));
     }
 
     @Test
@@ -271,7 +271,7 @@ public class LargeValueTest {
 
         ix.store(null, key(3), new byte[3050]);
 
-        assertTrue(ix.verify(new VerificationObserver()));
+        assertTrue(ix.verify(new VerificationObserver(), 0));
     }
 
     @Test
@@ -289,7 +289,7 @@ public class LargeValueTest {
 
         ix.store(null, key(1), new byte[3050]);
 
-        assertTrue(ix.verify(new VerificationObserver()));
+        assertTrue(ix.verify(new VerificationObserver(), -2));
     }
 
     @Test
@@ -307,7 +307,7 @@ public class LargeValueTest {
 
         ix.store(null, key(3), new byte[3050]);
 
-        assertTrue(ix.verify(new VerificationObserver()));
+        assertTrue(ix.verify(new VerificationObserver(), 1));
     }
 
     @Test
@@ -324,7 +324,7 @@ public class LargeValueTest {
 
         ix.store(null, key(3), new byte[3050]);
 
-        assertTrue(ix.verify(new VerificationObserver()));
+        assertTrue(ix.verify(new VerificationObserver(), 1));
     }
 
     @Test
@@ -350,7 +350,7 @@ public class LargeValueTest {
 
         ix.store(null, filledKey(332, 1), filledValue(2672));
 
-        assertTrue(ix.verify(new VerificationObserver()));
+        assertTrue(ix.verify(new VerificationObserver(), 1));
     }
 
     @Test
@@ -365,7 +365,7 @@ public class LargeValueTest {
 
         ix.store(null, key(2026, 1), new byte[1060]);
 
-        assertTrue(ix.verify(new VerificationObserver()));
+        assertTrue(ix.verify(new VerificationObserver(), 1));
     }
 
     private static byte[] key(int i) {
@@ -491,6 +491,6 @@ public class LargeValueTest {
             txns[i].reset();
         }
 
-        assertTrue(ix.verify(new VerificationObserver()));
+        assertTrue(ix.verify(new VerificationObserver(), 0));
     }
 }

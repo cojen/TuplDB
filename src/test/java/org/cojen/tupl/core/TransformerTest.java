@@ -54,7 +54,7 @@ public class TransformerTest {
     }
 
     protected boolean verify(View ix) throws Exception {
-        return ((Index) ix).verify(null);
+        return ((Index) ix).verify(null, 1);
     }
 
     protected Database mDb;

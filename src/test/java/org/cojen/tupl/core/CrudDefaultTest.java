@@ -36,6 +36,6 @@ public class CrudDefaultTest extends CrudTest {
 
     @Override
     protected boolean verify(View ix) throws Exception {
-        return ((Index) (((DefaultView) ix).mSource)).verify(null);
+        return ((Index) (((DefaultView) ix).mSource)).verify(null, 1);
     }
 }

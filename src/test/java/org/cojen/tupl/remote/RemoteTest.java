@@ -138,8 +138,8 @@ public class RemoteTest {
         var temp = mClientDb.newTemporaryIndex();
         assertNull(temp.name());
 
-        assertTrue(temp.verify(null));
-        assertTrue(mClientDb.verify(null));
+        assertTrue(temp.verify(null, 1));
+        assertTrue(mClientDb.verify(null, 1));
 
         assertTrue(temp.isEmpty());
         byte[] key = "hello".getBytes();
@@ -178,14 +178,14 @@ public class RemoteTest {
             }
         };
 
-        assertTrue(temp.verify(vo));
+        assertTrue(temp.verify(vo, 0));
         assertFalse(vo.fail);
         assertTrue(vo.pass);
         vo.pass = false;
 
         ix.drop();
 
-        assertTrue(mClientDb.verify(vo));
+        assertTrue(mClientDb.verify(vo, 0));
         assertFalse(vo.fail);
         assertTrue(vo.pass);
 

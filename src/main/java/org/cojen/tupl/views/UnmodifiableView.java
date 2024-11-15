@@ -295,7 +295,7 @@ public final class UnmodifiableView implements Index {
     }
 
     @Override
-    public boolean verify(VerificationObserver observer) throws IOException {
+    public boolean verify(VerificationObserver observer, int numThreads) throws IOException {
         if (!(mSource instanceof Index ix)) {
             return true;
         }
@@ -339,7 +339,7 @@ public final class UnmodifiableView implements Index {
             };
         }
 
-        return ix.verify(obs);
+        return ix.verify(obs, numThreads);
     }
 
     @Override

@@ -25,9 +25,9 @@ import org.cojen.tupl.diag.EventListener;
 import org.cojen.tupl.diag.VerificationObserver;
 
 /**
- * Simple database verification utility. Main method requires a single argument &mdash; a base
- * file path for the database. An optional cache size can be provided too. Main method exits
- * with a status of 1 if verification failed, 0 if succeeded.
+ * Simple database verification utility. The main method requires a single argument &mdash; a
+ * base file path for the database. An optional cache size can be provided too. The main method
+ * exits with a status of 1 if verification failed, or else 0 if it succeeded.
  *
  * @author Brian S O'Neill
  * @see Database#verify Database.verify
@@ -52,7 +52,7 @@ public class Verify extends VerificationObserver {
         System.out.println(db.stats());
 
         var v = new Verify();
-        db.verify(v);
+        db.verify(v, 0);
         System.out.println(v);
         System.exit(v.failed);
     }
@@ -74,11 +74,11 @@ public class Verify extends VerificationObserver {
     }
 
     @Override
-    public boolean indexNodePassed(long id,
-                                   int level,
-                                   int entryCount,
-                                   int freeBytes,
-                                   int largeValueCount)
+    public synchronized boolean indexNodePassed(long id,
+                                                int level,
+                                                int entryCount,
+                                                int freeBytes,
+                                                int largeValueCount)
     {
         totalEntryCount += entryCount;
         totalFreeBytes += freeBytes;
@@ -90,7 +90,7 @@ public class Verify extends VerificationObserver {
     }
 
     @Override
-    public boolean indexNodeFailed(long id, int level, String message) {
+    public synchronized boolean indexNodeFailed(long id, int level, String message) {
         failed = 1;
         return super.indexNodeFailed(id, level, message);
     }

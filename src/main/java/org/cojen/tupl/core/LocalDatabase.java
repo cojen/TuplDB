@@ -2910,7 +2910,7 @@ final class LocalDatabase extends CoreDatabase {
     }
 
     @Override
-    public boolean verify(VerificationObserver observer) throws IOException {
+    public boolean verify(VerificationObserver observer, int numThreads) throws IOException {
         var fls = new FreeListScan();
         Runner.start(fls);
 
@@ -2919,7 +2919,7 @@ final class LocalDatabase extends CoreDatabase {
         scanAllIndexes(ix -> {
             var tree = (Tree) ix;
             Index view = tree.observableView();
-            return tree.verifyTree(view, vo) && vo.indexComplete(view, true, null);
+            return tree.verifyTree(view, vo, numThreads) && vo.indexComplete(view, true, null);
         });
 
         // Throws an exception if it fails.

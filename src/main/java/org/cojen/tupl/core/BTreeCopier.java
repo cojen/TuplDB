@@ -79,6 +79,7 @@ final class BTreeCopier extends BTreeSeparator implements Supplier<byte[]> {
                     return mMerged;
                 }
                 if (mCondition.await(mLatch) < 0) {
+                    stop();
                     throw new InterruptedIOException();
                 }
             }

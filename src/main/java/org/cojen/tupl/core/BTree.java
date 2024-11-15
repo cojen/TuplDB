@@ -42,6 +42,8 @@ import org.cojen.tupl.diag.EventListener;
 import org.cojen.tupl.diag.EventType;
 import org.cojen.tupl.diag.IndexStats;
 
+import org.cojen.tupl.util.Runner;
+
 import org.cojen.tupl.views.BoundedView;
 import org.cojen.tupl.views.UnmodifiableView;
 
@@ -847,15 +849,28 @@ class BTree extends Tree implements View, Index {
     }
 
     @Override
-    final boolean verifyTree(Index view, VerifyObserver observer) throws IOException {
-        BTreeCursor cursor = newCursor(Transaction.BOGUS);
-        try {
-            cursor.mKeyOnly = true;
-            cursor.first(); // must start with loaded key
-            int height = cursor.height();
-            return observer.indexBegin(view, height) && cursor.verify(height, observer);
-        } finally {
-            cursor.reset();
+    final boolean verifyTree(Index view, VerifyObserver observer, int numThreads)
+        throws IOException
+    {
+        if (numThreads <= 0) {
+            int procs = Runtime.getRuntime().availableProcessors();
+            numThreads = numThreads == 0 ? procs : procs * -numThreads;
+        }
+ 
+        if (numThreads <= 1) {
+            BTreeCursor cursor = newCursor(Transaction.BOGUS);
+            try {
+                cursor.mKeyOnly = true;
+                cursor.first(); // must start with loaded key
+                int height = cursor.height();
+                return observer.indexBegin(view, height) && cursor.verify(height, observer);
+            } finally {
+                cursor.reset();
+            }
+        } else {
+            var verifier = new BTreeVerifier(observer, this, Runner.current(), numThreads);
+            verifier.start();
+            return !verifier.await();
         }
     }
 
