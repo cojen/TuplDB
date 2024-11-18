@@ -21,8 +21,9 @@ import org.cojen.tupl.Database;
 import org.cojen.tupl.Index;
 
 /**
- * Index verification observer. Implementation does not need to be thread-safe, but instances
- * should not be shared by concurrent verifications.
+ * Index verification observer. Because verification can use multiple threads, a few of the
+ * observer methods need to be thread-safe: {@link #indexNodePassed indexNodePassed} and {@link
+ * #indexNodeFailed indexNodeFailed}.
  *
  * @author Brian S O'Neill
  * @see Database#verify Database.verify

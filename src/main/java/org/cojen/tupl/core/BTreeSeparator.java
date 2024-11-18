@@ -71,11 +71,13 @@ abstract class BTreeSeparator extends LongAdder {
     }
 
     /**
+     * @param db is only used for calling newTemporaryIndex; pass null to not create any target
+     * trees, and the Worker.transfer method must be overridden
      * @param executor used for parallel separation; pass null to use only the starting thread
      * @param workerCount maximum parallelism; must be at least 1
      */
     BTreeSeparator(LocalDatabase db, BTree[] sources, Executor executor, int workerCount) {
-        if (db == null || sources.length <= 0 || workerCount <= 0) {
+        if (sources.length <= 0 || workerCount <= 0) {
             throw new IllegalArgumentException();
         }
         if (executor == null) {
@@ -135,14 +137,16 @@ abstract class BTreeSeparator extends LongAdder {
 
     /**
      * Called when separation has finished. When finished normally (not stopped), then all
-     * source trees are empty, but not deleted.
+     * source trees are empty, but not deleted, unless the transfer and skip methods are
+     * overridden.
      *
-     * @param firstRange first separated range; the ranges are ordered lowest to highest.
+     * @param firstRange first separated range; the ranges are ordered lowest to highest. If a
+     * null database was passed to the constructor, then the firstRange parameter is null
      */
     protected abstract void finished(Chain<BTree> firstRange);
 
     private void startWorker(Worker from, int spawnCount, byte[] lowKey, byte[] highKey) {
-        var worker = new Worker(spawnCount, lowKey, highKey, mSources.length);
+        var worker = newWorker(spawnCount, lowKey, highKey, mSources.length);
  
         Worker[] hashtable = mWorkerHashtable;
         int slot = worker.mHash & (hashtable.length - 1);
@@ -155,13 +159,12 @@ abstract class BTreeSeparator extends LongAdder {
             worker.mHashtableNext = hashtable[slot];
             hashtable[slot] = worker;
 
-            if (from == null) {
-                mFirstWorker = worker;
-            } else {
-                Worker next = from.mNext;
-                from.mNext = worker;
-                if (next != null) {
-                    worker.mNext = next;
+            if (mDatabase != null) {
+                if (from == null) {
+                    mFirstWorker = worker;
+                } else {
+                    worker.mNext = from.mNext;
+                    from.mNext = worker;
                 }
             }
         }
@@ -171,6 +174,10 @@ abstract class BTreeSeparator extends LongAdder {
         } else {
             mExecutor.execute(worker);
         }
+    }
+
+    protected Worker newWorker(int spawnCount, byte[] lowKey, byte[] highKey, int numSources) {
+        return new Worker(spawnCount, lowKey, highKey, numSources);
     }
 
     /**
@@ -258,7 +265,7 @@ abstract class BTreeSeparator extends LongAdder {
         finished(first);
     }
 
-    private final class Worker implements Runnable, Chain<BTree> {
+    class Worker implements Runnable, Chain<BTree> {
         final int mHash;
         final byte[] mLowKey;
         byte[] mHighKey;
@@ -269,6 +276,7 @@ abstract class BTreeSeparator extends LongAdder {
 
         // Linked list of workers, ordered by the range of keys they act upon.
         Worker mNext;
+
         /**
          * @param lowKey inclusive lowest key in the worker range; pass null for open range
          * @param highKey exclusive highest key in the worker range; pass null for open range
@@ -283,7 +291,7 @@ abstract class BTreeSeparator extends LongAdder {
         }
 
         @Override
-        public void run() {
+        public final void run() {
             try {
                 doRun();
             } catch (Throwable e) {
@@ -299,12 +307,12 @@ abstract class BTreeSeparator extends LongAdder {
         }
 
         @Override
-        public BTree element() {
+        public final BTree element() {
             return mTarget;
         }
 
         @Override
-        public Worker next() {
+        public final Worker next() {
             return mNext;
         }
 
@@ -341,17 +349,19 @@ abstract class BTreeSeparator extends LongAdder {
                         scursor.reset();
                     } else {
                         if (selector.mSkip) {
-                            scursor.store(null);
-                            scursor.next();
+                            skip(scursor);
                             selector.mSkip = false;
                         } else {
                             if (tcursor == null) {
-                                mTarget = mDatabase.newTemporaryIndex();
-                                tcursor = mTarget.newCursor(Transaction.BOGUS);
-                                tcursor.mKeyOnly = true;
-                                tcursor.firstLeaf();
+                                LocalDatabase db = mDatabase;
+                                if (db != null) {
+                                    mTarget = db.newTemporaryIndex();
+                                    tcursor = mTarget.newCursor(Transaction.BOGUS);
+                                    tcursor.mKeyOnly = true;
+                                    tcursor.firstLeaf();
+                                }
                             }
-                            tcursor.appendTransfer(scursor);
+                            transfer(scursor, tcursor);
                             if (++count == 0) {
                                 // Inherited from LongAdder.
                                 add(256);
@@ -409,6 +419,28 @@ abstract class BTreeSeparator extends LongAdder {
             }
 
             add(count & 0xffL);
+        }
+
+        /**
+         * Copies (or moves) the current entry from the source cursor to the target cursor, and
+         * advance the source cursor to the next key. The source cursor value isn't autoloaded.
+         * When first called, the target tree is empty, and the target cursor is positioned at
+         * the first leaf node.
+         *
+         * Note: When this method is overridden, the skip method should be overridden too.
+         *
+         * @param target is null if a null database was passed the BTreeSeparator constructor
+         */
+        protected void transfer(BTreeCursor source, BTreeCursor target) throws IOException {
+            target.appendTransfer(source);
+        }
+
+        /**
+         * Skips (and possibly deletes) the current entry.
+         */
+        protected void skip(BTreeCursor source) throws IOException {
+            source.store(null);
+            source.next();
         }
     }
 

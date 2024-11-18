@@ -470,7 +470,7 @@ public class EnduranceTest {
         assertFalse(failureRatePercentage > 0.1);
         // System.out.printf("NumOperations=%d, FailureRate = %.2f%%\n", numOperations, failureRatePercentage);
 
-        assertTrue(mIx.verify(null));
+        assertTrue(mIx.verify(null, 1));
     }
 
     interface Worker extends Runnable {

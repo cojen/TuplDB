@@ -633,7 +633,7 @@ public class ViewTest {
         }
 
         if (view instanceof Index) {
-            assertTrue(((Index) view).verify(null));
+            assertTrue(((Index) view).verify(null, 1));
 
             var obs = new VerificationObserver() {
                 @Override
@@ -649,7 +649,7 @@ public class ViewTest {
                 }
             };
 
-            assertTrue(((Index) view).verify(obs));
+            assertTrue(((Index) view).verify(obs, 1));
         }
 
         c.reset();

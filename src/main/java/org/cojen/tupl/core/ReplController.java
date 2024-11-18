@@ -512,8 +512,7 @@ final class ReplController extends ReplWriter {
             return;
         }
 
-        // Start receiving if not, but does nothing if already receiving. A reset op is
-        // expected, and so the initial transaction id can be zero.
+        // The first op to receive is a reset, and so the initial transaction id can be zero.
         mEngine.startReceiving(pos, 0);
 
         // Use this ReplController instance for replica mode. Can only be assigned after engine

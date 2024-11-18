@@ -194,7 +194,7 @@ public class BTreeGraftTest {
 
     private static int height(BTree tree) throws Exception {
         var obs = new HeightObserver();
-        assertTrue(tree.verify(obs));
+        assertTrue(tree.verify(obs, 1));
         return obs.height();
     }
 

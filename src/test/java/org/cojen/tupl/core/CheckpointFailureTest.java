@@ -102,7 +102,7 @@ public class CheckpointFailureTest {
         config.dataPageArray(pa);
         mDb = Database.open(config);
 
-        assertTrue(mDb.verify(null));
+        assertTrue(mDb.verify(null, 1));
 
         Index ix = mDb.openIndex("test");
 

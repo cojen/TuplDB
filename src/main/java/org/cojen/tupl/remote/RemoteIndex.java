@@ -59,7 +59,8 @@ public interface RemoteIndex extends RemoteView {
     /**
      * @param flags bit 1: provide indexNodePassed messages
      */
-    public boolean verify(int flags, RemoteVerificationObserver observer) throws IOException;
+    public boolean verify(int flags, RemoteVerificationObserver observer, int numThreads)
+        throws IOException;
 
     @Disposer
     public void close() throws IOException;

@@ -188,8 +188,10 @@ public final class ServerDatabase implements RemoteDatabase {
     }
 
     @Override
-    public boolean verify(int flags, RemoteVerificationObserver remote) throws IOException {
-        return VerificationObserverRelay.verify(flags, remote, mDb::verify);
+    public boolean verify(int flags, RemoteVerificationObserver remote, int numThreads)
+        throws IOException
+    {
+        return VerificationObserverRelay.verify(flags, remote, obs -> mDb.verify(obs, numThreads));
     }
 
     @Override

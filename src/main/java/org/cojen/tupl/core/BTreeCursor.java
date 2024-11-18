@@ -638,9 +638,23 @@ public class BTreeCursor extends CoreValueAccessor implements Cursor {
 
     /**
      * Non-transactionally move to the next tree leaf node, loading it if necessary. Node might
+     * be empty or full of ghosts. Unless nothing is left, the key is loaded, but the value is
+     * only loaded when autoload mode is set.
+     */
+    final void skipToNextLeaf() throws IOException {
+        // Move to next node by first setting current node position higher than possible.
+        mFrame.mNodePos = Integer.MAX_VALUE - 1;
+        Node node = toNextLeaf(frameSharedNotSplit());
+        if (node != null) {
+            tryCopyCurrent(LocalTransaction.BOGUS);
+        }
+    }
+
+    /**
+     * Non-transactionally move to the next tree leaf node, loading it if necessary. Node might
      * be empty or full of ghosts. Key and value are not loaded.
      */
-    private void skipToNextLeaf() throws IOException {
+    private void skipToNextLeafNoLoad() throws IOException {
         // Move to next node by first setting current node position higher than possible.
         mFrame.mNodePos = Integer.MAX_VALUE - 1;
         nextLeaf();
@@ -4824,7 +4838,7 @@ public class BTreeCursor extends CoreValueAccessor implements Cursor {
                 }
                 // No fragmented values found.
                 node.releaseShared();
-                skipToNextLeaf();
+                skipToNextLeafNoLoad();
                 if ((frame = mFrame) == null) {
                     // No more entries to examine.
                     return true;
@@ -5044,14 +5058,14 @@ public class BTreeCursor extends CoreValueAccessor implements Cursor {
                 if (!verifyFrames(height, stack, mFrame, observer)) {
                     return false;
                 }
-                skipToNextLeaf();
+                skipToNextLeafNoLoad();
             }
         }
         return true;
     }
 
-    private boolean verifyFrames(int level, Node[] stack, CursorFrame frame,
-                                 VerifyObserver observer)
+    final boolean verifyFrames(int level, Node[] stack, CursorFrame frame,
+                               VerifyObserver observer)
         throws IOException
     {
         CursorFrame parentFrame = frame.mParentFrame;

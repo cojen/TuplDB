@@ -96,7 +96,7 @@ public class LargePageTest {
 
         db.checkpoint();
         db = reopenTempDatabase(getClass(), db, config);
-        assertTrue(db.verify(null));
+        assertTrue(db.verify(null, 1));
     }
 
     @Test

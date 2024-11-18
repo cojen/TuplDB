@@ -105,14 +105,14 @@ loadScripts(document, 'script');</script>
 <hr>
 <div class="type-signature"><span class="modifiers">public class </span><span class="element-name type-name-label">VerificationObserver</span>
 <span class="extends-implements">extends <a href="https://docs.oracle.com/en/java/javase/23/docs/api/java.base/java/lang/Object.html" title="class or interface in java.lang" class="external-link">Object</a></span></div>
-<div class="block">Index verification observer. Implementation does not need to be thread-safe, but instances
- should not be shared by concurrent verifications.</div>
+<div class="block">Index verification observer. Because verification can use multiple threads, a few of the
+ observer methods need to be thread-safe: <a href="#indexNodePassed(long,int,int,int,int)"><code>indexNodePassed</code></a> and <a href="#indexNodeFailed(long,int,java.lang.String)"><code>indexNodeFailed</code></a>.</div>
 <dl class="notes">
 <dt>See Also:</dt>
 <dd>
 <ul class="tag-list">
-<li><a href="../Database.html#verify(org.cojen.tupl.diag.VerificationObserver)"><code>Database.verify</code></a></li>
-<li><a href="../Index.html#verify(org.cojen.tupl.diag.VerificationObserver)"><code>Index.verify</code></a></li>
+<li><a href="../Database.html#verify(org.cojen.tupl.diag.VerificationObserver,int)"><code>Database.verify</code></a></li>
+<li><a href="../Index.html#verify(org.cojen.tupl.diag.VerificationObserver,int)"><code>Index.verify</code></a></li>
 </ul>
 </dd>
 </dl>

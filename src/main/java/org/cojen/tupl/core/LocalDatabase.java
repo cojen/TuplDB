@@ -472,14 +472,17 @@ final class LocalDatabase extends CoreDatabase {
                 debugListener = mEventListener;
             }
 
+            long databaseId = launcher.mDatabaseId;
+
             if (dataFiles == null) {
                 PageArray dataPageArray = launcher.mDataPageArray;
                 if (dataPageArray == null) {
                     mPageDb = new NonPageDb(pageSize);
                 } else {
                     Crypto crypto = launcher.mDataCrypto;
-                    mPageDb = StoredPageDb.open(debugListener, dataPageArray,
-                                                launcher.mChecksumFactory, crypto, destroy);
+                    mPageDb = StoredPageDb.open
+                        (debugListener, dataPageArray,
+                         launcher.mChecksumFactory, crypto, destroy, databaseId);
                     /*P*/ // [|
                     /*P*/ // fullyMapped = crypto == null && dataPageArray.isFullyMapped();
                     /*P*/ // ]
@@ -491,7 +494,7 @@ final class LocalDatabase extends CoreDatabase {
                 try {
                     pageDb = StoredPageDb.open
                         (debugListener, explicitPageSize, pageSize, dataFiles, options,
-                         launcher.mChecksumFactory, launcher.mDataCrypto, destroy);
+                         launcher.mChecksumFactory, launcher.mDataCrypto, destroy, databaseId);
                 } catch (FileNotFoundException e) {
                     if (!mReadOnly) {
                         throw e;
@@ -884,7 +887,7 @@ final class LocalDatabase extends CoreDatabase {
                         // before last checkpoint could delete them.
                         deleteNumberedFiles(mBaseFile, REDO_FILE_SUFFIX, 0, logId - 1);
 
-                        boolean doCheckpoint = txns.size() != 0;
+                        boolean doCheckpoint = txns.size() != 0 || launcher.mForceCheckpoint;
 
                         var applier = new RedoLogApplier
                             (launcher.mMaxReplicaThreads, this, txns, cursors);
@@ -925,6 +928,8 @@ final class LocalDatabase extends CoreDatabase {
 
                             // Only cleanup after successful checkpoint.
                             deleteReverseOrder(redoFiles);
+
+                            launcher.mForceCheckpoint = false;
                         }
                     }
 
@@ -1023,7 +1028,12 @@ final class LocalDatabase extends CoreDatabase {
      */
     @SuppressWarnings("unchecked")
     private void finishInit2(Launcher launcher) throws IOException {
-        mCheckpointer.start(false);
+        if (launcher.mForceCheckpoint) {
+            forceCheckpoint();
+            launcher.mForceCheckpoint = false;
+        }
+
+        mCheckpointer.start();
 
         BTree trashed = openNextTrashedTree(null);
 
@@ -1328,6 +1338,7 @@ final class LocalDatabase extends CoreDatabase {
     /**
      * Allows access to internal indexes which can use the redo log.
      */
+    @Override
     Index anyIndexById(long id) throws IOException {
         return anyIndexById(null, id);
     }
@@ -2359,6 +2370,13 @@ final class LocalDatabase extends CoreDatabase {
     }
 
     @Override
+    Tree parallelCopy(Index source, int workerCount) throws IOException {
+        var copier = new BTreeCopier(this, (BTree) source, Runner.current(), workerCount);
+        copier.start();
+        return copier.result();
+    }
+
+    @Override
     public void capacityLimit(long bytes) {
         mPageDb.pageLimit(bytes < 0 ? -1 : (bytes / mPageSize));
     }
@@ -2892,7 +2910,7 @@ final class LocalDatabase extends CoreDatabase {
     }
 
     @Override
-    public boolean verify(VerificationObserver observer) throws IOException {
+    public boolean verify(VerificationObserver observer, int numThreads) throws IOException {
         var fls = new FreeListScan();
         Runner.start(fls);
 
@@ -2901,7 +2919,7 @@ final class LocalDatabase extends CoreDatabase {
         scanAllIndexes(ix -> {
             var tree = (Tree) ix;
             Index view = tree.observableView();
-            return tree.verifyTree(view, vo) && vo.indexComplete(view, true, null);
+            return tree.verifyTree(view, vo, numThreads) && vo.indexComplete(view, true, null);
         });
 
         // Throws an exception if it fails.
@@ -2976,7 +2994,8 @@ final class LocalDatabase extends CoreDatabase {
     /**
      * @return false if stopped
      */
-    private boolean scanAllIndexes(ScanVisitor visitor) throws IOException {
+    @Override
+    boolean scanAllIndexes(ScanVisitor visitor) throws IOException {
         if (!scan(visitor, mRegistry) || !scan(visitor, mRegistryKeyMap)
             || !scan(visitor, openFragmentedTrash(false))
             || !scan(visitor, openCursorRegistry(false))
@@ -3686,17 +3705,21 @@ final class LocalDatabase extends CoreDatabase {
         }
 
         if (repl == null) {
-            if (replEncoding != 0 && !hasRedoLogFiles()) {
-                // Conversion to non-replicated mode is allowed by simply touching redo file 0.
-                throw new DatabaseException
-                    ("Database must be configured with a replicator, " +
-                     "identified by: " + replEncoding);
+            if (replEncoding != 0) {
+                if (!hasRedoLogFiles()) {
+                    // Conversion to non-replicated mode is possible by touching redo file 0.
+                    throw new DatabaseException
+                        ("Database must be configured with a replicator, " +
+                         "identified by: " + replEncoding);
+                }
+
+                launcher.mForceCheckpoint = true;
             }
         } else if (replEncoding == 0) {
             // Check if conversion to replicated mode is allowed. The replication log must have
             // data starting at position 0, and no redo log files can exist.
 
-            String msg = "Database was created initially without a replicator. " +
+            String msg = "Database is currently configured without a replicator. " +
                 "Conversion isn't possible ";
 
             if (!repl.isReadable(0)) {
@@ -3713,9 +3736,11 @@ final class LocalDatabase extends CoreDatabase {
             // header might be higher. Since we have the header data passed to us already, we
             // can modify it without persisting it.
             encodeLongLE(header, I_REDO_POSITION, 0);
+
+            launcher.mForceCheckpoint = true;
         } else if (replEncoding != repl.encoding()) {
             throw new DatabaseException
-                ("Database was created initially with a different replicator, " +
+                ("Database is configured with a different replicator, " +
                  "identified by: " + replEncoding);
         }
 
@@ -6172,6 +6197,11 @@ final class LocalDatabase extends CoreDatabase {
     }
 
     @Override
+    long databaseId() {
+        return mPageDb.databaseId();
+    }
+
+    @Override
     boolean isDirectPageAccess() {
         /*P*/ // [
         return false;
@@ -6203,6 +6233,11 @@ final class LocalDatabase extends CoreDatabase {
     @Override
     Tree registry() {
         return mRegistry;
+    }
+
+    @Override
+    Tree registryKeyMap() {
+        return mRegistryKeyMap;
     }
 
     @Override

@@ -163,7 +163,7 @@ public class SnapshotMappedDirectTest extends SnapshotMappedTest {
 
         Database restored = Database.open(restoredConfig);
 
-        assertTrue(restored.verify(null));
+        assertTrue(restored.verify(null, 2));
 
         ix = restored.findIndex("test");
         assertNotNull(ix);

@@ -59,7 +59,7 @@ public class LargeKeyTest {
 
         for (byte[] key : keys) {
             ix.store(null, key, value);
-            assertTrue(ix.verify(null));
+            assertTrue(ix.verify(null, 1));
         }
 
         for (byte[] key : keys) {
@@ -100,7 +100,7 @@ public class LargeKeyTest {
             ix.store(null, key, value);
         }
 
-        assertTrue("Verification failed for page size of: " + pageSize, ix.verify(null));
+        assertTrue("Verification failed for page size of: " + pageSize, ix.verify(null, 1));
 
         for (byte[] key : keys) {
             byte[] v = ix.load(null, key);
@@ -147,7 +147,7 @@ public class LargeKeyTest {
             ix.store(null, key, value);
         }
 
-        assertTrue("Verification failed for page size of: " + pageSize, ix.verify(null));
+        assertTrue("Verification failed for page size of: " + pageSize, ix.verify(null, 1));
 
         for (byte[] key : keys) {
             byte[] v = ix.load(null, key);
@@ -192,7 +192,7 @@ public class LargeKeyTest {
                 }
 
                 if (t == 0) {
-                    assertTrue(ix.verify(null));
+                    assertTrue(ix.verify(null, 1));
                 }
             }
         }
@@ -233,7 +233,7 @@ public class LargeKeyTest {
             ix.store(Transaction.BOGUS, key, value);
         }
 
-        ix.verify(null);
+        ix.verify(null, 1);
 
         rnd = new Random(seed);
         for (int i=0; i<1000; i++) {

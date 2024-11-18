@@ -243,7 +243,7 @@ public class SnapshotTest {
         s.close();
 
         t.join();
-        assertTrue(db.verify(null));
+        assertTrue(db.verify(null, 0));
         db.close();
 
         assertEquals(expectedLength, snapshot.length());
@@ -257,7 +257,7 @@ public class SnapshotTest {
         decorate(restoredConfig);
 
         final Database restored = Database.open(restoredConfig);
-        assertTrue(restored.verify(null));
+        assertTrue(restored.verify(null, 1));
         final Index restoredIx = restored.openIndex("test1");
 
         for (int i=0; i<10000000; i++) {
@@ -422,7 +422,7 @@ public class SnapshotTest {
         Database restored = Database.restoreFromSnapshot
             (restoredConfig, new FileInputStream(snapshotFile));
 
-        assertTrue(restored.verify(null));
+        assertTrue(restored.verify(null, 0));
         Index restoredIx = restored.openIndex("test1");
         assertEquals(indexId, restoredIx.id());
 

@@ -101,6 +101,9 @@ public final class Launcher implements Cloneable {
     Map<String, PrepareHandler> mPrepareHandlers;
     TempFileManager mTempFileManager;
 
+    // When 0, the database id is assigned automatically.
+    long mDatabaseId;
+
     // When true: one index is supported (the registry), no lock file is created, snapshots
     // aren't supported, and the database has no redo log.
     boolean mBasicMode;
@@ -115,6 +118,9 @@ public final class Launcher implements Cloneable {
     long mReplRecoveryStartNanos;
     long mReplInitialPosition;
     long mReplInitialTxnId;
+
+    // This field is set when converting to/from replicated mode.
+    boolean mForceCheckpoint;
 
     public Launcher() {
         createFilePath(true);
@@ -392,6 +398,10 @@ public final class Launcher implements Cloneable {
             options.add(OpenOption.CREATE);
         }
         return options;
+    }
+
+    boolean isReplicated() {
+        return mRepl != null || mReplConfig != null;
     }
 
     /**

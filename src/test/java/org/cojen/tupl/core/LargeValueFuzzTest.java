@@ -147,7 +147,7 @@ public class LargeValueFuzzTest {
                 byte[] key = rndBytes(rnd, keyMin, keyMax);
                 byte[] value = rndBytes(rnd, valueMin, valueMax);
                 ix.store(Transaction.BOGUS, key, value);
-                assertTrue(ix.verify(null));
+                assertTrue(ix.verify(null, 1));
             }
 
             mDb.deleteIndex(ix).run();

@@ -62,7 +62,7 @@ final class VerificationObserverRelay extends VerificationObserver {
     private final boolean mPassMessages;
     private final RemoteVerificationObserver mRemote;
 
-    private Pipe mPipe;
+    private volatile Pipe mPipe;
 
     private VerificationObserverRelay(int flags, RemoteVerificationObserver remote) {
         mPassMessages = (flags & 1) != 0;
@@ -126,28 +126,30 @@ final class VerificationObserverRelay extends VerificationObserver {
             return true;
         }
 
-        try {
-            Pipe pipe = mPipe;
+        synchronized (this) {
+            try {
+                Pipe pipe = mPipe;
 
-            if (pipe == null) {
-                mPipe = pipe = mRemote.indexNodePassed(null);
-                // Notify the remote side to expect terminators and wait for an ack.
-                pipe.write(1);
-                pipe.flush();
-                if (pipe.read() < 0) {
-                    return false;
+                if (pipe == null) {
+                    mPipe = pipe = mRemote.indexNodePassed(null);
+                    // Notify the remote side to expect terminators and wait for an ack.
+                    pipe.write(1);
+                    pipe.flush();
+                    if (pipe.read() < 0) {
+                        return false;
+                    }
                 }
+
+                pipe.writeLong(id);
+                pipe.writeInt(level);
+                pipe.writeInt(entryCount);
+                pipe.writeInt(freeBytes);
+                pipe.writeInt(largeValueCount);
+
+                return true;
+            } catch (IOException e) {
+                return false;
             }
-
-            pipe.writeLong(id);
-            pipe.writeInt(level);
-            pipe.writeInt(entryCount);
-            pipe.writeInt(freeBytes);
-            pipe.writeInt(largeValueCount);
-
-            return true;
-        } catch (IOException e) {
-            return false;
         }
     }
 
