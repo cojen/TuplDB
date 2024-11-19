@@ -56,11 +56,16 @@ final class DirectMemory {
      * Allocate native memory.
      */
     public static long malloc(long size) {
+        long addr;
         try {
-            return (long) malloc.invokeExact(size);
+            addr = (long) malloc.invokeExact(size);
         } catch (Throwable e) {
             throw Utils.rethrow(e);
         }
+        if (addr == 0) {
+            throw new OutOfMemoryError();
+        }
+        return addr;
     }
 
     /**
@@ -105,11 +110,16 @@ final class DirectMemory {
         // TODO: Define a variant that works on Windows. Call WindowsFileIO.valloc, but must
         // also call WindowsFileIO.vfree.
         static long valloc(long size) {
+            long addr;
             try {
-                return (long) valloc.invokeExact(size);
+                addr = (long) valloc.invokeExact(size);
             } catch (Throwable e) {
                 throw Utils.rethrow(e);
             }
+            if (addr == 0) {
+                throw new OutOfMemoryError();
+            }
+            return addr;
         }
     }
 }
