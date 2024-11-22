@@ -24,6 +24,7 @@ import java.lang.foreign.MemorySegment;
 import java.lang.foreign.ValueLayout;
 
 import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 
 import java.util.function.Supplier;
 
@@ -36,8 +37,6 @@ import org.cojen.tupl.io.Utils;
 
 import org.cojen.tupl.util.LocalPool;
 
-import static org.cojen.tupl.core.DirectPageOps.INT_LE;
-
 /**
  * A {@link PageArray} implementation which applies a 32-bit checksum to each page, stored in
  * the last 4 bytes of the page. If the source PageArray reports a page size of 4096 bytes, the
@@ -46,6 +45,12 @@ import static org.cojen.tupl.core.DirectPageOps.INT_LE;
  * @author Brian S O'Neill
  */
 abstract class ChecksumPageArray extends TransformedPageArray {
+    private static ValueLayout.OfInt INT_LE;
+
+    {
+        INT_LE = ValueLayout.JAVA_INT_UNALIGNED.withOrder(ByteOrder.LITTLE_ENDIAN);
+    }
+
     static ChecksumPageArray open(PageArray source, Supplier<Checksum> supplier) {
         return source.isDirectIO() ? new Direct(source, supplier) : new Standard(source, supplier);
     }
