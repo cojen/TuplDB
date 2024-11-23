@@ -402,6 +402,11 @@ final class LocalDatabase extends CoreDatabase {
         launcher.mEventListener = mEventListener = 
             SafeEventListener.makeSafe(launcher.mEventListener);
 
+        if (mEventListener != null) {
+            String kind = DirectPageOpsSelector.kindStr();
+            mEventListener.notify(EventType.DEBUG, "DirectPageOps kind: %1$s", kind);
+        }
+
         mCustomHandlers = Launcher.mapClone(launcher.mCustomHandlers);
         mCustomHandlersById = Launcher.newByIdMap(mCustomHandlers);
 

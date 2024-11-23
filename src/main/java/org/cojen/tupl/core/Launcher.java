@@ -62,6 +62,11 @@ import static org.cojen.tupl.core.Utils.*;
  * @author Brian S O'Neill
  */
 public final class Launcher implements Cloneable {
+    static {
+        // Force the preferred DirectPageOps implementation early.
+        DirectPageOpsSelector.kind();
+    }
+
     private static volatile Method cDirectOpen;
     private static volatile Method cDirectDestroy;
     private static volatile Method cDirectRestore;

@@ -36,7 +36,7 @@ import static org.cojen.tupl.core.DirectMemory.ALL;
  *
  * @author Brian S O'Neill
  */
-public final class DirectPageOps extends BaseDirectPageOps {
+final class DirectPageOps extends BaseDirectPageOps {
     private static final MethodHandle OF_ADDRESS_UNSAFE;
 
     private static final VarHandle BYTE_H, CHAR_LE_H, INT_LE_H, LONG_LE_H, LONG_BE_H;
@@ -85,6 +85,10 @@ public final class DirectPageOps extends BaseDirectPageOps {
 
     private static MemorySegment ofAddressUnsafe(long address) {
         return MemorySegment.ofAddress(address).reinterpret(8);
+    }
+
+    static int kind() {
+        return 0;
     }
 
     static byte p_byteGet(long page, int index) {
@@ -187,7 +191,7 @@ public final class DirectPageOps extends BaseDirectPageOps {
         MemorySegment.copy(src, srcStart, ALL, ValueLayout.JAVA_BYTE, dstPage + dstStart, len);
     }
 
-    static void p_copyToArray( long srcPage, int srcStart, byte[] dst, int dstStart, int len) {
+    static void p_copyToArray(long srcPage, int srcStart, byte[] dst, int dstStart, int len) {
         if (CHECK_BOUNDS) {
             if (len < 0) {
                 throw new IndexOutOfBoundsException("len: " + len);
