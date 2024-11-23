@@ -33,7 +33,8 @@ import static org.cojen.tupl.core.Utils.*;
 import static java.util.Arrays.compareUnsigned;
 
 /**
- * Low-level methods for operating against a database page.
+ * Defines low-level methods for operating against database pages, as represented by Java byte
+ * arrays.
  *
  * @author Brian S O'Neill
  */

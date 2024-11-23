@@ -38,17 +38,34 @@ import org.cojen.tupl.util.Runner;
 import static org.cojen.tupl.core.Node.*;
 
 /**
+ * Defines low-level methods for operating against database pages, as represented by off-heap
+ * memory.
+ *
  * @author Brian S. O'Neill
  * @see DirectPageOps
  */
 class BaseDirectPageOps {
-    static final int NODE_OVERHEAD = 100 - 24; // 6 fewer fields
+    /*
+     * Approximate byte overhead per Node, assuming 32-bit pointers. Overhead is determined by
+     * examining all the fields in the Node class, including inherited ones. In addition, each
+     * Node is referenced by mNodeMapTable.
+     *
+     * References: 1 field per Node instance
+     * Node class: 12 fields (mId is counted twice)
+     * Clutch class: 1 field
+     * Latch class: 3 fields
+     * Object class: Minimum 8 byte overhead
+     * Total: (23 * 4 + 8) = 76
+     */
+    static final int NODE_OVERHEAD = 76;
 
     private static final long EMPTY_TREE_LEAF, CLOSED_TREE_PAGE, DELETED_TREE_PAGE, STUB_TREE_PAGE;
 
     static {
         EMPTY_TREE_LEAF = newEmptyTreePage
             (TN_HEADER_SIZE, TYPE_TN_LEAF | LOW_EXTREMITY | HIGH_EXTREMITY);
+
+        // Note that none of these special nodes set the extremity bits. See p_stubTreePage.
 
         CLOSED_TREE_PAGE = newEmptyTreePage(TN_HEADER_SIZE + 8, TYPE_TN_IN);
 
@@ -81,10 +98,18 @@ class BaseDirectPageOps {
         return EMPTY_TREE_LEAF;
     }
 
+    /**
+     * Returned page is 20 bytes, defining a closed tree internal node. Contents must not be
+     * modified. The page can also be acted upon as a leaf node, considering that an empty leaf
+     * node has the same structure. The extra 8 bytes at the end will simply be ignored.
+     */
     static long p_closedTreePage() {
         return CLOSED_TREE_PAGE;
     }
 
+    /**
+     * See p_closedTreePage.
+     */
     static long p_deletedTreePage() {
         return DELETED_TREE_PAGE;
     }
@@ -109,6 +134,17 @@ class BaseDirectPageOps {
         return page == DELETED_TREE_PAGE ? new DeletedIndexException() : new ClosedIndexException();
     }
 
+    /**
+     * Returned page is 20 bytes, defining a tree stub node. Contents must not be modified.
+     *
+     * A stub is an internal node (TYPE_TN_IN), no extremity bits set, with a single child id
+     * of zero. Stubs are encountered by cursors when popping up, which only happens during
+     * cursor iteration (next/previous), findNearby, and reset. Cursor iteration stops when it
+     * encounters a stub node, because it has no more children. The findNearby method might
+     * search into the child node, but this is prohibited. When the extremity bits are clear,
+     * findNearby keeps popping up until no more nodes are found. Then it starts over from the
+     * root node.
+     */
     static long p_stubTreePage() {
         return STUB_TREE_PAGE;
     }
@@ -117,10 +153,16 @@ class BaseDirectPageOps {
         return DirectMemory.malloc(size);
     }
 
+    /**
+     * @param size pass negative for size for aligned allocation (if possible)
+     */
     static long p_allocPage(int size) {
         return DirectMemory.malloc(Math.abs(size), size < 0); // aligned if negative
     }
 
+    /**
+     * @param size pass negative for size for aligned allocation (if possible)
+     */
     static long p_callocPage(int size) {
         return DirectMemory.calloc(Math.abs(size), size < 0); // aligned if negative
     }
@@ -281,6 +323,14 @@ class BaseDirectPageOps {
         }
     }
 
+    /**
+     * Allocates an "arena", which contains a fixed number of pages. Pages in an arena cannot
+     * be deleted, and calling p_delete on arena pages does nothing. Call p_arenaDelete to
+     * fully delete the entire arena when not used anymore.
+     *
+     * @param listener optional
+     * @return null if not supported
+     */
     static Object p_arenaAlloc(int pageSize, long pageCount, EventListener listener)
         throws IOException
     {
@@ -294,6 +344,9 @@ class BaseDirectPageOps {
         }
     }
 
+    /**
+     * @throws IllegalArgumentException if unknown arena
+     */
     static void p_arenaDelete(Object arena) throws IOException {
         if (arena instanceof Arena a) {
             // Unregister before closing, in case new allocations are allowed in the recycled
@@ -306,6 +359,13 @@ class BaseDirectPageOps {
         }
     }
 
+    /**
+     * Allocate a zero-filled page from an arena. If arena is null or depleted, then a regular
+     * page is allocated.
+     *
+     * @param size pass negative for size for aligned allocation (if possible)
+     * @throws IllegalArgumentException if unknown arena or if page size doesn't match
+     */
     static long p_callocPage(Object arena, int size) {
         if (arena instanceof Arena a) {
             // Assume arena allocations are always aligned.
@@ -320,6 +380,9 @@ class BaseDirectPageOps {
         return p_callocPage(size);
     }
 
+    /**
+     * @param pageSize pass negative for size for aligned allocation (if possible)
+     */
     static long p_clonePage(long page, int pageSize) {
         long dst = p_allocPage(pageSize);
         pageSize = Math.abs(pageSize);
@@ -327,6 +390,11 @@ class BaseDirectPageOps {
         return dst;
     }
 
+    /**
+     * Allocates a clone if the page type is not an array. Must be deleted.
+     *
+     * @return original array or a newly allocated page
+     */
     static long p_transfer(byte[] array) {
         int length = array.length;
         final long page = p_alloc(length);
@@ -334,17 +402,30 @@ class BaseDirectPageOps {
         return page;
     }
 
+    /**
+     * @param pageSize pass negative for size for aligned allocation (if possible)
+     */
     static long p_transferPage(byte[] array, int pageSize) {
         final long page = p_allocPage(pageSize);
         DirectPageOps.p_copyFromArray(array, 0, page, 0, Math.abs(pageSize));
         return page;
     }
 
+    /**
+     * Copies from an array to a page, but only if the page type is not an array.
+     *
+     * @return original array or page with copied data
+     */
     static long p_transferArrayToPage(byte[] array, long page) {
         DirectPageOps.p_copyFromArray(array, 0, page, 0, array.length);
         return page;
     }
 
+    /**
+     * Copies from a page to an array, but only if the page type is not an array.
+     *
+     * @return original array or page with copied data
+     */
     static void p_transferPageToArray(long page, byte[] array) {
         DirectPageOps.p_copyToArray(page, 0, array, 0, array.length);
     }
@@ -357,6 +438,9 @@ class BaseDirectPageOps {
         DirectPageOps.p_bytePut(page, index, (byte) v);
     }
 
+    /**
+     * Value is in the lower word, and updated index is in the upper word.
+     */
     static long p_uintGetVar(final long page, int index) {
         int v = DirectPageOps.p_byteGet(page, index++);
         if (v < 0) {
@@ -593,11 +677,18 @@ class BaseDirectPageOps {
         return Utils.calcUnsignedVarLongLength(v);
     }
 
+    /**
+     * Returns page if it's an array, else copies to given array and returns that.
+     */
     static byte[] p_copyIfNotArray(final long page, byte[] dstArray) {
         DirectPageOps.p_copyToArray(page, 0, dstArray, 0, dstArray.length);
         return dstArray;
     }
 
+    /**
+     * Performs multiple array copies, correctly ordered to prevent clobbering. The copies
+     * must not overlap, and start1 must be less than start2.
+     */
     static void p_copies(final long page,
                          int start1, int dest1, int length1,
                          int start2, int dest2, int length2)
@@ -611,6 +702,10 @@ class BaseDirectPageOps {
         }
     }
 
+    /**
+     * Performs multiple array copies, correctly ordered to prevent clobbering. The copies
+     * must not overlap, start1 must be less than start2, and start2 be less than start3.
+     */
     static void p_copies(final long page,
                          int start1, int dest1, int length1,
                          int start2, int dest2, int length2,
