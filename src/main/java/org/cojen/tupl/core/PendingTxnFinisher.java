@@ -33,7 +33,6 @@ import org.cojen.tupl.util.Runner;
  *
  * @author Brian S O'Neill
  */
-/*P*/
 final class PendingTxnFinisher extends Latch {
     private final Worker[] mWorkers;
     private final long mMaxLag;

@@ -147,18 +147,18 @@ final class CompressedPageArray extends PageArray implements Supplier<PageCompre
     }
 
     @Override
-    public void readPage(long index, long dstPtr) throws IOException {
-        readPage(index, dstPtr, 0);
+    public void readPage(long index, long dstAddr) throws IOException {
+        readPage(index, dstAddr, 0);
     }
 
-    private void readPage(long index, long dstPtr, int offset) throws IOException {
+    private void readPage(long index, long dstAddr, int offset) throws IOException {
         byte[] value = mPages.load(Transaction.BOGUS, keyFor(index));
         if (value == null) {
-            MemorySegment.ofAddress(dstPtr + offset).reinterpret(pageSize()).fill((byte) 0);
+            MemorySegment.ofAddress(dstAddr + offset).reinterpret(pageSize()).fill((byte) 0);
         } else {
             var entry = mCompressors.access();
             try {
-                entry.get().decompress(value, 0, value.length, dstPtr, offset, pageSize());
+                entry.get().decompress(value, 0, value.length, dstAddr, offset, pageSize());
             } finally {
                 entry.release();
             }
@@ -166,15 +166,15 @@ final class CompressedPageArray extends PageArray implements Supplier<PageCompre
     }
 
     @Override
-    public void readPage(long index, long dstPtr, int offset, int length) throws IOException {
+    public void readPage(long index, long dstAddr, int offset, int length) throws IOException {
         int pageSize = pageSize();
         if (length == pageSize) {
-            readPage(index, dstPtr, offset);
+            readPage(index, dstAddr, offset);
         } else {
             try (Arena a = Arena.ofConfined()) {
                 MemorySegment page = a.allocate(pageSize);
                 readPage(index, page.address(), 0);
-                MemorySegment.copy(page, 0, DirectMemory.ALL, dstPtr + offset, length);
+                MemorySegment.copy(page, 0, DirectMemory.ALL, dstAddr + offset, length);
             }
         }
     }
@@ -194,12 +194,12 @@ final class CompressedPageArray extends PageArray implements Supplier<PageCompre
     }
 
     @Override
-    public void writePage(long index, long srcPtr, int offset) throws IOException {
+    public void writePage(long index, long srcAddr, int offset) throws IOException {
         try (Cursor c = mPages.newAccessor(Transaction.BOGUS, keyFor(index))) {
             var entry = mCompressors.access();
             try {
                 PageCompressor compressor = entry.get();
-                int len = compressor.compress(srcPtr, offset, pageSize());
+                int len = compressor.compress(srcAddr, offset, pageSize());
                 c.valueWrite(0, compressor.compressedBytes(), 0, len);
             } finally {
                 entry.release();
@@ -257,7 +257,6 @@ final class CompressedPageArray extends PageArray implements Supplier<PageCompre
             launcher.minCacheSize(0);
             launcher.maxCacheSize(100L * snapArray.pageSize());
             launcher.readOnly(true);
-            launcher.directPageAccess(mDatabase.isDirectPageAccess());
             launcher.encrypt(mDatabase.dataCrypto());
             launcher.checksumPages(mDatabase.checksumFactory());
 

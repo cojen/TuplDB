@@ -61,7 +61,7 @@ public interface PageCompressor extends Closeable {
      *
      * @return the compressed size
      */
-    public int compress(long srcPtr, int srcOff, int srcLen) throws IOException;
+    public int compress(long srcAddr, int srcOff, int srcLen) throws IOException;
 
     /**
      * Target of the compress method. The array is recycled, although it can be replaced.
@@ -81,7 +81,7 @@ public interface PageCompressor extends Closeable {
      *
      * @param dstLen original size of uncompressed page
      */
-    public void decompress(byte[] src, int srcOff, int srcLen, long dstPtr, int dstOff, int dstLen)
+    public void decompress(byte[] src, int srcOff, int srcLen, long dstAddr, int dstOff, int dstLen)
         throws IOException;
 
     public void close();

@@ -54,11 +54,11 @@ final class WindowsMapping extends DirectMapping {
 
     @Override
     void sync(boolean metadata) throws IOException {
-        WindowsFileIO.flushMapping(mFileHandle, mPtr, mSize);
+        WindowsFileIO.flushMapping(mFileHandle, mAddr, mSize);
     }
 
     @Override
     public void close() throws IOException {
-        WindowsFileIO.closeMappedFile(mFileHandle, mMappingHandle, mPtr);
+        WindowsFileIO.closeMappedFile(mFileHandle, mMappingHandle, mAddr);
     }
 }

@@ -29,11 +29,11 @@ abstract class DirectMapping extends Mapping {
     // References the entire address space.
     static final MemorySegment ALL = MemorySegment.NULL.reinterpret(Long.MAX_VALUE);
 
-    protected final long mPtr;
+    protected final long mAddr;
     protected final int mSize;
 
     DirectMapping(long addr, int size) {
-        mPtr = addr;
+        mAddr = addr;
         mSize = size;
     }
 
@@ -44,21 +44,21 @@ abstract class DirectMapping extends Mapping {
 
     @Override
     final void read(int start, byte[] b, int off, int len) {
-        MemorySegment.copy(ALL, ValueLayout.JAVA_BYTE, mPtr + start, b, off, len);
+        MemorySegment.copy(ALL, ValueLayout.JAVA_BYTE, mAddr + start, b, off, len);
     }
 
     @Override
-    final void read(int start, long ptr, int len) {
-        MemorySegment.copy(ALL, mPtr + start, ALL, ptr, len);
+    final void read(int start, long addr, int len) {
+        MemorySegment.copy(ALL, mAddr + start, ALL, addr, len);
     }
 
     @Override
     final void write(int start, byte[] b, int off, int len) {
-        MemorySegment.copy(b, off, ALL, ValueLayout.JAVA_BYTE, mPtr + start, len);
+        MemorySegment.copy(b, off, ALL, ValueLayout.JAVA_BYTE, mAddr + start, len);
     }
 
     @Override
-    final void write(int start, long ptr, int len) {
-        MemorySegment.copy(ALL, ptr, ALL, mPtr + start, len);
+    final void write(int start, long addr, int len) {
+        MemorySegment.copy(ALL, addr, ALL, mAddr + start, len);
     }
 }

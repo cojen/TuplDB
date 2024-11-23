@@ -59,7 +59,7 @@ class LZ4Compressor implements PageCompressor {
     }
 
     @Override
-    public int compress(long srcPtr, int srcOff, int srcLen) {
+    public int compress(long srcAddr, int srcOff, int srcLen) {
         byte[] dst = mCompressedBytes;
         if (dst == null) {
             mCompressedBytes = dst = new byte[srcLen / 16];
@@ -67,7 +67,7 @@ class LZ4Compressor implements PageCompressor {
 
         while (true) {
             ByteBuffer bb = MemorySegment.ofAddress
-                (srcPtr + srcOff).reinterpret(srcLen).asByteBuffer();
+                (srcAddr + srcOff).reinterpret(srcLen).asByteBuffer();
             ByteBuffer wrapped = ByteBuffer.wrap(dst, 0, dst.length);
             try {
                 mCompressor.compress(bb, wrapped);
@@ -96,9 +96,10 @@ class LZ4Compressor implements PageCompressor {
 
     @Override
     public void decompress(byte[] src, int srcOff, int srcLen,
-                           long dstPtr, int dstOff, int dstLen)
+                           long dstAddr, int dstOff, int dstLen)
     {
-        ByteBuffer bb = MemorySegment.ofAddress(dstPtr + dstOff).reinterpret(dstLen).asByteBuffer();
+        ByteBuffer bb = MemorySegment.ofAddress(dstAddr + dstOff)
+            .reinterpret(dstLen).asByteBuffer();
 
         mDecompressor.decompress(ByteBuffer.wrap(src, srcOff, srcLen), bb);
     }

@@ -295,12 +295,10 @@ public class DatabaseConfig implements Cloneable {
     }
 
     /**
-     * Set true to allocate all pages off the Java heap, offering increased performance and
-     * reduced garbage collection activity. By default, direct page access is enabled if
-     * supported.
+     * @deprecated direct page access is always enabled
      */
+    @Deprecated
     public DatabaseConfig directPageAccess(boolean direct) {
-        mLauncher.directPageAccess(direct);
         return this;
     }
 

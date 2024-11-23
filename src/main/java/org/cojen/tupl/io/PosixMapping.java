@@ -37,11 +37,11 @@ final class PosixMapping extends DirectMapping {
 
     @Override
     void sync(boolean metadata) throws IOException {
-        PosixFileIO.msyncPtr(mPtr, mSize);
+        PosixFileIO.msyncAddr(mAddr, mSize);
     }
 
     @Override
     public void close() throws IOException {
-        PosixFileIO.munmapPtr(mPtr, mSize);
+        PosixFileIO.munmapAddr(mAddr, mSize);
     }
 }

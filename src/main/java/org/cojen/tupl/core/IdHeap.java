@@ -155,17 +155,17 @@ final class IdHeap {
      *
      * @return new offset
      */
-    public int drain(long prevId, /*P*/ byte[] buffer, int offset, int length) {
+    public int drain(long prevId, long bufAddr, int offset, int length) {
         int end = offset + length;
         while (mSize > 0 && offset < end) {
             if (offset > (end - 9)) {
                 long id = mIds[0];
-                if (offset + PageOps.p_ulongVarSize(id - prevId) > end) {
+                if (offset + DirectPageOps.p_ulongVarSize(id - prevId) > end) {
                     break;
                 }
             }
             long id = remove();
-            offset = PageOps.p_ulongPutVar(buffer, offset, id - prevId);
+            offset = DirectPageOps.p_ulongPutVar(bufAddr, offset, id - prevId);
             prevId = id;
         }
         return offset;
@@ -175,12 +175,12 @@ final class IdHeap {
      * @param id first id; was prevId for drain method call
      * @param endOffset must be return offset from drain
      */
-    public void undrain(long id, /*P*/ byte[] buffer, int offset, int endOffset) {
+    public void undrain(long id, long bufAddr, int offset, int endOffset) {
         add(id);
         var offsetRef = new IntegerRef.Value();
         offsetRef.set(offset);
         while (offsetRef.get() < endOffset) {
-            id += PageOps.p_ulongGetVar(buffer, offsetRef);
+            id += DirectPageOps.p_ulongGetVar(bufAddr, offsetRef);
             add(id);
         }
     }

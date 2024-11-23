@@ -153,8 +153,8 @@ class JavaFileIO extends AbstractFileIO {
     }
 
     @Override
-    protected final void doRead(long pos, long ptr, int length) throws IOException {
-        ByteBuffer bb = MemorySegment.ofAddress(ptr).reinterpret(length).asByteBuffer();
+    protected final void doRead(long pos, long addr, int length) throws IOException {
+        ByteBuffer bb = MemorySegment.ofAddress(addr).reinterpret(length).asByteBuffer();
 
         boolean interrupted = false;
 
@@ -198,8 +198,8 @@ class JavaFileIO extends AbstractFileIO {
     }
 
     @Override
-    protected final void doWrite(long pos, long ptr, int length) throws IOException {
-        ByteBuffer bb = MemorySegment.ofAddress(ptr).reinterpret(length).asByteBuffer();
+    protected final void doWrite(long pos, long addr, int length) throws IOException {
+        ByteBuffer bb = MemorySegment.ofAddress(addr).reinterpret(length).asByteBuffer();
 
         boolean interrupted = false;
 

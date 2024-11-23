@@ -65,7 +65,7 @@ public class WindowFunctionTest {
     }
 
     private void fill(int scalar) throws Exception {
-        mDb = Database.open(new DatabaseConfig().directPageAccess(false));
+        mDb = Database.open(new DatabaseConfig());
         mTable = mDb.openTable(TestRow.class);
 
         int[][] data = {

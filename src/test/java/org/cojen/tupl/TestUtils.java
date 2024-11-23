@@ -536,36 +536,29 @@ public class TestUtils {
                 config.minCacheSize(cacheSize);
             }
             config.durabilityMode(DurabilityMode.NO_FLUSH);
-            config.directPageAccess(false);
 
             if (checkpointRateMillis >= 0) {
                 config.checkpointRate(checkpointRateMillis, TimeUnit.MILLISECONDS);
             }
 
-            switch (mode) {
-                default -> throw new IllegalArgumentException();
-                case NORMAL -> config.directPageAccess(false);
-                case DIRECT -> config.directPageAccess(true);
-                case DIRECT_MAPPED -> {
-                    org.junit.Assume.assumeTrue(MappedPageArray.isSupported());
-                    int pageSize = 4096;
-                    if (cacheSize < 0) {
-                        cacheSize = pageSize * 1000;
-                    }
-                    File baseFile = newTempBaseFile();
-                    config.baseFile(baseFile);
-                    var dbFile = new File(baseFile.getParentFile(), baseFile.getName() + ".db");
-                    MappedPageArray pa = MappedPageArray.open
-                            (pageSize, (cacheSize + pageSize - 1) / pageSize, dbFile,
-                                    EnumSet.of(OpenOption.CREATE, OpenOption.MAPPED));
-                    config.dataPageArray(pa);
-                    config.directPageAccess(true);
-                    Database db = Database.open(config);
-                    synchronized (this) {
-                        mTempDatabases.put(db, baseFile);
-                    }
-                    return db;
+            if (mode == OpenMode.DIRECT_MAPPED) {
+                org.junit.Assume.assumeTrue(MappedPageArray.isSupported());
+                int pageSize = 4096;
+                if (cacheSize < 0) {
+                    cacheSize = pageSize * 1000;
                 }
+                File baseFile = newTempBaseFile();
+                config.baseFile(baseFile);
+                var dbFile = new File(baseFile.getParentFile(), baseFile.getName() + ".db");
+                MappedPageArray pa = MappedPageArray.open
+                    (pageSize, (cacheSize + pageSize - 1) / pageSize, dbFile,
+                     EnumSet.of(OpenOption.CREATE, OpenOption.MAPPED));
+                config.dataPageArray(pa);
+                Database db = Database.open(config);
+                synchronized (this) {
+                    mTempDatabases.put(db, baseFile);
+                }
+                return db;
             }
 
             return newTempDatabase(config);

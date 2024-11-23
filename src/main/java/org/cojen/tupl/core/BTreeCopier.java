@@ -38,7 +38,6 @@ import org.cojen.tupl.util.LocalPool;
  *
  * @author Brian S. O'Neill
  */
-/*P*/
 final class BTreeCopier extends BTreeSeparator implements Supplier<byte[]> {
     private final int mPageSize;
     private final int mBufferSize;

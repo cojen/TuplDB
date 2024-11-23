@@ -48,7 +48,7 @@ public class ReplicationTest {
     }
 
     protected DatabaseConfig decorate(DatabaseConfig config) throws Exception {
-        config.directPageAccess(false).maxReplicaThreads(8);
+        config.maxReplicaThreads(8);
         return config;
     }
 
@@ -65,7 +65,6 @@ public class ReplicationTest {
             .durabilityMode(DurabilityMode.NO_FLUSH)
             .customHandlers(Map.of("TestHandler", mLeaderHandler))
             .prepareHandlers(Map.of("TestHandler", mLeaderHandler))
-            .directPageAccess(false)
             .replicate(mLeaderRepl);
 
         config = decorate(config);

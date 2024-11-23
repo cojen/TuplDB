@@ -22,7 +22,6 @@ package org.cojen.tupl.core;
  *
  * @author Brian S O'Neill
  */
-/*P*/
 interface DatabaseAccess {
     LocalDatabase getDatabase();
 }

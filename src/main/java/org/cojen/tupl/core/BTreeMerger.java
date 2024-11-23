@@ -27,7 +27,6 @@ import org.cojen.tupl.Transaction;
  *
  * @author Brian S O'Neill
  */
-/*P*/
 abstract class BTreeMerger extends BTreeSeparator {
     /**
      * @param db is only used for calling newTemporaryIndex

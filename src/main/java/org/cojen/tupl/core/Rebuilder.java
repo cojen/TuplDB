@@ -66,13 +66,6 @@ public final class Rebuilder {
             throw new IllegalStateException("Cannot rebuild a replicated database");
         }
 
-        // Page access mode must be consistent in order for the parallelCopy method to work.
-        if (mNewLauncher.mDirectPageAccess == null) {
-            mNewLauncher.mDirectPageAccess = mOldLauncher.mDirectPageAccess;
-        } else {
-            mOldLauncher.mDirectPageAccess = mNewLauncher.mDirectPageAccess;
-        }
-
         mOldLauncher.mMkdirs = false;
         mOldLauncher.dataFiles();
 

@@ -28,7 +28,6 @@ import org.cojen.tupl.LockMode;
  *
  * @author Brian S O'Neill
  */
-/*P*/
 final class RedoLogApplier extends ReplEngine {
     private long mHighestTxnId;
 

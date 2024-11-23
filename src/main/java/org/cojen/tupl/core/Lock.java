@@ -40,7 +40,6 @@ import static org.cojen.tupl.core.LockManager.*;
  * @author Brian S O'Neill
  * @see LockManager
  */
-/*P*/
 class Lock {
     long mIndexId;
     byte[] mKey;

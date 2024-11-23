@@ -71,8 +71,7 @@ public class SmallCacheTest {
         // Obtaining the stats for the exception shoudn't deadlock when root node is latched.
 
         // Need a database which cannot spill to a file.
-        Database db = Database.open(new DatabaseConfig()
-                                    .cacheSize(100_000).directPageAccess(false));
+        Database db = Database.open(new DatabaseConfig().cacheSize(100_000));
         Index ix = db.openIndex("test");
         byte[] key = "hello".getBytes();
         byte[] value = new byte[200_000];
@@ -88,6 +87,8 @@ public class SmallCacheTest {
         value = "world".getBytes();
         ix.store(Transaction.BOGUS, key, value);
         fastAssertArrayEquals(value, ix.load(Transaction.BOGUS, key));
+
+        db.close();
     }
 
     @Test

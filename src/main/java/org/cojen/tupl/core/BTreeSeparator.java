@@ -39,7 +39,6 @@ import org.cojen.tupl.Transaction;
  *
  * @author Brian S O'Neill
  */
-/*P*/
 @SuppressWarnings("serial")
 abstract class BTreeSeparator extends LongAdder {
     protected final LocalDatabase mDatabase;

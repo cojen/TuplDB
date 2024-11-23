@@ -30,7 +30,6 @@ import org.cojen.tupl.util.Latch;
  *
  * @author Brian S O'Neill
  */
-/*P*/
 class DetachedLockImpl extends Lock implements DetachedLock {
     LockManager.Bucket mBucket;
 

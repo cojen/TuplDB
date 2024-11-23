@@ -1467,7 +1467,7 @@ public class LockTest {
     public void reverseScan() throws Exception {
         // Test which discovered a race condition in LockOwner.hashCode method.
 
-        Database db = Database.open(new DatabaseConfig().directPageAccess(false));
+        Database db = Database.open(new DatabaseConfig());
         View view = db.openIndex("index1");
 
         int numAttempts = 100;
@@ -1545,6 +1545,8 @@ public class LockTest {
         }
 
         executor.shutdown();
+
+        db.close();
     }
 
     @Test
@@ -2509,7 +2511,7 @@ public class LockTest {
 
     @Test
     public void detachedLock() throws Exception {
-        var db = (CoreDatabase) Database.open(new DatabaseConfig().directPageAccess(false));
+        var db = (CoreDatabase) Database.open(new DatabaseConfig());
 
         Transaction owner = db.newTransaction();
         DetachedLock lock = db.newDetachedLock(owner);
@@ -2560,6 +2562,8 @@ public class LockTest {
         lock.acquireShared(txn1);
         result = lock.tryAcquireShared(txn1, 1000);
         assertEquals(OWNED_SHARED, result);
+
+        db.close();
     }
 
     private long scheduleUnlock(final Locker locker, final long delayMillis)

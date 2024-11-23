@@ -73,13 +73,13 @@ class ZlibCompressor implements PageCompressor {
     }
 
     @Override
-    public int compress(long srcPtr, int srcOff, int srcLen) {
+    public int compress(long srcAddr, int srcOff, int srcLen) {
         byte[] dst = mCompressedBytes;
         if (dst == null) {
             mCompressedBytes = dst = new byte[srcLen / 16];
         }
 
-        ByteBuffer bb = MemorySegment.ofAddress(srcPtr + srcOff).reinterpret(srcLen).asByteBuffer();
+        ByteBuffer bb = MemorySegment.ofAddress(srcAddr + srcOff).reinterpret(srcLen).asByteBuffer();
 
         try {
             mDeflater.setInput(bb);
@@ -107,7 +107,9 @@ class ZlibCompressor implements PageCompressor {
     }
 
     @Override
-    public void decompress(byte[] src, int srcOff, int srcLen, byte[] dst, int dstOff, int dstLen) {
+    public void decompress(byte[] src, int srcOff, int srcLen,
+                           byte[] dst, int dstOff, int dstLen)
+    {
         try {
             mInflater.setInput(src, srcOff, srcLen);
             mInflater.inflate(dst, dstOff, dstLen);
@@ -120,9 +122,10 @@ class ZlibCompressor implements PageCompressor {
 
     @Override
     public void decompress(byte[] src, int srcOff, int srcLen,
-                           long dstPtr, int dstOff, int dstLen)
+                           long dstAddr, int dstOff, int dstLen)
     {
-        ByteBuffer bb = MemorySegment.ofAddress(dstPtr + dstOff).reinterpret(dstLen).asByteBuffer();
+        ByteBuffer bb = MemorySegment.ofAddress(dstAddr + dstOff)
+            .reinterpret(dstLen).asByteBuffer();
 
         try {
             mInflater.setInput(src, srcOff, srcLen);

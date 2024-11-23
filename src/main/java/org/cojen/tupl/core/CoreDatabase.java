@@ -100,8 +100,6 @@ public abstract class CoreDatabase implements Database {
 
     abstract long databaseId();
 
-    abstract boolean isDirectPageAccess();
-
     abstract boolean isCacheOnly();
 
     abstract boolean isReadOnly();

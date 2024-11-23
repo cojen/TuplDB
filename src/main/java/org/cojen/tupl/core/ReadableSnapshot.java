@@ -37,7 +37,7 @@ interface ReadableSnapshot extends Snapshot {
 
     void readPage(long index, byte[] dst, int offset, int length) throws IOException;
 
-    void readPage(long index, long dstPtr, int offset, int length) throws IOException;
+    void readPage(long index, long dstAddr, int offset, int length) throws IOException;
 
     /**
      * Returns a PageArray view which when closed doesn't close the underlying snapshot. Is
@@ -79,10 +79,10 @@ interface ReadableSnapshot extends Snapshot {
             }
 
             @Override
-            public void readPage(long index, long dstPtr, int offset, int length)
+            public void readPage(long index, long dstAddr, int offset, int length)
                 throws IOException
             {
-                ReadableSnapshot.this.readPage(index, dstPtr, offset, length);
+                ReadableSnapshot.this.readPage(index, dstAddr, offset, length);
             }
 
             @Override

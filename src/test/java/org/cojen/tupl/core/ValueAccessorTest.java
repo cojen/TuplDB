@@ -43,7 +43,7 @@ public class ValueAccessorTest {
     @Before
     public void createTempDb() throws Exception {
         var config = new DatabaseConfig()
-            .directPageAccess(false).pageSize(512).durabilityMode(DurabilityMode.NO_SYNC);
+            .pageSize(512).durabilityMode(DurabilityMode.NO_SYNC);
         config = decorate(config);
         mConfig = config;
         mDb = newTempDatabase(getClass(), config);
@@ -500,7 +500,7 @@ public class ValueAccessorTest {
     private void truncateNonFragmented(boolean undo) throws Exception {
         // Use large page to test 3-byte value header encoding.
         var config = new DatabaseConfig()
-            .directPageAccess(false).pageSize(32768).durabilityMode(DurabilityMode.NO_SYNC);
+            .pageSize(32768).durabilityMode(DurabilityMode.NO_SYNC);
         Database db = newTempDatabase(getClass(), decorate(config));
 
         truncate(db, 10, 5, undo);     // 1-byte header to 1
@@ -528,7 +528,7 @@ public class ValueAccessorTest {
 
         // Use large page to test 3-byte value header encoding.
         var config = new DatabaseConfig()
-            .directPageAccess(false).pageSize(32768).durabilityMode(DurabilityMode.NO_SYNC);
+            .pageSize(32768).durabilityMode(DurabilityMode.NO_SYNC);
         Database db = newTempDatabase(getClass(), decorate(config));
 
         truncate(db, 65536, 10, undo);       // no inline content; two pointers to one
@@ -803,7 +803,7 @@ public class ValueAccessorTest {
     public void writeNonFragmented() throws Exception {
         // Use large page to test 3-byte value header encoding.
         var config = new DatabaseConfig()
-            .directPageAccess(false).pageSize(32768).durabilityMode(DurabilityMode.NO_SYNC);
+            .pageSize(32768).durabilityMode(DurabilityMode.NO_SYNC);
         Database db = newTempDatabase(getClass(), decorate(config));
 
         writeNonFragmented(db, 50);
@@ -931,7 +931,7 @@ public class ValueAccessorTest {
     public void convertToIndirectWithLargePages() throws Exception {
         // Use large page to test 3-byte value header encoding.
         var config = new DatabaseConfig()
-            .directPageAccess(false).pageSize(32768).durabilityMode(DurabilityMode.NO_SYNC);
+            .pageSize(32768).durabilityMode(DurabilityMode.NO_SYNC);
         Database db = newTempDatabase(getClass(), decorate(config));
 
         Index ix = db.openIndex("test");
@@ -1661,7 +1661,7 @@ public class ValueAccessorTest {
     @Test
     public void noRedo() throws Exception {
         teardown();
-        DatabaseConfig config = decorate(new DatabaseConfig().directPageAccess(false));
+        DatabaseConfig config = decorate(new DatabaseConfig());
         Database db = Database.open(config);
         Index ix = db.openIndex("test");
         final byte[] key = "hello".getBytes();

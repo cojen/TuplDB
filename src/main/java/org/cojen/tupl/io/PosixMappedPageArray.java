@@ -55,7 +55,7 @@ class PosixMappedPageArray extends MappedPageArray {
 
             hugePages(addr, mappingSize, listener);
 
-            setMappingPtr(addr);
+            setMappingAddr(addr);
 
             mFileDescriptor = -1;
             mEmpty = true;
@@ -115,7 +115,7 @@ class PosixMappedPageArray extends MappedPageArray {
             addr = PosixFileIO.mmapFd(mappingSize, prot, flags, fd, 0);
 
             if (options.contains(OpenOption.RANDOM_ACCESS)) {
-                PosixFileIO.madvisePtr(addr, mappingSize, 1); // 1 = POSIX_MADV_RANDOM
+                PosixFileIO.madviseAddr(addr, mappingSize, 1); // 1 = POSIX_MADV_RANDOM
             }
 
             /* Performance appears to be worse with this option.
@@ -136,13 +136,13 @@ class PosixMappedPageArray extends MappedPageArray {
 
         mFileDescriptor = fd;
 
-        setMappingPtr(addr);
+        setMappingAddr(addr);
     }
 
     private static void hugePages(long addr, long mappingSize, EventListener listener) {
         if (mappingSize >= (1L << 30) && PosixFileIO.OS_TYPE == PosixFileIO.LINUX) {
             try {
-                PosixFileIO.madvisePtr(addr, mappingSize, 14); // 14 = MADV_HUGEPAGE
+                PosixFileIO.madviseAddr(addr, mappingSize, 14); // 14 = MADV_HUGEPAGE
             } catch (IOException e) {
                 if (listener != null) {
                     listener.notify
@@ -163,9 +163,9 @@ class PosixMappedPageArray extends MappedPageArray {
         mEmpty = count == 0;
     }
 
-    void doSync(long mappingPtr, boolean metadata) throws IOException {
+    void doSync(long mappingAddr, boolean metadata) throws IOException {
         if (mFileDescriptor != -1) {
-            PosixFileIO.msyncPtr(mappingPtr, super.pageCount() * pageSize());
+            PosixFileIO.msyncAddr(mappingAddr, super.pageCount() * pageSize());
             if (metadata) {
                 PosixFileIO.fsyncFd(mFileDescriptor);
             }
@@ -173,14 +173,14 @@ class PosixMappedPageArray extends MappedPageArray {
         mEmpty = false;
     }
 
-    void doSyncPage(long mappingPtr, long index) throws IOException {
+    void doSyncPage(long mappingAddr, long index) throws IOException {
         int pageSize = pageSize();
-        PosixFileIO.msyncPtr(mappingPtr + index * pageSize, pageSize);
+        PosixFileIO.msyncAddr(mappingAddr + index * pageSize, pageSize);
         mEmpty = false;
     }
 
-    void doClose(long mappingPtr) throws IOException {
-        PosixFileIO.munmapPtr(mappingPtr, super.pageCount() * pageSize());
+    void doClose(long mappingAddr) throws IOException {
+        PosixFileIO.munmapAddr(mappingAddr, super.pageCount() * pageSize());
         if (mFileDescriptor != -1) {
             PosixFileIO.closeFd(mFileDescriptor);
         }

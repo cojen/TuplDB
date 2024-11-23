@@ -55,8 +55,8 @@ public class IndexingTest {
 
     @Test
     public void basic() throws Exception {
-        Database db = Database.open(new DatabaseConfig().directPageAccess(false).
-                                    lockTimeout(100, TimeUnit.MILLISECONDS));
+        Database db = Database.open(new DatabaseConfig()
+                                    .lockTimeout(100, TimeUnit.MILLISECONDS));
         var table = (StoredTable<TestRow>) db.openTable(TestRow.class);
 
         Table<TestRow> alt = table.viewAlternateKey("path").viewUnjoined();
@@ -418,12 +418,14 @@ public class IndexingTest {
         scanExpect(ix1, "{id=1, name=name1}", "{id=5, name=name5}");
 
         scanExpect(ix2, "{id=1, name=name1, num=0}", "{id=5, name=name5, num=55}");
+
+        db.close();
     }
 
     @Test
     @SuppressWarnings("unchecked")
     public void basicBackfill() throws Exception {
-        var config = new DatabaseConfig().directPageAccess(false);
+        var config = new DatabaseConfig();
         //config.eventListener(EventListener.printTo(System.out));
         Database db = Database.open(config);
 
@@ -551,12 +553,14 @@ public class IndexingTest {
 
         verifyIndex(table2, numTable, 0);
         verifyIndex(numTable, table2, 0);
+
+        db.close();
     }
 
     @Test
     @SuppressWarnings("unchecked")
     public void concurrentBackfill() throws Exception {
-        var config = new DatabaseConfig().directPageAccess(false);
+        var config = new DatabaseConfig();
         //config.eventListener(EventListener.printTo(System.out));
         Database db = Database.open(config);
 
@@ -666,6 +670,8 @@ public class IndexingTest {
 
         verifyIndex(table2, nameTable, 0);
         verifyIndex(nameTable, table2, 0);
+
+        db.close();
     }
 
     @Test
@@ -683,7 +689,7 @@ public class IndexingTest {
         var replicaRepl = new SocketReplicator(null, 0);
         var leaderRepl = new SocketReplicator("localhost", replicaRepl.getPort());
 
-        var config = new DatabaseConfig().directPageAccess(false).replicate(leaderRepl);
+        var config = new DatabaseConfig().replicate(leaderRepl);
         //config.eventListener(EventListener.printTo(System.out));
 
         var leaderDb = newTempDatabase(getClass(), config);
@@ -831,7 +837,7 @@ public class IndexingTest {
     @Test
     @SuppressWarnings("unchecked")
     public void addColumnAndIndex() throws Exception {
-        var config = new DatabaseConfig().directPageAccess(false);
+        var config = new DatabaseConfig();
         //config.eventListener(EventListener.printTo(System.out));
         Database db = Database.open(config);
 
@@ -915,6 +921,8 @@ public class IndexingTest {
         }
 
         assertEquals(fillAmount + 2, verifyIndex(table2, nameTable, 0));
+
+        db.close();
     }
 
     @Test
@@ -929,7 +937,7 @@ public class IndexingTest {
 
     @SuppressWarnings("unchecked")
     private void dropIndex(boolean stall) throws Exception {
-        var config = new DatabaseConfig().directPageAccess(false);
+        var config = new DatabaseConfig();
         //config.eventListener(EventListener.printTo(System.out));
         Database db = Database.open(config);
 
@@ -1058,6 +1066,8 @@ public class IndexingTest {
         }
 
         assertNull(db.indexById(nameTableId));
+
+        db.close();
     }
 
     @Test
@@ -1066,7 +1076,7 @@ public class IndexingTest {
         var replicaRepl = new SocketReplicator(null, 0);
         var leaderRepl = new SocketReplicator("localhost", replicaRepl.getPort());
 
-        var config = new DatabaseConfig().directPageAccess(false).replicate(leaderRepl);
+        var config = new DatabaseConfig().replicate(leaderRepl);
         //config.eventListener(EventListener.printTo(System.out));
 
         var leaderDb = newTempDatabase(getClass(), config);
@@ -1274,7 +1284,7 @@ public class IndexingTest {
         // is defined after the primary key has been fully specified in the index, and so that
         // defines it as the value portion.
 
-        Database db = Database.open(new DatabaseConfig().directPageAccess(false));
+        Database db = Database.open(new DatabaseConfig());
         var table = (StoredTable<TestRow2>) db.openTable(TestRow2.class);
         Table<TestRow2> ix = table.viewSecondaryIndex("name", "id", "num").viewUnjoined();
 
@@ -1292,6 +1302,8 @@ public class IndexingTest {
 
         row.num(200);
         assertTrue(ix.tryLoad(null, row));
+
+        db.close();
     }
 
     @PrimaryKey("id")
@@ -1312,7 +1324,7 @@ public class IndexingTest {
 
     @Test
     public void loadJoin() throws Exception {
-        Database db = Database.open(new DatabaseConfig().directPageAccess(false));
+        Database db = Database.open(new DatabaseConfig());
         var table = (StoredTable<TestRow>) db.openTable(TestRow.class);
 
         Table<TestRow> alt = table.viewAlternateKey("path");
@@ -1428,6 +1440,8 @@ public class IndexingTest {
                 txn.reset();
             }
         }
+
+        db.close();
     }
 
     @Test
@@ -1503,7 +1517,7 @@ public class IndexingTest {
     @Test
     @SuppressWarnings("unchecked")
     public void inconsistentIndexes() throws Exception {
-        var config = new DatabaseConfig().directPageAccess(false);
+        var config = new DatabaseConfig();
         Database db = Database.open(config);
 
         final String typeName = newRowTypeName();
@@ -1634,6 +1648,8 @@ public class IndexingTest {
         try (Scanner s = secondary.newScanner(null)) {
             assertNull(s.row());
         }
+
+        db.close();
     }
 
     @Test
@@ -1642,7 +1658,7 @@ public class IndexingTest {
         // Similar to the inconsistentIndexes test, except it stores a row using the original
         // definition early. This allows a schema version to be created for it to use.
 
-        var config = new DatabaseConfig().directPageAccess(false);
+        var config = new DatabaseConfig();
         Database db = Database.open(config);
 
         final String typeName = newRowTypeName();
@@ -1751,13 +1767,15 @@ public class IndexingTest {
         try (Scanner s = secondary.newScanner(null)) {
             assertNull(s.row());
         }
+
+        db.close();
     }
 
     @Test
     public void loadOneViaSecondary() throws Exception {
         // Test joining to the primary index when only one row is loaded.
 
-        Database db = Database.open(new DatabaseConfig().directPageAccess(false));
+        Database db = Database.open(new DatabaseConfig());
         Table<TestRow> table = db.openTable(TestRow.class);
 
         TestRow row = table.newRow();
@@ -1771,6 +1789,8 @@ public class IndexingTest {
             row = scanner.row();
             assertEquals(1, row.id());
         }
+
+        db.close();
     }
 
     @Test
@@ -1778,7 +1798,7 @@ public class IndexingTest {
         // Test that READ_UNCOMMITTED transaction double checks the primary row because it
         // might have been concurrently modified.
 
-        Database db = Database.open(new DatabaseConfig().directPageAccess(false));
+        Database db = Database.open(new DatabaseConfig());
         Index ix = db.openIndex("test");
         Table<TestRow> table = ix.asTable(TestRow.class);
 
@@ -1810,5 +1830,7 @@ public class IndexingTest {
         } finally {
             txn.reset();
         }
+
+        db.close();
     }
 }

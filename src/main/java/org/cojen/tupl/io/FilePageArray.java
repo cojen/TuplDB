@@ -95,11 +95,11 @@ public class FilePageArray extends PageArray {
     }
 
     @Override
-    public void readPage(long index, long dstPtr, int offset, int length) throws IOException {
+    public void readPage(long index, long dstAddr, int offset, int length) throws IOException {
         if (index < 0) {
             throw new IndexOutOfBoundsException(String.valueOf(index));
         }
-        mFio.read(index * mPageSize, dstPtr, offset, length);
+        mFio.read(index * mPageSize, dstAddr, offset, length);
     }
 
     @Override
@@ -109,9 +109,9 @@ public class FilePageArray extends PageArray {
     }
 
     @Override
-    public void writePage(long index, long srcPtr, int offset) throws IOException {
+    public void writePage(long index, long srcAddr, int offset) throws IOException {
         int pageSize = mPageSize;
-        mFio.write(index * pageSize, srcPtr, offset, pageSize);
+        mFio.write(index * pageSize, srcAddr, offset, pageSize);
     }
 
     @Override

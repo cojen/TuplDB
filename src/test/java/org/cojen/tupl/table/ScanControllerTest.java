@@ -173,7 +173,7 @@ public class ScanControllerTest {
 
     @Test
     public void mergedScans() throws Exception {
-        Database db = Database.open(new DatabaseConfig().directPageAccess(false));
+        Database db = Database.open(new DatabaseConfig());
         Table<MyRow> table = db.openTable(MyRow.class);
         Table<MyRow2> table2 = db.openTable(MyRow2.class);
 
@@ -216,6 +216,8 @@ public class ScanControllerTest {
             }
             assertTrue(total > 0);
         }
+
+        db.close();
     }
 
     private int mergedScans(Random rnd, Table<MyRow> table, Table<MyRow2> table2, String filter)

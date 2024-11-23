@@ -41,7 +41,7 @@ import org.cojen.tupl.io.PageArray;
 import org.cojen.tupl.util.Latch;
 import org.cojen.tupl.util.Runner;
 
-import static org.cojen.tupl.core.PageOps.*;
+import static org.cojen.tupl.core.DirectPageOps.*;
 import static org.cojen.tupl.core.Utils.*;
 
 /**
@@ -111,8 +111,8 @@ final class SnapshotPageArray extends PageArray {
     }
 
     @Override
-    public void readPage(long index, long dstPtr, int offset, int length) throws IOException {
-        mSource.readPage(index, dstPtr, offset, length);
+    public void readPage(long index, long dstAddr, int offset, int length) throws IOException {
+        mSource.readPage(index, dstAddr, offset, length);
     }
 
     @Override
@@ -122,9 +122,9 @@ final class SnapshotPageArray extends PageArray {
     }
 
     @Override
-    public void writePage(long index, long srcPtr, int offset) throws IOException {
+    public void writePage(long index, long srcAddr, int offset) throws IOException {
         preWritePage(index);
-        mSource.writePage(index, srcPtr, offset);
+        mSource.writePage(index, srcAddr, offset);
     }
 
     @Override
@@ -134,9 +134,9 @@ final class SnapshotPageArray extends PageArray {
     }
 
     @Override
-    public long evictPage(long index, long bufPtr) throws IOException {
+    public long evictPage(long index, long bufAddr) throws IOException {
         preWritePage(index);
-        return mSource.evictPage(index, bufPtr);
+        return mSource.evictPage(index, bufAddr);
     }
 
     private void preWritePage(long index) throws IOException {
@@ -311,9 +311,6 @@ final class SnapshotPageArray extends PageArray {
                 int pageSize = pageSize();
                 launcher.pageSize(pageSize);
                 launcher.minCacheSize(pageSize * Math.max(100L, numCopiers * 16L));
-                if (nodeCache != null) {
-                    launcher.directPageAccess(nodeCache.isDirectPageAccess());
-                }
 
                 mPageCopyIndex = LocalDatabase.openTemp(tfm, launcher);
                 mTempFile = launcher.mBaseFile;
@@ -475,7 +472,7 @@ final class SnapshotPageArray extends PageArray {
 
         // Defined by ReadableSnapshot.
         @Override
-        public void readPage(long index, long dstPtr, int offset, int length) throws IOException {
+        public void readPage(long index, long dstAddr, int offset, int length) throws IOException {
             var txn = mPageCopyIndex.mDatabase.threadLocalTransaction(DurabilityMode.NO_REDO);
             try {
                 txn.lockMode(LockMode.REPEATABLE_READ);
@@ -485,10 +482,10 @@ final class SnapshotPageArray extends PageArray {
                 byte[] page = mPageCopyIndex.load(txn, key);
 
                 if (page != null) {
-                    DirectPageOps.p_copyFromArray(page, 0, dstPtr, offset, length);
+                    DirectPageOps.p_copyFromArray(page, 0, dstAddr, offset, length);
                 } else {
                     // TODO: Check the cache first as an optimization?
-                    mRawPageArray.readPage(index, dstPtr, offset, length);
+                    mRawPageArray.readPage(index, dstAddr, offset, length);
                 }
             } finally {
                 txn.reset();
@@ -515,7 +512,7 @@ final class SnapshotPageArray extends PageArray {
         private final BTree mPageCopyIndex;
 
         private final byte[] mCaptureBufferArray;
-        private /*P*/ byte[] mCaptureBuffer;
+        private long mCaptureBufferAddr;
 
         // The highest page written by the writeTo method.
         private volatile long mProgress;
@@ -534,7 +531,8 @@ final class SnapshotPageArray extends PageArray {
 
             mCaptureBufferArray = new byte[mRawPageArray.pageSize()];
             // Allocates if page is not an array. The copy is not actually required.
-            mCaptureBuffer = p_transferPage(mCaptureBufferArray, mRawPageArray.directPageSize());
+            mCaptureBufferAddr = p_transferPage
+                (mCaptureBufferArray, mRawPageArray.directPageSize());
 
             mProgress = Long.MIN_VALUE;
         }
@@ -594,7 +592,7 @@ final class SnapshotPageArray extends PageArray {
                                         if (node.id() == pageId
                                             && node.mCachedState == Node.CACHED_CLEAN)
                                         {
-                                            p_copy(node.mPage, 0, pageBuffer, 0, pageSize);
+                                            p_copy(node.mPageAddr, 0, pageBuffer, 0, pageSize);
                                             break read;
                                         }
                                     } finally {
@@ -668,10 +666,10 @@ final class SnapshotPageArray extends PageArray {
 
                     acquireExclusive();
                     try {
-                        var buffer = mCaptureBuffer;
-                        if (buffer != p_null()) {
-                            mRawPageArray.readPage(pageId, buffer);
-                            c.commit(p_copyIfNotArray(buffer, mCaptureBufferArray));
+                        var bufferAddr = mCaptureBufferAddr;
+                        if (bufferAddr != p_null()) {
+                            mRawPageArray.readPage(pageId, bufferAddr);
+                            c.commit(p_copyIfNotArray(bufferAddr, mCaptureBufferArray));
                         }
                     } finally {
                         releaseExclusive();
@@ -693,8 +691,8 @@ final class SnapshotPageArray extends PageArray {
 
                 acquireExclusive();
                 try {
-                    var buffer = mCaptureBuffer;
-                    mCaptureBuffer = p_null();
+                    var buffer = mCaptureBufferAddr;
+                    mCaptureBufferAddr = p_null();
                     if (buffer != p_null()) {
                         p_delete(buffer);
                     }

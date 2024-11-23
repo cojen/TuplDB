@@ -45,7 +45,6 @@ public class RowPredicateTest {
     @Before
     public void setup() throws Exception {
         mDb = (CoreDatabase) Database.open(new DatabaseConfig()
-                                           .directPageAccess(false)
                                            .lockTimeout(100, TimeUnit.MILLISECONDS));
         mLock = mDb.newRowPredicateLock(1234);
     }

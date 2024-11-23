@@ -51,8 +51,7 @@ public class RebuildTest {
     public void basic() throws Exception {
         DatabaseConfig config = new DatabaseConfig()
             .pageSize(4096)
-            .durabilityMode(DurabilityMode.NO_FLUSH)
-            .directPageAccess(false);
+            .durabilityMode(DurabilityMode.NO_FLUSH);
 
         final long seed = 1234567;
 
@@ -98,7 +97,6 @@ public class RebuildTest {
         DatabaseConfig newConfig = new DatabaseConfig()
             .pageSize(6000)
             .durabilityMode(DurabilityMode.NO_FLUSH)
-            .directPageAccess(true)
             .checksumPages(CRC32C::new)
             .baseFile(newTempBaseFile(getClass()));
 

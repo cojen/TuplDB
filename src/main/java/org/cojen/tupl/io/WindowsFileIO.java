@@ -346,15 +346,15 @@ final class WindowsFileIO extends JavaFileIO {
                 return "Error " + errorId;
             }
 
-            MemorySegment ptr = lpBuffer.get(ValueLayout.ADDRESS, 0);
+            MemorySegment addr = lpBuffer.get(ValueLayout.ADDRESS, 0);
 
             try {
                 var chars = new char[result];
-                MemorySegment.copy(ptr.reinterpret(result * 2), ValueLayout.JAVA_CHAR, 0,
+                MemorySegment.copy(addr.reinterpret(result * 2), ValueLayout.JAVA_CHAR, 0,
                                    chars, 0, chars.length);
                 return new String(chars).trim();
             } finally {
-                var x = (MemorySegment) LocalFree.invokeExact(ptr);
+                var x = (MemorySegment) LocalFree.invokeExact(addr);
             }
         } catch (Throwable e) {
             throw Utils.rethrow(e);

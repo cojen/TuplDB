@@ -32,7 +32,6 @@ import org.cojen.tupl.util.LocalPool;
  *
  * @author Brian S. O'Neill
  */
-/*P*/
 final class BTreeVerifier extends BTreeSeparator {
     // Note: The BTreeSeparator is extended because it supports parallel processing, but the
     // necessary methods are overridden such that no actual data transfer occurs.

@@ -44,7 +44,7 @@ class WindowsMappedPageArray extends MappedPageArray {
         super(pageSize, pageCount, options);
 
         if (file == null) {
-            setMappingPtr(WindowsFileIO.valloc(pageSize * pageCount, listener));
+            setMappingAddr(WindowsFileIO.valloc(pageSize * pageCount, listener));
 
             mFileHandle = WindowsFileIO.INVALID_HANDLE_VALUE;
             mMappingHandle = WindowsFileIO.INVALID_HANDLE_VALUE;
@@ -63,7 +63,7 @@ class WindowsMappedPageArray extends MappedPageArray {
         mFileHandle = mf.fileHandle();
         mMappingHandle = mf.mappingHandle();
 
-        setMappingPtr(mf.addr());
+        setMappingAddr(mf.addr());
     }
 
     @Override
@@ -77,24 +77,24 @@ class WindowsMappedPageArray extends MappedPageArray {
     }
 
     @Override
-    void doSync(long mappingPtr, boolean metadata) throws IOException {
+    void doSync(long mappingAddr, boolean metadata) throws IOException {
         if (!mNonDurable) {
-            WindowsFileIO.flushMapping(mFileHandle, mappingPtr, super.pageCount() * pageSize());
+            WindowsFileIO.flushMapping(mFileHandle, mappingAddr, super.pageCount() * pageSize());
         }
         mEmpty = false;
     }
 
     @Override
-    void doSyncPage(long mappingPtr, long index) throws IOException {
+    void doSyncPage(long mappingAddr, long index) throws IOException {
         if (!mNonDurable) {
             int pageSize = pageSize();
-            WindowsFileIO.flushMapping(mFileHandle, mappingPtr + index * pageSize, pageSize);
+            WindowsFileIO.flushMapping(mFileHandle, mappingAddr + index * pageSize, pageSize);
         }
         mEmpty = false;
     }
 
     @Override
-    void doClose(long mappingPtr) throws IOException {
-        WindowsFileIO.closeMappedFile(mMappingHandle, mFileHandle, mappingPtr);
+    void doClose(long mappingAddr) throws IOException {
+        WindowsFileIO.closeMappedFile(mMappingHandle, mFileHandle, mappingAddr);
     }
 }

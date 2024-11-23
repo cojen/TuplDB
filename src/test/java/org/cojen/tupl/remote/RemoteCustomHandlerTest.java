@@ -44,7 +44,6 @@ public class RemoteCustomHandlerTest {
     public void setup() throws Exception {
         mServerConfig = new DatabaseConfig()
             .durabilityMode(DurabilityMode.NO_FLUSH)
-            .directPageAccess(false)
             .checkpointRate(-1, null);
 
         mServerHandler = new Handler();

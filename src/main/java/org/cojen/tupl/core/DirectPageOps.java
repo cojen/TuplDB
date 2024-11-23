@@ -90,77 +90,77 @@ final class DirectPageOps extends BaseDirectPageOps {
         return 0;
     }
 
-    static byte p_byteGet(long page, int index) {
+    static byte p_byteGet(long pageAddr, int index) {
         if (CHECK_BOUNDS && Long.compareUnsigned(index, CHECKED_PAGE_SIZE) >= 0) {
             throw new ArrayIndexOutOfBoundsException(index);
         }
-        return (byte) BYTE_H.get(page + index);
+        return (byte) BYTE_H.get(pageAddr + index);
     }
 
-    static void p_bytePut(long page, int index, byte v) {
+    static void p_bytePut(long pageAddr, int index, byte v) {
         if (CHECK_BOUNDS && Long.compareUnsigned(index, CHECKED_PAGE_SIZE) >= 0) {
             throw new ArrayIndexOutOfBoundsException(index);
         }
-        BYTE_H.set(page + index, v);
+        BYTE_H.set(pageAddr + index, v);
     }
 
-    static int p_ushortGetLE(long page, int index) {
+    static int p_ushortGetLE(long pageAddr, int index) {
         if (CHECK_BOUNDS && (index < 0 || index + 2 > CHECKED_PAGE_SIZE)) {
             throw new ArrayIndexOutOfBoundsException(index);
         }
-        return (char) CHAR_LE_H.get(page + index);
+        return (char) CHAR_LE_H.get(pageAddr + index);
     }
 
-    static void p_shortPutLE(long page, int index, int v) {
+    static void p_shortPutLE(long pageAddr, int index, int v) {
         if (CHECK_BOUNDS && (index < 0 || index + 2 > CHECKED_PAGE_SIZE)) {
             throw new ArrayIndexOutOfBoundsException(index);
         }
-        CHAR_LE_H.set(page + index, (char) v);
+        CHAR_LE_H.set(pageAddr + index, (char) v);
     }
 
-    static int p_intGetLE(long page, int index) {
+    static int p_intGetLE(long pageAddr, int index) {
         if (CHECK_BOUNDS && (index < 0 || index + 4 > CHECKED_PAGE_SIZE)) {
             throw new ArrayIndexOutOfBoundsException(index);
         }
-        return (int) INT_LE_H.get(page + index);
+        return (int) INT_LE_H.get(pageAddr + index);
     }
 
-    static void p_intPutLE(long page, int index, int v) {
+    static void p_intPutLE(long pageAddr, int index, int v) {
         if (CHECK_BOUNDS && (index < 0 || index + 4 > CHECKED_PAGE_SIZE)) {
             throw new ArrayIndexOutOfBoundsException(index);
         }
-        INT_LE_H.set(page + index, v);
+        INT_LE_H.set(pageAddr + index, v);
     }
 
-    static long p_longGetLE(long page, int index) {
+    static long p_longGetLE(long pageAddr, int index) {
         if (CHECK_BOUNDS && (index < 0 || index + 8 > CHECKED_PAGE_SIZE)) {
             throw new ArrayIndexOutOfBoundsException(index);
         }
-        return (long) LONG_LE_H.get(page + index);
+        return (long) LONG_LE_H.get(pageAddr + index);
     }
 
-    static void p_longPutLE(long page, int index, long v) {
+    static void p_longPutLE(long pageAddr, int index, long v) {
         if (CHECK_BOUNDS && (index < 0 || index + 8 > CHECKED_PAGE_SIZE)) {
             throw new ArrayIndexOutOfBoundsException(index);
         }
-        LONG_LE_H.set(page + index, v);
+        LONG_LE_H.set(pageAddr + index, v);
     }
 
-    static long p_longGetBE(long page, int index) {
+    static long p_longGetBE(long pageAddr, int index) {
         if (CHECK_BOUNDS && (index < 0 || index + 8 > CHECKED_PAGE_SIZE)) {
             throw new ArrayIndexOutOfBoundsException(index);
         }
-        return (long) LONG_BE_H.get(page + index);
+        return (long) LONG_BE_H.get(pageAddr + index);
     }
 
-    static void p_longPutBE(long page, int index, long v) {
+    static void p_longPutBE(long pageAddr, int index, long v) {
         if (CHECK_BOUNDS && (index < 0 || index + 8 > CHECKED_PAGE_SIZE)) {
             throw new ArrayIndexOutOfBoundsException(index);
         }
-        LONG_BE_H.set(page + index, v);
+        LONG_BE_H.set(pageAddr + index, v);
     }
 
-    static void p_clear(long page, int fromIndex, int toIndex) {
+    static void p_clear(long pageAddr, int fromIndex, int toIndex) {
         int len = toIndex - fromIndex;
         if (len > 0) {
             if (CHECK_BOUNDS) {
@@ -171,11 +171,11 @@ final class DirectPageOps extends BaseDirectPageOps {
                     throw new ArrayIndexOutOfBoundsException(toIndex);
                 }
             }
-            MemorySegment.ofAddress(page + fromIndex).reinterpret(len).fill((byte) 0);
+            MemorySegment.ofAddress(pageAddr + fromIndex).reinterpret(len).fill((byte) 0);
         }
     }
 
-    static void p_copyFromArray(byte[] src, int srcStart, long dstPage, int dstStart, int len) {
+    static void p_copyFromArray(byte[] src, int srcStart, long dstPageAddr, int dstStart, int len) {
         if (CHECK_BOUNDS) {
             if (len < 0) {
                 throw new IndexOutOfBoundsException("len: " + len);
@@ -187,10 +187,10 @@ final class DirectPageOps extends BaseDirectPageOps {
                 throw new IndexOutOfBoundsException("dst: " + dstStart + ", " + len);
             }
         }
-        MemorySegment.copy(src, srcStart, ALL, ValueLayout.JAVA_BYTE, dstPage + dstStart, len);
+        MemorySegment.copy(src, srcStart, ALL, ValueLayout.JAVA_BYTE, dstPageAddr + dstStart, len);
     }
 
-    static void p_copyToArray(long srcPage, int srcStart, byte[] dst, int dstStart, int len) {
+    static void p_copyToArray(long srcPageAddr, int srcStart, byte[] dst, int dstStart, int len) {
         if (CHECK_BOUNDS) {
             if (len < 0) {
                 throw new IndexOutOfBoundsException("len: " + len);
@@ -202,10 +202,10 @@ final class DirectPageOps extends BaseDirectPageOps {
                 throw new IndexOutOfBoundsException("dst: " + dstStart + ", " + len);
             }
         }
-        MemorySegment.copy(ALL, ValueLayout.JAVA_BYTE, srcPage + srcStart, dst, dstStart, len);
+        MemorySegment.copy(ALL, ValueLayout.JAVA_BYTE, srcPageAddr + srcStart, dst, dstStart, len);
     }
 
-    static void p_copy(long srcPage, int srcStart, long dstPage, int dstStart, int len) {
+    static void p_copy(long srcPageAddr, int srcStart, long dstPageAddr, int dstStart, int len) {
         if (CHECK_BOUNDS) {
             if (len < 0) {
                 throw new IndexOutOfBoundsException("len: " + len);
@@ -217,6 +217,6 @@ final class DirectPageOps extends BaseDirectPageOps {
                 throw new IndexOutOfBoundsException("dst: " + dstStart + ", " + len);
             }
         }
-        MemorySegment.copy(ALL, srcPage + srcStart, ALL, dstPage + dstStart, len);
+        MemorySegment.copy(ALL, srcPageAddr + srcStart, ALL, dstPageAddr + dstStart, len);
     }
 }

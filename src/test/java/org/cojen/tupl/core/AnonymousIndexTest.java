@@ -37,7 +37,6 @@ public class AnonymousIndexTest {
     @Before
     public void createTempDb() throws Exception {
         mConfig = new DatabaseConfig()
-            .directPageAccess(false)
             .checkpointRate(-1, null)
             .durabilityMode(DurabilityMode.NO_FLUSH);
         mDb = (CoreDatabase) newTempDatabase(getClass(), mConfig);

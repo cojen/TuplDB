@@ -33,14 +33,13 @@ import org.cojen.tupl.Scanner;
 import org.cojen.tupl.Sorter;
 import org.cojen.tupl.Transaction;
 
-import static org.cojen.tupl.core.PageOps.*;
+import static org.cojen.tupl.core.DirectPageOps.*;
 
 /**
  * Sorter which performs a multi-level parallel merge sort.
  *
  * @author Brian S O'Neill
  */
-/*P*/
 final class ParallelSorter implements Sorter, Node.Supplier {
     private static final int MIN_SORT_TREES = 8;
     private static final int MAX_SORT_TREES = 64; // absolute max allowed is 32768 (garbage field)
@@ -998,8 +997,8 @@ final class ParallelSorter implements Sorter, Node.Supplier {
         Node right = rightTree.mRoot;
 
         int compare = Node.compareKeys
-            (left, p_ushortGetLE(left.mPage, left.searchVecStart()),
-             right, p_ushortGetLE(right.mPage, right.searchVecStart()));
+            (left, p_ushortGetLE(left.mPageAddr, left.searchVecStart()),
+             right, p_ushortGetLE(right.mPageAddr, right.searchVecStart()));
 
         if (compare == 0) {
             // Use node order (encoded in garbage field) for eliminating duplicates.

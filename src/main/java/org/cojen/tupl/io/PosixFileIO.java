@@ -77,7 +77,7 @@ final class PosixFileIO extends AbstractFileIO {
              FunctionDescriptor.of
              (ValueLayout.JAVA_LONG,
               ValueLayout.JAVA_INT, // errnum
-              ValueLayout.ADDRESS,  // bufPtr
+              ValueLayout.ADDRESS,  // bufAddr
               ValueLayout.JAVA_INT) // bufLen
              );
 
@@ -85,7 +85,7 @@ final class PosixFileIO extends AbstractFileIO {
             (lookup.find("open").get(),
              FunctionDescriptor.of
              (ValueLayout.JAVA_INT,
-              ValueLayout.ADDRESS,  // pathPtr
+              ValueLayout.ADDRESS,  // pathAddr
               ValueLayout.JAVA_INT) // oflags
              );
 
@@ -107,7 +107,7 @@ final class PosixFileIO extends AbstractFileIO {
              FunctionDescriptor.of
              (ValueLayout.JAVA_INT,
               ValueLayout.JAVA_INT,  // fd
-              ValueLayout.JAVA_LONG, // bufPtr
+              ValueLayout.JAVA_LONG, // bufAddr
               ValueLayout.JAVA_INT,  // count
               ValueLayout.JAVA_LONG) // offset
              );
@@ -117,7 +117,7 @@ final class PosixFileIO extends AbstractFileIO {
              FunctionDescriptor.of
              (ValueLayout.JAVA_INT,
               ValueLayout.JAVA_INT,  // fd
-              ValueLayout.JAVA_LONG, // bufPtr
+              ValueLayout.JAVA_LONG, // bufAddr
               ValueLayout.JAVA_INT,  // count
               ValueLayout.JAVA_LONG) // offset
              );
@@ -291,8 +291,8 @@ final class PosixFileIO extends AbstractFileIO {
     }
 
     @Override
-    protected void doRead(long pos, long ptr, int length) throws IOException {
-        preadFd(fd(), ptr, length, pos);
+    protected void doRead(long pos, long addr, int length) throws IOException {
+        preadFd(fd(), addr, length, pos);
     }
 
     @Override
@@ -310,9 +310,9 @@ final class PosixFileIO extends AbstractFileIO {
     }
 
     @Override
-    protected void doWrite(long pos, long ptr, int length) throws IOException {
+    protected void doWrite(long pos, long addr, int length) throws IOException {
         try {
-            pwriteFd(fd(), ptr, length, pos);
+            pwriteFd(fd(), addr, length, pos);
         } catch (IOException ex) {
             writeFailure(ex);
         }
@@ -478,13 +478,13 @@ final class PosixFileIO extends AbstractFileIO {
     static String errorMessage(int errorId) {
         try (Arena a = Arena.ofConfined()) {
             int bufLen = 200;
-            MemorySegment bufPtr = a.allocate(bufLen);
+            MemorySegment bufAddr = a.allocate(bufLen);
 
-            long result = (long) strerror_r.invokeExact(errorId, bufPtr, bufLen);
+            long result = (long) strerror_r.invokeExact(errorId, bufAddr, bufLen);
             if (result != -1 && result != 22 && result != 34) { // !EINVAL && !ERANGE
-                MemorySegment resultPtr = result == 0 ? bufPtr
+                MemorySegment resultAddr = result == 0 ? bufAddr
                     : MemorySegment.ofAddress(result).reinterpret(bufLen);
-                return resultPtr.getString(0);
+                return resultAddr.getString(0);
             }
 
             return "Error " + errorId;
@@ -521,8 +521,8 @@ final class PosixFileIO extends AbstractFileIO {
                 flags |= 040000;
             }
             try (Arena a = Arena.ofConfined()) {
-                MemorySegment pathPtr = a.allocateFrom(path);
-                fd = (int) open.invokeExact(pathPtr, flags);
+                MemorySegment pathAddr = a.allocateFrom(path);
+                fd = (int) open.invokeExact(pathAddr, flags);
             } catch (Throwable e) {
                 throw Utils.rethrow(e);
             }
@@ -584,11 +584,11 @@ final class PosixFileIO extends AbstractFileIO {
         return result;
     }
 
-    static void preadFd(int fd, long bufPtr, int length, long fileOffset) throws IOException {
+    static void preadFd(int fd, long bufAddr, int length, long fileOffset) throws IOException {
         while (true) {
             int amt;
             try {
-                amt = (int) pread.invokeExact(fd, bufPtr, length, fileOffset);
+                amt = (int) pread.invokeExact(fd, bufAddr, length, fileOffset);
             } catch (Throwable e) {
                 throw Utils.rethrow(e);
             }
@@ -605,16 +605,16 @@ final class PosixFileIO extends AbstractFileIO {
             if (length <= 0) {
                 return;
             }
-            bufPtr += amt;
+            bufAddr += amt;
             fileOffset += amt;
         }
     }
 
-    static void pwriteFd(int fd, long bufPtr, int length, long fileOffset) throws IOException {
+    static void pwriteFd(int fd, long bufAddr, int length, long fileOffset) throws IOException {
         while (true) {
             int amt;
             try {
-                amt = (int) pwrite.invokeExact(fd, bufPtr, length, fileOffset);
+                amt = (int) pwrite.invokeExact(fd, bufAddr, length, fileOffset);
             } catch (Throwable e) {
                 throw Utils.rethrow(e);
             }
@@ -625,7 +625,7 @@ final class PosixFileIO extends AbstractFileIO {
             if (length <= 0) {
                 return;
             }
-            bufPtr += amt;
+            bufAddr += amt;
             fileOffset += amt;
         }
     }
@@ -679,24 +679,24 @@ final class PosixFileIO extends AbstractFileIO {
     }
 
     static long mmapFd(long length, int prot, int flags, int fd, long offset) throws IOException {
-        long ptr;
+        long addr;
         try {
-            ptr = (long) mmap.invokeExact(0L, length, prot, flags, fd, offset);
+            addr = (long) mmap.invokeExact(0L, length, prot, flags, fd, offset);
         } catch (Throwable e) {
             throw Utils.rethrow(e);
         }
-        if (ptr == -1) {
+        if (addr == -1) {
             throw lastErrorToException(offset);
         }
-        return ptr;
+        return addr;
     }
 
-    static void msyncPtr(long ptr, long length) throws IOException {
-        long endPtr = ptr + length;
-        ptr = (ptr / SysInfo.pageSize()) * SysInfo.pageSize();
+    static void msyncAddr(long addr, long length) throws IOException {
+        long endAddr = addr + length;
+        addr = (addr / SysInfo.pageSize()) * SysInfo.pageSize();
         int result;
         try {
-            result = (int) msync.invokeExact(ptr, endPtr - ptr, 4); // flags = MS_SYNC
+            result = (int) msync.invokeExact(addr, endAddr - addr, 4); // flags = MS_SYNC
         } catch (Throwable e) {
             throw Utils.rethrow(e);
         }
@@ -705,10 +705,10 @@ final class PosixFileIO extends AbstractFileIO {
         }
     }
 
-    static void munmapPtr(long ptr, long length) throws IOException {
+    static void munmapAddr(long addr, long length) throws IOException {
         int result;
         try {
-            result = (int) munmap.invokeExact(ptr, length);
+            result = (int) munmap.invokeExact(addr, length);
         } catch (Throwable e) {
             throw Utils.rethrow(e);
         }
@@ -717,10 +717,10 @@ final class PosixFileIO extends AbstractFileIO {
         }
     }
 
-    static void madvisePtr(long ptr, long length, int advice) throws IOException {
+    static void madviseAddr(long addr, long length, int advice) throws IOException {
         int result;
         try {
-            result = (int) posix_madvise.invokeExact(ptr, length, advice);
+            result = (int) posix_madvise.invokeExact(addr, length, advice);
         } catch (Throwable e) {
             throw Utils.rethrow(e);
         }
@@ -863,7 +863,7 @@ final class PosixFileIO extends AbstractFileIO {
                 (lookup.find("shm_open").get(),
                  FunctionDescriptor.of
                  (ValueLayout.JAVA_INT,
-                  ValueLayout.ADDRESS,  // pathPtr
+                  ValueLayout.ADDRESS,  // pathAddr
                   ValueLayout.JAVA_INT, // oflags
                   ValueLayout.JAVA_INT) // mode
                  );
@@ -872,8 +872,8 @@ final class PosixFileIO extends AbstractFileIO {
         static int shm_open(String path, int oflag, int mode) throws IOException {
             int fd;
             try (Arena a = Arena.ofConfined()) {
-                MemorySegment pathPtr = a.allocateFrom(path);
-                fd = (int) shm_open.invokeExact(pathPtr, oflag, mode);
+                MemorySegment pathAddr = a.allocateFrom(path);
+                fd = (int) shm_open.invokeExact(pathAddr, oflag, mode);
             } catch (Throwable e) {
                 throw Utils.rethrow(e);
             }

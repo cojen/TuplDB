@@ -112,22 +112,22 @@ public abstract class PageArray implements CauseCloseable {
 
     /**
      * @param index zero-based page index to read
-     * @param dstPtr receives read data
+     * @param dstAddr receives read data
      * @throws IndexOutOfBoundsException if index is negative
      * @throws IOException if index is greater than or equal to page count
      */
-    public void readPage(long index, long dstPtr) throws IOException {
-        readPage(index, dstPtr, 0, mPageSize);
+    public void readPage(long index, long dstAddr) throws IOException {
+        readPage(index, dstAddr, 0, mPageSize);
     }
 
     /**
      * @param index zero-based page index to read
-     * @param dstPtr receives read data
+     * @param dstAddr receives read data
      * @param offset offset into data buffer
      * @throws IndexOutOfBoundsException if index is negative
      * @throws IOException if index is greater than or equal to page count
      */
-    public void readPage(long index, long dstPtr, int offset, int length) throws IOException {
+    public void readPage(long index, long dstAddr, int offset, int length) throws IOException {
         throw new UnsupportedOperationException();
     }
 
@@ -162,11 +162,11 @@ public abstract class PageArray implements CauseCloseable {
      * immediately copied into it.
      *
      * @param index zero-based page index to write
-     * @param srcPtr data to write
+     * @param srcAddr data to write
      * @throws IndexOutOfBoundsException if index is negative
      */
-    public void writePage(long index, long srcPtr) throws IOException {
-        writePage(index, srcPtr, 0);
+    public void writePage(long index, long srcAddr) throws IOException {
+        writePage(index, srcAddr, 0);
     }
 
     /**
@@ -175,11 +175,11 @@ public abstract class PageArray implements CauseCloseable {
      * immediately copied into it.
      *
      * @param index zero-based page index to write
-     * @param srcPtr data to write
+     * @param srcAddr data to write
      * @param offset offset into data buffer
      * @throws IndexOutOfBoundsException if index is negative
      */
-    public void writePage(long index, long srcPtr, int offset) throws IOException {
+    public void writePage(long index, long srcAddr, int offset) throws IOException {
         throw new UnsupportedOperationException();
     }
 
@@ -204,13 +204,13 @@ public abstract class PageArray implements CauseCloseable {
      * and the contents of the replacement are undefined.
      *
      * @param index zero-based page index to write
-     * @param bufPtr data to write; implementation might alter the contents
+     * @param bufAddr data to write; implementation might alter the contents
      * @throws IndexOutOfBoundsException if index is negative
      * @return replacement buffer, or same instance if replacement was not performed
      */
-    public long evictPage(long index, long bufPtr) throws IOException {
-        writePage(index, bufPtr);
-        return bufPtr;
+    public long evictPage(long index, long bufAddr) throws IOException {
+        writePage(index, bufAddr);
+        return bufAddr;
     }
 
     // Only expected to be called when isFullyMapped.

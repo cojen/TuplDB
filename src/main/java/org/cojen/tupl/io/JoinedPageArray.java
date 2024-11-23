@@ -144,8 +144,8 @@ public class JoinedPageArray extends PageArray {
     }
 
     @Override
-    public void readPage(long index, long dstPtr, int offset, int length) throws IOException {
-        action(index, (pa, ix) -> pa.readPage(ix, dstPtr, offset, length));
+    public void readPage(long index, long dstAddr, int offset, int length) throws IOException {
+        action(index, (pa, ix) -> pa.readPage(ix, dstAddr, offset, length));
     }
 
     @Override
@@ -154,8 +154,8 @@ public class JoinedPageArray extends PageArray {
     }
 
     @Override
-    public void writePage(long index, long srcPtr, int offset) throws IOException {
-        action(index, (pa, ix) -> pa.writePage(ix, srcPtr, offset));
+    public void writePage(long index, long srcAddr, int offset) throws IOException {
+        action(index, (pa, ix) -> pa.writePage(ix, srcAddr, offset));
     }
 
     @Override
@@ -171,7 +171,7 @@ public class JoinedPageArray extends PageArray {
     }
 
     @Override
-    public long evictPage(long index, long bufPtr) throws IOException {
+    public long evictPage(long index, long bufAddr) throws IOException {
         PageArray pa;
         if (index < mJoinIndex) {
             pa = mFirst;
@@ -179,7 +179,7 @@ public class JoinedPageArray extends PageArray {
             pa = mSecond;
             index -= mJoinIndex;
         }
-        return pa.evictPage(index, bufPtr);
+        return pa.evictPage(index, bufAddr);
     }
 
     @Override

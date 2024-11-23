@@ -160,10 +160,10 @@ public class StripedPageArray extends PageArray {
     }
 
     @Override
-    public void readPage(long index, long dstPtr, int offset, int length) throws IOException {
+    public void readPage(long index, long dstAddr, int offset, int length) throws IOException {
         PageArray[] arrays = mArrays;
         int stripes = arrays.length;
-        arrays[(int) (index % stripes)].readPage(index / stripes, dstPtr, offset, length);
+        arrays[(int) (index % stripes)].readPage(index / stripes, dstAddr, offset, length);
     }
 
     @Override
@@ -174,10 +174,10 @@ public class StripedPageArray extends PageArray {
     }
 
     @Override
-    public void writePage(long index, long srcPtr, int offset) throws IOException {
+    public void writePage(long index, long srcAddr, int offset) throws IOException {
         PageArray[] arrays = mArrays;
         int stripes = arrays.length;
-        arrays[(int) (index % stripes)].writePage(index / stripes, srcPtr, offset);
+        arrays[(int) (index % stripes)].writePage(index / stripes, srcAddr, offset);
     }
 
     @Override
@@ -188,10 +188,10 @@ public class StripedPageArray extends PageArray {
     }
 
     @Override
-    public long evictPage(long index, long bufPtr) throws IOException {
+    public long evictPage(long index, long bufAddr) throws IOException {
         PageArray[] arrays = mArrays;
         int stripes = arrays.length;
-        return arrays[(int) (index % stripes)].evictPage(index / stripes, bufPtr);
+        return arrays[(int) (index % stripes)].evictPage(index / stripes, bufAddr);
     }
 
     @Override

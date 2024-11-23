@@ -47,8 +47,7 @@ public class ConvertTest {
 
         Database db = newTempDatabase(getClass());
 
-        var newConfig = new DatabaseConfig().directPageAccess(false)
-            .replicate(new NonReplicator());
+        var newConfig = new DatabaseConfig().replicate(new NonReplicator());
 
         try {
             db = reopenTempDatabase(getClass(), db, newConfig);
@@ -67,7 +66,7 @@ public class ConvertTest {
         var repl = new NonReplicator();
         repl.setInitialPosition(100);
 
-        var newConfig = new DatabaseConfig().directPageAccess(false).replicate(repl);
+        var newConfig = new DatabaseConfig().replicate(repl);
 
         try {
             db = reopenTempDatabase(getClass(), db, newConfig);
@@ -84,8 +83,7 @@ public class ConvertTest {
         ix.store(null, "hello".getBytes(), "world".getBytes());
         db.shutdown();
 
-        var newConfig = new DatabaseConfig().directPageAccess(false)
-            .replicate(new NonReplicator());
+        var newConfig = new DatabaseConfig().replicate(new NonReplicator());
 
         db = reopenTempDatabase(getClass(), db, newConfig);
 
@@ -97,8 +95,7 @@ public class ConvertTest {
     public void toNonReplicatedFail() throws Exception {
         // Cannot convert to non-replicated mode without special steps.
 
-        var config = new DatabaseConfig().directPageAccess(false)
-            .replicate(new NonReplicator());
+        var config = new DatabaseConfig().replicate(new NonReplicator());
         Database db = newTempDatabase(getClass(), config);
         db.shutdown();
 
@@ -117,8 +114,7 @@ public class ConvertTest {
         // Only need to touch a redo log file to allow conversion. It will be deleted
         // automatically.
 
-        var config = new DatabaseConfig().directPageAccess(false)
-            .replicate(new NonReplicator());
+        var config = new DatabaseConfig().replicate(new NonReplicator());
         Database db = newTempDatabase(getClass(), config);
         File base = baseFileForTempDatabase(getClass(), db);
         db.shutdown();

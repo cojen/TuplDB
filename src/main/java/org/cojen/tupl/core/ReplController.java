@@ -43,7 +43,6 @@ import org.cojen.tupl.util.Runner;
  * @author Brian S O'Neill
  * @see ReplEngine
  */
-/*P*/
 final class ReplController extends ReplWriter {
     private static final VarHandle cCheckpointPosHandle, cSwitchingHandle;
 

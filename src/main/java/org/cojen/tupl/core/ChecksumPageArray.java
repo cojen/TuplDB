@@ -141,19 +141,19 @@ abstract class ChecksumPageArray extends TransformedPageArray {
         }
 
         @Override
-        public void readPage(long index, long dstPtr, int offset, int length) throws IOException {
+        public void readPage(long index, long dstAddr, int offset, int length) throws IOException {
             int pageSize = pageSize();
             if (offset != 0 || length != pageSize()) {
                 try (Arena a = Arena.ofConfined()) {
                     MemorySegment page = a.allocate(pageSize);
                     readPage(index, page.address());
-                    MemorySegment.copy(page, 0, DirectMemory.ALL, dstPtr + offset, length);
+                    MemorySegment.copy(page, 0, DirectMemory.ALL, dstAddr + offset, length);
                 }
             } else {
                 LocalPool.Entry<BufRef> e = mBufRefPool.access();
                 try {
                     MemorySegment page = readPageAndChecksum(e.get(), index, length);
-                    MemorySegment.copy(page, 0, DirectMemory.ALL, dstPtr + offset, length);
+                    MemorySegment.copy(page, 0, DirectMemory.ALL, dstAddr + offset, length);
                 } finally {
                     e.release();
                 }
@@ -191,12 +191,12 @@ abstract class ChecksumPageArray extends TransformedPageArray {
         }
 
         @Override
-        public void writePage(long index, long srcPtr, int offset) throws IOException {
+        public void writePage(long index, long srcAddr, int offset) throws IOException {
             LocalPool.Entry<BufRef> e = mBufRefPool.access();
             try {
                 BufRef ref = e.get();
                 int length = pageSize();
-                MemorySegment.copy(DirectMemory.ALL, srcPtr + offset, ref.mPagePlusCRC, 0, length);
+                MemorySegment.copy(DirectMemory.ALL, srcAddr + offset, ref.mPagePlusCRC, 0, length);
                 writePageAndChecksum(ref, index, length);
             } finally {
                 e.release();
@@ -268,18 +268,18 @@ abstract class ChecksumPageArray extends TransformedPageArray {
         }
 
         @Override
-        public void readPage(long index, long dstPtr, int offset, int length) throws IOException {
+        public void readPage(long index, long dstAddr, int offset, int length) throws IOException {
             if (offset != 0 || length != pageSize()) {
                 try (Arena a = Arena.ofConfined()) {
                     MemorySegment ms = a.allocate(mAbsPageSize, SysInfo.pageSize());
                     readPage(index, ms.address());
-                    MemorySegment.copy(ms, 0, DirectMemory.ALL, dstPtr + offset, length);
+                    MemorySegment.copy(ms, 0, DirectMemory.ALL, dstAddr + offset, length);
                 }
             } else {
                 // Assume that the caller has provided a buffer sized to match the direct page.
                 int pageSize = mAbsPageSize;
-                mSource.readPage(index, dstPtr, offset, pageSize);
-                MemorySegment ms = MemorySegment.ofAddress(dstPtr + offset).reinterpret(pageSize);
+                mSource.readPage(index, dstAddr, offset, pageSize);
+                MemorySegment ms = MemorySegment.ofAddress(dstAddr + offset).reinterpret(pageSize);
                 int storedChecksum = ms.get(INT_LE, length);
                 Checksum checksum = checksum();
                 checksum.reset();
@@ -306,16 +306,16 @@ abstract class ChecksumPageArray extends TransformedPageArray {
         }
 
         @Override
-        public void writePage(long index, long srcPtr, int offset) throws IOException {
+        public void writePage(long index, long srcAddr, int offset) throws IOException {
             Checksum checksum = checksum();
             checksum.reset();
             // Assume that the caller has provided a buffer sized to match the direct page.
             int pageSize = mAbsPageSize;
-            MemorySegment ms = MemorySegment.ofAddress(srcPtr + offset).reinterpret(pageSize);
+            MemorySegment ms = MemorySegment.ofAddress(srcAddr + offset).reinterpret(pageSize);
             pageSize -= 4;
             checksum.update(ms.asByteBuffer().limit(pageSize));
             ms.set(INT_LE, pageSize, (int) checksum.getValue());
-            mSource.writePage(index, srcPtr, offset);
+            mSource.writePage(index, srcAddr, offset);
         }
 
         private Checksum checksum() {

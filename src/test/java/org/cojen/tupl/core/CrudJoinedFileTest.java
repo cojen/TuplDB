@@ -46,7 +46,7 @@ public class CrudJoinedFileTest extends CrudTest {
     @Override
     public void createTempDb() throws Exception {
         PageArray pa = JoinedPageArray.join(newFilePageArray(), 10, newFilePageArray());
-        var config = new DatabaseConfig().dataPageArray(pa).directPageAccess(false);
+        var config = new DatabaseConfig().dataPageArray(pa);
         decorate(config);
         mDb = newTempDatabase(getClass(), config);
     }

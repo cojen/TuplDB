@@ -99,7 +99,7 @@ public abstract class FileIO implements CauseCloseable {
      */
     public abstract void read(long pos, byte[] buf, int offset, int length) throws IOException;
 
-    public void read(long pos, long ptr, int offset, int length) throws IOException {
+    public void read(long pos, long addr, int offset, int length) throws IOException {
         throw new UnsupportedOperationException();
     }
 
@@ -112,7 +112,7 @@ public abstract class FileIO implements CauseCloseable {
      */
     public abstract void write(long pos, byte[] buf, int offset, int length) throws IOException;
 
-    public void write(long pos, long ptr, int offset, int length) throws IOException {
+    public void write(long pos, long addr, int offset, int length) throws IOException {
         throw new UnsupportedOperationException();
     }
 

@@ -107,27 +107,27 @@ final class CryptoPageArray extends TransformedPageArray {
     }
 
     @Override
-    public void readPage(long index, long dstPtr) throws IOException {
+    public void readPage(long index, long dstAddr) throws IOException {
         try {
-            mSource.readPage(index, dstPtr);
-            mCrypto.decryptPage(index, pageSize(), dstPtr, 0);
+            mSource.readPage(index, dstAddr);
+            mCrypto.decryptPage(index, pageSize(), dstAddr, 0);
         } catch (GeneralSecurityException e) {
             throw new CorruptDatabaseException(e);
         }
     }
 
     @Override
-    public void readPage(long index, long dstPtr, int offset, int length) throws IOException {
+    public void readPage(long index, long dstAddr, int offset, int length) throws IOException {
         int pageSize = pageSize();
         if (offset == 0 && length == pageSize) {
-            readPage(index, dstPtr);
+            readPage(index, dstAddr);
             return;
         }
 
         long page = DirectPageOps.p_allocPage(mSource.directPageSize());
         try {
             readPage(index, page);
-            DirectPageOps.p_copy(page, 0, dstPtr, offset, length);
+            DirectPageOps.p_copy(page, 0, dstAddr, offset, length);
         } finally {
             DirectPageOps.p_delete(page);
         }
@@ -148,13 +148,13 @@ final class CryptoPageArray extends TransformedPageArray {
     }
 
     @Override
-    public void writePage(long index, long srcPtr, int offset) throws IOException {
+    public void writePage(long index, long srcAddr, int offset) throws IOException {
         try {
             int pageSize = pageSize();
             // Unknown if source contents can be destroyed, so create a new one.
             long encrypted = DirectPageOps.p_allocPage(mSource.directPageSize());
             try {
-                mCrypto.encryptPage(index, pageSize, srcPtr, offset, encrypted, 0);
+                mCrypto.encryptPage(index, pageSize, srcAddr, offset, encrypted, 0);
                 mSource.writePage(index, encrypted, 0);
             } finally {
                 DirectPageOps.p_delete(encrypted);
@@ -188,20 +188,20 @@ final class CryptoPageArray extends TransformedPageArray {
     }
 
     @Override
-    public long evictPage(long index, long bufPtr) throws IOException {
+    public long evictPage(long index, long bufAddr) throws IOException {
         try {
             // Page is being evicted, and so buf contents can be destroyed.
-            mCrypto.encryptPage(index, pageSize(), bufPtr, 0);
+            mCrypto.encryptPage(index, pageSize(), bufAddr, 0);
         } catch (GeneralSecurityException e) {
             throw new CorruptDatabaseException(e);
         }
 
         try {
-            return mSource.evictPage(index, bufPtr);
+            return mSource.evictPage(index, bufAddr);
         } catch (Throwable e) {
             // Oops, better restore the page.
             try {
-                mCrypto.decryptPage(index, pageSize(), bufPtr, 0);
+                mCrypto.decryptPage(index, pageSize(), bufAddr, 0);
             } catch (Throwable e2) {
                 // Time to panic.
                 Utils.closeQuietly(mSource, e2);

@@ -94,8 +94,7 @@ public class CountTest {
     public void setup() throws Exception {
         var config = new DatabaseConfig()
             .minCacheSize(10_000_000).maxCacheSize(100_000_000)
-            .durabilityMode(DurabilityMode.NO_FLUSH)
-            .directPageAccess(false);
+            .durabilityMode(DurabilityMode.NO_FLUSH);
 
         if (mMode != Mode.AUTO_CHECKPOINTS) {
             config.checkpointRate(-1, null);

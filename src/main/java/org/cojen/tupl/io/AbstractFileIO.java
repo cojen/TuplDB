@@ -175,8 +175,8 @@ abstract class AbstractFileIO extends FileIO {
     }
 
     @Override
-    public final void read(long pos, long ptr, int offset, int length) throws IOException {
-        access(true, pos, ptr + offset, length);
+    public final void read(long pos, long addr, int offset, int length) throws IOException {
+        access(true, pos, addr + offset, length);
     }
 
     @Override
@@ -185,8 +185,8 @@ abstract class AbstractFileIO extends FileIO {
     }
 
     @Override
-    public final void write(long pos, long ptr, int offset, int length) throws IOException {
-        access(false, pos, ptr + offset, length);
+    public final void write(long pos, long addr, int offset, int length) throws IOException {
+        access(false, pos, addr + offset, length);
     }
 
     private void access(boolean read, long pos, byte[] buf, int offset, int length)
@@ -252,7 +252,7 @@ abstract class AbstractFileIO extends FileIO {
         }
     }
 
-    private void access(boolean read, long pos, long ptr, int length) throws IOException {
+    private void access(boolean read, long pos, long addr, int length) throws IOException {
         syncWait();
 
         try {
@@ -282,29 +282,29 @@ abstract class AbstractFileIO extends FileIO {
 
                         if (mavail >= length) {
                             if (read) {
-                                mapping.read(mpos, ptr, length);
+                                mapping.read(mpos, addr, length);
                             } else {
-                                mapping.write(mpos, ptr, length);
+                                mapping.write(mpos, addr, length);
                             }
                             return;
                         }
 
                         if (read) {
-                            mapping.read(mpos, ptr, mavail);
+                            mapping.read(mpos, addr, mavail);
                         } else {
-                            mapping.write(mpos, ptr, mavail);
+                            mapping.write(mpos, addr, mavail);
                         }
 
                         pos += mavail;
-                        ptr += mavail;
+                        addr += mavail;
                         length -= mavail;
                     }
                 }
 
                 if (read) {
-                    doRead(pos, ptr, length);
+                    doRead(pos, addr, length);
                 } else {
-                    doWrite(pos, ptr, length);
+                    doWrite(pos, addr, length);
                 }
             } finally {
                 mAccessLock.releaseShared();
@@ -604,13 +604,13 @@ abstract class AbstractFileIO extends FileIO {
     protected abstract void doRead(long pos, byte[] buf, int offset, int length)
         throws IOException;
 
-    protected abstract void doRead(long pos, long ptr, int length)
+    protected abstract void doRead(long pos, long addr, int length)
         throws IOException;
 
     protected abstract void doWrite(long pos, byte[] buf, int offset, int length)
         throws IOException;
 
-    protected abstract void doWrite(long pos, long ptr, int length)
+    protected abstract void doWrite(long pos, long addr, int length)
         throws IOException;
 
     protected abstract Mapping openMapping(boolean readOnly, long pos, int size)

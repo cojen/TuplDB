@@ -17,6 +17,9 @@
 
 package org.cojen.tupl.core;
 
+import java.lang.foreign.MemorySegment;
+import java.lang.foreign.ValueLayout;
+
 import java.io.IOException;
 
 import java.util.function.BooleanSupplier;
@@ -24,6 +27,8 @@ import java.util.function.BooleanSupplier;
 import org.cojen.tupl.*;
 
 import org.cojen.tupl.io.PageArray;
+
+import static org.cojen.tupl.core.DirectMemory.ALL;
 
 /**
  * A simple PageArray backed by a Database, for testing purposes.
@@ -97,6 +102,13 @@ class DatabasePageArray extends PageArray {
     }
 
     @Override
+    public void readPage(long index, long dstAddr, int offset, int length) throws IOException {
+        var buf = new byte[length];
+        readPage(index, buf, 0, length);
+        MemorySegment.copy(buf, 0, ALL, ValueLayout.JAVA_BYTE, dstAddr, length);
+    }
+
+    @Override
     public void writePage(long index, byte[] buf, int offset) throws IOException {
         BooleanSupplier checker = mFailureChecker;
         if (checker != null && checker.getAsBoolean()) {
@@ -106,6 +118,13 @@ class DatabasePageArray extends PageArray {
         try (ValueAccessor accessor = mPages.newAccessor(Transaction.BOGUS, keyFor(index))) {
             accessor.valueWrite(0, buf, offset, pageSize());
         }
+    }
+
+    @Override
+    public void writePage(long index, long srcAddr, int offset) throws IOException {
+        var buf = new byte[pageSize()];
+        MemorySegment.copy(ALL, ValueLayout.JAVA_BYTE, srcAddr + offset, buf, 0, buf.length);
+        writePage(index, buf, 0);
     }
 
     @Override

@@ -25,7 +25,7 @@ import org.cojen.tupl.Cursor;
 import org.cojen.tupl.View;
 import org.cojen.tupl.Transaction;
 
-import static org.cojen.tupl.core.PageOps.*;
+import static org.cojen.tupl.core.DirectPageOps.*;
 import static org.cojen.tupl.core.Utils.*;
 
 import static java.util.Arrays.compareUnsigned;
@@ -44,18 +44,18 @@ final class FragmentedTrash {
      * Copies a fragmented value to the trash and pushes an entry to the undo
      * log. Caller must hold commit lock.
      *
-     * @param entry Node page; starts with variable length key
+     * @param entryAddr Node page; starts with variable length key
      * @param keyStart inclusive index into entry for key; includes key header
      * @param keyLen length of key
      * @param valueStart inclusive index into entry for fragmented value; excludes value header
      * @param valueLen length of value
      */
     static void add(BTree trash, LocalTransaction txn, long indexId,
-                    /*P*/ byte[] entry, int keyStart, int keyLen, int valueStart, int valueLen)
+                    long entryAddr, int keyStart, int keyLen, int valueStart, int valueLen)
         throws IOException
     {
         var payload = new byte[valueLen];
-        p_copyToArray(entry, valueStart, payload, 0, valueLen);
+        p_copyToArray(entryAddr, valueStart, payload, 0, valueLen);
 
         BTreeCursor cursor = prepareEntry(trash, txn.txnId());
         byte[] key = cursor.key();
@@ -87,7 +87,7 @@ final class FragmentedTrash {
             // Cannot re-use existing temporary array.
             payload = new byte[payloadLen];
         }
-        p_copyToArray(entry, keyStart, payload, 0, keyLen);
+        p_copyToArray(entryAddr, keyStart, payload, 0, keyLen);
         arraycopy(key, 8, payload, keyLen, tidLen);
 
         txn.pushUndeleteFragmented(indexId, payload, 0, payloadLen);

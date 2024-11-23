@@ -64,7 +64,6 @@ public class EnduranceTest {
 
         var config = new DatabaseConfig()
                 .pageSize(1024)
-                .directPageAccess(false)
                 .durabilityMode(DurabilityMode.NO_REDO)
                 .minCacheSize(200 * 1024)
                 .maxCacheSize(200 * 1024)
@@ -154,7 +153,6 @@ public class EnduranceTest {
 
         var config = new DatabaseConfig()
                 .pageSize(1024)
-                .directPageAccess(false)
                 .durabilityMode(DurabilityMode.NO_REDO)
                 .checkpointRate(1, TimeUnit.MILLISECONDS)
                 .checkpointDelayThreshold(1, TimeUnit.MILLISECONDS);
@@ -227,7 +225,6 @@ public class EnduranceTest {
 
         var config = new DatabaseConfig()
             .checkpointRate(-1, null)
-            .directPageAccess(false)
             .lockTimeout(5, TimeUnit.SECONDS)
             .durabilityMode(DurabilityMode.NO_FLUSH);
 
@@ -295,9 +292,7 @@ public class EnduranceTest {
         // Stress test which ensures that cursor position doesn't break when concurrent
         // insert/delete operations are making structural tree changes.
 
-        var config = new DatabaseConfig()
-            .pageSize(512)
-            .directPageAccess(false);
+        var config = new DatabaseConfig().pageSize(512);
 
         decorate(config);
 
@@ -361,9 +356,7 @@ public class EnduranceTest {
         // Runs concurrent transactional inserts and deletes, making sure that the ghost
         // deletion code handles splits correctly.
 
-        var config = new DatabaseConfig()
-            .directPageAccess(false)
-            .durabilityMode(DurabilityMode.NO_FLUSH);
+        var config = new DatabaseConfig().durabilityMode(DurabilityMode.NO_FLUSH);
 
         decorate(config);
 
@@ -424,10 +417,8 @@ public class EnduranceTest {
     public void testBasic() throws Exception {
         var config = new DatabaseConfig()
             .pageSize(2048)
-            .minCacheSize(1_000_000)
-            .maxCacheSize(1_000_000)    // cacheSize ~ 500 nodes
-            .durabilityMode(DurabilityMode.NO_FLUSH)
-            .directPageAccess(false);
+            .cacheSize(1_000_000) // ~500 nodes
+            .durabilityMode(DurabilityMode.NO_FLUSH);
 
         decorate(config);
 

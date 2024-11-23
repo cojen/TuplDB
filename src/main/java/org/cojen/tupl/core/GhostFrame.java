@@ -29,7 +29,6 @@ import org.cojen.tupl.util.Latch;
  *
  * @author Brian S O'Neill
  */
-/*P*/
 class GhostFrame extends CursorFrame {
     /**
      * @param latch latch which guards the lock; might be briefly released and re-acquired

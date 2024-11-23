@@ -43,7 +43,7 @@ public class LargePageTest {
     }
 
     private static DatabaseConfig newConfig() {
-        return new DatabaseConfig().directPageAccess(false).pageSize(65536);
+        return new DatabaseConfig().pageSize(65536);
     }
 
     @Test

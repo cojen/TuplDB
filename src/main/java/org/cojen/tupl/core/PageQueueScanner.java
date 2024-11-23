@@ -25,6 +25,7 @@ import org.cojen.tupl.CorruptDatabaseException;
 
 import org.cojen.tupl.io.PageArray;
 
+import static org.cojen.tupl.core.DirectPageOps.*;
 import static org.cojen.tupl.core.PageQueue.*;
 
 /**
@@ -46,36 +47,26 @@ class PageQueueScanner {
     static void scan(PageArray array, long headerId, int headerOffset, LongConsumer dst)
         throws IOException
     {
-        long ptr = 0;
-        int directPageSize = array.directPageSize();
-        if (directPageSize < 0) {
-            ptr = DirectPageOps.p_allocPage(directPageSize);
-        }
-
+        long bufAddr = p_allocPage(array.directPageSize());
         try {
-            doScan(array, headerId, headerOffset, dst, ptr);
-        } catch (Throwable e) {
-            if (ptr != 0) {
-                DirectPageOps.p_delete(ptr);
-            }
-            throw e;
+            doScan(array, headerId, headerOffset, dst, bufAddr);
+        } finally {
+            p_delete(bufAddr);
         }
     }
 
     private static void doScan(PageArray array, long headerId, int headerOffset, LongConsumer dst,
-                               long ptr)
+                               long bufAddr)
         throws IOException
     {
-        var buf = new byte[array.pageSize()];
+        array.readPage(headerId, bufAddr);
 
-        readPage(array, headerId, buf, ptr);
-
-        final long pageCount = PageOps.p_longGetLE(buf, headerOffset + I_REMOVE_PAGE_COUNT);
-        final long nodeCount = PageOps.p_longGetLE(buf, headerOffset + I_REMOVE_NODE_COUNT);
-        long nodeId = PageOps.p_longGetLE(buf, headerOffset + I_REMOVE_HEAD_ID);
-        int nodeOffset = PageOps.p_intGetLE(buf, headerOffset + I_REMOVE_HEAD_OFFSET);
-        long pageId = PageOps.p_longGetLE(buf, headerOffset + I_REMOVE_HEAD_FIRST_PAGE_ID);
-        final long tailId = PageOps.p_longGetLE(buf, headerOffset + I_APPEND_HEAD_ID);
+        final long pageCount = p_longGetLE(bufAddr, headerOffset + I_REMOVE_PAGE_COUNT);
+        final long nodeCount = p_longGetLE(bufAddr, headerOffset + I_REMOVE_NODE_COUNT);
+        long nodeId = p_longGetLE(bufAddr, headerOffset + I_REMOVE_HEAD_ID);
+        int nodeOffset = p_intGetLE(bufAddr, headerOffset + I_REMOVE_HEAD_OFFSET);
+        long pageId = p_longGetLE(bufAddr, headerOffset + I_REMOVE_HEAD_FIRST_PAGE_ID);
+        final long tailId = p_longGetLE(bufAddr, headerOffset + I_APPEND_HEAD_ID);
 
         if (nodeId == 0) {
             if (pageCount != 0 || nodeCount != 0) {
@@ -85,13 +76,13 @@ class PageQueueScanner {
             return;
         }
 
-        readPage(array, nodeId, buf, ptr);
+        array.readPage(nodeId, bufAddr);
 
         if (pageId == 0) {
             if (nodeOffset != I_NODE_START) {
                 throw new CorruptDatabaseException("Invalid node offset: " + nodeOffset);
             }
-            pageId = PageOps.p_longGetBE(buf, I_FIRST_PAGE_ID);
+            pageId = p_longGetBE(bufAddr, I_FIRST_PAGE_ID);
         }
 
         long actualPageCount = 0;
@@ -100,12 +91,14 @@ class PageQueueScanner {
         var nodeOffsetRef = new IntegerRef.Value();
         nodeOffsetRef.value = nodeOffset;
 
+        int pageSize = array.pageSize();
+
         while (true) {
             actualPageCount++;
             dst.accept(pageId);
 
-            if (nodeOffsetRef.value < buf.length) {
-                long delta = PageOps.p_ulongGetVar(buf, nodeOffsetRef);
+            if (nodeOffsetRef.value < pageSize) {
+                long delta = p_ulongGetVar(bufAddr, nodeOffsetRef);
                 if (delta > 0) {
                     pageId += delta;
                     continue;
@@ -117,15 +110,15 @@ class PageQueueScanner {
 
             dst.accept(nodeId);
 
-            nodeId = PageOps.p_longGetBE(buf, I_NEXT_NODE_ID);
+            nodeId = p_longGetBE(bufAddr, I_NEXT_NODE_ID);
             if (nodeId == tailId) {
                 break;
             }
 
-            readPage(array, nodeId, buf, ptr);
+            array.readPage(nodeId, bufAddr);
 
             actualNodeCount++;
-            pageId = PageOps.p_longGetBE(buf, I_FIRST_PAGE_ID);
+            pageId = p_longGetBE(bufAddr, I_FIRST_PAGE_ID);
             nodeOffsetRef.value = I_NODE_START;
         }
 
@@ -137,17 +130,6 @@ class PageQueueScanner {
         if (nodeCount != actualNodeCount) {
             throw new CorruptDatabaseException
                 ("Mismatched node count: " + nodeCount + " != " + actualNodeCount);
-        }
-    }
-
-    private static void readPage(PageArray array, long id, byte[] buf, long ptr)
-        throws IOException
-    {
-        if (ptr == 0) {
-            array.readPage(id, buf);
-        } else {
-            array.readPage(id, ptr);
-            DirectPageOps.p_copyToArray(ptr, 0, buf, 0, buf.length);
         }
     }
 }

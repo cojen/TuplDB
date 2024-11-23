@@ -112,7 +112,7 @@ public class BinaryOpTest {
     @Test
     public void fuzz() throws Exception {
         mRnd = new Random(5925012809348304926L);
-        mDb = Database.open(new DatabaseConfig().directPageAccess(false));
+        mDb = Database.open(new DatabaseConfig());
         mTable = mDb.openTable(TestRow.class);
 
         {
@@ -464,7 +464,7 @@ public class BinaryOpTest {
 
     @Test
     public void logic() throws Exception {
-        mDb = Database.open(new DatabaseConfig().directPageAccess(false));
+        mDb = Database.open(new DatabaseConfig());
         Table<LogicRow> table = mDb.openTable(LogicRow.class);
 
         {
@@ -520,7 +520,7 @@ public class BinaryOpTest {
 
     @Test
     public void constant() throws Exception {
-        mDb = Database.open(new DatabaseConfig().directPageAccess(false));
+        mDb = Database.open(new DatabaseConfig());
         Table<LogicRow> table = mDb.openTable(LogicRow.class);
 
         {

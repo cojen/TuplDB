@@ -22,8 +22,6 @@ import java.io.InputStream;
 import java.io.IOException;
 import java.io.PrintStream;
 
-import java.lang.reflect.Method;
-
 import java.util.Collections;
 import java.util.EnumSet;
 import java.util.HashMap;
@@ -67,10 +65,6 @@ public final class Launcher implements Cloneable {
         DirectPageOpsSelector.kind();
     }
 
-    private static volatile Method cDirectOpen;
-    private static volatile Method cDirectDestroy;
-    private static volatile Method cDirectRestore;
-
     File mBaseFile;
     boolean mMkdirs;
     File[] mDataFiles;
@@ -89,7 +83,6 @@ public final class Launcher implements Cloneable {
     boolean mFileSync;
     boolean mReadOnly;
     int mPageSize;
-    Boolean mDirectPageAccess;
     boolean mCachePriming;
     boolean mCleanShutdown;
     ReplicatorConfig mReplConfig;
@@ -239,10 +232,6 @@ public final class Launcher implements Cloneable {
         mPageSize = size;
     }
 
-    public void directPageAccess(boolean direct) {
-        mDirectPageAccess = direct;
-    }
-
     public void cachePriming(boolean priming) {
         mCachePriming = priming;
     }
@@ -319,10 +308,6 @@ public final class Launcher implements Cloneable {
         launcher.eventListener(EventListener.printTo(out));
         launcher.mReadOnly = true;
         launcher.mDebugOpen = properties;
-
-        if (launcher.mDirectPageAccess == null) {
-            launcher.directPageAccess(false);
-        }
 
         launcher.open(false, null).close();
     }
@@ -507,126 +492,13 @@ public final class Launcher implements Cloneable {
             mChecksumFactory = null; // only needed at physical layer
         }
 
-        Method m;
-        Object[] args;
         if (restore != null) {
-            args = new Object[] {this, restore};
-            m = directRestoreMethod();
+            return LocalDatabase.restoreFromSnapshot(this, restore);
+        } else if (destroy) {
+            return LocalDatabase.destroy(this);
         } else {
-            args = new Object[] {this};
-            if (destroy) {
-                m = directDestroyMethod();
-            } else {
-                m = directOpenMethod();
-            }
+            return LocalDatabase.open(this);
         }
-
-        Throwable e1 = null;
-        if (m != null) {
-            try {
-                return (CoreDatabase) m.invoke(null, args);
-            } catch (Exception e) {
-                handleDirectException(e);
-                e1 = e;
-            }
-        }
-
-        try {
-            if (restore != null) {
-                return LocalDatabase.restoreFromSnapshot(this, restore);
-            } else if (destroy) {
-                return LocalDatabase.destroy(this);
-            } else {
-                return LocalDatabase.open(this);
-            }
-        } catch (Throwable e2) {
-            e1 = rootCause(e1);
-            e2 = rootCause(e2);
-            if (e1 == null || (e2 instanceof Error && !(e1 instanceof Error))) {
-                // Throw the second, considering it to be more severe.
-                suppress(e2, e1);
-                throw rethrow(e2);
-            } else {
-                suppress(e1, e2);
-                throw rethrow(e1);
-            }
-        }
-    }
-
-    private Class<?> directOpenClass() throws IOException {
-        if (mDirectPageAccess == Boolean.FALSE) {
-            return null;
-        }
-        String name = getClass().getName();
-        name = name.substring(0, name.lastIndexOf('.') + 1) + "_LocalDatabase";
-        try {
-            return Class.forName(name);
-        } catch (Exception e) {
-            handleDirectException(e);
-            return null;
-        }
-    }
-
-    private Method directOpenMethod() throws IOException {
-        if (mDirectPageAccess == Boolean.FALSE) {
-            return null;
-        }
-        Method m = cDirectOpen;
-        if (m == null) {
-            cDirectOpen = m = findMethod("open", Launcher.class);
-        }
-        return m;
-    }
-
-    private Method directDestroyMethod() throws IOException {
-        if (mDirectPageAccess == Boolean.FALSE) {
-            return null;
-        }
-        Method m = cDirectDestroy;
-        if (m == null) {
-            cDirectDestroy = m = findMethod("destroy", Launcher.class);
-        }
-        return m;
-    }
-
-    private Method directRestoreMethod() throws IOException {
-        if (mDirectPageAccess == Boolean.FALSE) {
-            return null;
-        }
-        Method m = cDirectRestore;
-        if (m == null) {
-            cDirectRestore = m = findMethod
-                ("restoreFromSnapshot", Launcher.class, InputStream.class);
-        }
-        return m;
-    }
-
-    private void handleDirectException(Exception e) throws IOException {
-        if (e instanceof RuntimeException || e instanceof IOException) {
-            throw rethrow(e);
-        }
-        Throwable cause = e.getCause();
-        if (cause == null) {
-            cause = e;
-        }
-        if (cause instanceof RuntimeException || cause instanceof IOException) {
-            throw rethrow(cause);
-        }
-        if (mDirectPageAccess == Boolean.TRUE) {
-            throw new DatabaseException("Unable open with direct page access", cause);
-        }
-    }
-
-    private Method findMethod(String name, Class<?>... paramTypes) throws IOException {
-        Class<?> directClass = directOpenClass();
-        if (directClass != null) {
-            try {
-                return directClass.getDeclaredMethod(name, paramTypes);
-            } catch (Exception e) {
-                handleDirectException(e);
-            }
-        }
-        return null;
     }
 }
 

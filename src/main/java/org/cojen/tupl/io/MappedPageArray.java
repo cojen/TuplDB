@@ -42,14 +42,14 @@ import static org.cojen.tupl.io.Utils.rethrow;
  * @author Brian S O'Neill
  */
 public abstract class MappedPageArray extends PageArray {
-    private static final VarHandle cMappingPtrHandle, cCauseHandle;
+    private static final VarHandle cMappingAddrHandle, cCauseHandle;
 
     static {
         try {
             var lookup = MethodHandles.lookup();
 
-            cMappingPtrHandle = lookup.findVarHandle
-                (MappedPageArray.class, "mMappingPtr", long.class);
+            cMappingAddrHandle = lookup.findVarHandle
+                (MappedPageArray.class, "mMappingAddr", long.class);
 
             cCauseHandle = lookup.findVarHandle
                 (MappedPageArray.class, "mCause", Throwable.class);
@@ -61,7 +61,7 @@ public abstract class MappedPageArray extends PageArray {
     private final long mPageCount;
     private final boolean mReadOnly;
 
-    private volatile long mMappingPtr;
+    private volatile long mMappingAddr;
     private volatile Throwable mCause;
 
     public static boolean isSupported() {
@@ -153,19 +153,19 @@ public abstract class MappedPageArray extends PageArray {
         throws IOException
     {
         readCheck(index);
-        long srcPtr = mappingPtr() + index * mPageSize;
-        MemorySegment.copy(DirectMapping.ALL, ValueLayout.JAVA_BYTE, srcPtr, dst, offset, length);
+        long srcAddr = mappingAddr() + index * mPageSize;
+        MemorySegment.copy(DirectMapping.ALL, ValueLayout.JAVA_BYTE, srcAddr, dst, offset, length);
     }
 
     @Override
-    public void readPage(long index, long dstPtr, int offset, int length)
+    public void readPage(long index, long dstAddr, int offset, int length)
         throws IOException
     {
         readCheck(index);
-        dstPtr += offset;
-        long srcPtr = mappingPtr() + index * mPageSize;
-        if (srcPtr != dstPtr) {
-            MemorySegment.copy(DirectMapping.ALL, srcPtr, DirectMapping.ALL, dstPtr, length);
+        dstAddr += offset;
+        long srcAddr = mappingAddr() + index * mPageSize;
+        if (srcAddr != dstAddr) {
+            MemorySegment.copy(DirectMapping.ALL, srcAddr, DirectMapping.ALL, dstAddr, length);
         }
     }
 
@@ -173,25 +173,26 @@ public abstract class MappedPageArray extends PageArray {
     public void writePage(long index, byte[] src, int offset) throws IOException {
         writeCheck(index);
         int pageSize = mPageSize;
-        long dstPtr = mappingPtr() + index * pageSize;
-        MemorySegment.copy(src, offset, DirectMapping.ALL, ValueLayout.JAVA_BYTE, dstPtr, pageSize);
+        long dstAddr = mappingAddr() + index * pageSize;
+        MemorySegment.copy(src, offset, DirectMapping.ALL, ValueLayout.JAVA_BYTE,
+                           dstAddr, pageSize);
     }
 
     @Override
-    public void writePage(long index, long srcPtr, int offset) throws IOException {
+    public void writePage(long index, long srcAddr, int offset) throws IOException {
         writeCheck(index);
-        srcPtr += offset;
+        srcAddr += offset;
         int pageSize = mPageSize;
-        long dstPtr = mappingPtr() + index * pageSize;
-        if (dstPtr != srcPtr) {
-            MemorySegment.copy(DirectMapping.ALL, srcPtr, DirectMapping.ALL, dstPtr, pageSize);
+        long dstAddr = mappingAddr() + index * pageSize;
+        if (dstAddr != srcAddr) {
+            MemorySegment.copy(DirectMapping.ALL, srcAddr, DirectMapping.ALL, dstAddr, pageSize);
         }
     }
 
     @Override
     public long directPagePointer(long index) throws IOException {
         readCheck(index);
-        return mappingPtr() + index * mPageSize;
+        return mappingAddr() + index * mPageSize;
     }
 
     @Override
@@ -200,12 +201,12 @@ public abstract class MappedPageArray extends PageArray {
         writeCheck(dstIndex);
 
         int pageSize = mPageSize;
-        long ptr = mappingPtr();
-        long dstPtr = ptr + dstIndex * pageSize;
-        MemorySegment.copy(DirectMapping.ALL, ptr + srcIndex * pageSize,
-                           DirectMapping.ALL, dstPtr, pageSize);
+        long addr = mappingAddr();
+        long dstAddr = addr + dstIndex * pageSize;
+        MemorySegment.copy(DirectMapping.ALL, addr + srcIndex * pageSize,
+                           DirectMapping.ALL, dstAddr, pageSize);
 
-        return dstPtr;
+        return dstAddr;
     }
 
     @Override
@@ -213,61 +214,61 @@ public abstract class MappedPageArray extends PageArray {
         writeCheck(dstIndex);
 
         int pageSize = mPageSize;
-        long dstPtr = mappingPtr() + dstIndex * pageSize;
-        MemorySegment.copy(DirectMapping.ALL, srcPointer, DirectMapping.ALL, dstPtr, pageSize);
+        long dstAddr = mappingAddr() + dstIndex * pageSize;
+        MemorySegment.copy(DirectMapping.ALL, srcPointer, DirectMapping.ALL, dstAddr, pageSize);
 
-        return dstPtr;
+        return dstAddr;
     }
 
     @Override
     public void sync(boolean metadata) throws IOException {
-        doSync(mappingPtr(), metadata);
+        doSync(mappingAddr(), metadata);
     }
 
     @Override
     public void syncPage(long index) throws IOException {
         writeCheck(index);
-        doSyncPage(mappingPtr(), index);
+        doSyncPage(mappingAddr(), index);
     }
 
     @Override
     public final void close(Throwable cause) throws IOException {
         while (true) {
-            long ptr = mMappingPtr;
-            if (ptr == 0) {
+            long addr = mMappingAddr;
+            if (addr == 0) {
                 return;
             }
             cCauseHandle.compareAndSet(this, null, cause);
-            if (cMappingPtrHandle.compareAndSet(this, ptr, 0)) {
+            if (cMappingAddrHandle.compareAndSet(this, addr, 0)) {
                 mCause = cause;
-                doClose(ptr);
+                doClose(addr);
                 return;
             }
         }
     }
 
-    void setMappingPtr(long ptr) throws IOException {
-        while (!cMappingPtrHandle.compareAndSet(this, 0, ptr)) {
-            if (mMappingPtr != 0) {
+    void setMappingAddr(long addr) throws IOException {
+        while (!cMappingAddrHandle.compareAndSet(this, 0, addr)) {
+            if (mMappingAddr != 0) {
                 throw new IllegalStateException();
             }
         }
     }
 
-    abstract void doSync(long mappingPtr, boolean metadata) throws IOException;
+    abstract void doSync(long mappingAddr, boolean metadata) throws IOException;
 
-    abstract void doSyncPage(long mappingPtr, long index) throws IOException;
+    abstract void doSyncPage(long mappingAddr, long index) throws IOException;
 
-    abstract void doClose(long mappingPtr) throws IOException;
+    abstract void doClose(long mappingAddr) throws IOException;
 
-    long mappingPtr() throws IOException {
-        long mappingPtr = mMappingPtr;
-        if (mappingPtr == 0) {
+    long mappingAddr() throws IOException {
+        long mappingAddr = mMappingAddr;
+        if (mappingAddr == 0) {
             var cce = new ClosedChannelException();
             cce.initCause(mCause);
             throw cce;
         }
-        return mappingPtr;
+        return mappingAddr;
     }
 
     private void readCheck(long index) throws IOException {

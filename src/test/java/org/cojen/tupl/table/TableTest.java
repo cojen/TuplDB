@@ -64,7 +64,7 @@ public class TableTest {
     {
         // Verifies that when a table's index is deleted, all metadata is deleted too.
 
-        var config = new DatabaseConfig().directPageAccess(false);
+        var config = new DatabaseConfig();
         //config.eventListener(EventListener.printTo(System.out));
         var db = (CoreDatabase) newTempDatabase(getClass(), config);
 
@@ -120,6 +120,8 @@ public class TableTest {
             }
             sleep(100);
         }
+
+        db.close();
     }
 
     @Test
@@ -171,7 +173,7 @@ public class TableTest {
 
     @Test
     public void predicate() throws Exception {
-        var config = new DatabaseConfig().directPageAccess(false);
+        var config = new DatabaseConfig();
         var db = (CoreDatabase) newTempDatabase(getClass(), config);
 
         var table = db.openTable(TestRow.class);
@@ -195,6 +197,8 @@ public class TableTest {
         assertTrue(predicate.test(row));
         row.name("hello!");
         assertFalse(predicate.test(row));
+
+        db.close();
     }
 
     @PrimaryKey("id")

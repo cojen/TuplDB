@@ -40,7 +40,6 @@ import org.cojen.tupl.UnpositionedCursorException;
  *
  * @author Brian S O'Neill
  */
-/*P*/
 class SortScanner implements Scanner<Entry> {
     private static final MethodHandle POPULATOR = EntryPopulator.THE;
 

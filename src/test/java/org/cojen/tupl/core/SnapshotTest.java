@@ -87,7 +87,6 @@ public class SnapshotTest {
         };
 
         var config = new DatabaseConfig()
-            .directPageAccess(false)
             .checkpointRate(rateMillis, TimeUnit.MILLISECONDS)
             .checkpointSizeThreshold(0)
             .checkpointDelayThreshold(0, null)
@@ -177,7 +176,6 @@ public class SnapshotTest {
         var snapshot = new File(snapshotBase.getParentFile(), snapshotBase.getName() + ".db");
 
         var config = new DatabaseConfig()
-            .directPageAccess(false)
             .baseFile(base)
             .minCacheSize(10_000_000).maxCacheSize(100_000_000)
             .durabilityMode(DurabilityMode.NO_FLUSH)
@@ -249,7 +247,6 @@ public class SnapshotTest {
         assertEquals(expectedLength, snapshot.length());
 
         var restoredConfig = new DatabaseConfig()
-            .directPageAccess(false)
             .baseFile(snapshotBase)
             .minCacheSize(10_000_000).maxCacheSize(100_000_000)
             .durabilityMode(DurabilityMode.NO_FLUSH);
@@ -280,7 +277,6 @@ public class SnapshotTest {
         File restoredBase = newTempBaseFile(getClass());
 
         var config = new DatabaseConfig()
-            .directPageAccess(false)
             .baseFile(base)
             .minCacheSize(10_000_000).maxCacheSize(100_000_000)
             .durabilityMode(DurabilityMode.NO_FLUSH);
@@ -333,7 +329,6 @@ public class SnapshotTest {
         };
 
         var restoredConfig = new DatabaseConfig()
-            .directPageAccess(false)
             .baseFile(restoredBase)
             .minCacheSize(10_000_000).maxCacheSize(100_000_000)
             .durabilityMode(DurabilityMode.NO_FLUSH);
@@ -366,7 +361,6 @@ public class SnapshotTest {
         File restoredBase = newTempBaseFile(getClass());
 
         var config = new DatabaseConfig()
-            .directPageAccess(false)
             .pageSize(4096)
             .baseFile(base)
             .minCacheSize(10_000_000).maxCacheSize(100_000_000)
@@ -410,7 +404,6 @@ public class SnapshotTest {
 
         // Note that no base file is provided. This means no redo logging.
         var restoredConfig = new DatabaseConfig()
-            .directPageAccess(false)
             .pageSize(4096)
             .dataPageArray(openMap.get())
             .minCacheSize(10_000_000).maxCacheSize(100_000_000)
