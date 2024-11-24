@@ -79,7 +79,8 @@ class ZlibCompressor implements PageCompressor {
             mCompressedBytes = dst = new byte[srcLen / 16];
         }
 
-        ByteBuffer bb = MemorySegment.ofAddress(srcAddr + srcOff).reinterpret(srcLen).asByteBuffer();
+        ByteBuffer bb = MemorySegment.ofAddress(srcAddr + srcOff)
+            .reinterpret(srcLen).asByteBuffer();
 
         try {
             mDeflater.setInput(bb);
