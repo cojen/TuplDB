@@ -169,6 +169,8 @@ public class TableTest {
             fail();
         } catch (ClosedIndexException e) {
         }
+
+        db.close();
     }
 
     @Test

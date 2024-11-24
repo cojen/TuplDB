@@ -58,6 +58,11 @@ public class QueryPlanTest {
         mIndexC = mTable.viewSecondaryIndex("c", "b");
     }
 
+    @After
+    public void teardown() throws Exception {
+        mDatabase.close();
+    }
+
     @Test
     public void primaryKey() throws Exception {
         Query<TestRow> query = mTable.query("id == ?1 && id != ?1");

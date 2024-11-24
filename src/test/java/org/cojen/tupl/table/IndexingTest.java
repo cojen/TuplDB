@@ -1512,6 +1512,8 @@ public class IndexingTest {
         txn1.commit();
 
         task.join();
+
+        db.close();
     }
 
     @Test

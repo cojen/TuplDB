@@ -84,6 +84,11 @@ public class ComparatorTest {
         }
     }
 
+    @After
+    public void teardown() throws Exception {
+        mDb.close();
+    }
+
     @PrimaryKey("id")
     public static interface A {
         int id();
