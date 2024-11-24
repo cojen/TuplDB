@@ -435,48 +435,15 @@ final class WindowsFileIO extends JavaFileIO {
     }
 
     static long valloc(long length, EventListener listener) throws IOException {
-        /* FIXME: Don't use JNA.
-        // Try to allocate large pages.
-        if (length >= (1L << 30)) {
-            if (!requestSeLockMemoryPrivilege()) {
-                if (listener != null) {
-                    listener.notify(EventType.CACHE_INIT_INFO,
-                                    "Unable to lock pages in memory for supporting large pages");
-                    
-                }
-            } else {
-                // Round up if necessary.
-                long largePageSize = cKernel.GetLargePageMinimum();
-                long largeLength = ((length + largePageSize - 1) / largePageSize) * largePageSize;
-
-                long addr = cKernel.VirtualAlloc
-                    (0, // lpAddress
-                     largeLength,
-                     0x1000 | 0x2000 | 0x20000000, // MEM_COMMIT | MEM_RESERVE | MEM_LARGE_PAGES
-                     0x04); // PAGE_READWRITE
-
-                if (addr != 0) {
-                    return addr;
-                }
-
-                if (listener != null) {
-                    listener.notify(EventType.CACHE_INIT_INFO,
-                                    "Unable to allocate using large pages");
-                }
-            }
-        }
-        */
-
         long addr;
-        try {
-            addr = (long) VirtualAlloc.invokeExact
-                (0L, // lpAddress
-                 length,
-                 0x1000 | 0x2000, // MEM_COMMIT | MEM_RESERVE
-                 0x04); // PAGE_READWRITE
-        } catch (Throwable e) {
-            throw Utils.rethrow(e);
+
+        // Try to allocate large pages.
+        if (length >= (1L << 30) && (addr = LargePages.tryVallocLarge(length, listener)) != 0) {
+            return addr;
         }
+
+        // flags = MEM_COMMIT | MEM_RESERVE
+        addr = tryValloc(length, 0x1000 | 0x2000);
 
         if (addr == 0) {
             throw new IOException(lastErrorMessage());
@@ -485,43 +452,17 @@ final class WindowsFileIO extends JavaFileIO {
         return addr;
     }
 
-    /* FIXME: Don't use JNA.
-    private static boolean requestSeLockMemoryPrivilege() {
-        WinNT.HANDLE process = cKernel.GetCurrentProcess();
-
+    /**
+     * @return 0 if failed
+     */
+    private static long tryValloc(long length, int flags) {
         try {
-            var api = Advapi32.INSTANCE;
-            int access = cKernel.TOKEN_ADJUST_PRIVILEGES;
-            var tokenRef = new WinNT.HANDLEByReference();
-            if (!api.OpenProcessToken(process, access, tokenRef)) {
-                return false;
-            }
-
-            WinNT.HANDLE token = tokenRef.getValue();
-
-            try {
-                var luid = new WinNT.LUID();
-                if (!api.LookupPrivilegeValue(null, "SeLockMemoryPrivilege", luid)) {
-                    return false;
-                }
-
-                var tp = new WinNT.TOKEN_PRIVILEGES(1);
-                tp.Privileges[0] = new WinNT.LUID_AND_ATTRIBUTES
-                    (luid, new WinDef.DWORD(WinNT.SE_PRIVILEGE_ENABLED));
-
-                if (!api.AdjustTokenPrivileges(token, false, tp, tp.size(), null, null)) {
-                    return false;
-                }
-
-                return cKernel.GetLastError() == cKernel.ERROR_SUCCESS;
-            } finally {
-                closeHandle(token);
-            }
-        } finally {
-            closeHandle(process);
+            return (long) VirtualAlloc.invokeExact
+                (0L /*lpAddress*/, length, flags, 0x04 /*PAGE_READWRITE*/);
+        } catch (Throwable e) {
+            throw Utils.rethrow(e);
         }
     }
-    */
 
     static void vfree(long addr) throws IOException {
         boolean result;
@@ -532,6 +473,143 @@ final class WindowsFileIO extends JavaFileIO {
         }
         if (!result) {
             throw new IOException(lastErrorMessage());
+        }
+    }
+
+    private static class LargePages {
+        private static final MethodHandle GetCurrentProcess;
+        private static final MethodHandle OpenProcessToken;
+        private static final MethodHandle LookupPrivilegeValue;
+        private static final MethodHandle AdjustTokenPrivileges;
+        private static final MethodHandle GetLargePageMinimum;
+
+        static {
+            System.loadLibrary("advapi32");
+            Linker linker = Linker.nativeLinker();
+            SymbolLookup lookup = SymbolLookup.loaderLookup();
+
+            GetCurrentProcess = linker.downcallHandle
+                (lookup.find("GetCurrentProcess").get(),
+                 FunctionDescriptor.of(ValueLayout.JAVA_LONG));
+
+            OpenProcessToken = linker.downcallHandle
+                (lookup.find("OpenProcessToken").get(),
+                 FunctionDescriptor.of
+                 (ValueLayout.JAVA_BOOLEAN,
+                  ValueLayout.JAVA_LONG, // ProcessHandle
+                  ValueLayout.JAVA_INT,  // DesiredAccess
+                  ValueLayout.ADDRESS)   // TokenHandle
+                 );
+
+            LookupPrivilegeValue = linker.downcallHandle
+                (lookup.find("LookupPrivilegeValueA").get(),
+                 FunctionDescriptor.of
+                 (ValueLayout.JAVA_BOOLEAN,
+                  ValueLayout.ADDRESS, // lpSystemName
+                  ValueLayout.ADDRESS, // lpName
+                  ValueLayout.ADDRESS) // lpLuid 
+                 );
+
+            AdjustTokenPrivileges = linker.downcallHandle
+                (lookup.find("AdjustTokenPrivileges").get(),
+                 FunctionDescriptor.of
+                 (ValueLayout.JAVA_BOOLEAN,
+                  ValueLayout.JAVA_INT,     // TokenHandle
+                  ValueLayout.JAVA_BOOLEAN, // DisableAllPrivileges
+                  ValueLayout.ADDRESS,      // NewState
+                  ValueLayout.JAVA_INT,     // BufferLength
+                  ValueLayout.ADDRESS,      // PreviousState
+                  ValueLayout.ADDRESS)      // ReturnLength
+                 );
+                
+
+            GetLargePageMinimum = linker.downcallHandle
+                (lookup.find("GetLargePageMinimum").get(),
+                 FunctionDescriptor.of(ValueLayout.JAVA_LONG));
+        }
+
+        /**
+         * @return 0 if failed
+         */
+        static long tryVallocLarge(long length, EventListener listener) throws IOException {
+            if (!requestSeLockMemoryPrivilege()) {
+                if (listener != null) {
+                    listener.notify(EventType.CACHE_INIT_INFO,
+                                    "Unable to lock pages in memory for supporting large pages");
+                    
+                }
+            } else {
+                // Round up the length if necessary.
+                {
+                    long largePageSize;
+                    try {
+                        largePageSize = ((long) GetLargePageMinimum.invokeExact());
+                    } catch (Throwable e) {
+                        throw Utils.rethrow(e);
+                    }
+
+                    length = ((length + largePageSize - 1) / largePageSize) * largePageSize;
+                }
+
+                // flags = MEM_COMMIT | MEM_RESERVE | MEM_LARGE_PAGES
+                long addr = tryValloc(length, 0x1000 | 0x2000 | 0x20000000);
+
+                if (addr != 0) {
+                    return addr;
+                }
+
+                if (listener != null) {
+                    listener.notify(EventType.CACHE_INIT_INFO,
+                                    "Unable to allocate using large pages");
+                }
+            }
+
+            return 0;
+        }
+
+        private static boolean requestSeLockMemoryPrivilege() {
+            try (Arena a = Arena.ofConfined()) {
+                long process = (long) GetCurrentProcess.invokeExact();
+                int access = 0x0020; // TOKEN_ADJUST_PRIVILEGES
+                MemorySegment tokenRef = a.allocate(ValueLayout.JAVA_INT);
+
+                if (!((boolean) OpenProcessToken.invokeExact(process, access, tokenRef))) {
+                    return false;
+                }
+
+                int token = tokenRef.get(ValueLayout.JAVA_INT, 0);
+
+                try {
+                    MemorySegment name = a.allocateFrom("SeLockMemoryPrivilege");
+                    MemorySegment luidRef = a.allocate(ValueLayout.JAVA_LONG);
+
+                    if (!((boolean) LookupPrivilegeValue
+                          .invokeExact(MemorySegment.NULL, name, luidRef)))
+                    {
+                        return false;
+                    }
+
+                    long luid = luidRef.get(ValueLayout.JAVA_LONG, 0);
+
+                    MemorySegment tp = a.allocate(4 + 8 + 4);
+                    tp.set(ValueLayout.JAVA_INT, 0, 1);               // PrivilegeCount
+                    tp.set(ValueLayout.JAVA_LONG_UNALIGNED, 4, luid); // Luid
+                    tp.set(ValueLayout.JAVA_INT, 12, 0x02);           // SE_PRIVILEGE_ENABLED
+
+                    if (!((boolean) AdjustTokenPrivileges.invokeExact
+                          (token, false, tp, (int) tp.byteSize(),
+                           MemorySegment.NULL, MemorySegment.NULL)))
+                    {
+                        return false;
+                    }
+
+                    return lastErrorId() == 0;
+                } finally {
+                    closeHandle(token);
+                }
+            } catch (Throwable e) {
+                throw Utils.rethrow(e);
+            }
         }
     }
 }
