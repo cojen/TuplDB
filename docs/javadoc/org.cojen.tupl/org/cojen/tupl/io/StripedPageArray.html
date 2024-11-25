@@ -172,7 +172,7 @@ loadScripts(document, 'script');</script>
 </div>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>long</code></div>
 <div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#evictPage(long,long)" class="member-name-link">evictPage</a><wbr>(long&nbsp;index,
- long&nbsp;bufPtr)</code></div>
+ long&nbsp;bufAddr)</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">Same as writePage, except that the given buffer might be altered and a replacement might
  be returned.</div>
@@ -209,7 +209,7 @@ loadScripts(document, 'script');</script>
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">&nbsp;</div>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>void</code></div>
 <div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#readPage(long,long,int,int)" class="member-name-link">readPage</a><wbr>(long&nbsp;index,
- long&nbsp;dstPtr,
+ long&nbsp;dstAddr,
  int&nbsp;offset,
  int&nbsp;length)</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">&nbsp;</div>
@@ -237,7 +237,7 @@ loadScripts(document, 'script');</script>
 </div>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>void</code></div>
 <div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#writePage(long,long,int)" class="member-name-link">writePage</a><wbr>(long&nbsp;index,
- long&nbsp;srcPtr,
+ long&nbsp;srcAddr,
  int&nbsp;offset)</code></div>
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">Writes a page, which is lazily flushed.</div>
@@ -429,7 +429,7 @@ loadScripts(document, 'script');</script>
 <h3>readPage</h3>
 <div class="horizontal-scroll">
 <div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="element-name">readPage</span><wbr><span class="parameters">(long&nbsp;index,
- long&nbsp;dstPtr,
+ long&nbsp;dstAddr,
  int&nbsp;offset,
  int&nbsp;length)</span>
               throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/23/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
@@ -438,7 +438,7 @@ loadScripts(document, 'script');</script>
 <dd><code><a href="PageArray.html#readPage(long,long,int,int)">readPage</a></code>&nbsp;in class&nbsp;<code><a href="PageArray.html" title="class in org.cojen.tupl.io">PageArray</a></code></dd>
 <dt>Parameters:</dt>
 <dd><code>index</code> - zero-based page index to read</dd>
-<dd><code>dstPtr</code> - receives read data</dd>
+<dd><code>dstAddr</code> - receives read data</dd>
 <dd><code>offset</code> - offset into data buffer</dd>
 <dt>Throws:</dt>
 <dd><code><a href="https://docs.oracle.com/en/java/javase/23/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code> - if index is greater than or equal to page count</dd>
@@ -476,7 +476,7 @@ loadScripts(document, 'script');</script>
 <h3>writePage</h3>
 <div class="horizontal-scroll">
 <div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="element-name">writePage</span><wbr><span class="parameters">(long&nbsp;index,
- long&nbsp;srcPtr,
+ long&nbsp;srcAddr,
  int&nbsp;offset)</span>
                throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/23/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
 <div class="block"><span class="description-from-type-label">Description copied from class:&nbsp;<code><a href="PageArray.html#writePage(long,long,int)">PageArray</a></code></span></div>
@@ -488,7 +488,7 @@ loadScripts(document, 'script');</script>
 <dd><code><a href="PageArray.html#writePage(long,long,int)">writePage</a></code>&nbsp;in class&nbsp;<code><a href="PageArray.html" title="class in org.cojen.tupl.io">PageArray</a></code></dd>
 <dt>Parameters:</dt>
 <dd><code>index</code> - zero-based page index to write</dd>
-<dd><code>srcPtr</code> - data to write</dd>
+<dd><code>srcAddr</code> - data to write</dd>
 <dd><code>offset</code> - offset into data buffer</dd>
 <dt>Throws:</dt>
 <dd><code><a href="https://docs.oracle.com/en/java/javase/23/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
@@ -526,7 +526,7 @@ loadScripts(document, 'script');</script>
 <h3>evictPage</h3>
 <div class="horizontal-scroll">
 <div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">long</span>&nbsp;<span class="element-name">evictPage</span><wbr><span class="parameters">(long&nbsp;index,
- long&nbsp;bufPtr)</span>
+ long&nbsp;bufAddr)</span>
                throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/23/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
 <div class="block"><span class="description-from-type-label">Description copied from class:&nbsp;<code><a href="PageArray.html#evictPage(long,long)">PageArray</a></code></span></div>
 <div class="block">Same as writePage, except that the given buffer might be altered and a replacement might
@@ -537,7 +537,7 @@ loadScripts(document, 'script');</script>
 <dd><code><a href="PageArray.html#evictPage(long,long)">evictPage</a></code>&nbsp;in class&nbsp;<code><a href="PageArray.html" title="class in org.cojen.tupl.io">PageArray</a></code></dd>
 <dt>Parameters:</dt>
 <dd><code>index</code> - zero-based page index to write</dd>
-<dd><code>bufPtr</code> - data to write; implementation might alter the contents</dd>
+<dd><code>bufAddr</code> - data to write; implementation might alter the contents</dd>
 <dt>Returns:</dt>
 <dd>replacement buffer, or same instance if replacement was not performed</dd>
 <dt>Throws:</dt>
