@@ -406,7 +406,7 @@ final class BTreeValue {
                     if (bLen <= 0 || pos >= vLen) {
                         bLen = 0;
                     } else {
-                        bLen = Math.min((int) (vLen - pos), bLen);
+                        bLen = Math.min(vLen - pos, bLen);
                         p_copyToArray(pageAddr, (int) (loc + pos), b, bOff, (int) bLen);
                     }
                     return bLen;
@@ -603,7 +603,7 @@ final class BTreeValue {
                     return 0;
                 }
 
-                bLen = (int) Math.min(fLen - pos, bLen);
+                bLen = Math.min(fLen - pos, bLen);
                 final int total = (int) bLen;
 
                 if ((fHeader & 0x02) != 0) {
