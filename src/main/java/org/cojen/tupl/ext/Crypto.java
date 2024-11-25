@@ -65,13 +65,13 @@ public interface Crypto {
      * page. Encrypted length must exactly match original length.
      *
      * @param pageIndex page index within database
-     * @param pagePtr initially the original unencrypted page; replaced with encrypted page
+     * @param pageAddr initially the original unencrypted page; replaced with encrypted page
      * @param pageOffset offset into page
      */
-    public default void encryptPage(long pageIndex, int pageSize, long pagePtr, int pageOffset)
+    public default void encryptPage(long pageIndex, int pageSize, long pageAddr, int pageOffset)
         throws GeneralSecurityException
     {
-        encryptPage(pageIndex, pageSize, pagePtr, pageOffset, pagePtr, pageOffset);
+        encryptPage(pageIndex, pageSize, pageAddr, pageOffset, pageAddr, pageOffset);
     }
 
     /**
@@ -79,13 +79,13 @@ public interface Crypto {
      * page. Encrypted length must exactly match original length.
      *
      * @param pageIndex page index within database
-     * @param srcPtr original unencrypted page
+     * @param srcAddr original unencrypted page
      * @param srcOffset offset into unencrypted page
-     * @param dstPtr destination for encrypted page
+     * @param dstAddr destination for encrypted page
      * @param dstOffset offset into encrypted page
      */
     public default void encryptPage(long pageIndex, int pageSize,
-                                    long srcPtr, int srcOffset, long dstPtr, int dstOffset)
+                                    long srcAddr, int srcOffset, long dstAddr, int dstOffset)
         throws GeneralSecurityException
     {
         throw new UnsupportedOperationException();
@@ -124,13 +124,13 @@ public interface Crypto {
      * page. Decrypted length must exactly match encrypted length.
      *
      * @param pageIndex page index within database
-     * @param pagePtr initially the encrypted page; replaced with decrypted page
+     * @param pageAddr initially the encrypted page; replaced with decrypted page
      * @param pageOffset offset into page
      */
-    public default void decryptPage(long pageIndex, int pageSize, long pagePtr, int pageOffset)
+    public default void decryptPage(long pageIndex, int pageSize, long pageAddr, int pageOffset)
         throws GeneralSecurityException
     {
-        decryptPage(pageIndex, pageSize, pagePtr, pageOffset, pagePtr, pageOffset);
+        decryptPage(pageIndex, pageSize, pageAddr, pageOffset, pageAddr, pageOffset);
     }
 
     /**
@@ -138,13 +138,13 @@ public interface Crypto {
      * page. Decrypted length must exactly match encrypted length.
      *
      * @param pageIndex page index within database
-     * @param srcPtr encrypted page
+     * @param srcAddr encrypted page
      * @param srcOffset offset into encrypted page
-     * @param dstPtr destination for decrypted page
+     * @param dstAddr destination for decrypted page
      * @param dstOffset offset into decrypted page
      */
     public default void decryptPage(long pageIndex, int pageSize,
-                                    long srcPtr, int srcOffset, long dstPtr, int dstOffset)
+                                    long srcAddr, int srcOffset, long dstAddr, int dstOffset)
         throws GeneralSecurityException
     {
         throw new UnsupportedOperationException();

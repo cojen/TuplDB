@@ -176,7 +176,7 @@ public class CipherCrypto implements Crypto {
 
     @Override
     public final void encryptPage(long pageIndex, int pageSize,
-                                  long srcPtr, int srcOffset, long dstPtr, int dstOffset)
+                                  long srcAddr, int srcOffset, long dstAddr, int dstOffset)
         throws GeneralSecurityException
     {
         // Note: Same as other encryptPage method, except acts on direct memory pointers.
@@ -198,23 +198,23 @@ public class CipherCrypto implements Crypto {
             try (Arena a = Arena.ofConfined()) {
                 MemorySegment srcCopy = a.allocate(pageSize);
                 MemorySegment.copy
-                    (MemorySegment.ofAddress(srcPtr + srcOffset).reinterpret(pageSize), 0,
+                    (MemorySegment.ofAddress(srcAddr + srcOffset).reinterpret(pageSize), 0,
                      srcCopy, 0, pageSize);
-                srcPtr = srcCopy.address();
+                srcAddr = srcCopy.address();
                 srcOffset = 0;
                 int offset = pageSize;
 
                 byte[] headerIv = cipher.getIV();
                 checkBlockLength(headerIv);
-                offset = encodeBlock(srcPtr, offset, headerIv);
+                offset = encodeBlock(srcAddr, offset, headerIv);
                 // Don't encrypt the IV.
-                encodeBlock(dstPtr, dstOffset + pageSize, headerIv);
+                encodeBlock(dstAddr, dstOffset + pageSize, headerIv);
                 pageSize = offset;
 
-                offset = encodeBlock(srcPtr, offset, dataIvSalt);
-                offset = encodeBlock(srcPtr, offset, dataKey.getEncoded());
+                offset = encodeBlock(srcAddr, offset, dataIvSalt);
+                offset = encodeBlock(srcAddr, offset, dataKey.getEncoded());
 
-                if (cipherDoFinal(cipher, srcPtr, srcOffset, pageSize, dstPtr, dstOffset)
+                if (cipherDoFinal(cipher, srcAddr, srcOffset, pageSize, dstAddr, dstOffset)
                     != pageSize)
                 {
                     throw new GeneralSecurityException("Encrypted length does not match");
@@ -225,7 +225,7 @@ public class CipherCrypto implements Crypto {
             IvParameterSpec ivSpec = generateDataPageIv(cipher, pageIndex, dataIvSalt, dataKey);
             initCipher(cipher, Cipher.ENCRYPT_MODE, dataKey, ivSpec);
 
-            if (cipherDoFinal(cipher, srcPtr, srcOffset, pageSize, dstPtr, dstOffset) != pageSize)
+            if (cipherDoFinal(cipher, srcAddr, srcOffset, pageSize, dstAddr, dstOffset) != pageSize)
             {
                 throw new GeneralSecurityException("Encrypted length does not match");
             }
@@ -289,14 +289,14 @@ public class CipherCrypto implements Crypto {
 
     @Override
     public final void decryptPage(long pageIndex, int pageSize,
-                                  long srcPtr, int srcOffset, long dstPtr, int dstOffset)
+                                  long srcAddr, int srcOffset, long dstAddr, int dstOffset)
         throws GeneralSecurityException
     {
         // Note: Same as other decryptPage method, except acts on direct memory pointers.
 
         Cipher cipher;
         if (pageIndex <= 1) {
-            byte[] headerIv = decodeBlock(srcPtr, srcOffset + pageSize);
+            byte[] headerIv = decodeBlock(srcAddr, srcOffset + pageSize);
 
             // Don't decrypt the IV.
             pageSize = pageSize - headerIv.length - 1;
@@ -304,7 +304,7 @@ public class CipherCrypto implements Crypto {
             cipher = headerPageCipher();
             initCipher(cipher, Cipher.DECRYPT_MODE, mRootKey, new IvParameterSpec(headerIv));
 
-            if (cipherDoFinal(cipher, srcPtr, srcOffset, pageSize, dstPtr, dstOffset) != pageSize)
+            if (cipherDoFinal(cipher, srcAddr, srcOffset, pageSize, dstAddr, dstOffset) != pageSize)
             {
                 throw new GeneralSecurityException("Decrypted length does not match");
             }
@@ -312,10 +312,10 @@ public class CipherCrypto implements Crypto {
             if (mDataIvSalt == null) synchronized (mRootKey) {
                 if (mDataIvSalt == null) {
                     int offset = dstOffset + pageSize;
-                    byte[] dataIvSalt = decodeBlock(dstPtr, offset);
+                    byte[] dataIvSalt = decodeBlock(dstAddr, offset);
                     mDataIvSalt = dataIvSalt;
                     offset = offset - dataIvSalt.length - 1;
-                    byte[] dataKeyValue = decodeBlock(dstPtr, offset);
+                    byte[] dataKeyValue = decodeBlock(dstAddr, offset);
                     mDataKey = new SecretKeySpec(dataKeyValue, algorithm());
                 }
             }
@@ -325,7 +325,7 @@ public class CipherCrypto implements Crypto {
             IvParameterSpec ivSpec = generateDataPageIv(cipher, pageIndex, mDataIvSalt, dataKey);
             initCipher(cipher, Cipher.DECRYPT_MODE, dataKey, ivSpec);
 
-            if (cipherDoFinal(cipher, srcPtr, srcOffset, pageSize, dstPtr, dstOffset) != pageSize)
+            if (cipherDoFinal(cipher, srcAddr, srcOffset, pageSize, dstAddr, dstOffset) != pageSize)
             {
                 throw new GeneralSecurityException("Decrypted length does not match");
             }
@@ -493,8 +493,8 @@ public class CipherCrypto implements Crypto {
         return offset;
     }
 
-    private static int encodeBlock(long dstPtr, int offset, byte[] value) {
-        MemorySegment dst = MemorySegment.ofAddress(dstPtr).reinterpret(offset);
+    private static int encodeBlock(long dstAddr, int offset, byte[] value) {
+        MemorySegment dst = MemorySegment.ofAddress(dstAddr).reinterpret(offset);
         int length = value.length;
         dst.set(ValueLayout.JAVA_BYTE, --offset, (byte) (length - 1));
         MemorySegment.copy(value, 0, dst, ValueLayout.JAVA_BYTE, offset -= length, length);
@@ -507,8 +507,8 @@ public class CipherCrypto implements Crypto {
         return value;
     }
 
-    private static byte[] decodeBlock(long srcPtr, int offset) {
-        MemorySegment src = MemorySegment.ofAddress(srcPtr).reinterpret(offset);
+    private static byte[] decodeBlock(long srcAddr, int offset) {
+        MemorySegment src = MemorySegment.ofAddress(srcAddr).reinterpret(offset);
         int length = (src.get(ValueLayout.JAVA_BYTE, --offset) & 0xff) + 1;
         var value = new byte[length];
         MemorySegment.copy(src, ValueLayout.JAVA_BYTE, offset - length, value, 0, length);
