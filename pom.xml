@@ -5,7 +5,7 @@
   <artifactId>tupl</artifactId>
   <packaging>jar</packaging>
   <name>TuplDB</name>
-  <version>1.9.0-panama</version>
+  <version>1.9.0</version>
   <description>
     TuplDB is a high-performance, concurrent, transactional, scalable, low-level embedded database.
   </description>
