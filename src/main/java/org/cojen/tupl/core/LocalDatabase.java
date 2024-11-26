@@ -6117,7 +6117,7 @@ final class LocalDatabase extends CoreDatabase {
      */
     void readNode(Node node, long id) throws IOException {
         if (mFullyMapped) {
-            node.mPageAddr = mPageDb.directPagePointer(id);
+            node.mPageAddr = mPageDb.directPageAddress(id);
         } else {
             mPageDb.readPage(id, node.mPageAddr);
         }

@@ -214,7 +214,7 @@ public abstract class PageArray implements CauseCloseable {
     }
 
     // Only expected to be called when isFullyMapped.
-    public long directPagePointer(long index) throws IOException {
+    public long directPageAddress(long index) throws IOException {
         throw new UnsupportedOperationException();
     }
 
@@ -227,7 +227,7 @@ public abstract class PageArray implements CauseCloseable {
      */
     // Only expected to be called when isFullyMapped.
     public long dirtyPage(long index) throws IOException {
-        return directPagePointer(index);
+        return directPageAddress(index);
     }
 
     /**
@@ -242,7 +242,7 @@ public abstract class PageArray implements CauseCloseable {
      * @return direct pointer to destination
      */
     // Only expected to be called when isFullyMapped.
-    public long copyPageFromPointer(long srcPointer, long dstIndex) throws IOException {
+    public long copyPageFromAddress(long srcAddr, long dstIndex) throws IOException {
         throw new UnsupportedOperationException();
     }
 

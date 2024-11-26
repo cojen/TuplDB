@@ -590,8 +590,8 @@ final class StoredPageDb extends PageDb {
     }
 
     @Override
-    public long directPagePointer(long id) throws IOException {
-        return mPageArray.directPagePointer(id);
+    public long directPageAddress(long id) throws IOException {
+        return mPageArray.directPageAddress(id);
     }
 
     @Override

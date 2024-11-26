@@ -189,7 +189,7 @@ class BaseDirectPageOps {
         Arena(int pageSize, long pageCount, EventListener listener) throws IOException {
             pageSize = Math.abs(pageSize);
             mPageArray = MappedPageArray.open(pageSize, pageCount, null, null, listener);
-            mStartAddr = mPageArray.directPagePointer(0);
+            mStartAddr = mPageArray.directPageAddress(0);
             mEndAddr = mStartAddr + (pageSize * pageCount);
             synchronized (this) {
                 mNextAddr = mStartAddr;

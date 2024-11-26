@@ -183,7 +183,7 @@ public class JoinedPageArray extends PageArray {
     }
 
     @Override
-    public long directPagePointer(long index) throws IOException {
+    public long directPageAddress(long index) throws IOException {
         PageArray pa;
         if (index < mJoinIndex) {
             pa = mFirst;
@@ -191,7 +191,7 @@ public class JoinedPageArray extends PageArray {
             pa = mSecond;
             index -= mJoinIndex;
         }
-        return pa.directPagePointer(index);
+        return pa.directPageAddress(index);
     }
 
     @Override
@@ -215,12 +215,12 @@ public class JoinedPageArray extends PageArray {
         if (src == dst) {
             return dst.copyPage(srcIndex, dstIndex);
         } else {
-            return dst.copyPageFromPointer(src.directPagePointer(srcIndex), dstIndex);
+            return dst.copyPageFromAddress(src.directPageAddress(srcIndex), dstIndex);
         }
     }
 
     @Override
-    public long copyPageFromPointer(long srcPointer, long dstIndex) throws IOException {
+    public long copyPageFromAddress(long srcAddr, long dstIndex) throws IOException {
         PageArray pa;
         if (dstIndex < mJoinIndex) {
             pa = mFirst;
@@ -228,7 +228,7 @@ public class JoinedPageArray extends PageArray {
             pa = mSecond;
             dstIndex -= mJoinIndex;
         }
-        return pa.copyPageFromPointer(srcPointer, dstIndex);
+        return pa.copyPageFromAddress(srcAddr, dstIndex);
     }
 
     @Override

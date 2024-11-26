@@ -190,7 +190,7 @@ public abstract class MappedPageArray extends PageArray {
     }
 
     @Override
-    public long directPagePointer(long index) throws IOException {
+    public long directPageAddress(long index) throws IOException {
         readCheck(index);
         return mappingAddr() + index * mPageSize;
     }
@@ -210,12 +210,12 @@ public abstract class MappedPageArray extends PageArray {
     }
 
     @Override
-    public long copyPageFromPointer(long srcPointer, long dstIndex) throws IOException {
+    public long copyPageFromAddress(long srcAddr, long dstIndex) throws IOException {
         writeCheck(dstIndex);
 
         int pageSize = mPageSize;
         long dstAddr = mappingAddr() + dstIndex * pageSize;
-        MemorySegment.copy(DirectMapping.ALL, srcPointer, DirectMapping.ALL, dstAddr, pageSize);
+        MemorySegment.copy(DirectMapping.ALL, srcAddr, DirectMapping.ALL, dstAddr, pageSize);
 
         return dstAddr;
     }

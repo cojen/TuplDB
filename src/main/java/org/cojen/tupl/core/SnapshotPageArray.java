@@ -153,8 +153,8 @@ final class SnapshotPageArray extends PageArray {
     }
 
     @Override
-    public long directPagePointer(long index) throws IOException {
-        return mSource.directPagePointer(index);
+    public long directPageAddress(long index) throws IOException {
+        return mSource.directPageAddress(index);
     }
 
     @Override
@@ -170,9 +170,9 @@ final class SnapshotPageArray extends PageArray {
     }
 
     @Override
-    public long copyPageFromPointer(long srcPointer, long dstIndex) throws IOException {
+    public long copyPageFromAddress(long srcAddr, long dstIndex) throws IOException {
         preCopyPage(dstIndex);
-        return mSource.copyPageFromPointer(srcPointer, dstIndex);
+        return mSource.copyPageFromAddress(srcAddr, dstIndex);
     }
 
     private void preCopyPage(long dstIndex) throws IOException {

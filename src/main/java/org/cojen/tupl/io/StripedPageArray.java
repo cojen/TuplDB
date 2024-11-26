@@ -195,10 +195,10 @@ public class StripedPageArray extends PageArray {
     }
 
     @Override
-    public long directPagePointer(long index) throws IOException {
+    public long directPageAddress(long index) throws IOException {
         PageArray[] arrays = mArrays;
         int stripes = arrays.length;
-        return arrays[(int) (index % stripes)].directPagePointer(index / stripes);
+        return arrays[(int) (index % stripes)].directPageAddress(index / stripes);
     }
 
     @Override
@@ -215,16 +215,15 @@ public class StripedPageArray extends PageArray {
         if (src == dst) {
             return dst.copyPage(srcIndex, dstIndex);
         } else {
-            return dst.copyPageFromPointer(src.directPagePointer(srcIndex), dstIndex);
+            return dst.copyPageFromAddress(src.directPageAddress(srcIndex), dstIndex);
         }
     }
 
     @Override
-    public long copyPageFromPointer(long srcPointer, long dstIndex) throws IOException {
+    public long copyPageFromAddress(long srcAddr, long dstIndex) throws IOException {
         PageArray[] arrays = mArrays;
         int stripes = arrays.length;
-        return arrays[(int) (dstIndex % stripes)]
-            .copyPageFromPointer(srcPointer, dstIndex / stripes);
+        return arrays[(int) (dstIndex % stripes)].copyPageFromAddress(srcAddr, dstIndex / stripes);
     }
 
     @Override
