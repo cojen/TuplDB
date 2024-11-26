@@ -139,7 +139,7 @@ loadScripts(document, 'script');</script>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default void</code></div>
 <div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#decryptPage(long,int,long,int)" class="member-name-link">decryptPage</a><wbr>(long&nbsp;pageIndex,
  int&nbsp;pageSize,
- long&nbsp;pagePtr,
+ long&nbsp;pageAddr,
  int&nbsp;pageOffset)</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
 <div class="block">Called by multiple threads to decrypt a fixed-size database
@@ -148,9 +148,9 @@ loadScripts(document, 'script');</script>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default void</code></div>
 <div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#decryptPage(long,int,long,int,long,int)" class="member-name-link">decryptPage</a><wbr>(long&nbsp;pageIndex,
  int&nbsp;pageSize,
- long&nbsp;srcPtr,
+ long&nbsp;srcAddr,
  int&nbsp;srcOffset,
- long&nbsp;dstPtr,
+ long&nbsp;dstAddr,
  int&nbsp;dstOffset)</code></div>
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
 <div class="block">Called by multiple threads to decrypt a fixed-size database
@@ -179,7 +179,7 @@ loadScripts(document, 'script');</script>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default void</code></div>
 <div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#encryptPage(long,int,long,int)" class="member-name-link">encryptPage</a><wbr>(long&nbsp;pageIndex,
  int&nbsp;pageSize,
- long&nbsp;pagePtr,
+ long&nbsp;pageAddr,
  int&nbsp;pageOffset)</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
 <div class="block">Called by multiple threads to encrypt a fixed-size database
@@ -188,9 +188,9 @@ loadScripts(document, 'script');</script>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default void</code></div>
 <div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#encryptPage(long,int,long,int,long,int)" class="member-name-link">encryptPage</a><wbr>(long&nbsp;pageIndex,
  int&nbsp;pageSize,
- long&nbsp;srcPtr,
+ long&nbsp;srcAddr,
  int&nbsp;srcOffset,
- long&nbsp;dstPtr,
+ long&nbsp;dstAddr,
  int&nbsp;dstOffset)</code></div>
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
 <div class="block">Called by multiple threads to encrypt a fixed-size database
@@ -274,7 +274,7 @@ loadScripts(document, 'script');</script>
 <div class="horizontal-scroll">
 <div class="member-signature"><span class="modifiers">default</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="element-name">encryptPage</span><wbr><span class="parameters">(long&nbsp;pageIndex,
  int&nbsp;pageSize,
- long&nbsp;pagePtr,
+ long&nbsp;pageAddr,
  int&nbsp;pageOffset)</span>
                   throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/23/docs/api/java.base/java/security/GeneralSecurityException.html" title="class or interface in java.security" class="external-link">GeneralSecurityException</a></span></div>
 <div class="block">Called by multiple threads to encrypt a fixed-size database
@@ -282,7 +282,7 @@ loadScripts(document, 'script');</script>
 <dl class="notes">
 <dt>Parameters:</dt>
 <dd><code>pageIndex</code> - page index within database</dd>
-<dd><code>pagePtr</code> - initially the original unencrypted page; replaced with encrypted page</dd>
+<dd><code>pageAddr</code> - initially the original unencrypted page; replaced with encrypted page</dd>
 <dd><code>pageOffset</code> - offset into page</dd>
 <dt>Throws:</dt>
 <dd><code><a href="https://docs.oracle.com/en/java/javase/23/docs/api/java.base/java/security/GeneralSecurityException.html" title="class or interface in java.security" class="external-link">GeneralSecurityException</a></code></dd>
@@ -296,9 +296,9 @@ loadScripts(document, 'script');</script>
 <div class="horizontal-scroll">
 <div class="member-signature"><span class="modifiers">default</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="element-name">encryptPage</span><wbr><span class="parameters">(long&nbsp;pageIndex,
  int&nbsp;pageSize,
- long&nbsp;srcPtr,
+ long&nbsp;srcAddr,
  int&nbsp;srcOffset,
- long&nbsp;dstPtr,
+ long&nbsp;dstAddr,
  int&nbsp;dstOffset)</span>
                   throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/23/docs/api/java.base/java/security/GeneralSecurityException.html" title="class or interface in java.security" class="external-link">GeneralSecurityException</a></span></div>
 <div class="block">Called by multiple threads to encrypt a fixed-size database
@@ -306,9 +306,9 @@ loadScripts(document, 'script');</script>
 <dl class="notes">
 <dt>Parameters:</dt>
 <dd><code>pageIndex</code> - page index within database</dd>
-<dd><code>srcPtr</code> - original unencrypted page</dd>
+<dd><code>srcAddr</code> - original unencrypted page</dd>
 <dd><code>srcOffset</code> - offset into unencrypted page</dd>
-<dd><code>dstPtr</code> - destination for encrypted page</dd>
+<dd><code>dstAddr</code> - destination for encrypted page</dd>
 <dd><code>dstOffset</code> - offset into encrypted page</dd>
 <dt>Throws:</dt>
 <dd><code><a href="https://docs.oracle.com/en/java/javase/23/docs/api/java.base/java/security/GeneralSecurityException.html" title="class or interface in java.security" class="external-link">GeneralSecurityException</a></code></dd>
@@ -370,7 +370,7 @@ loadScripts(document, 'script');</script>
 <div class="horizontal-scroll">
 <div class="member-signature"><span class="modifiers">default</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="element-name">decryptPage</span><wbr><span class="parameters">(long&nbsp;pageIndex,
  int&nbsp;pageSize,
- long&nbsp;pagePtr,
+ long&nbsp;pageAddr,
  int&nbsp;pageOffset)</span>
                   throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/23/docs/api/java.base/java/security/GeneralSecurityException.html" title="class or interface in java.security" class="external-link">GeneralSecurityException</a></span></div>
 <div class="block">Called by multiple threads to decrypt a fixed-size database
@@ -378,7 +378,7 @@ loadScripts(document, 'script');</script>
 <dl class="notes">
 <dt>Parameters:</dt>
 <dd><code>pageIndex</code> - page index within database</dd>
-<dd><code>pagePtr</code> - initially the encrypted page; replaced with decrypted page</dd>
+<dd><code>pageAddr</code> - initially the encrypted page; replaced with decrypted page</dd>
 <dd><code>pageOffset</code> - offset into page</dd>
 <dt>Throws:</dt>
 <dd><code><a href="https://docs.oracle.com/en/java/javase/23/docs/api/java.base/java/security/GeneralSecurityException.html" title="class or interface in java.security" class="external-link">GeneralSecurityException</a></code></dd>
@@ -392,9 +392,9 @@ loadScripts(document, 'script');</script>
 <div class="horizontal-scroll">
 <div class="member-signature"><span class="modifiers">default</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="element-name">decryptPage</span><wbr><span class="parameters">(long&nbsp;pageIndex,
  int&nbsp;pageSize,
- long&nbsp;srcPtr,
+ long&nbsp;srcAddr,
  int&nbsp;srcOffset,
- long&nbsp;dstPtr,
+ long&nbsp;dstAddr,
  int&nbsp;dstOffset)</span>
                   throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/23/docs/api/java.base/java/security/GeneralSecurityException.html" title="class or interface in java.security" class="external-link">GeneralSecurityException</a></span></div>
 <div class="block">Called by multiple threads to decrypt a fixed-size database
@@ -402,9 +402,9 @@ loadScripts(document, 'script');</script>
 <dl class="notes">
 <dt>Parameters:</dt>
 <dd><code>pageIndex</code> - page index within database</dd>
-<dd><code>srcPtr</code> - encrypted page</dd>
+<dd><code>srcAddr</code> - encrypted page</dd>
 <dd><code>srcOffset</code> - offset into encrypted page</dd>
-<dd><code>dstPtr</code> - destination for decrypted page</dd>
+<dd><code>dstAddr</code> - destination for decrypted page</dd>
 <dd><code>dstOffset</code> - offset into decrypted page</dd>
 <dt>Throws:</dt>
 <dd><code><a href="https://docs.oracle.com/en/java/javase/23/docs/api/java.base/java/security/GeneralSecurityException.html" title="class or interface in java.security" class="external-link">GeneralSecurityException</a></code></dd>
