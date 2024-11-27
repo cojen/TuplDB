@@ -96,34 +96,20 @@ loadScripts(document, 'script');</script>
 <div class="block">Return a constant non-zero value which identifies the replicator implementation and its
  encoding format.</div>
 </dd>
-<dt><a href="../org.cojen.tupl/org/cojen/tupl/DatabaseConfig.html#encrypt(org.cojen.tupl.ext.Crypto)" class="member-name-link">encrypt(Crypto)</a> - Method in class org.cojen.tupl.<a href="../org.cojen.tupl/org/cojen/tupl/DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></dt>
+<dt><a href="../org.cojen.tupl/org/cojen/tupl/DatabaseConfig.html#encrypt(java.util.function.Supplier)" class="member-name-link">encrypt(Supplier&lt;? extends Crypto&gt;)</a> - Method in class org.cojen.tupl.<a href="../org.cojen.tupl/org/cojen/tupl/DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></dt>
 <dd>
 <div class="block">Enable full encryption of the data files, transaction logs, snapshots, and cache priming
  sets.</div>
 </dd>
-<dt><a href="../org.cojen.tupl/org/cojen/tupl/ext/Crypto.html#encryptPage(long,int,byte%5B%5D,int)" class="member-name-link">encryptPage(long, int, byte[], int)</a> - Method in interface org.cojen.tupl.ext.<a href="../org.cojen.tupl/org/cojen/tupl/ext/Crypto.html" title="interface in org.cojen.tupl.ext">Crypto</a></dt>
-<dd>
-<div class="block">Called by multiple threads to encrypt a fixed-size database
- page.</div>
-</dd>
-<dt><a href="../org.cojen.tupl/org/cojen/tupl/ext/CipherCrypto.html#encryptPage(long,int,byte%5B%5D,int,byte%5B%5D,int)" class="member-name-link">encryptPage(long, int, byte[], int, byte[], int)</a> - Method in class org.cojen.tupl.ext.<a href="../org.cojen.tupl/org/cojen/tupl/ext/CipherCrypto.html" title="class in org.cojen.tupl.ext">CipherCrypto</a></dt>
-<dd>&nbsp;</dd>
-<dt><a href="../org.cojen.tupl/org/cojen/tupl/ext/Crypto.html#encryptPage(long,int,byte%5B%5D,int,byte%5B%5D,int)" class="member-name-link">encryptPage(long, int, byte[], int, byte[], int)</a> - Method in interface org.cojen.tupl.ext.<a href="../org.cojen.tupl/org/cojen/tupl/ext/Crypto.html" title="interface in org.cojen.tupl.ext">Crypto</a></dt>
-<dd>
-<div class="block">Called by multiple threads to encrypt a fixed-size database
- page.</div>
-</dd>
 <dt><a href="../org.cojen.tupl/org/cojen/tupl/ext/Crypto.html#encryptPage(long,int,long,int)" class="member-name-link">encryptPage(long, int, long, int)</a> - Method in interface org.cojen.tupl.ext.<a href="../org.cojen.tupl/org/cojen/tupl/ext/Crypto.html" title="interface in org.cojen.tupl.ext">Crypto</a></dt>
 <dd>
-<div class="block">Called by multiple threads to encrypt a fixed-size database
- page.</div>
+<div class="block">Called by multiple threads to encrypt a fixed-size database page.</div>
 </dd>
 <dt><a href="../org.cojen.tupl/org/cojen/tupl/ext/CipherCrypto.html#encryptPage(long,int,long,int,long,int)" class="member-name-link">encryptPage(long, int, long, int, long, int)</a> - Method in class org.cojen.tupl.ext.<a href="../org.cojen.tupl/org/cojen/tupl/ext/CipherCrypto.html" title="class in org.cojen.tupl.ext">CipherCrypto</a></dt>
 <dd>&nbsp;</dd>
 <dt><a href="../org.cojen.tupl/org/cojen/tupl/ext/Crypto.html#encryptPage(long,int,long,int,long,int)" class="member-name-link">encryptPage(long, int, long, int, long, int)</a> - Method in interface org.cojen.tupl.ext.<a href="../org.cojen.tupl/org/cojen/tupl/ext/Crypto.html" title="interface in org.cojen.tupl.ext">Crypto</a></dt>
 <dd>
-<div class="block">Called by multiple threads to encrypt a fixed-size database
- page.</div>
+<div class="block">Called by multiple threads to encrypt a fixed-size database page.</div>
 </dd>
 <dt><a href="../org.cojen.tupl/org/cojen/tupl/QueryException.html#endPos()" class="member-name-link">endPos()</a> - Method in exception class org.cojen.tupl.<a href="../org.cojen.tupl/org/cojen/tupl/QueryException.html" title="class in org.cojen.tupl">QueryException</a></dt>
 <dd>&nbsp;</dd>
@@ -218,15 +204,6 @@ loadScripts(document, 'script');</script>
 <dd>
 <div class="block">Select a few entries, and delete them from the index.</div>
 </dd>
-<dt><a href="../org.cojen.tupl/org/cojen/tupl/io/JoinedPageArray.html#evictPage(long,byte%5B%5D)" class="member-name-link">evictPage(long, byte[])</a> - Method in class org.cojen.tupl.io.<a href="../org.cojen.tupl/org/cojen/tupl/io/JoinedPageArray.html" title="class in org.cojen.tupl.io">JoinedPageArray</a></dt>
-<dd>&nbsp;</dd>
-<dt><a href="../org.cojen.tupl/org/cojen/tupl/io/PageArray.html#evictPage(long,byte%5B%5D)" class="member-name-link">evictPage(long, byte[])</a> - Method in class org.cojen.tupl.io.<a href="../org.cojen.tupl/org/cojen/tupl/io/PageArray.html" title="class in org.cojen.tupl.io">PageArray</a></dt>
-<dd>
-<div class="block">Same as writePage, except that the given buffer might be altered and a replacement might
- be returned.</div>
-</dd>
-<dt><a href="../org.cojen.tupl/org/cojen/tupl/io/StripedPageArray.html#evictPage(long,byte%5B%5D)" class="member-name-link">evictPage(long, byte[])</a> - Method in class org.cojen.tupl.io.<a href="../org.cojen.tupl/org/cojen/tupl/io/StripedPageArray.html" title="class in org.cojen.tupl.io">StripedPageArray</a></dt>
-<dd>&nbsp;</dd>
 <dt><a href="../org.cojen.tupl/org/cojen/tupl/io/JoinedPageArray.html#evictPage(long,long)" class="member-name-link">evictPage(long, long)</a> - Method in class org.cojen.tupl.io.<a href="../org.cojen.tupl/org/cojen/tupl/io/JoinedPageArray.html" title="class in org.cojen.tupl.io">JoinedPageArray</a></dt>
 <dd>&nbsp;</dd>
 <dt><a href="../org.cojen.tupl/org/cojen/tupl/io/PageArray.html#evictPage(long,long)" class="member-name-link">evictPage(long, long)</a> - Method in class org.cojen.tupl.io.<a href="../org.cojen.tupl/org/cojen/tupl/io/PageArray.html" title="class in org.cojen.tupl.io">PageArray</a></dt>

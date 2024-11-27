@@ -71,6 +71,7 @@ loadScripts(document, 'script');</script>
 </li>
 <li><a href="#method-detail" tabindex="0">Method Details</a>
 <ol class="toc-list">
+<li><a href="#factory(java.util.function.Supplier...)" tabindex="0">factory(Supplier...)</a></li>
 <li><a href="#directPageSize()" tabindex="0">directPageSize()</a></li>
 <li><a href="#isFullyMapped()" tabindex="0">isFullyMapped()</a></li>
 <li><a href="#isReadOnly()" tabindex="0">isReadOnly()</a></li>
@@ -79,15 +80,12 @@ loadScripts(document, 'script');</script>
 <li><a href="#truncatePageCount(long)" tabindex="0">truncatePageCount(long)</a></li>
 <li><a href="#expandPageCount(long)" tabindex="0">expandPageCount(long)</a></li>
 <li><a href="#pageCountLimit()" tabindex="0">pageCountLimit()</a></li>
-<li><a href="#readPage(long,byte%5B%5D,int,int)" tabindex="0">readPage(long, byte[], int, int)</a></li>
 <li><a href="#readPage(long,long,int,int)" tabindex="0">readPage(long, long, int, int)</a></li>
-<li><a href="#writePage(long,byte%5B%5D,int)" tabindex="0">writePage(long, byte[], int)</a></li>
 <li><a href="#writePage(long,long,int)" tabindex="0">writePage(long, long, int)</a></li>
-<li><a href="#evictPage(long,byte%5B%5D)" tabindex="0">evictPage(long, byte[])</a></li>
 <li><a href="#evictPage(long,long)" tabindex="0">evictPage(long, long)</a></li>
-<li><a href="#directPagePointer(long)" tabindex="0">directPagePointer(long)</a></li>
+<li><a href="#directPageAddress(long)" tabindex="0">directPageAddress(long)</a></li>
 <li><a href="#copyPage(long,long)" tabindex="0">copyPage(long, long)</a></li>
-<li><a href="#copyPageFromPointer(long,long)" tabindex="0">copyPageFromPointer(long, long)</a></li>
+<li><a href="#copyPageFromAddress(long,long)" tabindex="0">copyPageFromAddress(long, long)</a></li>
 <li><a href="#sync(boolean)" tabindex="0">sync(boolean)</a></li>
 <li><a href="#syncPage(long)" tabindex="0">syncPage(long)</a></li>
 <li><a href="#close(java.lang.Throwable)" tabindex="0">close(Throwable)</a></li>
@@ -127,7 +125,7 @@ loadScripts(document, 'script');</script>
 <div class="summary-table two-column-summary">
 <div class="table-header col-first">Constructor</div>
 <div class="table-header col-last">Description</div>
-<div class="col-constructor-name even-row-color"><code><a href="#%3Cinit%3E(org.cojen.tupl.io.PageArray...)" class="member-name-link">StripedPageArray</a><wbr>(<a href="PageArray.html" title="class in org.cojen.tupl.io">PageArray</a>...&nbsp;arrays)</code></div>
+<div class="col-constructor-name even-row-color"><code><a href="#%3Cinit%3E(org.cojen.tupl.io.PageArray...)" class="member-name-link">StripedPageArray</a><wbr>(<a href="PageArray.html" title="class in org.cojen.tupl.io">PageArray</a>...&nbsp;sources)</code></div>
 <div class="col-last even-row-color">&nbsp;</div>
 </div>
 </section>
@@ -137,7 +135,7 @@ loadScripts(document, 'script');</script>
 <section class="method-summary" id="method-summary">
 <h2>Method Summary</h2>
 <div id="method-summary-table">
-<div class="table-tabs" role="tablist" aria-orientation="horizontal"><button id="method-summary-table-tab0" role="tab" aria-selected="true" aria-controls="method-summary-table.tabpanel" tabindex="0" onkeydown="switchTab(event)" onclick="show('method-summary-table', 'method-summary-table', 3)" class="active-table-tab">All Methods</button><button id="method-summary-table-tab2" role="tab" aria-selected="false" aria-controls="method-summary-table.tabpanel" tabindex="-1" onkeydown="switchTab(event)" onclick="show('method-summary-table', 'method-summary-table-tab2', 3)" class="table-tab">Instance Methods</button><button id="method-summary-table-tab4" role="tab" aria-selected="false" aria-controls="method-summary-table.tabpanel" tabindex="-1" onkeydown="switchTab(event)" onclick="show('method-summary-table', 'method-summary-table-tab4', 3)" class="table-tab">Concrete Methods</button></div>
+<div class="table-tabs" role="tablist" aria-orientation="horizontal"><button id="method-summary-table-tab0" role="tab" aria-selected="true" aria-controls="method-summary-table.tabpanel" tabindex="0" onkeydown="switchTab(event)" onclick="show('method-summary-table', 'method-summary-table', 3)" class="active-table-tab">All Methods</button><button id="method-summary-table-tab1" role="tab" aria-selected="false" aria-controls="method-summary-table.tabpanel" tabindex="-1" onkeydown="switchTab(event)" onclick="show('method-summary-table', 'method-summary-table-tab1', 3)" class="table-tab">Static Methods</button><button id="method-summary-table-tab2" role="tab" aria-selected="false" aria-controls="method-summary-table.tabpanel" tabindex="-1" onkeydown="switchTab(event)" onclick="show('method-summary-table', 'method-summary-table-tab2', 3)" class="table-tab">Instance Methods</button><button id="method-summary-table-tab4" role="tab" aria-selected="false" aria-controls="method-summary-table.tabpanel" tabindex="-1" onkeydown="switchTab(event)" onclick="show('method-summary-table', 'method-summary-table-tab4', 3)" class="table-tab">Concrete Methods</button></div>
 <div id="method-summary-table.tabpanel" role="tabpanel" aria-labelledby="method-summary-table-tab0">
 <div class="summary-table three-column-summary">
 <div class="table-header col-first">Modifier and Type</div>
@@ -151,11 +149,11 @@ loadScripts(document, 'script');</script>
  long&nbsp;dstIndex)</code></div>
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">&nbsp;</div>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>long</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#copyPageFromPointer(long,long)" class="member-name-link">copyPageFromPointer</a><wbr>(long&nbsp;srcPointer,
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#copyPageFromAddress(long,long)" class="member-name-link">copyPageFromAddress</a><wbr>(long&nbsp;srcAddr,
  long&nbsp;dstIndex)</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">&nbsp;</div>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>long</code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#directPagePointer(long)" class="member-name-link">directPagePointer</a><wbr>(long&nbsp;index)</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#directPageAddress(long)" class="member-name-link">directPageAddress</a><wbr>(long&nbsp;index)</code></div>
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">&nbsp;</div>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>final int</code></div>
 <div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#directPageSize()" class="member-name-link">directPageSize</a>()</code></div>
@@ -163,25 +161,21 @@ loadScripts(document, 'script');</script>
 <div class="block">Returns a positive page size if not using direct I/O, else negate to get the page size
  to allocate for direct I/O.</div>
 </div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>byte[]</code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#evictPage(long,byte%5B%5D)" class="member-name-link">evictPage</a><wbr>(long&nbsp;index,
- byte[]&nbsp;buf)</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
-<div class="block">Same as writePage, except that the given buffer might be altered and a replacement might
- be returned.</div>
-</div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>long</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#evictPage(long,long)" class="member-name-link">evictPage</a><wbr>(long&nbsp;index,
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>long</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#evictPage(long,long)" class="member-name-link">evictPage</a><wbr>(long&nbsp;index,
  long&nbsp;bufAddr)</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">Same as writePage, except that the given buffer might be altered and a replacement might
  be returned.</div>
 </div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>void</code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#expandPageCount(long)" class="member-name-link">expandPageCount</a><wbr>(long&nbsp;count)</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>void</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#expandPageCount(long)" class="member-name-link">expandPageCount</a><wbr>(long&nbsp;count)</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">Attempt to expand the total count of pages.</div>
 </div>
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code>static <a href="https://docs.oracle.com/en/java/javase/23/docs/api/java.base/java/util/function/Supplier.html" title="class or interface in java.util.function" class="external-link">Supplier</a><wbr>&lt;<a href="PageArray.html" title="class in org.cojen.tupl.io">PageArray</a>&gt;</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code><a href="#factory(java.util.function.Supplier...)" class="member-name-link">factory</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/23/docs/api/java.base/java/util/function/Supplier.html" title="class or interface in java.util.function" class="external-link">Supplier</a>&lt;<a href="PageArray.html" title="class in org.cojen.tupl.io">PageArray</a>&gt;...&nbsp;factories)</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4">&nbsp;</div>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>boolean</code></div>
 <div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#isEmpty()" class="member-name-link">isEmpty</a>()</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">&nbsp;</div>
@@ -202,38 +196,25 @@ loadScripts(document, 'script');</script>
 <div class="block">Return maximum allowed page count, or -1 if not applicable.</div>
 </div>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>void</code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#readPage(long,byte%5B%5D,int,int)" class="member-name-link">readPage</a><wbr>(long&nbsp;index,
- byte[]&nbsp;dst,
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#readPage(long,long,int,int)" class="member-name-link">readPage</a><wbr>(long&nbsp;index,
+ long&nbsp;dstAddr,
  int&nbsp;offset,
  int&nbsp;length)</code></div>
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">&nbsp;</div>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>void</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#readPage(long,long,int,int)" class="member-name-link">readPage</a><wbr>(long&nbsp;index,
- long&nbsp;dstAddr,
- int&nbsp;offset,
- int&nbsp;length)</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">&nbsp;</div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>void</code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#sync(boolean)" class="member-name-link">sync</a><wbr>(boolean&nbsp;metadata)</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#sync(boolean)" class="member-name-link">sync</a><wbr>(boolean&nbsp;metadata)</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">Durably flushes all writes to the underlying device.</div>
 </div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>void</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#syncPage(long)" class="member-name-link">syncPage</a><wbr>(long&nbsp;index)</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>void</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#syncPage(long)" class="member-name-link">syncPage</a><wbr>(long&nbsp;index)</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">Durably flushes the page at the given index, but implementation might flush more pages.</div>
 </div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>void</code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#truncatePageCount(long)" class="member-name-link">truncatePageCount</a><wbr>(long&nbsp;count)</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
-<div class="block">Attempt to truncate the total count of pages.</div>
-</div>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>void</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#writePage(long,byte%5B%5D,int)" class="member-name-link">writePage</a><wbr>(long&nbsp;index,
- byte[]&nbsp;src,
- int&nbsp;offset)</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#truncatePageCount(long)" class="member-name-link">truncatePageCount</a><wbr>(long&nbsp;count)</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
-<div class="block">Writes a page, which is lazily flushed.</div>
+<div class="block">Attempt to truncate the total count of pages.</div>
 </div>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>void</code></div>
 <div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#writePage(long,long,int)" class="member-name-link">writePage</a><wbr>(long&nbsp;index,
@@ -247,7 +228,7 @@ loadScripts(document, 'script');</script>
 </div>
 <div class="inherited-list">
 <h3 id="methods-inherited-from-class-org.cojen.tupl.io.PageArray">Methods inherited from class&nbsp;org.cojen.tupl.io.<a href="PageArray.html" title="class in org.cojen.tupl.io">PageArray</a></h3>
-<code><a href="PageArray.html#close()">close</a>, <a href="PageArray.html#dirtyPage(long)">dirtyPage</a>, <a href="PageArray.html#isDirectIO()">isDirectIO</a>, <a href="PageArray.html#pageSize()">pageSize</a>, <a href="PageArray.html#readPage(long,byte%5B%5D)">readPage</a>, <a href="PageArray.html#readPage(long,long)">readPage</a>, <a href="PageArray.html#writePage(long,byte%5B%5D)">writePage</a>, <a href="PageArray.html#writePage(long,long)">writePage</a></code></div>
+<code><a href="PageArray.html#close()">close</a>, <a href="PageArray.html#dirtyPage(long)">dirtyPage</a>, <a href="PageArray.html#isDirectIO()">isDirectIO</a>, <a href="PageArray.html#pageSize()">pageSize</a>, <a href="PageArray.html#readPage(long,long)">readPage</a>, <a href="PageArray.html#writePage(long,long)">writePage</a></code></div>
 <div class="inherited-list">
 <h3 id="methods-inherited-from-class-java.lang.Object">Methods inherited from class&nbsp;java.lang.<a href="https://docs.oracle.com/en/java/javase/23/docs/api/java.base/java/lang/Object.html" title="class or interface in java.lang" class="external-link">Object</a></h3>
 <code><a href="https://docs.oracle.com/en/java/javase/23/docs/api/java.base/java/lang/Object.html#clone()" title="class or interface in java.lang" class="external-link">clone</a>, <a href="https://docs.oracle.com/en/java/javase/23/docs/api/java.base/java/lang/Object.html#equals(java.lang.Object)" title="class or interface in java.lang" class="external-link">equals</a>, <a href="https://docs.oracle.com/en/java/javase/23/docs/api/java.base/java/lang/Object.html#finalize()" title="class or interface in java.lang" class="external-link">finalize</a>, <a href="https://docs.oracle.com/en/java/javase/23/docs/api/java.base/java/lang/Object.html#getClass()" title="class or interface in java.lang" class="external-link">getClass</a>, <a href="https://docs.oracle.com/en/java/javase/23/docs/api/java.base/java/lang/Object.html#hashCode()" title="class or interface in java.lang" class="external-link">hashCode</a>, <a href="https://docs.oracle.com/en/java/javase/23/docs/api/java.base/java/lang/Object.html#notify()" title="class or interface in java.lang" class="external-link">notify</a>, <a href="https://docs.oracle.com/en/java/javase/23/docs/api/java.base/java/lang/Object.html#notifyAll()" title="class or interface in java.lang" class="external-link">notifyAll</a>, <a href="https://docs.oracle.com/en/java/javase/23/docs/api/java.base/java/lang/Object.html#toString()" title="class or interface in java.lang" class="external-link">toString</a>, <a href="https://docs.oracle.com/en/java/javase/23/docs/api/java.base/java/lang/Object.html#wait()" title="class or interface in java.lang" class="external-link">wait</a>, <a href="https://docs.oracle.com/en/java/javase/23/docs/api/java.base/java/lang/Object.html#wait(long)" title="class or interface in java.lang" class="external-link">wait</a>, <a href="https://docs.oracle.com/en/java/javase/23/docs/api/java.base/java/lang/Object.html#wait(long,int)" title="class or interface in java.lang" class="external-link">wait</a></code></div>
@@ -266,7 +247,7 @@ loadScripts(document, 'script');</script>
 <section class="detail" id="&lt;init&gt;(org.cojen.tupl.io.PageArray...)">
 <h3>StripedPageArray</h3>
 <div class="horizontal-scroll">
-<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="element-name">StripedPageArray</span><wbr><span class="parameters">(<a href="PageArray.html" title="class in org.cojen.tupl.io">PageArray</a>...&nbsp;arrays)</span></div>
+<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="element-name">StripedPageArray</span><wbr><span class="parameters">(<a href="PageArray.html" title="class in org.cojen.tupl.io">PageArray</a>...&nbsp;sources)</span></div>
 </div>
 </section>
 </li>
@@ -278,6 +259,15 @@ loadScripts(document, 'script');</script>
 <section class="method-details" id="method-detail">
 <h2>Method Details</h2>
 <ul class="member-list">
+<li>
+<section class="detail" id="factory(java.util.function.Supplier...)">
+<h3>factory</h3>
+<div class="horizontal-scroll">
+<div class="member-signature"><span class="annotations"><a href="https://docs.oracle.com/en/java/javase/23/docs/api/java.base/java/lang/SafeVarargs.html" title="class or interface in java.lang" class="external-link">@SafeVarargs</a>
+</span><span class="modifiers">public static</span>&nbsp;<span class="return-type"><a href="https://docs.oracle.com/en/java/javase/23/docs/api/java.base/java/util/function/Supplier.html" title="class or interface in java.util.function" class="external-link">Supplier</a>&lt;<a href="PageArray.html" title="class in org.cojen.tupl.io">PageArray</a>&gt;</span>&nbsp;<span class="element-name">factory</span><wbr><span class="parameters">(<a href="https://docs.oracle.com/en/java/javase/23/docs/api/java.base/java/util/function/Supplier.html" title="class or interface in java.util.function" class="external-link">Supplier</a>&lt;<a href="PageArray.html" title="class in org.cojen.tupl.io">PageArray</a>&gt;...&nbsp;factories)</span></div>
+</div>
+</section>
+</li>
 <li>
 <section class="detail" id="directPageSize()">
 <h3>directPageSize</h3>
@@ -403,28 +393,6 @@ loadScripts(document, 'script');</script>
 </section>
 </li>
 <li>
-<section class="detail" id="readPage(long,byte[],int,int)">
-<h3>readPage</h3>
-<div class="horizontal-scroll">
-<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="element-name">readPage</span><wbr><span class="parameters">(long&nbsp;index,
- byte[]&nbsp;dst,
- int&nbsp;offset,
- int&nbsp;length)</span>
-              throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/23/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
-<dl class="notes">
-<dt>Specified by:</dt>
-<dd><code><a href="PageArray.html#readPage(long,byte%5B%5D,int,int)">readPage</a></code>&nbsp;in class&nbsp;<code><a href="PageArray.html" title="class in org.cojen.tupl.io">PageArray</a></code></dd>
-<dt>Parameters:</dt>
-<dd><code>index</code> - zero-based page index to read</dd>
-<dd><code>dst</code> - receives read data</dd>
-<dd><code>offset</code> - offset into data buffer</dd>
-<dt>Throws:</dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/23/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code> - if index is greater than or equal to page count</dd>
-</dl>
-</div>
-</section>
-</li>
-<li>
 <section class="detail" id="readPage(long,long,int,int)">
 <h3>readPage</h3>
 <div class="horizontal-scroll">
@@ -434,7 +402,7 @@ loadScripts(document, 'script');</script>
  int&nbsp;length)</span>
               throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/23/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
 <dl class="notes">
-<dt>Overrides:</dt>
+<dt>Specified by:</dt>
 <dd><code><a href="PageArray.html#readPage(long,long,int,int)">readPage</a></code>&nbsp;in class&nbsp;<code><a href="PageArray.html" title="class in org.cojen.tupl.io">PageArray</a></code></dd>
 <dt>Parameters:</dt>
 <dd><code>index</code> - zero-based page index to read</dd>
@@ -442,31 +410,6 @@ loadScripts(document, 'script');</script>
 <dd><code>offset</code> - offset into data buffer</dd>
 <dt>Throws:</dt>
 <dd><code><a href="https://docs.oracle.com/en/java/javase/23/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code> - if index is greater than or equal to page count</dd>
-</dl>
-</div>
-</section>
-</li>
-<li>
-<section class="detail" id="writePage(long,byte[],int)">
-<h3>writePage</h3>
-<div class="horizontal-scroll">
-<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="element-name">writePage</span><wbr><span class="parameters">(long&nbsp;index,
- byte[]&nbsp;src,
- int&nbsp;offset)</span>
-               throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/23/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
-<div class="block"><span class="description-from-type-label">Description copied from class:&nbsp;<code><a href="PageArray.html#writePage(long,byte%5B%5D,int)">PageArray</a></code></span></div>
-<div class="block">Writes a page, which is lazily flushed. The array grows automatically if the index is
- greater than or equal to the current page count. If array supports caching, page must be
- immediately copied into it.</div>
-<dl class="notes">
-<dt>Specified by:</dt>
-<dd><code><a href="PageArray.html#writePage(long,byte%5B%5D,int)">writePage</a></code>&nbsp;in class&nbsp;<code><a href="PageArray.html" title="class in org.cojen.tupl.io">PageArray</a></code></dd>
-<dt>Parameters:</dt>
-<dd><code>index</code> - zero-based page index to write</dd>
-<dd><code>src</code> - data to write</dd>
-<dd><code>offset</code> - offset into data buffer</dd>
-<dt>Throws:</dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/23/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
 </dl>
 </div>
 </section>
@@ -484,37 +427,12 @@ loadScripts(document, 'script');</script>
  greater than or equal to the current page count. If array supports caching, page must be
  immediately copied into it.</div>
 <dl class="notes">
-<dt>Overrides:</dt>
+<dt>Specified by:</dt>
 <dd><code><a href="PageArray.html#writePage(long,long,int)">writePage</a></code>&nbsp;in class&nbsp;<code><a href="PageArray.html" title="class in org.cojen.tupl.io">PageArray</a></code></dd>
 <dt>Parameters:</dt>
 <dd><code>index</code> - zero-based page index to write</dd>
 <dd><code>srcAddr</code> - data to write</dd>
 <dd><code>offset</code> - offset into data buffer</dd>
-<dt>Throws:</dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/23/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
-</dl>
-</div>
-</section>
-</li>
-<li>
-<section class="detail" id="evictPage(long,byte[])">
-<h3>evictPage</h3>
-<div class="horizontal-scroll">
-<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">byte[]</span>&nbsp;<span class="element-name">evictPage</span><wbr><span class="parameters">(long&nbsp;index,
- byte[]&nbsp;buf)</span>
-                 throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/23/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
-<div class="block"><span class="description-from-type-label">Description copied from class:&nbsp;<code><a href="PageArray.html#evictPage(long,byte%5B%5D)">PageArray</a></code></span></div>
-<div class="block">Same as writePage, except that the given buffer might be altered and a replacement might
- be returned. Caller must not alter the original buffer if a replacement was provided,
- and the contents of the replacement are undefined.</div>
-<dl class="notes">
-<dt>Overrides:</dt>
-<dd><code><a href="PageArray.html#evictPage(long,byte%5B%5D)">evictPage</a></code>&nbsp;in class&nbsp;<code><a href="PageArray.html" title="class in org.cojen.tupl.io">PageArray</a></code></dd>
-<dt>Parameters:</dt>
-<dd><code>index</code> - zero-based page index to write</dd>
-<dd><code>buf</code> - data to write; implementation might alter the contents</dd>
-<dt>Returns:</dt>
-<dd>replacement buffer, or same instance if replacement was not performed</dd>
 <dt>Throws:</dt>
 <dd><code><a href="https://docs.oracle.com/en/java/javase/23/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
 </dl>
@@ -547,14 +465,14 @@ loadScripts(document, 'script');</script>
 </section>
 </li>
 <li>
-<section class="detail" id="directPagePointer(long)">
-<h3>directPagePointer</h3>
+<section class="detail" id="directPageAddress(long)">
+<h3>directPageAddress</h3>
 <div class="horizontal-scroll">
-<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">long</span>&nbsp;<span class="element-name">directPagePointer</span><wbr><span class="parameters">(long&nbsp;index)</span>
+<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">long</span>&nbsp;<span class="element-name">directPageAddress</span><wbr><span class="parameters">(long&nbsp;index)</span>
                        throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/23/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
 <dl class="notes">
 <dt>Overrides:</dt>
-<dd><code><a href="PageArray.html#directPagePointer(long)">directPagePointer</a></code>&nbsp;in class&nbsp;<code><a href="PageArray.html" title="class in org.cojen.tupl.io">PageArray</a></code></dd>
+<dd><code><a href="PageArray.html#directPageAddress(long)">directPageAddress</a></code>&nbsp;in class&nbsp;<code><a href="PageArray.html" title="class in org.cojen.tupl.io">PageArray</a></code></dd>
 <dt>Throws:</dt>
 <dd><code><a href="https://docs.oracle.com/en/java/javase/23/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
 </dl>
@@ -580,15 +498,15 @@ loadScripts(document, 'script');</script>
 </section>
 </li>
 <li>
-<section class="detail" id="copyPageFromPointer(long,long)">
-<h3>copyPageFromPointer</h3>
+<section class="detail" id="copyPageFromAddress(long,long)">
+<h3>copyPageFromAddress</h3>
 <div class="horizontal-scroll">
-<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">long</span>&nbsp;<span class="element-name">copyPageFromPointer</span><wbr><span class="parameters">(long&nbsp;srcPointer,
+<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">long</span>&nbsp;<span class="element-name">copyPageFromAddress</span><wbr><span class="parameters">(long&nbsp;srcAddr,
  long&nbsp;dstIndex)</span>
                          throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/23/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
 <dl class="notes">
 <dt>Overrides:</dt>
-<dd><code><a href="PageArray.html#copyPageFromPointer(long,long)">copyPageFromPointer</a></code>&nbsp;in class&nbsp;<code><a href="PageArray.html" title="class in org.cojen.tupl.io">PageArray</a></code></dd>
+<dd><code><a href="PageArray.html#copyPageFromAddress(long,long)">copyPageFromAddress</a></code>&nbsp;in class&nbsp;<code><a href="PageArray.html" title="class in org.cojen.tupl.io">PageArray</a></code></dd>
 <dt>Returns:</dt>
 <dd>direct pointer to destination</dd>
 <dt>Throws:</dt>

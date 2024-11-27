@@ -84,7 +84,7 @@ loadScripts(document, 'script');</script>
 <div class="col-first even-row-color"><code><a href="../../DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></code></div>
 <div class="col-second even-row-color"><span class="type-name-label">DatabaseConfig.</span><code><a href="../../DatabaseConfig.html#compressPages(int,long,java.util.function.Supplier)" class="member-name-link">compressPages</a><wbr>(int&nbsp;fullPageSize,
  long&nbsp;cacheSize,
- <a href="https://docs.oracle.com/en/java/javase/23/docs/api/java.base/java/util/function/Supplier.html" title="class or interface in java.util.function" class="external-link">Supplier</a>&lt;<a href="../PageCompressor.html" title="interface in org.cojen.tupl.io">PageCompressor</a>&gt;&nbsp;factory)</code></div>
+ <a href="https://docs.oracle.com/en/java/javase/23/docs/api/java.base/java/util/function/Supplier.html" title="class or interface in java.util.function" class="external-link">Supplier</a>&lt;? extends <a href="../PageCompressor.html" title="interface in org.cojen.tupl.io">PageCompressor</a>&gt;&nbsp;factory)</code></div>
 <div class="col-last even-row-color">
 <div class="block">Compress the underlying database pages, reducing overall size at the cost of
  performance.</div>
@@ -95,25 +95,25 @@ loadScripts(document, 'script');</script>
 <li>
 <section class="detail" id="org.cojen.tupl.io">
 <h2>Uses of <a href="../PageCompressor.html" title="interface in org.cojen.tupl.io">PageCompressor</a> in <a href="../package-summary.html">org.cojen.tupl.io</a></h2>
-<div class="caption"><span>Methods in <a href="../package-summary.html">org.cojen.tupl.io</a> that return <a href="../PageCompressor.html" title="interface in org.cojen.tupl.io">PageCompressor</a></span></div>
+<div class="caption"><span>Methods in <a href="../package-summary.html">org.cojen.tupl.io</a> that return types with arguments of type <a href="../PageCompressor.html" title="interface in org.cojen.tupl.io">PageCompressor</a></span></div>
 <div class="summary-table three-column-summary">
 <div class="table-header col-first">Modifier and Type</div>
 <div class="table-header col-second">Method</div>
 <div class="table-header col-last">Description</div>
-<div class="col-first even-row-color"><code>static <a href="../PageCompressor.html" title="interface in org.cojen.tupl.io">PageCompressor</a></code></div>
+<div class="col-first even-row-color"><code>static <a href="https://docs.oracle.com/en/java/javase/23/docs/api/java.base/java/util/function/Supplier.html" title="class or interface in java.util.function" class="external-link">Supplier</a><wbr>&lt;<a href="../PageCompressor.html" title="interface in org.cojen.tupl.io">PageCompressor</a>&gt;</code></div>
 <div class="col-second even-row-color"><span class="type-name-label">PageCompressor.</span><code><a href="../PageCompressor.html#lz4()" class="member-name-link">lz4</a>()</code></div>
 <div class="col-last even-row-color">
-<div class="block">Returns a new LZ4 compressor.</div>
+<div class="block">Returns a supplier of new LZ4 compressors.</div>
 </div>
-<div class="col-first odd-row-color"><code>static <a href="../PageCompressor.html" title="interface in org.cojen.tupl.io">PageCompressor</a></code></div>
+<div class="col-first odd-row-color"><code>static <a href="https://docs.oracle.com/en/java/javase/23/docs/api/java.base/java/util/function/Supplier.html" title="class or interface in java.util.function" class="external-link">Supplier</a><wbr>&lt;<a href="../PageCompressor.html" title="interface in org.cojen.tupl.io">PageCompressor</a>&gt;</code></div>
 <div class="col-second odd-row-color"><span class="type-name-label">PageCompressor.</span><code><a href="../PageCompressor.html#zlib()" class="member-name-link">zlib</a>()</code></div>
 <div class="col-last odd-row-color">
-<div class="block">Returns a new ZLIB compressor (deflate).</div>
+<div class="block">Returns a supplier of new ZLIB compressors (deflate).</div>
 </div>
-<div class="col-first even-row-color"><code>static <a href="../PageCompressor.html" title="interface in org.cojen.tupl.io">PageCompressor</a></code></div>
+<div class="col-first even-row-color"><code>static <a href="https://docs.oracle.com/en/java/javase/23/docs/api/java.base/java/util/function/Supplier.html" title="class or interface in java.util.function" class="external-link">Supplier</a><wbr>&lt;<a href="../PageCompressor.html" title="interface in org.cojen.tupl.io">PageCompressor</a>&gt;</code></div>
 <div class="col-second even-row-color"><span class="type-name-label">PageCompressor.</span><code><a href="../PageCompressor.html#zlib(int)" class="member-name-link">zlib</a><wbr>(int&nbsp;level)</code></div>
 <div class="col-last even-row-color">
-<div class="block">Returns a new ZLIB compressor (deflate).</div>
+<div class="block">Returns a supplier of new ZLIB compressors (deflate).</div>
 </div>
 </div>
 </section>

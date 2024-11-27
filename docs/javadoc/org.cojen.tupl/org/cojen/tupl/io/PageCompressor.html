@@ -68,10 +68,8 @@ loadScripts(document, 'script');</script>
 <li><a href="#zlib()" tabindex="0">zlib()</a></li>
 <li><a href="#zlib(int)" tabindex="0">zlib(int)</a></li>
 <li><a href="#lz4()" tabindex="0">lz4()</a></li>
-<li><a href="#compress(byte%5B%5D,int,int)" tabindex="0">compress(byte[], int, int)</a></li>
 <li><a href="#compress(long,int,int)" tabindex="0">compress(long, int, int)</a></li>
 <li><a href="#compressedBytes()" tabindex="0">compressedBytes()</a></li>
-<li><a href="#decompress(byte%5B%5D,int,int,byte%5B%5D,int,int)" tabindex="0">decompress(byte[], int, int, byte[], int, int)</a></li>
 <li><a href="#decompress(byte%5B%5D,int,int,long,int,int)" tabindex="0">decompress(byte[], int, int, long, int, int)</a></li>
 <li><a href="#close()" tabindex="0">close()</a></li>
 </ol>
@@ -112,33 +110,16 @@ extends <a href="https://docs.oracle.com/en/java/javase/23/docs/api/java.base/ja
 <div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#close()" class="member-name-link">close</a>()</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">&nbsp;</div>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code>int</code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#compress(byte%5B%5D,int,int)" class="member-name-link">compress</a><wbr>(byte[]&nbsp;src,
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#compress(long,int,int)" class="member-name-link">compress</a><wbr>(long&nbsp;srcAddr,
  int&nbsp;srcOff,
  int&nbsp;srcLen)</code></div>
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
-<div class="block">Compress to a byte array.</div>
+<div class="block">Compress to a byte array from a raw memory address.</div>
 </div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code>int</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#compress(long,int,int)" class="member-name-link">compress</a><wbr>(long&nbsp;srcAddr,
- int&nbsp;srcOff,
- int&nbsp;srcLen)</code></div>
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code>byte[]</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#compressedBytes()" class="member-name-link">compressedBytes</a>()</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
-<div class="block">Compress to a byte array from a raw memory pointer.</div>
-</div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code>byte[]</code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#compressedBytes()" class="member-name-link">compressedBytes</a>()</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
 <div class="block">Target of the compress method.</div>
-</div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code>void</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#decompress(byte%5B%5D,int,int,byte%5B%5D,int,int)" class="member-name-link">decompress</a><wbr>(byte[]&nbsp;src,
- int&nbsp;srcOff,
- int&nbsp;srcLen,
- byte[]&nbsp;dst,
- int&nbsp;dstOff,
- int&nbsp;dstLen)</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
-<div class="block">Decompress to a byte array.</div>
 </div>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code>void</code></div>
 <div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#decompress(byte%5B%5D,int,int,long,int,int)" class="member-name-link">decompress</a><wbr>(byte[]&nbsp;src,
@@ -148,22 +129,22 @@ extends <a href="https://docs.oracle.com/en/java/javase/23/docs/api/java.base/ja
  int&nbsp;dstOff,
  int&nbsp;dstLen)</code></div>
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
-<div class="block">Decompress to a raw memory pointer.</div>
+<div class="block">Decompress to a raw memory address.</div>
 </div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab1"><code>static <a href="PageCompressor.html" title="interface in org.cojen.tupl.io">PageCompressor</a></code></div>
+<div class="col-first even-row-color method-summary-table method-summary-table-tab1"><code>static <a href="https://docs.oracle.com/en/java/javase/23/docs/api/java.base/java/util/function/Supplier.html" title="class or interface in java.util.function" class="external-link">Supplier</a><wbr>&lt;<a href="PageCompressor.html" title="interface in org.cojen.tupl.io">PageCompressor</a>&gt;</code></div>
 <div class="col-second even-row-color method-summary-table method-summary-table-tab1"><code><a href="#lz4()" class="member-name-link">lz4</a>()</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab1">
-<div class="block">Returns a new LZ4 compressor.</div>
+<div class="block">Returns a supplier of new LZ4 compressors.</div>
 </div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab1"><code>static <a href="PageCompressor.html" title="interface in org.cojen.tupl.io">PageCompressor</a></code></div>
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab1"><code>static <a href="https://docs.oracle.com/en/java/javase/23/docs/api/java.base/java/util/function/Supplier.html" title="class or interface in java.util.function" class="external-link">Supplier</a><wbr>&lt;<a href="PageCompressor.html" title="interface in org.cojen.tupl.io">PageCompressor</a>&gt;</code></div>
 <div class="col-second odd-row-color method-summary-table method-summary-table-tab1"><code><a href="#zlib()" class="member-name-link">zlib</a>()</code></div>
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab1">
-<div class="block">Returns a new ZLIB compressor (deflate).</div>
+<div class="block">Returns a supplier of new ZLIB compressors (deflate).</div>
 </div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab1"><code>static <a href="PageCompressor.html" title="interface in org.cojen.tupl.io">PageCompressor</a></code></div>
+<div class="col-first even-row-color method-summary-table method-summary-table-tab1"><code>static <a href="https://docs.oracle.com/en/java/javase/23/docs/api/java.base/java/util/function/Supplier.html" title="class or interface in java.util.function" class="external-link">Supplier</a><wbr>&lt;<a href="PageCompressor.html" title="interface in org.cojen.tupl.io">PageCompressor</a>&gt;</code></div>
 <div class="col-second even-row-color method-summary-table method-summary-table-tab1"><code><a href="#zlib(int)" class="member-name-link">zlib</a><wbr>(int&nbsp;level)</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab1">
-<div class="block">Returns a new ZLIB compressor (deflate).</div>
+<div class="block">Returns a supplier of new ZLIB compressors (deflate).</div>
 </div>
 </div>
 </div>
@@ -183,8 +164,8 @@ extends <a href="https://docs.oracle.com/en/java/javase/23/docs/api/java.base/ja
 <section class="detail" id="zlib()">
 <h3>zlib</h3>
 <div class="horizontal-scroll">
-<div class="member-signature"><span class="modifiers">static</span>&nbsp;<span class="return-type"><a href="PageCompressor.html" title="interface in org.cojen.tupl.io">PageCompressor</a></span>&nbsp;<span class="element-name">zlib</span>()</div>
-<div class="block">Returns a new ZLIB compressor (deflate).</div>
+<div class="member-signature"><span class="modifiers">static</span>&nbsp;<span class="return-type"><a href="https://docs.oracle.com/en/java/javase/23/docs/api/java.base/java/util/function/Supplier.html" title="class or interface in java.util.function" class="external-link">Supplier</a>&lt;<a href="PageCompressor.html" title="interface in org.cojen.tupl.io">PageCompressor</a>&gt;</span>&nbsp;<span class="element-name">zlib</span>()</div>
+<div class="block">Returns a supplier of new ZLIB compressors (deflate).</div>
 </div>
 </section>
 </li>
@@ -192,8 +173,8 @@ extends <a href="https://docs.oracle.com/en/java/javase/23/docs/api/java.base/ja
 <section class="detail" id="zlib(int)">
 <h3>zlib</h3>
 <div class="horizontal-scroll">
-<div class="member-signature"><span class="modifiers">static</span>&nbsp;<span class="return-type"><a href="PageCompressor.html" title="interface in org.cojen.tupl.io">PageCompressor</a></span>&nbsp;<span class="element-name">zlib</span><wbr><span class="parameters">(int&nbsp;level)</span></div>
-<div class="block">Returns a new ZLIB compressor (deflate).</div>
+<div class="member-signature"><span class="modifiers">static</span>&nbsp;<span class="return-type"><a href="https://docs.oracle.com/en/java/javase/23/docs/api/java.base/java/util/function/Supplier.html" title="class or interface in java.util.function" class="external-link">Supplier</a>&lt;<a href="PageCompressor.html" title="interface in org.cojen.tupl.io">PageCompressor</a>&gt;</span>&nbsp;<span class="element-name">zlib</span><wbr><span class="parameters">(int&nbsp;level)</span></div>
+<div class="block">Returns a supplier of new ZLIB compressors (deflate).</div>
 <dl class="notes">
 <dt>Parameters:</dt>
 <dd><code>level</code> - compression level [0..9]</dd>
@@ -205,26 +186,8 @@ extends <a href="https://docs.oracle.com/en/java/javase/23/docs/api/java.base/ja
 <section class="detail" id="lz4()">
 <h3>lz4</h3>
 <div class="horizontal-scroll">
-<div class="member-signature"><span class="modifiers">static</span>&nbsp;<span class="return-type"><a href="PageCompressor.html" title="interface in org.cojen.tupl.io">PageCompressor</a></span>&nbsp;<span class="element-name">lz4</span>()</div>
-<div class="block">Returns a new LZ4 compressor.</div>
-</div>
-</section>
-</li>
-<li>
-<section class="detail" id="compress(byte[],int,int)">
-<h3>compress</h3>
-<div class="horizontal-scroll">
-<div class="member-signature"><span class="return-type">int</span>&nbsp;<span class="element-name">compress</span><wbr><span class="parameters">(byte[]&nbsp;src,
- int&nbsp;srcOff,
- int&nbsp;srcLen)</span>
-      throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/23/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
-<div class="block">Compress to a byte array.</div>
-<dl class="notes">
-<dt>Returns:</dt>
-<dd>the compressed size</dd>
-<dt>Throws:</dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/23/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
-</dl>
+<div class="member-signature"><span class="modifiers">static</span>&nbsp;<span class="return-type"><a href="https://docs.oracle.com/en/java/javase/23/docs/api/java.base/java/util/function/Supplier.html" title="class or interface in java.util.function" class="external-link">Supplier</a>&lt;<a href="PageCompressor.html" title="interface in org.cojen.tupl.io">PageCompressor</a>&gt;</span>&nbsp;<span class="element-name">lz4</span>()</div>
+<div class="block">Returns a supplier of new LZ4 compressors.</div>
 </div>
 </section>
 </li>
@@ -236,7 +199,7 @@ extends <a href="https://docs.oracle.com/en/java/javase/23/docs/api/java.base/ja
  int&nbsp;srcOff,
  int&nbsp;srcLen)</span>
       throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/23/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
-<div class="block">Compress to a byte array from a raw memory pointer.</div>
+<div class="block">Compress to a byte array from a raw memory address.</div>
 <dl class="notes">
 <dt>Returns:</dt>
 <dd>the compressed size</dd>
@@ -256,27 +219,6 @@ extends <a href="https://docs.oracle.com/en/java/javase/23/docs/api/java.base/ja
 </section>
 </li>
 <li>
-<section class="detail" id="decompress(byte[],int,int,byte[],int,int)">
-<h3>decompress</h3>
-<div class="horizontal-scroll">
-<div class="member-signature"><span class="return-type">void</span>&nbsp;<span class="element-name">decompress</span><wbr><span class="parameters">(byte[]&nbsp;src,
- int&nbsp;srcOff,
- int&nbsp;srcLen,
- byte[]&nbsp;dst,
- int&nbsp;dstOff,
- int&nbsp;dstLen)</span>
-         throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/23/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
-<div class="block">Decompress to a byte array.</div>
-<dl class="notes">
-<dt>Parameters:</dt>
-<dd><code>dstLen</code> - original size of uncompressed page</dd>
-<dt>Throws:</dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/23/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
-</dl>
-</div>
-</section>
-</li>
-<li>
 <section class="detail" id="decompress(byte[],int,int,long,int,int)">
 <h3>decompress</h3>
 <div class="horizontal-scroll">
@@ -287,7 +229,7 @@ extends <a href="https://docs.oracle.com/en/java/javase/23/docs/api/java.base/ja
  int&nbsp;dstOff,
  int&nbsp;dstLen)</span>
          throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/23/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
-<div class="block">Decompress to a raw memory pointer.</div>
+<div class="block">Decompress to a raw memory address.</div>
 <dl class="notes">
 <dt>Parameters:</dt>
 <dd><code>dstLen</code> - original size of uncompressed page</dd>
