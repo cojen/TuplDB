@@ -35,6 +35,8 @@ import java.nio.channels.ClosedChannelException;
 import java.util.Arrays;
 import java.util.EnumSet;
 import java.util.List;
+import java.util.NoSuchElementException;
+import java.util.Optional;
 
 import org.cojen.tupl.core.SysInfo;
 
@@ -48,7 +50,7 @@ import org.cojen.tupl.util.LocalPool;
  * @author Brian S O'Neill
  */
 final class PosixFileIO extends AbstractFileIO {
-    private static final MethodHandle __errno_location;
+    private static final MethodHandle errno;
     private static final MethodHandle strerror_r;
     private static final MethodHandle open;
     private static final MethodHandle close;
@@ -68,8 +70,8 @@ final class PosixFileIO extends AbstractFileIO {
         Linker linker = Linker.nativeLinker();
         SymbolLookup lookup = linker.defaultLookup();
 
-        __errno_location = linker.downcallHandle
-            (lookup.find("__errno_location").get(),
+        errno = linker.downcallHandle
+            (find("errno", lookup, "__errno_location", "__error"),
              FunctionDescriptor.of(ValueLayout.ADDRESS.withTargetLayout(ValueLayout.JAVA_INT)));
 
         strerror_r = linker.downcallHandle
@@ -187,6 +189,16 @@ final class PosixFileIO extends AbstractFileIO {
         // Invoke this early in case additional classes need to be loaded. The error is
         // clobbered when the JVM makes additional system calls.
         errno();
+    }
+
+    private static MemorySegment find(String which, SymbolLookup lookup, String... names) {
+        for (String name : names) {
+            Optional<MemorySegment> symbol = lookup.find(name);
+            if (symbol.isPresent()) {
+                return symbol.get();
+            }
+        }
+        throw new NoSuchElementException("Symbol not found: " + which);
     }
 
     private static final int REOPEN_NON_DURABLE = 1, REOPEN_SYNC_IO = 2, REOPEN_DIRECT_IO = 4;
@@ -468,7 +480,7 @@ final class PosixFileIO extends AbstractFileIO {
     static int errno() {
         MemorySegment addr;
         try {
-            addr = (MemorySegment) __errno_location.invokeExact();
+            addr = (MemorySegment) errno.invokeExact();
         } catch (Throwable e) {
             throw Utils.rethrow(e);
         }
