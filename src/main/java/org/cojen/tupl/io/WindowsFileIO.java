@@ -26,15 +26,19 @@ import java.lang.foreign.Arena;
 import java.lang.foreign.FunctionDescriptor;
 import java.lang.foreign.Linker;
 import java.lang.foreign.MemorySegment;
+import java.lang.foreign.StructLayout;
 import java.lang.foreign.SymbolLookup;
 import java.lang.foreign.ValueLayout;
 
 import java.lang.invoke.MethodHandle;
+import java.lang.invoke.VarHandle;
 
 import java.util.EnumSet;
 
 import org.cojen.tupl.diag.EventListener;
 import org.cojen.tupl.diag.EventType;
+
+import org.cojen.tupl.util.LocalPool;
 
 /**
  * 
@@ -44,7 +48,9 @@ import org.cojen.tupl.diag.EventType;
 final class WindowsFileIO extends JavaFileIO {
     static final int INVALID_HANDLE_VALUE = -1;
 
-    private static final MethodHandle GetLastError;
+    private static final LocalPool<MemorySegment> errorPool;
+    private static final VarHandle errorHandle;
+
     private static final MethodHandle FormatMessageW;
     private static final MethodHandle LocalFree;
     private static final MethodHandle CloseHandle;
@@ -62,9 +68,10 @@ final class WindowsFileIO extends JavaFileIO {
         Linker linker = Linker.nativeLinker();
         SymbolLookup lookup = SymbolLookup.loaderLookup();
 
-        GetLastError = linker.downcallHandle
-            (lookup.find("GetLastError").get(),
-             FunctionDescriptor.of(ValueLayout.JAVA_INT));
+        Linker.Option captureError = Linker.Option.captureCallState("GetLastError");
+        StructLayout errorLayout = Linker.Option.captureStateLayout();
+        errorPool = new LocalPool<>(() -> Arena.ofAuto().allocate(errorLayout));
+        errorHandle = errorLayout.varHandle(StructLayout.PathElement.groupElement("GetLastError"));
 
         FormatMessageW = linker.downcallHandle
             (lookup.find("FormatMessageW").get(),
@@ -91,53 +98,61 @@ final class WindowsFileIO extends JavaFileIO {
             (lookup.find("CreateFileW").get(),
              FunctionDescriptor.of
              (ValueLayout.JAVA_INT,
-              ValueLayout.ADDRESS,  // lpFileName
-              ValueLayout.JAVA_INT, // dwDesiredAccess
-              ValueLayout.JAVA_INT, // dwShareMode
-              ValueLayout.ADDRESS,  // lpSecurityAttributes
-              ValueLayout.JAVA_INT, // dwCreationDisposition
-              ValueLayout.JAVA_INT, // dwFlagsAndAttributes
-              ValueLayout.JAVA_INT) // hTemplateFile
+              ValueLayout.ADDRESS,   // lpFileName
+              ValueLayout.JAVA_INT,  // dwDesiredAccess
+              ValueLayout.JAVA_INT,  // dwShareMode
+              ValueLayout.ADDRESS,   // lpSecurityAttributes
+              ValueLayout.JAVA_INT,  // dwCreationDisposition
+              ValueLayout.JAVA_INT,  // dwFlagsAndAttributes
+              ValueLayout.JAVA_INT), // hTemplateFile
+             captureError
              );
 
         CreateFileMapping = linker.downcallHandle
             (lookup.find("CreateFileMappingW").get(),
              FunctionDescriptor.of
              (ValueLayout.JAVA_INT,
-              ValueLayout.JAVA_INT, // hFile
-              ValueLayout.ADDRESS,  // lpFileMappingAttributes
-              ValueLayout.JAVA_INT, // flProtect
-              ValueLayout.JAVA_INT, // dwMaximumSizeHigh
-              ValueLayout.JAVA_INT, // dwMaximumSizeLow
-              ValueLayout.ADDRESS)  // lpName
+              ValueLayout.JAVA_INT,  // hFile
+              ValueLayout.ADDRESS,   // lpFileMappingAttributes
+              ValueLayout.JAVA_INT,  // flProtect
+              ValueLayout.JAVA_INT,  // dwMaximumSizeHigh
+              ValueLayout.JAVA_INT,  // dwMaximumSizeLow
+              ValueLayout.ADDRESS),  // lpName
+             captureError
              );
 
         MapViewOfFile = linker.downcallHandle
             (lookup.find("MapViewOfFile").get(),
              FunctionDescriptor.of
              (ValueLayout.JAVA_LONG,
-              ValueLayout.JAVA_INT,  // hFileMappingObject
-              ValueLayout.JAVA_INT,  // dwDesiredAccess
-              ValueLayout.JAVA_INT,  // dwFileOffsetHigh
-              ValueLayout.JAVA_INT,  // dwFileOffsetLow
-              ValueLayout.JAVA_LONG) // dwNumberOfBytesToMap
+              ValueLayout.JAVA_INT,   // hFileMappingObject
+              ValueLayout.JAVA_INT,   // dwDesiredAccess
+              ValueLayout.JAVA_INT,   // dwFileOffsetHigh
+              ValueLayout.JAVA_INT,   // dwFileOffsetLow
+              ValueLayout.JAVA_LONG), // dwNumberOfBytesToMap
+             captureError
              );
 
         UnmapViewOfFile = linker.downcallHandle
             (lookup.find("UnmapViewOfFile").get(),
-             FunctionDescriptor.of(ValueLayout.JAVA_BOOLEAN, ValueLayout.JAVA_LONG));
+             FunctionDescriptor.of(ValueLayout.JAVA_BOOLEAN, ValueLayout.JAVA_LONG),
+             captureError
+             );
 
         FlushViewOfFile = linker.downcallHandle
             (lookup.find("FlushViewOfFile").get(),
              FunctionDescriptor.of
              (ValueLayout.JAVA_BOOLEAN,
-              ValueLayout.JAVA_LONG, // lpBaseAddress
-              ValueLayout.JAVA_LONG) // dwNumberOfBytesToFlush
+              ValueLayout.JAVA_LONG,  // lpBaseAddress
+              ValueLayout.JAVA_LONG), // dwNumberOfBytesToFlush
+             captureError
              );
 
         FlushFileBuffers = linker.downcallHandle
             (lookup.find("FlushFileBuffers").get(),
-             FunctionDescriptor.of(ValueLayout.JAVA_BOOLEAN, ValueLayout.JAVA_INT));
+             FunctionDescriptor.of(ValueLayout.JAVA_BOOLEAN, ValueLayout.JAVA_INT),
+             captureError
+             );
 
         VirtualAlloc = linker.downcallHandle
             (lookup.find("VirtualAlloc").get(),
@@ -146,21 +161,19 @@ final class WindowsFileIO extends JavaFileIO {
               ValueLayout.JAVA_LONG, // lpAddress
               ValueLayout.JAVA_LONG, // dwSize
               ValueLayout.JAVA_INT,  // flAllocationType
-              ValueLayout.JAVA_INT)  // flProtect
+              ValueLayout.JAVA_INT), // flProtect
+             captureError
              );
 
         VirtualFree = linker.downcallHandle
             (lookup.find("VirtualFree").get(),
              FunctionDescriptor.of
              (ValueLayout.JAVA_BOOLEAN,
-              ValueLayout.JAVA_LONG, // lpAddress
-              ValueLayout.JAVA_LONG, // dwSize
-              ValueLayout.JAVA_INT)  // dwFreeType
+              ValueLayout.JAVA_LONG,  // lpAddress
+              ValueLayout.JAVA_LONG,  // dwSize
+              ValueLayout.JAVA_INT),  // dwFreeType
+             captureError
              );
-
-        // Invoke this early in case additional classes need to be loaded. The error is
-        // clobbered when the JVM makes additional system calls.
-        lastErrorId();
     }
 
     WindowsFileIO(File file, EnumSet<OpenOption> options, int openFileCount) throws IOException {
@@ -211,92 +224,86 @@ final class WindowsFileIO extends JavaFileIO {
 
         long maxSize = position + length;
 
-        int hMapping;
+        LocalPool.Entry<MemorySegment> ee = errorPool.access();
         try {
-            hMapping = (int) CreateFileMapping.invokeExact
-                (hFile,
+            int hMapping = (int) CreateFileMapping.invokeExact
+                (ee.get(),
+                 hFile,
                  MemorySegment.NULL, // security attributes
                  readOnly ? 2 /*PAGE_READONLY*/ : 4, // PAGE_READWRITE
                  (int) (maxSize >>> 32),
                  (int) maxSize,
                  MemorySegment.NULL // no name
                  );
-        } catch (Throwable e) {
-            throw Utils.rethrow(e);
-        }
 
-        if (hMapping == 0 || hMapping == INVALID_HANDLE_VALUE) {
-            String message = lastErrorMessage();
-            closeHandle(hFile);
-            throw new IOException(message + " maxSize=" + maxSize +
-                                  ", file.length=" + file.length());
-        }
+            if (hMapping == 0 || hMapping == INVALID_HANDLE_VALUE) {
+                String message = errorMessage(ee);
+                closeHandle(hFile);
+                throw new IOException(message + " maxSize=" + maxSize +
+                                      ", file.length=" + file.length());
+            }
 
-        long addr;
-        try {
-            addr = (long) MapViewOfFile.invokeExact
-                (hMapping,
+            long addr = (long) MapViewOfFile.invokeExact
+                (ee.get(),
+                 hMapping,
                  readOnly ? 4 /*SECTION_MAP_READ*/ : 2, // WinNT.SECTION_MAP_WRITE
                  (int) (position >>> 32),
                  (int) position,
                  length
                  );
+
+            if (addr == 0) {
+                String message = errorMessage(ee);
+                closeHandle(hMapping);
+                closeHandle(hFile);
+                throw new IOException(message + " position=" + position + ", length=" + length +
+                                      ", file.length=" + file.length());
+            }
+
+            return new MappedFile(hFile, hMapping, addr);
         } catch (Throwable e) {
             throw Utils.rethrow(e);
+        } finally {
+            ee.release();
         }
-
-        if (addr == 0) {
-            String message = lastErrorMessage();
-            closeHandle(hMapping);
-            closeHandle(hFile);
-            throw new IOException(message + " position=" + position + ", length=" + length +
-                                  ", file.length=" + file.length());
-        }
-
-        return new MappedFile(hFile, hMapping, addr);
     }
 
     static void flushMapping(int fileHandle, long addr, long length) throws IOException {
-        /*
-          As per the comment in Java_java_nio_MappedMemoryUtils_force0:
+        LocalPool.Entry<MemorySegment> ee = errorPool.access();
+        try {
+            /*
+              As per the comment in Java_java_nio_MappedMemoryUtils_force0:
 
-          FlushViewOfFile can fail with ERROR_LOCK_VIOLATION if the memory
-          system is writing dirty pages to disk. As there is no way to
-          synchronize the flushing then we retry a limited number of times.
-        */
-        for (int i=10;;) {
-            boolean result;
-            try {
-                result = (boolean) FlushViewOfFile.invokeExact(addr, length);
-            } catch (Throwable e) {
-                throw Utils.rethrow(e);
+              FlushViewOfFile can fail with ERROR_LOCK_VIOLATION if the memory
+              system is writing dirty pages to disk. As there is no way to
+              synchronize the flushing then we retry a limited number of times.
+            */
+            for (int i=10;;) {
+                if ((boolean) FlushViewOfFile.invokeExact(ee.get(), addr, length)) {
+                    break;
+                }
+                i--;
+                int errorId = errorId(ee);
+                if (i <= 0 || errorId != 33) { // ERROR_LOCK_VIOLATION
+                    throw new IOException(errorMessage(errorId));
+                }
+                try {
+                    Thread.sleep(100);
+                } catch (InterruptedException e) {
+                    throw new InterruptedIOException();
+                }
             }
-            if (result) {
-                break;
-            }
-            i--;
-            int errorId = lastErrorId();
-            if (i <= 0 || errorId != 33) { // ERROR_LOCK_VIOLATION
-                throw new IOException(errorMessage(errorId));
-            }
-            try {
-                Thread.sleep(100);
-            } catch (InterruptedException e) {
-                throw new InterruptedIOException();
-            }
-        }
 
-        if (fileHandle != INVALID_HANDLE_VALUE) {
-            // Note: Win32 doesn't have a flush metadata flag -- it's implicitly true.
-            boolean result;
-            try {
-                result = (boolean) FlushFileBuffers.invokeExact(fileHandle);
-            } catch (Throwable e) {
-                throw Utils.rethrow(e);
+            if (fileHandle != INVALID_HANDLE_VALUE) {
+                // Note: Win32 doesn't have a flush metadata flag -- it's implicitly true.
+                if (!((boolean) FlushFileBuffers.invokeExact(ee.get(), fileHandle))) {
+                    throw new IOException(errorMessage(errorId(ee)));
+                }
             }
-            if (!result) {
-                throw new IOException(lastErrorMessage());
-            }
+        } catch (Throwable e) {
+            throw Utils.rethrow(e);
+        } finally {
+            ee.release();
         }
     }
 
@@ -316,16 +323,12 @@ final class WindowsFileIO extends JavaFileIO {
         }
     }
 
-    static String lastErrorMessage() {
-        return errorMessage(lastErrorId());
+    static int errorId(LocalPool.Entry<MemorySegment> ee) {
+        return (int) errorHandle.get(ee.get(), 0L);
     }
 
-    static int lastErrorId() {
-        try {
-            return (int) GetLastError.invokeExact();
-        } catch (Throwable e) {
-            throw Utils.rethrow(e);
-        }
+    static String errorMessage(LocalPool.Entry<MemorySegment> ee) {
+        return errorMessage(errorId(ee));
     }
 
     static String errorMessage(int errorId) {
@@ -375,7 +378,7 @@ final class WindowsFileIO extends JavaFileIO {
                           int dwCreationDisposition, int dwFlagsAndAttributes, int hTemplateFile)
         throws IOException
     {
-        int hFile;
+        LocalPool.Entry<MemorySegment> ee = errorPool.access();
         try (Arena a = Arena.ofConfined()) {
             char[] path = file.getAbsolutePath().toCharArray();
             MemorySegment lpFileName = a.allocate(8 + path.length * 2 + 2);
@@ -385,18 +388,20 @@ final class WindowsFileIO extends JavaFileIO {
             lpFileName.set(ValueLayout.JAVA_CHAR, 6, '\\');
             MemorySegment.copy(path, 0, lpFileName, ValueLayout.JAVA_CHAR, 8, path.length);
 
-            hFile = (int) CreateFile.invokeExact
-                (lpFileName, dwDesiredAccess, dwShareMode, lpSecurityAttributes,
+            int hFile = (int) CreateFile.invokeExact
+                (ee.get(), lpFileName, dwDesiredAccess, dwShareMode, lpSecurityAttributes,
                  dwCreationDisposition, dwFlagsAndAttributes, hTemplateFile);
+
+            if (hFile == INVALID_HANDLE_VALUE) {
+                throw new FileNotFoundException(errorMessage(ee));
+            }
+
+            return hFile;
         } catch (Throwable e) {
             throw Utils.rethrow(e);
+        } finally {
+            ee.release();
         }
-
-        if (hFile == INVALID_HANDLE_VALUE) {
-            throw new FileNotFoundException(lastErrorMessage());
-        }
-
-        return hFile;
     }
 
     static long mapViewOfFile(int hFileMappingObject,
@@ -406,31 +411,32 @@ final class WindowsFileIO extends JavaFileIO {
                               long dwNumberOfBytesToMap)
         throws IOException
     {
-        long addr;
+        LocalPool.Entry<MemorySegment> ee = errorPool.access();
         try {
-            addr = (long) MapViewOfFile.invokeExact
-                (hFileMappingObject, dwDesiredAccess,
+            long addr = (long) MapViewOfFile.invokeExact
+                (ee.get(), hFileMappingObject, dwDesiredAccess,
                  dwFileOffsetHigh, dwFileOffsetLow, dwNumberOfBytesToMap);
+            if (addr == 0) {
+                throw new IOException(errorMessage(errorId(ee)));
+            }
+            return addr;
         } catch (Throwable e) {
             throw Utils.rethrow(e);
+        } finally {
+            ee.release();
         }
-
-        if (addr == 0) {
-            throw new IOException(lastErrorMessage());
-        }
-
-        return addr;
     }
 
     static void unmapViewOfFile(long addr) throws IOException {
-        boolean result;
+        LocalPool.Entry<MemorySegment> ee = errorPool.access();
         try {
-            result = (boolean) UnmapViewOfFile.invokeExact(addr);
+            if (!((boolean) UnmapViewOfFile.invokeExact(ee.get(), addr))) {
+                throw new IOException(errorMessage(ee));
+            }
         } catch (Throwable e) {
             throw Utils.rethrow(e);
-        }
-        if (!result) {
-            throw new IOException(lastErrorMessage());
+        } finally {
+            ee.release();
         }
     }
 
@@ -442,37 +448,36 @@ final class WindowsFileIO extends JavaFileIO {
             return addr;
         }
 
-        // flags = MEM_COMMIT | MEM_RESERVE
-        addr = tryValloc(length, 0x1000 | 0x2000);
-
-        if (addr == 0) {
-            throw new IOException(lastErrorMessage());
-        }
-
-        return addr;
-    }
-
-    /**
-     * @return 0 if failed
-     */
-    private static long tryValloc(long length, int flags) {
+        LocalPool.Entry<MemorySegment> ee = errorPool.access();
         try {
-            return (long) VirtualAlloc.invokeExact
-                (0L /*lpAddress*/, length, flags, 0x04 /*PAGE_READWRITE*/);
+            // MEM_COMMIT | MEM_RESERVE
+            int flags = 0x1000 | 0x2000;
+
+            addr = (long) VirtualAlloc.invokeExact
+                (ee.get(), 0L /*lpAddress*/, length, flags, 0x04 /*PAGE_READWRITE*/);
+
+            if (addr == 0) {
+                throw new IOException(errorMessage(ee));
+            }
+
+            return addr;
         } catch (Throwable e) {
             throw Utils.rethrow(e);
+        } finally {
+            ee.release();
         }
     }
 
     static void vfree(long addr) throws IOException {
-        boolean result;
+        LocalPool.Entry<MemorySegment> ee = errorPool.access();
         try {
-            result = (boolean) VirtualFree.invokeExact(addr, 0L, 0x8000); // MEM_RELEASE
+            if (!((boolean) VirtualFree.invokeExact(ee.get(), addr, 0L, 0x8000))) { // MEM_RELEASE
+                throw new IOException(errorMessage(ee));
+            }
         } catch (Throwable e) {
             throw Utils.rethrow(e);
-        }
-        if (!result) {
-            throw new IOException(lastErrorMessage());
+        } finally {
+            ee.release();
         }
     }
 
@@ -519,9 +524,9 @@ final class WindowsFileIO extends JavaFileIO {
                   ValueLayout.ADDRESS,      // NewState
                   ValueLayout.JAVA_INT,     // BufferLength
                   ValueLayout.ADDRESS,      // PreviousState
-                  ValueLayout.ADDRESS)      // ReturnLength
+                  ValueLayout.ADDRESS),     // ReturnLength
+                 Linker.Option.captureCallState("GetLastError")
                  );
-                
 
             GetLargePageMinimum = linker.downcallHandle
                 (lookup.find("GetLargePageMinimum").get(),
@@ -551,16 +556,27 @@ final class WindowsFileIO extends JavaFileIO {
                     length = ((length + largePageSize - 1) / largePageSize) * largePageSize;
                 }
 
-                // flags = MEM_COMMIT | MEM_RESERVE | MEM_LARGE_PAGES
-                long addr = tryValloc(length, 0x1000 | 0x2000 | 0x20000000);
+                LocalPool.Entry<MemorySegment> ee = errorPool.access();
+                try {
+                    // MEM_COMMIT | MEM_RESERVE | MEM_LARGE_PAGES
+                    int flags = 0x1000 | 0x2000 | 0x20000000;
 
-                if (addr != 0) {
-                    return addr;
-                }
+                    long addr = (long) VirtualAlloc.invokeExact
+                        (ee.get(), 0L /*lpAddress*/, length, flags, 0x04 /*PAGE_READWRITE*/);
 
-                if (listener != null) {
-                    listener.notify(EventType.CACHE_INIT_INFO,
-                                    "Unable to allocate using large pages");
+                    if (addr != 0) {
+                        return addr;
+                    }
+
+                    if (listener != null) {
+                        listener.notify(EventType.CACHE_INIT_INFO,
+                                        "Unable to allocate using large pages: " +
+                                        errorMessage(ee));
+                    }
+                } catch (Throwable e) {
+                    throw Utils.rethrow(e);
+                } finally {
+                    ee.release();
                 }
             }
 
@@ -596,14 +612,19 @@ final class WindowsFileIO extends JavaFileIO {
                     tp.set(ValueLayout.JAVA_LONG_UNALIGNED, 4, luid); // Luid
                     tp.set(ValueLayout.JAVA_INT, 12, 0x02);           // SE_PRIVILEGE_ENABLED
 
-                    if (!((boolean) AdjustTokenPrivileges.invokeExact
-                          (token, false, tp, (int) tp.byteSize(),
-                           MemorySegment.NULL, MemorySegment.NULL)))
-                    {
-                        return false;
-                    }
+                    LocalPool.Entry<MemorySegment> ee = errorPool.access();
+                    try {
+                        if (!((boolean) AdjustTokenPrivileges.invokeExact
+                              (ee.get(), token, false, tp, (int) tp.byteSize(),
+                               MemorySegment.NULL, MemorySegment.NULL)))
+                        {
+                            return false;
+                        }
 
-                    return lastErrorId() == 0;
+                        return errorId(ee) == 0;
+                    } finally {
+                        ee.release();
+                    }
                 } finally {
                     closeHandle(token);
                 }
