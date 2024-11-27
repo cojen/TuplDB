@@ -140,6 +140,16 @@ public class DatabaseConfig implements Cloneable {
     }
 
     /**
+     * Use a custom storage layer instead of the default data file.
+     *
+     * @param factory creates a new PageArray
+     */
+    public DatabaseConfig dataPageArray(Supplier<? extends PageArray> factory) {
+        mLauncher.dataPageArray(factory.get());
+        return this;
+    }
+
+    /**
      * Set the minimum cache size, overriding the default.
      *
      * @param minBytes cache size, in bytes
@@ -370,9 +380,11 @@ public class DatabaseConfig implements Cloneable {
      * <p>Allocated but never used pages within the data files are unencrypted, although they
      * contain no information. Temporary files used by in-progress snapshots contain encrypted
      * content.
+     *
+     * @param factory creates a new crypto instance
      */
-    public DatabaseConfig encrypt(Crypto crypto) {
-        mLauncher.encrypt(crypto);
+    public DatabaseConfig encrypt(Supplier<? extends Crypto> factory) {
+        mLauncher.encrypt(factory.get());
         return this;
     }
 
@@ -382,7 +394,7 @@ public class DatabaseConfig implements Cloneable {
      *
      * @param factory creates new checksum instances; {@code CRC32C::new} is recommended
      */
-    public DatabaseConfig checksumPages(Supplier<Checksum> factory) {
+    public DatabaseConfig checksumPages(Supplier<? extends Checksum> factory) {
         mLauncher.checksumPages(factory);
         return this;
     }
@@ -404,7 +416,7 @@ public class DatabaseConfig implements Cloneable {
      * @param factory creates new page compressor instances
      */
     public DatabaseConfig compressPages(int fullPageSize, long cacheSize,
-                                        Supplier<PageCompressor> factory)
+                                        Supplier<? extends PageCompressor> factory)
     {
         mLauncher.compressPages(fullPageSize, cacheSize, factory);
         return this;

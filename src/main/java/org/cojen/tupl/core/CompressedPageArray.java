@@ -23,8 +23,6 @@ import java.io.OutputStream;
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
 
-import java.util.Arrays;
-
 import java.util.function.Supplier;
 
 import org.cojen.tupl.Cursor;
@@ -45,14 +43,14 @@ import org.cojen.tupl.util.LocalPool;
 final class CompressedPageArray extends PageArray implements Supplier<PageCompressor> {
     private final CoreDatabase mDatabase;
     private final Index mPages;
-    private final Supplier<PageCompressor> mCompressorFactory;
+    private final Supplier<? extends PageCompressor> mCompressorFactory;
     private final LocalPool<PageCompressor> mCompressors;
 
     /**
      * @param fullPageSize full size of pages when uncompressed
      */
     CompressedPageArray(int fullPageSize, CoreDatabase db, Index pages,
-                        Supplier<PageCompressor> factory)
+                        Supplier<? extends PageCompressor> factory)
     {
         super(fullPageSize);
         mDatabase = db;
@@ -116,37 +114,6 @@ final class CompressedPageArray extends PageArray implements Supplier<PageCompre
     }
 
     @Override
-    public void readPage(long index, byte[] dst) throws IOException {
-        readPage(index, dst, 0);
-    }
-
-    private void readPage(long index, byte[] dst, int offset) throws IOException {
-        byte[] value = mPages.load(Transaction.BOGUS, keyFor(index));
-        if (value == null) {
-            Arrays.fill(dst, offset, offset + pageSize(), (byte) 0);
-        } else {
-            var entry = mCompressors.access();
-            try {
-                entry.get().decompress(value, 0, value.length, dst, offset, pageSize());
-            } finally {
-                entry.release();
-            }
-        }
-    }
-
-    @Override
-    public void readPage(long index, byte[] dst, int offset, int length) throws IOException {
-        int pageSize = pageSize();
-        if (length == pageSize) {
-            readPage(index, dst, offset);
-        } else {
-            byte[] page = new byte[pageSize];
-            readPage(index, page, 0);
-            System.arraycopy(page, 0, dst, offset, length);
-        }
-    }
-
-    @Override
     public void readPage(long index, long dstAddr) throws IOException {
         readPage(index, dstAddr, 0);
     }
@@ -175,20 +142,6 @@ final class CompressedPageArray extends PageArray implements Supplier<PageCompre
                 MemorySegment page = a.allocate(pageSize);
                 readPage(index, page.address(), 0);
                 MemorySegment.copy(page, 0, DirectMemory.ALL, dstAddr + offset, length);
-            }
-        }
-    }
-
-    @Override
-    public void writePage(long index, byte[] src, int offset) throws IOException {
-        try (Cursor c = mPages.newAccessor(Transaction.BOGUS, keyFor(index))) {
-            var entry = mCompressors.access();
-            try {
-                PageCompressor compressor = entry.get();
-                int len = compressor.compress(src, offset, pageSize());
-                c.valueWrite(0, compressor.compressedBytes(), 0, len);
-            } finally {
-                entry.release();
             }
         }
     }

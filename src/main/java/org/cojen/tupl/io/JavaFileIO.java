@@ -45,7 +45,7 @@ import org.cojen.tupl.util.LocalPool;
  *
  * @author Brian S O'Neill
  */
-class JavaFileIO extends AbstractFileIO {
+sealed class JavaFileIO extends AbstractFileIO permits WindowsFileIO {
     protected final File mFile;
     private final String mMode;
 

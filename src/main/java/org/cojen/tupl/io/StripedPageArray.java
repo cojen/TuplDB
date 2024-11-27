@@ -20,6 +20,10 @@ package org.cojen.tupl.io;
 import java.io.InterruptedIOException;
 import java.io.IOException;
 
+import java.util.function.Supplier;
+
+import org.cojen.tupl.core.CheckedSupplier;
+
 import org.cojen.tupl.util.Runner;
 
 /**
@@ -29,19 +33,34 @@ import org.cojen.tupl.util.Runner;
  * @author Brian S O'Neill
  */
 public class StripedPageArray extends PageArray {
-    private final PageArray[] mArrays;
+    private final PageArray[] mSources;
     private final int mDirectPageSize;
     private final boolean mReadOnly;
 
     private final Syncer[] mSyncers;
 
-    public StripedPageArray(PageArray... arrays) {
-        super(pageSize(arrays));
-        mArrays = arrays;
+    @SafeVarargs
+    public static Supplier<PageArray> factory(Supplier<PageArray>... factories) {
+        if (factories.length <= 1) {
+            return factories[0];
+        }
 
-        int directPageSize = arrays[0].directPageSize();
-        for (int i=1; i<arrays.length; i++) {
-            if (arrays[i].directPageSize() != directPageSize) {
+        return (CheckedSupplier<PageArray>) () -> {
+            var sources = new PageArray[factories.length];
+            for (int i=0; i<sources.length; i++) {
+                sources[i] = factories[i].get();
+            }
+            return new StripedPageArray(sources);
+        };
+    }
+
+    public StripedPageArray(PageArray... sources) {
+        super(pageSize(sources));
+        mSources = sources;
+
+        int directPageSize = sources[0].directPageSize();
+        for (int i=1; i<sources.length; i++) {
+            if (sources[i].directPageSize() != directPageSize) {
                 directPageSize = pageSize();
                 break;
             }
@@ -50,23 +69,23 @@ public class StripedPageArray extends PageArray {
 
         boolean readOnly = false;
 
-        for (PageArray pa : arrays) {
+        for (PageArray pa : sources) {
             readOnly |= pa.isReadOnly();
         }
 
         mReadOnly = readOnly;
 
-        mSyncers = new Syncer[arrays.length - 1];
+        mSyncers = new Syncer[sources.length - 1];
 
         for (int i=0; i<mSyncers.length; i++) {
-            mSyncers[i] = new Syncer(arrays[i]);
+            mSyncers[i] = new Syncer(sources[i]);
         }
     }
 
-    private static int pageSize(PageArray... arrays) {
-        int pageSize = arrays[0].pageSize();
-        for (int i=1; i<arrays.length; i++) {
-            if (arrays[i].pageSize() != pageSize) {
+    private static int pageSize(PageArray... sources) {
+        int pageSize = sources[0].pageSize();
+        for (int i=1; i<sources.length; i++) {
+            if (sources[i].pageSize() != pageSize) {
                 throw new IllegalArgumentException("Inconsistent page sizes");
             }
         }
@@ -80,7 +99,7 @@ public class StripedPageArray extends PageArray {
 
     @Override
     public boolean isFullyMapped() {
-        for (PageArray pa : mArrays) {
+        for (PageArray pa : mSources) {
             if (!pa.isFullyMapped()) {
                 return false;
             }
@@ -95,7 +114,7 @@ public class StripedPageArray extends PageArray {
 
     @Override
     public boolean isEmpty() throws IOException {
-        for (PageArray pa : mArrays) {
+        for (PageArray pa : mSources) {
             if (!pa.isEmpty()) {
                 return false;
             }
@@ -106,7 +125,7 @@ public class StripedPageArray extends PageArray {
     @Override
     public long pageCount() throws IOException {
         long count = 0;
-        for (PageArray pa : mArrays) {
+        for (PageArray pa : mSources) {
             count += pa.pageCount();
             if (count < 0) {
                 return Long.MAX_VALUE;
@@ -126,10 +145,10 @@ public class StripedPageArray extends PageArray {
     }
 
     private void setPageCount(long count, boolean truncate) throws IOException {
-        int stripes = mArrays.length;
+        int stripes = mSources.length;
         // Divide among stripes, rounding up.
         count = (count + stripes - 1) / stripes;
-        for (PageArray pa : mArrays) {
+        for (PageArray pa : mSources) {
             if (truncate) {
                 pa.truncatePageCount(count);
             } else {
@@ -142,74 +161,53 @@ public class StripedPageArray extends PageArray {
     public long pageCountLimit() throws IOException {
         long limit = -1;
 
-        for (PageArray pa : mArrays) {
+        for (PageArray pa : mSources) {
             long subLimit = pa.pageCountLimit();
             if (subLimit >= 0) {
                 limit = limit < 0 ? subLimit : Math.min(limit, subLimit);
             }
         }
 
-        return limit < 0 ? limit : limit * mArrays.length; 
-    }
-
-    @Override
-    public void readPage(long index, byte[] dst, int offset, int length) throws IOException {
-        PageArray[] arrays = mArrays;
-        int stripes = arrays.length;
-        arrays[(int) (index % stripes)].readPage(index / stripes, dst, offset, length);
+        return limit < 0 ? limit : limit * mSources.length; 
     }
 
     @Override
     public void readPage(long index, long dstAddr, int offset, int length) throws IOException {
-        PageArray[] arrays = mArrays;
-        int stripes = arrays.length;
-        arrays[(int) (index % stripes)].readPage(index / stripes, dstAddr, offset, length);
-    }
-
-    @Override
-    public void writePage(long index, byte[] src, int offset) throws IOException {
-        PageArray[] arrays = mArrays;
-        int stripes = arrays.length;
-        arrays[(int) (index % stripes)].writePage(index / stripes, src, offset);
+        PageArray[] sources = mSources;
+        int stripes = sources.length;
+        sources[(int) (index % stripes)].readPage(index / stripes, dstAddr, offset, length);
     }
 
     @Override
     public void writePage(long index, long srcAddr, int offset) throws IOException {
-        PageArray[] arrays = mArrays;
-        int stripes = arrays.length;
-        arrays[(int) (index % stripes)].writePage(index / stripes, srcAddr, offset);
-    }
-
-    @Override
-    public byte[] evictPage(long index, byte[] buf) throws IOException {
-        PageArray[] arrays = mArrays;
-        int stripes = arrays.length;
-        return arrays[(int) (index % stripes)].evictPage(index / stripes, buf);
+        PageArray[] sources = mSources;
+        int stripes = sources.length;
+        sources[(int) (index % stripes)].writePage(index / stripes, srcAddr, offset);
     }
 
     @Override
     public long evictPage(long index, long bufAddr) throws IOException {
-        PageArray[] arrays = mArrays;
-        int stripes = arrays.length;
-        return arrays[(int) (index % stripes)].evictPage(index / stripes, bufAddr);
+        PageArray[] sources = mSources;
+        int stripes = sources.length;
+        return sources[(int) (index % stripes)].evictPage(index / stripes, bufAddr);
     }
 
     @Override
     public long directPageAddress(long index) throws IOException {
-        PageArray[] arrays = mArrays;
-        int stripes = arrays.length;
-        return arrays[(int) (index % stripes)].directPageAddress(index / stripes);
+        PageArray[] sources = mSources;
+        int stripes = sources.length;
+        return sources[(int) (index % stripes)].directPageAddress(index / stripes);
     }
 
     @Override
     public long copyPage(long srcIndex, long dstIndex) throws IOException {
-        PageArray[] arrays = mArrays;
-        int stripes = arrays.length;
+        PageArray[] sources = mSources;
+        int stripes = sources.length;
 
-        PageArray src = arrays[(int) (srcIndex % stripes)];
+        PageArray src = sources[(int) (srcIndex % stripes)];
         srcIndex /= stripes;
 
-        PageArray dst = arrays[(int) (dstIndex % stripes)];
+        PageArray dst = sources[(int) (dstIndex % stripes)];
         dstIndex /= stripes;
 
         if (src == dst) {
@@ -221,9 +219,9 @@ public class StripedPageArray extends PageArray {
 
     @Override
     public long copyPageFromAddress(long srcAddr, long dstIndex) throws IOException {
-        PageArray[] arrays = mArrays;
-        int stripes = arrays.length;
-        return arrays[(int) (dstIndex % stripes)].copyPageFromAddress(srcAddr, dstIndex / stripes);
+        PageArray[] sources = mSources;
+        int stripes = sources.length;
+        return sources[(int) (dstIndex % stripes)].copyPageFromAddress(srcAddr, dstIndex / stripes);
     }
 
     @Override
@@ -236,7 +234,7 @@ public class StripedPageArray extends PageArray {
             Runner.start(syncer);
         }
 
-        mArrays[i].sync(metadata);
+        mSources[i].sync(metadata);
 
         for (Syncer syncer : syncers) {
             syncer.check();
@@ -245,15 +243,15 @@ public class StripedPageArray extends PageArray {
 
     @Override
     public void syncPage(long index) throws IOException {
-        PageArray[] arrays = mArrays;
-        int stripes = arrays.length;
-        arrays[(int) (index % stripes)].syncPage(index / stripes);
+        PageArray[] sources = mSources;
+        int stripes = sources.length;
+        sources[(int) (index % stripes)].syncPage(index / stripes);
     }
 
     @Override
     public void close(Throwable cause) throws IOException {
         IOException ex = null;
-        for (PageArray pa : mArrays) {
+        for (PageArray pa : mSources) {
             ex = Utils.closeQuietly(ex, pa, cause);
         }
         if (ex != null) {

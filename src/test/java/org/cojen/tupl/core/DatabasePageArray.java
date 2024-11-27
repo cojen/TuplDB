@@ -94,7 +94,6 @@ class DatabasePageArray extends PageArray {
     public void expandPageCount(long count) throws IOException {
     }
 
-    @Override
     public void readPage(long index, byte[] dst, int offset, int length) throws IOException {
         try (ValueAccessor accessor = mPages.newAccessor(Transaction.BOGUS, keyFor(index))) {
             accessor.valueRead(0, dst, offset, length);
@@ -108,7 +107,6 @@ class DatabasePageArray extends PageArray {
         MemorySegment.copy(buf, 0, ALL, ValueLayout.JAVA_BYTE, dstAddr, length);
     }
 
-    @Override
     public void writePage(long index, byte[] buf, int offset) throws IOException {
         BooleanSupplier checker = mFailureChecker;
         if (checker != null && checker.getAsBoolean()) {

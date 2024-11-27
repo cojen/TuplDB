@@ -35,8 +35,6 @@ interface ReadableSnapshot extends Snapshot {
 
     long pageCount();
 
-    void readPage(long index, byte[] dst, int offset, int length) throws IOException;
-
     void readPage(long index, long dstAddr, int offset, int length) throws IOException;
 
     /**
@@ -72,13 +70,6 @@ interface ReadableSnapshot extends Snapshot {
             }
 
             @Override
-            public void readPage(long index, byte[] dst, int offset, int length)
-                throws IOException
-            {
-                ReadableSnapshot.this.readPage(index, dst, offset, length);
-            }
-
-            @Override
             public void readPage(long index, long dstAddr, int offset, int length)
                 throws IOException
             {
@@ -86,7 +77,7 @@ interface ReadableSnapshot extends Snapshot {
             }
 
             @Override
-            public void writePage(long index, byte[] src, int offset) throws IOException {
+            public void writePage(long index, long srcAddr, int offset) throws IOException {
                 throw new UnsupportedOperationException();
             }
 

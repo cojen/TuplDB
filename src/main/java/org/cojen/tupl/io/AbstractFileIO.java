@@ -38,7 +38,7 @@ import static org.cojen.tupl.io.Utils.rethrow;
  *
  * @author Brian S O'Neill
  */
-abstract class AbstractFileIO extends FileIO {
+abstract sealed class AbstractFileIO extends FileIO permits JavaFileIO, PosixFileIO {
     private static final int MAPPING_SHIFT = 30;
     private static final int MAPPING_SIZE = 1 << MAPPING_SHIFT;
 

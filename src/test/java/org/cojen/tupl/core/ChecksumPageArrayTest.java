@@ -80,69 +80,7 @@ public class ChecksumPageArrayTest {
             options.add(OpenOption.DIRECT_IO);
         }
 
-        mSource = new FilePageArray(512, mFile, options);
-
-        PageArray pa = ChecksumPageArray.open(mSource, CRC32C::new);
-        int pageSize = 512 - 4;
-        assertEquals(pageSize, pa.pageSize());
-
-        int physicalPageSize = pageSize;
-
-        if (pa.isDirectIO()) {
-            // Page sizes must match.
-            physicalPageSize += 4;
-        }
-
-        int writeOffset = 10;
-        var writePage = new byte[writeOffset + physicalPageSize];
-        for (int i=0; i<writePage.length; i++) {
-            writePage[i] = (byte) i;
-        }
-
-        pa.writePage(1, writePage, writeOffset);
-
-        int readOffset = 20;
-        var readPage = new byte[readOffset + physicalPageSize];
-        pa.readPage(1, readPage, readOffset, physicalPageSize);
-
-        for (int i=0; i<pageSize; i++) {
-            assertEquals(writePage[writeOffset + i], readPage[readOffset + i]);
-        }
-
-        var srcPage = new byte[pageSize + 4];
-        mSource.readPage(1, srcPage);
-
-        for (int i=0; i<pageSize; i++) {
-            assertEquals(srcPage[i], readPage[readOffset + i]);
-        }
-
-        var crc = new CRC32C();
-        crc.update(writePage, writeOffset, pageSize);
-        int expectedCrc = (int) crc.getValue();
-
-        int actualCrc = Utils.decodeIntLE(srcPage, pageSize);
-
-        assertEquals(expectedCrc, actualCrc);
-    }
-
-    @Test
-    public void basicPtrs() throws Exception {
-        basicPtrs(false);
-    }
-
-    @Test
-    public void basicPtrsDirect() throws Exception {
-        basicPtrs(true);
-    }
-
-    private void basicPtrs(boolean directIO) throws Exception {
-        var options = EnumSet.of(OpenOption.CREATE);
-
-        if (directIO) {
-            options.add(OpenOption.DIRECT_IO);
-        }
-
-        mSource = new FilePageArray(4096, mFile, options);
+        mSource = FilePageArray.factory(4096, mFile, options).get();
 
         PageArray pa = ChecksumPageArray.open(mSource, CRC32C::new);
         int pageSize = 4096 - 4;
@@ -166,8 +104,7 @@ public class ChecksumPageArrayTest {
             pa.writePage(2, writePage.address(), writeOffset);
 
             int readOffset = 25;
-            MemorySegment readPage = a.allocate
-                (readOffset + physicalPageSize, SysInfo.pageSize());
+            MemorySegment readPage = a.allocate(readOffset + physicalPageSize, SysInfo.pageSize());
             pa.readPage(2, readPage.address(), readOffset, physicalPageSize);
 
             for (int i=0; i<pageSize; i++) {
@@ -175,11 +112,12 @@ public class ChecksumPageArrayTest {
                              readPage.get(ValueLayout.JAVA_BYTE, readOffset + i));
             }
 
-            var srcPage = new byte[pageSize + 4];
-            mSource.readPage(2, srcPage);
+            MemorySegment srcPage = a.allocate(pageSize + 4, SysInfo.pageSize());
+            mSource.readPage(2, srcPage.address());
 
             for (int i=0; i<pageSize; i++) {
-                assertEquals(srcPage[i], readPage.get(ValueLayout.JAVA_BYTE, readOffset + i));
+                assertEquals(srcPage.get(ValueLayout.JAVA_BYTE, i),
+                             readPage.get(ValueLayout.JAVA_BYTE, readOffset + i));
             }
 
             var crc = new CRC32C();
@@ -187,7 +125,7 @@ public class ChecksumPageArrayTest {
                        .position(writeOffset).limit(writeOffset + pageSize));
             int expectedCrc = (int) crc.getValue();
 
-            int actualCrc = Utils.decodeIntLE(srcPage, pageSize);
+            int actualCrc = srcPage.get(ValueLayout.JAVA_INT, pageSize);
 
             assertEquals(expectedCrc, actualCrc);
         }

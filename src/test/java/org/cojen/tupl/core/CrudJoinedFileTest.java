@@ -21,6 +21,8 @@ import java.io.File;
 
 import java.util.EnumSet;
 
+import java.util.function.Supplier;
+
 import org.junit.*;
 
 import org.cojen.tupl.DatabaseConfig;
@@ -45,8 +47,9 @@ public class CrudJoinedFileTest extends CrudTest {
     @Before
     @Override
     public void createTempDb() throws Exception {
-        PageArray pa = JoinedPageArray.join(newFilePageArray(), 10, newFilePageArray());
-        var config = new DatabaseConfig().dataPageArray(pa);
+        Supplier<PageArray> factory = JoinedPageArray
+            .factory(newPageArrayFactory(), 10, newPageArrayFactory());
+        var config = new DatabaseConfig().dataPageArray(factory);
         decorate(config);
         mDb = newTempDatabase(getClass(), config);
     }
@@ -54,8 +57,8 @@ public class CrudJoinedFileTest extends CrudTest {
     void decorate(DatabaseConfig config) {
     }
 
-    FilePageArray newFilePageArray() throws Exception {
+    private Supplier<PageArray> newPageArrayFactory() throws Exception {
         var file = new File(newTempBaseFile(getClass()).getPath() + ".db");
-        return new FilePageArray(4096, file, EnumSet.of(OpenOption.CREATE));
+        return FilePageArray.factory(4096, file, EnumSet.of(OpenOption.CREATE));
     }
 }

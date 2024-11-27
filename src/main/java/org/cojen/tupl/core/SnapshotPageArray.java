@@ -106,31 +106,14 @@ final class SnapshotPageArray extends PageArray {
     }
 
     @Override
-    public void readPage(long index, byte[] dst, int offset, int length) throws IOException {
-        mSource.readPage(index, dst, offset, length);
-    }
-
-    @Override
     public void readPage(long index, long dstAddr, int offset, int length) throws IOException {
         mSource.readPage(index, dstAddr, offset, length);
-    }
-
-    @Override
-    public void writePage(long index, byte[] src, int offset) throws IOException {
-        preWritePage(index);
-        mSource.writePage(index, src, offset);
     }
 
     @Override
     public void writePage(long index, long srcAddr, int offset) throws IOException {
         preWritePage(index);
         mSource.writePage(index, srcAddr, offset);
-    }
-
-    @Override
-    public byte[] evictPage(long index, byte[] buf) throws IOException {
-        preWritePage(index);
-        return mSource.evictPage(index, buf);
     }
 
     @Override
@@ -446,28 +429,6 @@ final class SnapshotPageArray extends PageArray {
         @Override
         public long pageCount() {
             return mSnapshotPageCount;
-        }
-
-        // Defined by ReadableSnapshot.
-        @Override
-        public void readPage(long index, byte[] dst, int offset, int length) throws IOException {
-            var txn = mPageCopyIndex.mDatabase.threadLocalTransaction(DurabilityMode.NO_REDO);
-            try {
-                txn.lockMode(LockMode.REPEATABLE_READ);
-                var key = new byte[8];
-                encodeLongBE(key, 0, index);
-
-                byte[] page = mPageCopyIndex.load(txn, key);
-
-                if (page != null) {
-                    arraycopy(page, 0, dst, offset, length);
-                } else {
-                    // TODO: Check the cache first as an optimization?
-                    mRawPageArray.readPage(index, dst, offset, length);
-                }
-            } finally {
-                txn.reset();
-            }
         }
 
         // Defined by ReadableSnapshot.

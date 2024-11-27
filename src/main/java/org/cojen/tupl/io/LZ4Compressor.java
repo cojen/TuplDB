@@ -30,7 +30,7 @@ import net.jpountz.lz4.LZ4FastDecompressor;
  *
  * @author Brian S O'Neill
  */
-class LZ4Compressor implements PageCompressor {
+final class LZ4Compressor implements PageCompressor {
     private final net.jpountz.lz4.LZ4Compressor mCompressor;
     private final LZ4FastDecompressor mDecompressor;
 
@@ -40,22 +40,6 @@ class LZ4Compressor implements PageCompressor {
         var factory = LZ4Factory.fastestInstance();
         mCompressor = factory.fastCompressor();
         mDecompressor = factory.fastDecompressor();
-    }
-
-    @Override
-    public int compress(byte[] src, int srcOff, int srcLen) {
-        byte[] dst = mCompressedBytes;
-        if (dst == null) {
-            mCompressedBytes = dst = new byte[srcLen / 16];
-        }
-
-        while (true) {
-            try {
-                return mCompressor.compress(src, srcOff, srcLen, dst, 0, dst.length);
-            } catch (LZ4Exception e) {
-                dst = expandCapacity(srcLen);
-            }
-        }
     }
 
     @Override
@@ -87,11 +71,6 @@ class LZ4Compressor implements PageCompressor {
     @Override
     public byte[] compressedBytes() {
         return mCompressedBytes;
-    }
-
-    @Override
-    public void decompress(byte[] src, int srcOff, int srcLen, byte[] dst, int dstOff, int dstLen) {
-        mDecompressor.decompress(src, srcOff, dst, dstOff, dstLen);
     }
 
     @Override

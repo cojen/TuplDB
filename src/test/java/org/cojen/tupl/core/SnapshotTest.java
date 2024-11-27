@@ -393,19 +393,13 @@ public class SnapshotTest {
 
         assertEquals(expectedLength, snapshotFile.length());
 
-        Supplier<MappedPageArray> openMap = () -> {
-            try {
-                return MappedPageArray.open
-                    (4096, 25_000, restoredBase, EnumSet.of(OpenOption.CREATE));
-            } catch (IOException e) {
-                throw Utils.rethrow(e);
-            }
-        };
+        Supplier<MappedPageArray> openMap = MappedPageArray.factory
+            (4096, 25_000, restoredBase, EnumSet.of(OpenOption.CREATE));
 
         // Note that no base file is provided. This means no redo logging.
         var restoredConfig = new DatabaseConfig()
             .pageSize(4096)
-            .dataPageArray(openMap.get())
+            .dataPageArray(openMap)
             .minCacheSize(10_000_000).maxCacheSize(100_000_000)
             .durabilityMode(DurabilityMode.NO_FLUSH)
             .checkpointRate(-1, null);
@@ -431,7 +425,7 @@ public class SnapshotTest {
 
         restored = reopenTempDatabase
             (getClass(), restored,
-             (file) -> restoredConfig.baseFile(file).dataPageArray(openMap.get()));
+             (file) -> restoredConfig.baseFile(file).dataPageArray(openMap));
 
         restoredIx = restored.openIndex("test1");
         assertEquals(indexId, restoredIx.id());

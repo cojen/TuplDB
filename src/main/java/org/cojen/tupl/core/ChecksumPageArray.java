@@ -51,13 +51,13 @@ abstract class ChecksumPageArray extends TransformedPageArray {
         INT_LE = ValueLayout.JAVA_INT_UNALIGNED.withOrder(ByteOrder.LITTLE_ENDIAN);
     }
 
-    static ChecksumPageArray open(PageArray source, Supplier<Checksum> supplier) {
+    static ChecksumPageArray open(PageArray source, Supplier<? extends Checksum> supplier) {
         return source.isDirectIO() ? new Direct(source, supplier) : new Standard(source, supplier);
     }
 
-    final Supplier<Checksum> mSupplier;
+    final Supplier<? extends Checksum> mSupplier;
 
-    ChecksumPageArray(PageArray source, Supplier<Checksum> supplier) {
+    ChecksumPageArray(PageArray source, Supplier<? extends Checksum> supplier) {
         super(source.pageSize() - 4, source); // need 4 bytes for the checksum
         mSupplier = supplier;
     }
@@ -113,31 +113,13 @@ abstract class ChecksumPageArray extends TransformedPageArray {
     private static class Standard extends ChecksumPageArray {
         private final LocalPool<BufRef> mBufRefPool;
 
-        Standard(PageArray source, Supplier<Checksum> supplier) {
+        Standard(PageArray source, Supplier<? extends Checksum> supplier) {
             super(source, supplier);
             mBufRefPool = new LocalPool<>(this::allocateBufRef, -4);
         }
 
         private BufRef allocateBufRef() {
             return new BufRef(Arena.ofAuto().allocate(pageSize() + 4), mSupplier.get());
-        }
-
-        @Override
-        public void readPage(long index, byte[] dst, int offset, int length) throws IOException {
-            int pageSize = pageSize();
-            if (offset != 0 || length != pageSize) {
-                byte[] page = new byte[pageSize];
-                readPage(index, page);
-                System.arraycopy(page, 0, dst, offset, length);
-            } else {
-                LocalPool.Entry<BufRef> e = mBufRefPool.access();
-                try {
-                    MemorySegment page = readPageAndChecksum(e.get(), index, length);
-                    MemorySegment.copy(page, ValueLayout.JAVA_BYTE, 0, dst, offset, length);
-                } finally {
-                    e.release();
-                }
-            }
         }
 
         @Override
@@ -174,20 +156,6 @@ abstract class ChecksumPageArray extends TransformedPageArray {
             checksum.update(ref.mBuffer.position(0).limit(length));
             check(index, ms.get(INT_LE, length), checksum);
             return ms;
-        }
-
-        @Override
-        public void writePage(long index, byte[] src, int offset) throws IOException {
-            LocalPool.Entry<BufRef> e = mBufRefPool.access();
-            try {
-                BufRef ref = e.get();
-                int length = pageSize();
-                MemorySegment.copy(src, offset,
-                                   ref.mPagePlusCRC, ValueLayout.JAVA_BYTE, 0, length);
-                writePageAndChecksum(ref, index, length);
-            } finally {
-                e.release();
-            }
         }
 
         @Override
@@ -238,7 +206,7 @@ abstract class ChecksumPageArray extends TransformedPageArray {
         private final int mAbsPageSize;
         private final ThreadLocal<Checksum> mLocalChecksum;
 
-        Direct(PageArray source, Supplier<Checksum> supplier) {
+        Direct(PageArray source, Supplier<? extends Checksum> supplier) {
             super(source, supplier);
             mAbsPageSize = Math.abs(source.directPageSize());
             mLocalChecksum = new ThreadLocal<>();
@@ -248,23 +216,6 @@ abstract class ChecksumPageArray extends TransformedPageArray {
         public int directPageSize() {
             // Expected to be negative.
             return mSource.directPageSize();
-        }
-
-        @Override
-        public void readPage(long index, byte[] dst, int offset, int length) throws IOException {
-            if (offset != 0 || length != pageSize()) {
-                byte[] page = new byte[mAbsPageSize];
-                readPage(index, page);
-                System.arraycopy(page, 0, dst, offset, length);
-            } else {
-                // Assume that the caller has provided a buffer sized to match the direct page.
-                mSource.readPage(index, dst, offset, mAbsPageSize);
-                int storedChecksum = Utils.decodeIntLE(dst, offset + length);
-                Checksum checksum = checksum();
-                checksum.reset();
-                checksum.update(dst, offset, length);
-                check(index, storedChecksum, checksum);
-            }
         }
 
         @Override
@@ -285,23 +236,6 @@ abstract class ChecksumPageArray extends TransformedPageArray {
                 checksum.reset();
                 checksum.update(ms.asByteBuffer().limit(length));
                 check(index, storedChecksum, checksum);
-            }
-        }
-
-        @Override
-        public void writePage(long index, byte[] src, int offset) throws IOException {
-            if (offset != 0) {
-                byte[] page = new byte[mAbsPageSize];
-                System.arraycopy(src, offset, page, 0, page.length);
-                writePage(index, page);
-            } else {
-                Checksum checksum = checksum();
-                checksum.reset();
-                // Assume that the caller has provided a buffer sized to match the direct page.
-                int pageSize = mAbsPageSize - 4;
-                checksum.update(src, offset, pageSize);
-                Utils.encodeIntLE(src, offset + pageSize, (int) checksum.getValue());
-                mSource.writePage(index, src, offset);
             }
         }
 

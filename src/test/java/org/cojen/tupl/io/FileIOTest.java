@@ -17,14 +17,10 @@
 
 package org.cojen.tupl.io;
 
-import static org.junit.Assume.*;
 import static org.junit.Assert.*;
 import static org.cojen.tupl.TestUtils.*;
 
 import java.io.File;
-import java.nio.ByteBuffer;
-import java.nio.file.FileStore;
-import java.nio.file.Files;
 import java.util.EnumSet;
 
 import org.junit.*;

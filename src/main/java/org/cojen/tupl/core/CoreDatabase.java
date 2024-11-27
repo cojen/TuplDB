@@ -106,7 +106,7 @@ public abstract class CoreDatabase implements Database {
 
     abstract Crypto dataCrypto();
 
-    abstract Supplier<Checksum> checksumFactory();
+    abstract Supplier<? extends Checksum> checksumFactory();
 
     abstract Tree registry();
 

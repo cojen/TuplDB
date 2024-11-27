@@ -91,10 +91,10 @@ public final class Launcher implements Cloneable {
     boolean mEnableJMX;
     Crypto mDataCrypto;
     Crypto mRedoCrypto;
-    Supplier<Checksum> mChecksumFactory;
+    Supplier<? extends Checksum> mChecksumFactory;
     int mCompressorPageSize;
     long mCompressorCacheSize;
-    Supplier<PageCompressor> mCompressorFactory;
+    Supplier<? extends PageCompressor> mCompressorFactory;
     Map<String, CustomHandler> mCustomHandlers;
     Map<String, PrepareHandler> mPrepareHandlers;
     TempFileManager mTempFileManager;
@@ -263,11 +263,13 @@ public final class Launcher implements Cloneable {
         mRedoCrypto = crypto;
     }
 
-    public void checksumPages(Supplier<Checksum> factory) {
+    public void checksumPages(Supplier<? extends Checksum> factory) {
         mChecksumFactory = factory;
     }
 
-    public void compressPages(int fullPageSize, long cacheSize, Supplier<PageCompressor> factory) {
+    public void compressPages(int fullPageSize, long cacheSize,
+                              Supplier<? extends PageCompressor> factory)
+    {
         mCompressorPageSize = fullPageSize;
         mCompressorCacheSize = cacheSize;
         mCompressorFactory = factory;

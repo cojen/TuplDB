@@ -30,7 +30,11 @@ import java.nio.channels.ClosedChannelException;
 
 import java.util.EnumSet;
 
+import java.util.function.Supplier;
+
 import org.cojen.tupl.DatabaseFullException;
+
+import org.cojen.tupl.core.CheckedSupplier;
 
 import org.cojen.tupl.diag.EventListener;
 
@@ -41,7 +45,9 @@ import static org.cojen.tupl.io.Utils.rethrow;
  *
  * @author Brian S O'Neill
  */
-public abstract class MappedPageArray extends PageArray {
+public abstract sealed class MappedPageArray extends PageArray
+    permits PosixMappedPageArray, WindowsMappedPageArray
+{
     private static final VarHandle cMappingAddrHandle, cCauseHandle;
 
     static {
@@ -70,25 +76,25 @@ public abstract class MappedPageArray extends PageArray {
 
     /**
      * @param file file to store pages, or null if anonymous
+     * @param options can be null if none
      * @throws UnsupportedOperationException if not running on a 64-bit platform
      */
-    public static MappedPageArray open(int pageSize, long pageCount,
-                                       File file, EnumSet<OpenOption> options)
-        throws IOException
+    public static Supplier<MappedPageArray> factory(int pageSize, long pageCount,
+                                                    File file, EnumSet<OpenOption> options)
     {
-        return open(pageSize, pageCount, file, options, null);
+        return factory(pageSize, pageCount, file, options, null);
     }
 
     /**
      * @param file file to store pages, or null if anonymous
+     * @param options can be null if none
      * @param listener optional
      * @throws UnsupportedOperationException if not running on a 64-bit platform
      * @hidden
      */
-    public static MappedPageArray open(int pageSize, long pageCount,
-                                       File file, EnumSet<OpenOption> options,
-                                       EventListener listener)
-        throws IOException
+    public static Supplier<MappedPageArray> factory(int pageSize, long pageCount,
+                                                    File file, EnumSet<OpenOption> options,
+                                                    EventListener listener)
     {
         if (pageSize < 1 || pageCount < 0 || pageCount > Long.MAX_VALUE / pageSize) {
             throw new IllegalArgumentException();
@@ -98,15 +104,18 @@ public abstract class MappedPageArray extends PageArray {
             throw new UnsupportedOperationException("Not a 64-bit platform");
         }
 
-        if (options == null) {
-            options = EnumSet.noneOf(OpenOption.class);
-        }
 
-        if (System.getProperty("os.name").startsWith("Windows")) {
-            return new WindowsMappedPageArray(pageSize, pageCount, file, options, listener);
-        } else {
-            return new PosixMappedPageArray(pageSize, pageCount, file, options, listener);
-        }
+        return (CheckedSupplier<MappedPageArray>) () -> {
+            EnumSet<OpenOption> opts = options;
+            if (opts == null) {
+                opts = EnumSet.noneOf(OpenOption.class);
+            }
+            if (System.getProperty("os.name").startsWith("Windows")) {
+                return new WindowsMappedPageArray(pageSize, pageCount, file, opts, listener);
+            } else {
+                return new PosixMappedPageArray(pageSize, pageCount, file, opts, listener);
+            }
+        };
     }
 
     MappedPageArray(int pageSize, long pageCount, EnumSet<OpenOption> options) {
@@ -149,15 +158,6 @@ public abstract class MappedPageArray extends PageArray {
     }
 
     @Override
-    public void readPage(long index, byte[] dst, int offset, int length)
-        throws IOException
-    {
-        readCheck(index);
-        long srcAddr = mappingAddr() + index * mPageSize;
-        MemorySegment.copy(DirectMapping.ALL, ValueLayout.JAVA_BYTE, srcAddr, dst, offset, length);
-    }
-
-    @Override
     public void readPage(long index, long dstAddr, int offset, int length)
         throws IOException
     {
@@ -167,15 +167,6 @@ public abstract class MappedPageArray extends PageArray {
         if (srcAddr != dstAddr) {
             MemorySegment.copy(DirectMapping.ALL, srcAddr, DirectMapping.ALL, dstAddr, length);
         }
-    }
-
-    @Override
-    public void writePage(long index, byte[] src, int offset) throws IOException {
-        writeCheck(index);
-        int pageSize = mPageSize;
-        long dstAddr = mappingAddr() + index * pageSize;
-        MemorySegment.copy(src, offset, DirectMapping.ALL, ValueLayout.JAVA_BYTE,
-                           dstAddr, pageSize);
     }
 
     @Override

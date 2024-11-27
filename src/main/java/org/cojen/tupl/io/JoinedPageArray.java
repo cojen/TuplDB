@@ -22,6 +22,10 @@ import java.io.IOException;
 
 import java.util.concurrent.Future;
 
+import java.util.function.Supplier;
+
+import org.cojen.tupl.core.CheckedSupplier;
+
 import org.cojen.tupl.util.Runner;
 
 /**
@@ -37,12 +41,30 @@ import org.cojen.tupl.util.Runner;
  */
 public class JoinedPageArray extends PageArray {
     /**
-     * @param first array for all pages lower than the join index
-     * @param joinIndex join index which separates the two page arrays
-     * @param second array for all pages at or higher than the join index
+     * @param first source for all pages lower than the join index
+     * @param joinIndex join index which separates the two page sources
+     * @param second source for all pages at or higher than the join index
      * @throws IllegalArgumentException if page sizes don't match or if join index isn't
      * greater than 0
-     * @throws IllegalStateException if the highest index of the first array is higher than the
+     * @throws IllegalStateException if the highest index of the first source is higher than the
+     * join index
+     */
+    public static Supplier<PageArray> factory(Supplier<PageArray> first,
+                                              long joinIndex,
+                                              Supplier<PageArray> second)
+    {
+        return (CheckedSupplier<PageArray>) () -> {
+            return join(first.get(), joinIndex, second.get());
+        };
+    }
+
+    /**
+     * @param first source for all pages lower than the join index
+     * @param joinIndex join index which separates the two page sources
+     * @param second source for all pages at or higher than the join index
+     * @throws IllegalArgumentException if page sizes don't match or if join index isn't
+     * greater than 0
+     * @throws IllegalStateException if the highest index of the first source is higher than the
      * join index
      */
     public static PageArray join(PageArray first, long joinIndex, PageArray second)
@@ -139,35 +161,13 @@ public class JoinedPageArray extends PageArray {
     }
 
     @Override
-    public void readPage(long index, byte[] dst, int offset, int length) throws IOException {
-        action(index, (pa, ix) -> pa.readPage(ix, dst, offset, length));
-    }
-
-    @Override
     public void readPage(long index, long dstAddr, int offset, int length) throws IOException {
         action(index, (pa, ix) -> pa.readPage(ix, dstAddr, offset, length));
     }
 
     @Override
-    public void writePage(long index, byte[] src, int offset) throws IOException {
-        action(index, (pa, ix) -> pa.writePage(ix, src, offset));
-    }
-
-    @Override
     public void writePage(long index, long srcAddr, int offset) throws IOException {
         action(index, (pa, ix) -> pa.writePage(ix, srcAddr, offset));
-    }
-
-    @Override
-    public byte[] evictPage(long index, byte[] buf) throws IOException {
-        PageArray pa;
-        if (index < mJoinIndex) {
-            pa = mFirst;
-        } else {
-            pa = mSecond;
-            index -= mJoinIndex;
-        }
-        return pa.evictPage(index, buf);
     }
 
     @Override

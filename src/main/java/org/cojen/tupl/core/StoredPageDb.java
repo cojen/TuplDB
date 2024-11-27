@@ -24,6 +24,10 @@ import java.io.InputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 
+import java.lang.foreign.Arena;
+import java.lang.foreign.MemorySegment;
+import java.lang.foreign.ValueLayout;
+
 import java.security.GeneralSecurityException;
 import java.security.SecureRandom;
 
@@ -131,7 +135,7 @@ final class StoredPageDb extends PageDb {
     static StoredPageDb open(EventListener debugListener,
                              boolean explicitPageSize, int pageSize,
                              File[] files, EnumSet<OpenOption> options,
-                             Supplier<Checksum> checksumFactory, Crypto crypto,
+                             Supplier<? extends Checksum> checksumFactory, Crypto crypto,
                              boolean destroy, long databaseId)
         throws IOException
     {
@@ -157,7 +161,7 @@ final class StoredPageDb extends PageDb {
      * @param databaseId pass 0 to assign the database id automatically
      */
     static StoredPageDb open(EventListener debugListener, PageArray rawArray,
-                             Supplier<Checksum> checksumFactory, Crypto crypto,
+                             Supplier<? extends Checksum> checksumFactory, Crypto crypto,
                              boolean destroy, long databaseId)
         throws IOException
     {
@@ -187,14 +191,14 @@ final class StoredPageDb extends PageDb {
         }
 
         if (files.length == 1) {
-            return new FilePageArray(pageSize, files[0], options);
+            return FilePageArray.factory(pageSize, files[0], options).get();
         }
 
         var arrays = new PageArray[files.length];
 
         try {
             for (int i=0; i<files.length; i++) {
-                arrays[i] = new FilePageArray(pageSize, files[i], options);
+                arrays[i] = FilePageArray.factory(pageSize, files[i], options).get();
             }
 
             return new StripedPageArray(arrays);
@@ -214,7 +218,7 @@ final class StoredPageDb extends PageDb {
     }
 
     private static PageArray decorate(PageArray pa,
-                                      Supplier<Checksum> checksumFactory, Crypto crypto)
+                                      Supplier<? extends Checksum> checksumFactory, Crypto crypto)
     {
         if (crypto != null) {
             pa = new CryptoPageArray(pa, crypto);
@@ -402,7 +406,7 @@ final class StoredPageDb extends PageDb {
     }
 
     @Override
-    Supplier<Checksum> checksumFactory() {
+    Supplier<? extends Checksum> checksumFactory() {
         return TransformedPageArray.checksumFactory(mPageArray.mSource);
     }
 
@@ -816,7 +820,7 @@ final class StoredPageDb extends PageDb {
      * @param in snapshot source; does not require extra buffering; auto-closed
      */
     static PageDb restoreFromSnapshot(int pageSize, File[] files, EnumSet<OpenOption> options,
-                                      Supplier<Checksum> checksumFactory, Crypto crypto,
+                                      Supplier<? extends Checksum> checksumFactory, Crypto crypto,
                                       InputStream in)
         throws IOException
     {
@@ -833,11 +837,7 @@ final class StoredPageDb extends PageDb {
                 if (checksumFactory != null) {
                     pageSize -= 4; // don't decrypt the checksum
                 }
-                try {
-                    crypto.decryptPage(0, pageSize, buffer, 0);
-                } catch (GeneralSecurityException e) {
-                    throw new DatabaseException(e);
-                }
+                decryptHeader(crypto, pageSize, buffer);
             } else {
                 // Start the with minimum page size and figure out what the actual size is.
                 buffer = new byte[MINIMUM_PAGE_SIZE];
@@ -882,7 +882,7 @@ final class StoredPageDb extends PageDb {
      * @param crypto optional
      * @param in snapshot source; does not require extra buffering; auto-closed
      */
-    static PageDb restoreFromSnapshot(PageArray pa, Supplier<Checksum> checksumFactory,
+    static PageDb restoreFromSnapshot(PageArray pa, Supplier<? extends Checksum> checksumFactory,
                                       Crypto crypto, InputStream in)
         throws IOException
     {
@@ -895,11 +895,7 @@ final class StoredPageDb extends PageDb {
                 if (checksumFactory != null) {
                     pageSize -= 4; // don't decrypt the checksum
                 }
-                try {
-                    crypto.decryptPage(0, pageSize, buffer, 0);
-                } catch (GeneralSecurityException e) {
-                    throw new DatabaseException(e);
-                }
+                decryptHeader(crypto, pageSize, buffer);
             }
 
             checkMagicNumber(decodeLongLE(buffer, I_MAGIC_NUMBER));
@@ -922,7 +918,8 @@ final class StoredPageDb extends PageDb {
     /**
      * @param buffer initialized with page 0 (first header)
      */
-    private static PageDb restoreFromSnapshot(Supplier<Checksum> checksumFactory, Crypto crypto,
+    private static PageDb restoreFromSnapshot(Supplier<? extends Checksum> checksumFactory,
+                                              Crypto crypto,
                                               InputStream in, byte[] buffer, PageArray rawArray)
         throws IOException
     {
@@ -948,11 +945,7 @@ final class StoredPageDb extends PageDb {
                 rawArray.writePage(1, p_transferArrayToPage(buffer, bufferPageAddr));
 
                 if (crypto != null) {
-                    try {
-                        crypto.decryptPage(0, logicalArray.pageSize(), buffer, 0);
-                    } catch (GeneralSecurityException e) {
-                        throw new DatabaseException(e);
-                    }
+                    decryptHeader(crypto, logicalArray.pageSize(), buffer);
                 }
 
                 if (decodeIntLE(buffer, I_COMMIT_NUMBER) > commitNumber) {
@@ -983,11 +976,7 @@ final class StoredPageDb extends PageDb {
             p_transferPageToArray(bufferPageAddr, buffer);
 
             if (crypto != null) {
-                try {
-                    crypto.decryptPage(0, logicalArray.pageSize(), buffer, 0);
-                } catch (GeneralSecurityException e) {
-                    throw new DatabaseException(e);
-                }
+                decryptHeader(crypto, logicalArray.pageSize(), buffer);
             }
 
             encodeLongLE(buffer, I_MAGIC_NUMBER, MAGIC_NUMBER);
@@ -1004,6 +993,19 @@ final class StoredPageDb extends PageDb {
             return new StoredPageDb(null, logicalArray, crypto, false, 0);
         } catch (WrongPageSize e) {
             throw e.rethrow();
+        }
+    }
+
+    private static void decryptHeader(Crypto crypto, int pageSize, byte[] buffer)
+        throws DatabaseException
+    {
+        try (Arena a = Arena.ofConfined()) {
+            MemorySegment ms = a.allocate(pageSize);
+            MemorySegment.copy(buffer, 0, ms, ValueLayout.JAVA_BYTE, 0, pageSize);
+            crypto.decryptPage(0, pageSize, ms.address(), 0);
+            MemorySegment.copy(ms, ValueLayout.JAVA_BYTE, 0, buffer, 0, pageSize);
+        } catch (GeneralSecurityException e) {
+            throw new DatabaseException(e);
         }
     }
 

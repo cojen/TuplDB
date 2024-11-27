@@ -20,6 +20,10 @@ package org.cojen.tupl.io;
 import java.io.Closeable;
 import java.io.IOException;
 
+import java.util.function.Supplier;
+
+import org.cojen.tupl.core.CheckedSupplier;
+
 /**
  * Compresses and decompresses pages. Instances aren't expected to be thread-safe.
  *
@@ -27,37 +31,30 @@ import java.io.IOException;
  */
 public interface PageCompressor extends Closeable {
     /**
-     * Returns a new ZLIB compressor (deflate).
+     * Returns a supplier of new ZLIB compressors (deflate).
      */
-    public static PageCompressor zlib() {
-        return new ZlibCompressor();
+    public static Supplier<PageCompressor> zlib() {
+        return (CheckedSupplier<PageCompressor>) ZlibCompressor::new;
     }
 
     /**
-     * Returns a new ZLIB compressor (deflate).
+     * Returns a supplier of new ZLIB compressors (deflate).
      *
      * @param level compression level [0..9]
      */
-    public static PageCompressor zlib(int level) {
-        return new ZlibCompressor(level);
+    public static Supplier<PageCompressor> zlib(int level) {
+        return (CheckedSupplier<PageCompressor>) () -> new ZlibCompressor(level);
     }
 
     /**
-     * Returns a new LZ4 compressor.
+     * Returns a supplier of new LZ4 compressors.
      */
-    public static PageCompressor lz4() {
-        return new LZ4Compressor();
+    public static Supplier<PageCompressor> lz4() {
+        return (CheckedSupplier<PageCompressor>) LZ4Compressor::new;
     }
 
     /**
-     * Compress to a byte array.
-     *
-     * @return the compressed size
-     */
-    public int compress(byte[] src, int srcOff, int srcLen) throws IOException;
-
-    /**
-     * Compress to a byte array from a raw memory pointer.
+     * Compress to a byte array from a raw memory address.
      *
      * @return the compressed size
      */
@@ -69,15 +66,7 @@ public interface PageCompressor extends Closeable {
     public byte[] compressedBytes();
 
     /**
-     * Decompress to a byte array.
-     *
-     * @param dstLen original size of uncompressed page
-     */
-    public void decompress(byte[] src, int srcOff, int srcLen, byte[] dst, int dstOff, int dstLen)
-        throws IOException;
-
-    /**
-     * Decompress to a raw memory pointer.
+     * Decompress to a raw memory address.
      *
      * @param dstLen original size of uncompressed page
      */

@@ -48,7 +48,7 @@ abstract class TransformedPageArray extends PageArray {
         return array;
     }
 
-    static Supplier<Checksum> checksumFactory(PageArray array) {
+    static Supplier<? extends Checksum> checksumFactory(PageArray array) {
         while (true) {
             if (array instanceof ChecksumPageArray cpa) {
                 return cpa.mSupplier;

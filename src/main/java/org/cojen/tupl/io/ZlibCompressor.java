@@ -30,7 +30,7 @@ import java.util.zip.Inflater;
  *
  * @author Brian S O'Neill
  */
-class ZlibCompressor implements PageCompressor {
+final class ZlibCompressor implements PageCompressor {
     private final Deflater mDeflater;
     private final Inflater mInflater;
 
@@ -43,33 +43,6 @@ class ZlibCompressor implements PageCompressor {
     ZlibCompressor(int level) {
         mDeflater = new Deflater(level);
         mInflater = new Inflater();
-    }
-
-    @Override
-    public int compress(byte[] src, int srcOff, int srcLen) {
-        byte[] dst = mCompressedBytes;
-        if (dst == null) {
-            mCompressedBytes = dst = new byte[srcLen / 16];
-        }
-
-        try {
-            mDeflater.setInput(src, srcOff, srcLen);
-            mDeflater.finish();
-            int dstOff = 0;
-            int len = 0;
-            while (true) {
-                len += mDeflater.deflate(dst, dstOff, dst.length - dstOff);
-                if (mDeflater.finished()) {
-                    return len;
-                }
-                byte[] newDst = new byte[dst.length << 1];
-                System.arraycopy(dst, 0, newDst, 0, len);
-                mCompressedBytes = dst = newDst;
-                dstOff = len;
-            }
-        } finally {
-            mDeflater.reset();
-        }
     }
 
     @Override
@@ -105,20 +78,6 @@ class ZlibCompressor implements PageCompressor {
     @Override
     public byte[] compressedBytes() {
         return mCompressedBytes;
-    }
-
-    @Override
-    public void decompress(byte[] src, int srcOff, int srcLen,
-                           byte[] dst, int dstOff, int dstLen)
-    {
-        try {
-            mInflater.setInput(src, srcOff, srcLen);
-            mInflater.inflate(dst, dstOff, dstLen);
-        } catch (DataFormatException e) {
-            throw Utils.rethrow(e);
-        } finally {
-            mInflater.reset();
-        }
     }
 
     @Override

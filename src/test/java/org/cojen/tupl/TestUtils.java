@@ -22,6 +22,7 @@ import java.net.*;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
+import java.util.function.Supplier;
 
 import org.cojen.tupl.core.Utils;
 
@@ -550,10 +551,10 @@ public class TestUtils {
                 File baseFile = newTempBaseFile();
                 config.baseFile(baseFile);
                 var dbFile = new File(baseFile.getParentFile(), baseFile.getName() + ".db");
-                MappedPageArray pa = MappedPageArray.open
+                Supplier<MappedPageArray> factory = MappedPageArray.factory
                     (pageSize, (cacheSize + pageSize - 1) / pageSize, dbFile,
                      EnumSet.of(OpenOption.CREATE, OpenOption.MAPPED));
-                config.dataPageArray(pa);
+                config.dataPageArray(factory);
                 Database db = Database.open(config);
                 synchronized (this) {
                     mTempDatabases.put(db, baseFile);

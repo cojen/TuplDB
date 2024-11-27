@@ -83,30 +83,6 @@ final class CryptoPageArray extends TransformedPageArray {
     }
 
     @Override
-    public void readPage(long index, byte[] dst) throws IOException {
-        try {
-            mSource.readPage(index, dst);
-            mCrypto.decryptPage(index, pageSize(), dst, 0);
-        } catch (GeneralSecurityException e) {
-            throw new CorruptDatabaseException(e);
-        }
-    }
-
-    @Override
-    public void readPage(long index, byte[] dst, int offset, int length) throws IOException {
-        int pageSize = pageSize();
-        if (offset == 0 && length == pageSize) {
-            readPage(index, dst);
-            return;
-        }
-
-        var page = new byte[pageSize];
-
-        readPage(index, page);
-        System.arraycopy(page, 0, dst, offset, length);
-    }
-
-    @Override
     public void readPage(long index, long dstAddr) throws IOException {
         try {
             mSource.readPage(index, dstAddr);
@@ -134,20 +110,6 @@ final class CryptoPageArray extends TransformedPageArray {
     }
 
     @Override
-    public void writePage(long index, byte[] src, int offset) throws IOException {
-        try {
-            int pageSize = pageSize();
-            // Unknown if source contents can be destroyed, so create a new one.
-            var encrypted = new byte[pageSize];
-
-            mCrypto.encryptPage(index, pageSize, src, offset, encrypted, 0);
-            mSource.writePage(index, encrypted, 0);
-        } catch (GeneralSecurityException e) {
-            throw new CorruptDatabaseException(e);
-        }
-    }
-
-    @Override
     public void writePage(long index, long srcAddr, int offset) throws IOException {
         try {
             int pageSize = pageSize();
@@ -161,29 +123,6 @@ final class CryptoPageArray extends TransformedPageArray {
             }
         } catch (GeneralSecurityException e) {
             throw new CorruptDatabaseException(e);
-        }
-    }
-
-    @Override
-    public byte[] evictPage(long index, byte[] buf) throws IOException {
-        try {
-            // Page is being evicted, and so buf contents can be destroyed.
-            mCrypto.encryptPage(index, pageSize(), buf, 0);
-        } catch (GeneralSecurityException e) {
-            throw new CorruptDatabaseException(e);
-        }
-
-        try {
-            return mSource.evictPage(index, buf);
-        } catch (Throwable e) {
-            // Oops, better restore the page.
-            try {
-                mCrypto.decryptPage(index, pageSize(), buf, 0);
-            } catch (Throwable e2) {
-                // Time to panic.
-                Utils.closeQuietly(mSource, e2);
-            }
-            throw e;
         }
     }
 

@@ -29,7 +29,7 @@ import org.cojen.tupl.diag.EventListener;
  *
  * @author Brian S O'Neill
  */
-class WindowsMappedPageArray extends MappedPageArray {
+final class WindowsMappedPageArray extends MappedPageArray {
     private final int mFileHandle;
     private final int mMappingHandle;
 

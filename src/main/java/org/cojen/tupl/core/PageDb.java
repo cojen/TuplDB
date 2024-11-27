@@ -73,7 +73,7 @@ abstract class PageDb implements CauseCloseable {
     /**
      * @return null if doesn't have checksums
      */
-    abstract Supplier<Checksum> checksumFactory();
+    abstract Supplier<? extends Checksum> checksumFactory();
 
     /**
      * @return true if no storage layer is used anywhere

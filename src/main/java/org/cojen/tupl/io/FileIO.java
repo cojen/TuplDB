@@ -29,12 +29,14 @@ import java.nio.channels.FileChannel;
 import java.nio.file.FileSystemException;
 import java.nio.file.StandardOpenOption;
 
+import org.cojen.tupl.core.CheckedSupplier;
+
 /**
  * Lowest I/O interface to a file or device.
  *
  * @author Brian S O'Neill
  */
-public abstract class FileIO implements CauseCloseable {
+public abstract sealed class FileIO implements CauseCloseable permits AbstractFileIO {
     private static final int IO_TYPE; // 0: platform independent, 1: POSIX, 2: Windows
 
     static {
@@ -45,10 +47,18 @@ public abstract class FileIO implements CauseCloseable {
     public static FileIO open(File file, EnumSet<OpenOption> options)
         throws IOException
     {
-        return open(file, options, -4); // 4 * number of available processors
+        CheckedSupplier.check(2);
+        return doOpen(file, options, -4); // 4 * number of available processors
     }
 
     public static FileIO open(File file, EnumSet<OpenOption> options, int openFileCount)
+        throws IOException
+    {
+        CheckedSupplier.check(2);
+        return doOpen(file, options, openFileCount);
+    }
+
+    private static FileIO doOpen(File file, EnumSet<OpenOption> options, int openFileCount)
         throws IOException
     {
         if (options == null) {

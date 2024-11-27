@@ -33,36 +33,8 @@ import org.cojen.tupl.DatabaseConfig;
  */
 public interface Crypto {
     /**
-     * Called by multiple threads to encrypt a fixed-size database
-     * page. Encrypted length must exactly match original length.
-     *
-     * @param pageIndex page index within database
-     * @param page initially the original unencrypted page; replaced with encrypted page
-     * @param pageOffset offset into page
-     */
-    public default void encryptPage(long pageIndex, int pageSize, byte[] page, int pageOffset)
-        throws GeneralSecurityException
-    {
-        encryptPage(pageIndex, pageSize, page, pageOffset, page, pageOffset);
-    }
-
-    /**
-     * Called by multiple threads to encrypt a fixed-size database
-     * page. Encrypted length must exactly match original length.
-     *
-     * @param pageIndex page index within database
-     * @param src original unencrypted page
-     * @param srcOffset offset into unencrypted page
-     * @param dst destination for encrypted page
-     * @param dstOffset offset into encrypted page
-     */
-    public void encryptPage(long pageIndex, int pageSize,
-                            byte[] src, int srcOffset, byte[] dst, int dstOffset)
-        throws GeneralSecurityException;
-
-    /**
-     * Called by multiple threads to encrypt a fixed-size database
-     * page. Encrypted length must exactly match original length.
+     * Called by multiple threads to encrypt a fixed-size database page. Encrypted length must
+     * exactly match original length.
      *
      * @param pageIndex page index within database
      * @param pageAddr initially the original unencrypted page; replaced with encrypted page
@@ -75,8 +47,8 @@ public interface Crypto {
     }
 
     /**
-     * Called by multiple threads to encrypt a fixed-size database
-     * page. Encrypted length must exactly match original length.
+     * Called by multiple threads to encrypt a fixed-size database page. Encrypted length must
+     * exactly match original length.
      *
      * @param pageIndex page index within database
      * @param srcAddr original unencrypted page
@@ -92,36 +64,8 @@ public interface Crypto {
     }
 
     /**
-     * Called by multiple threads to decrypt a fixed-size database
-     * page. Decrypted length must exactly match encrypted length.
-     *
-     * @param pageIndex page index within database
-     * @param page initially the encrypted page; replaced with decrypted page
-     * @param pageOffset offset into page
-     */
-    public default void decryptPage(long pageIndex, int pageSize, byte[] page, int pageOffset)
-        throws GeneralSecurityException
-    {
-        decryptPage(pageIndex, pageSize, page, pageOffset, page, pageOffset);
-    }
-
-    /**
-     * Called by multiple threads to decrypt a fixed-size database
-     * page. Decrypted length must exactly match encrypted length.
-     *
-     * @param pageIndex page index within database
-     * @param src encrypted page
-     * @param srcOffset offset into encrypted page
-     * @param dst destination for decrypted page
-     * @param dstOffset offset into decrypted page
-     */
-    public void decryptPage(long pageIndex, int pageSize,
-                            byte[] src, int srcOffset, byte[] dst, int dstOffset)
-        throws GeneralSecurityException;
-
-    /**
-     * Called by multiple threads to decrypt a fixed-size database
-     * page. Decrypted length must exactly match encrypted length.
+     * Called by multiple threads to decrypt a fixed-size database page. Decrypted length must
+     * exactly match encrypted length.
      *
      * @param pageIndex page index within database
      * @param pageAddr initially the encrypted page; replaced with decrypted page
@@ -134,8 +78,8 @@ public interface Crypto {
     }
 
     /**
-     * Called by multiple threads to decrypt a fixed-size database
-     * page. Decrypted length must exactly match encrypted length.
+     * Called by multiple threads to decrypt a fixed-size database page. Decrypted length must
+     * exactly match encrypted length.
      *
      * @param pageIndex page index within database
      * @param srcAddr encrypted page
@@ -151,8 +95,8 @@ public interface Crypto {
     }
 
     /**
-     * Called to wrap an OutputStream for supporting encryption. Implementation
-     * of this method must be thread-safe, but the stream doesn't need to be.
+     * Called to wrap an OutputStream for supporting encryption. Implementation of this method
+     * must be thread-safe, but the stream doesn't need to be.
      *
      * @param out encrypted data destination
      * @return stream which encrypts all data
@@ -161,8 +105,8 @@ public interface Crypto {
         throws GeneralSecurityException, IOException;
 
     /**
-     * Called to wrap an InputStream for supporting decryption. Implementation
-     * of this method must be thread-safe, but the stream doesn't need to be.
+     * Called to wrap an InputStream for supporting decryption. Implementation of this method
+     * must be thread-safe, but the stream doesn't need to be.
      *
      * @param in encrypted data source
      * @return stream which decrypts all data

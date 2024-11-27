@@ -30,7 +30,7 @@ import org.cojen.tupl.diag.EventType;
  *
  * @author Brian S O'Neill
  */
-class PosixMappedPageArray extends MappedPageArray {
+final class PosixMappedPageArray extends MappedPageArray {
     private final int mFileDescriptor;
 
     private volatile boolean mEmpty;

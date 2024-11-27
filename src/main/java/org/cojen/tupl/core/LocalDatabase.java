@@ -475,7 +475,7 @@ final class LocalDatabase extends CoreDatabase {
                     mPageDb = new NonPageDb(pageSize);
                 } else {
                     Crypto crypto = launcher.mDataCrypto;
-                    Supplier<Checksum> checksumFactory = launcher.mChecksumFactory;
+                    Supplier<? extends Checksum> checksumFactory = launcher.mChecksumFactory;
                     mPageDb = StoredPageDb.open
                         (debugListener, dataPageArray,
                          checksumFactory, crypto, destroy, databaseId);
@@ -6164,7 +6164,7 @@ final class LocalDatabase extends CoreDatabase {
     }
 
     @Override
-    Supplier<Checksum> checksumFactory() {
+    Supplier<? extends Checksum> checksumFactory() {
         return mPageDb.checksumFactory();
     }
 
