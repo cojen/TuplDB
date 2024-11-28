@@ -34,10 +34,7 @@ import org.cojen.tupl.ext.Crypto;
 import org.cojen.tupl.table.RowStore;
 
 /**
- * Provides access to features of LocalDatabase implementation class, to reduce the number of
- * generated classes. In particular, there's no generated _Checkpointer class because
- * Checkpointer references only CoreDatabase instead of LocalDatabase. Without this, a
- * _Checkpointer would be generated to reference the generated _LocalDatabase.
+ * Defines additional Database methods intended to be used by other packages.
  *
  * @author Brian S O'Neill
  */

@@ -84,7 +84,7 @@ final class Servers implements Closeable {
             var set = new HashSet(4);
             set.add(mServers);
             set.add(server);
-            mServers = server;
+            mServers = set;
         }
     }
 

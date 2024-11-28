@@ -618,7 +618,7 @@ final class LocalDatabase extends CoreDatabase {
                     group.initialize(mArena, size);
                 }
             } catch (OutOfMemoryError e) {
-                groups = null;
+                groups = null; // help free memory
                 var oom = new OutOfMemoryError
                     ("Unable to allocate the minimum required number of cache nodes: " +
                      minCache + " (" + (minCache * (long) (pageSize + NODE_OVERHEAD)) + " bytes)");
@@ -5384,7 +5384,7 @@ final class LocalDatabase extends CoreDatabase {
      * @param maxInline maximum allowed inline size; must not be more than 65535
      * @return null if max is too small
      */
-    final byte[] fragment(final byte[] value, final long vlength, int max, int maxInline)
+    byte[] fragment(final byte[] value, final long vlength, int max, int maxInline)
         throws IOException
     {
         final int pageSize = mPageSize;

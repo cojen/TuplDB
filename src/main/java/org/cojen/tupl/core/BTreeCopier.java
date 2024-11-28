@@ -27,8 +27,6 @@ import java.util.concurrent.Executor;
 
 import java.util.function.Supplier;
 
-import org.cojen.tupl.Index;
-
 import org.cojen.tupl.util.Latch;
 import org.cojen.tupl.util.LocalPool;
 
@@ -191,7 +189,7 @@ final class BTreeCopier extends BTreeSeparator implements Supplier<byte[]> {
 
                     int spawnCount = (int) cSpawnCountHandle.getOpaque(this);
 
-                    if (spawnCount > 0 && (end - start) > buf.length * 8 &&
+                    if (spawnCount > 0 && (end - start) > buf.length * 8L &&
                         cSpawnCountHandle.compareAndSet(this, spawnCount, spawnCount - 1))
                     {
                         // Split the work with another thread.
@@ -214,7 +212,7 @@ final class BTreeCopier extends BTreeSeparator implements Supplier<byte[]> {
 
                         mExecutor.execute(task);
 
-                        mTasks.add(task);
+                        tasks.add(task);
                     }
                 }
             } finally {

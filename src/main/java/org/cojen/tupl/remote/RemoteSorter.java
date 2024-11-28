@@ -24,8 +24,6 @@ import org.cojen.dirmi.Pipe;
 import org.cojen.dirmi.Remote;
 import org.cojen.dirmi.RemoteException;
 
-import org.cojen.tupl.Entry;
-
 /**
  * 
  *

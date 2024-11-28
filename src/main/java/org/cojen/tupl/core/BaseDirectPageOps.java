@@ -168,10 +168,6 @@ class BaseDirectPageOps {
         return DirectMemory.calloc(Math.abs(size), size < 0); // aligned if negative
     }
 
-    static long[] p_allocArray(int size) {
-        return new long[size];
-    }
-
     public static void p_delete(long pageAddr) {
         // Only delete pages that were allocated from the Unsafe class and aren't globals.
         if (pageAddr != CLOSED_TREE_PAGE && pageAddr != EMPTY_TREE_LEAF && !inArena(pageAddr)) {
@@ -413,9 +409,9 @@ class BaseDirectPageOps {
     }
 
     /**
-     * Copies from an array to a page, but only if the page type is not an array.
+     * Copies from an array to a page.
      *
-     * @return original array or page with copied data
+     * @return page with copied data
      */
     static long p_transferArrayToPage(byte[] array, long pageAddr) {
         DirectPageOps.p_copyFromArray(array, 0, pageAddr, 0, array.length);
@@ -423,9 +419,7 @@ class BaseDirectPageOps {
     }
 
     /**
-     * Copies from a page to an array, but only if the page type is not an array.
-     *
-     * @return original array or page with copied data
+     * Copies from a page to an array.
      */
     static void p_transferPageToArray(long pageAddr, byte[] array) {
         DirectPageOps.p_copyToArray(pageAddr, 0, array, 0, array.length);

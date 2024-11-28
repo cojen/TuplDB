@@ -61,7 +61,7 @@ public final class BoundedView extends SubView {
         if (increment(end, 0, end.length)) {
             mode = END_EXCLUSIVE;
         } else {
-            // Prefix is highest possible, so no need for an end bound.
+            // Prefix is the highest possible, so no need for an end bound.
             end = null;
             mode = 0;
         }

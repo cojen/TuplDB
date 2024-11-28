@@ -144,7 +144,7 @@ final class BTreeVerifier extends BTreeSeparator {
         }
     }
 
-    final class Observer extends VerifyObserver {
+    static final class Observer extends VerifyObserver {
         Node[] mStack;
 
         Observer(VerificationObserver wrapped, int height) {

@@ -23,9 +23,6 @@ import java.lang.invoke.MethodHandle;
 
 import java.util.Comparator;
 import java.util.Objects;
-import java.util.Spliterator;
-
-import java.util.function.Consumer;
 
 import org.cojen.tupl.ClosedIndexException;
 import org.cojen.tupl.Entry;

@@ -54,7 +54,7 @@ final class IdHeap {
             // deletions during a drain operation and overflow the heap. This is usually caused
             // by aggressive forced checkpoints, typical of a database compaction operation.
             // Heap growth can also be caused by compaction, if all the pages for the reserve
-            // list are in the the compaction zone itself.
+            // list are in the compaction zone itself.
             mIds = ids = Arrays.copyOf(ids, (int) (ids.length * 1.5));
         }
         while (pos > 0) {

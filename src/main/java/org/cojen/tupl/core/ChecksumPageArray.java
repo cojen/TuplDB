@@ -33,7 +33,6 @@ import java.util.zip.Checksum;
 import org.cojen.tupl.ChecksumException;
 
 import org.cojen.tupl.io.PageArray;
-import org.cojen.tupl.io.Utils;
 
 import org.cojen.tupl.util.LocalPool;
 
@@ -45,9 +44,9 @@ import org.cojen.tupl.util.LocalPool;
  * @author Brian S O'Neill
  */
 abstract class ChecksumPageArray extends TransformedPageArray {
-    private static ValueLayout.OfInt INT_LE;
+    private static final ValueLayout.OfInt INT_LE;
 
-    {
+    static {
         INT_LE = ValueLayout.JAVA_INT_UNALIGNED.withOrder(ByteOrder.LITTLE_ENDIAN);
     }
 

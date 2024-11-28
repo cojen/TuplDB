@@ -1437,7 +1437,7 @@ final class UndoLog implements DatabaseAccess {
         if (delete) {
             // Safer to never recycle undo log nodes. Keep them until the next checkpoint, when
             // there's a guarantee that the master undo log will not reference them anymore.
-            // Of course it's fine to recycle pages from master undo log itself, which is the
+            // Of course, it's fine to recycle pages from master undo log itself, which is the
             // only one with a transaction id of zero.
             try {
                 mDatabase.deleteNode(parent, mTxnId == 0);
@@ -1564,7 +1564,7 @@ final class UndoLog implements DatabaseAccess {
     final byte[] writeToMaster(UndoLog master, byte[] workspace) throws IOException {
         if (mActiveKey != null) {
             doPush(OP_ACTIVE_KEY, mActiveKey);
-            // Set to null to reduce redundant pushes if transaction is long lived and is
+            // Set to null to reduce redundant pushes if transaction is long-lived and is
             // written to the master multiple times.
             mActiveKey = null;
         }

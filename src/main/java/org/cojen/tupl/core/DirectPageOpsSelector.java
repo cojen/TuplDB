@@ -22,7 +22,6 @@ import java.lang.invoke.MethodHandles;
 import java.nio.ByteOrder;
 
 import org.cojen.maker.ClassMaker;
-import org.cojen.maker.Field;
 import org.cojen.maker.Label;
 import org.cojen.maker.MethodMaker;
 import org.cojen.maker.Variable;
@@ -62,7 +61,7 @@ final class DirectPageOpsSelector {
         try {
             select();
         } catch (Throwable e) {
-            e = ex;
+            ex = e;
         }
         failure = ex;
     }

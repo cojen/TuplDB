@@ -18,7 +18,6 @@
 package org.cojen.tupl.io;
 
 import java.io.Closeable;
-import java.io.File;
 import java.io.IOException;
 
 /**

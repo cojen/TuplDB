@@ -49,13 +49,13 @@ public class Compact {
             config.minCacheSize(Long.parseLong(args[2]));
         }
 
-        Database db = Database.open(config);
+        try (Database db = Database.open(config)) {
+            System.out.println("Before: " + db.stats());
 
-        System.out.println("Before: " + db.stats());
+            db.compactFile(null, target);
 
-        db.compactFile(null, target);
-
-        System.out.println("After: " + db.stats());
+            System.out.println("After: " + db.stats());
+        }
     }
 
     private Compact() {

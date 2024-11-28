@@ -43,8 +43,6 @@ import java.util.function.Consumer;
 import java.util.function.LongConsumer;
 import java.util.function.Supplier;
 
-import javax.net.SocketFactory;
-
 import org.cojen.tupl.core.Delayed;
 import org.cojen.tupl.core.Scheduler;
 

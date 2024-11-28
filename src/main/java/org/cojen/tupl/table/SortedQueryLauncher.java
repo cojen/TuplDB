@@ -46,7 +46,7 @@ final class SortedQueryLauncher<R> extends QueryLauncher<R> {
 
     /**
      * Returns a cached instance, to reduce the memory footprint of SortedQueryLauncher
-     * instances, which can be long lived.
+     * instances, which can be long-lived.
      */
     static Set<String> canonicalize(Set<String> projection) {
         if (projection == null) {

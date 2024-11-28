@@ -23,8 +23,6 @@ import org.cojen.maker.Label;
 import org.cojen.maker.MethodMaker;
 import org.cojen.maker.Variable;
 
-import org.cojen.tupl.UnsetColumnException;
-
 import static org.cojen.tupl.table.ColumnInfo.*;
 
 /**
@@ -132,7 +130,7 @@ public class CodeUtils {
      * throw an UnsetColumnException or NullPointerException (if following a null join path).
      *
      * @param rowVar can be a row type or row class
-     * @param noException when true, return a cleared value unstead of throwing
+     * @param noException when true, return a cleared value instead of throwing
      * UnsetColumnException or NullPointerException (NPE is still thrown if initial row is null)
      * @return a local Variable or a Field
      */

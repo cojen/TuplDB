@@ -355,7 +355,7 @@ final class WindowsFileIO extends JavaFileIO {
 
             try {
                 var chars = new char[result];
-                MemorySegment.copy(addr.reinterpret(result * 2), ValueLayout.JAVA_CHAR, 0,
+                MemorySegment.copy(addr.reinterpret(result * 2L), ValueLayout.JAVA_CHAR, 0,
                                    chars, 0, chars.length);
                 return new String(chars).trim();
             } finally {
@@ -383,7 +383,7 @@ final class WindowsFileIO extends JavaFileIO {
         LocalPool.Entry<MemorySegment> ee = errorPool.access();
         try (Arena a = Arena.ofConfined()) {
             char[] path = file.getAbsolutePath().toCharArray();
-            MemorySegment lpFileName = a.allocate(8 + path.length * 2 + 2);
+            MemorySegment lpFileName = a.allocate(8 + path.length * 2L + 2);
             lpFileName.set(ValueLayout.JAVA_CHAR, 0, '\\');
             lpFileName.set(ValueLayout.JAVA_CHAR, 2, '\\');
             lpFileName.set(ValueLayout.JAVA_CHAR, 4, '?');

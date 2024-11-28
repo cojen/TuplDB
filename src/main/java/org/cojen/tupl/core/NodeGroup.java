@@ -579,7 +579,7 @@ final class NodeGroup extends Clutch.Pack implements Checkpointer.DirtySet {
             }
 
             if (state == Node.CACHED_CLEAN) {
-                // Don't write clean nodes. There's no need to latch and double check the node
+                // Don't write clean nodes. There's no need to latch and double-check the node
                 // state, since the next valid state can only be the new dirty state.
                 continue;
             }

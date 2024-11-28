@@ -302,8 +302,7 @@ final class RowPredicateLockImpl<R> implements RowPredicateLock<R> {
     public Closer addPredicate(Transaction txn, RowPredicate<R> predicate)
         throws LockFailureException
     {
-        if (predicate instanceof Evaluator) {
-            var evaluator = (Evaluator<R>) predicate;
+        if (predicate instanceof Evaluator<R> evaluator) {
             addEvaluator(txn, evaluator);
             return evaluator;
         } else {

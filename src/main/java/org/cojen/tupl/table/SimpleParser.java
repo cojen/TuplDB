@@ -92,7 +92,7 @@ public abstract class SimpleParser {
      * @param pos start position of text to include in the error message
      */
     protected IllegalArgumentException error(String message, int pos) {
-        if (pos <= 0 || mText.length() == 0) {
+        if (pos <= 0 || mText.isEmpty()) {
             message += " (at start of " + describe() + ')';
         } else if (pos >= mText.length()) {
             message += " (at end of " + describe() + ')';

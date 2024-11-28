@@ -33,7 +33,6 @@ import java.util.function.Supplier;
 
 import java.util.zip.Checksum;
 
-import org.cojen.tupl.DatabaseException;
 import org.cojen.tupl.DurabilityMode;
 import org.cojen.tupl.LockUpgradeRule;
 
@@ -418,7 +417,7 @@ public final class Launcher implements Cloneable {
         return true;
     }
 
-    public final CoreDatabase open(boolean destroy, InputStream restore) throws IOException {
+    public CoreDatabase open(boolean destroy, InputStream restore) throws IOException {
         Launcher launcher = clone();
         boolean openedReplicator = launcher.openReplicator();
 

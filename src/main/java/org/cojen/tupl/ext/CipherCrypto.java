@@ -430,24 +430,12 @@ public class CipherCrypto implements Crypto {
         }
     }
 
-    private static int encodeBlock(byte[] dst, int offset, byte[] value) {
-        dst[--offset] = (byte) (value.length - 1);
-        System.arraycopy(value, 0, dst, offset -= value.length, value.length);
-        return offset;
-    }
-
     private static int encodeBlock(long dstAddr, int offset, byte[] value) {
         MemorySegment dst = MemorySegment.ofAddress(dstAddr).reinterpret(offset);
         int length = value.length;
         dst.set(ValueLayout.JAVA_BYTE, --offset, (byte) (length - 1));
         MemorySegment.copy(value, 0, dst, ValueLayout.JAVA_BYTE, offset -= length, length);
         return offset;
-    }
-
-    private static byte[] decodeBlock(byte[] src, int offset) {
-        var value = new byte[(src[--offset] & 0xff) + 1];
-        System.arraycopy(src, offset - value.length, value, 0, value.length);
-        return value;
     }
 
     private static byte[] decodeBlock(long srcAddr, int offset) {

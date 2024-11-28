@@ -31,8 +31,6 @@ import org.cojen.tupl.Ordering;
 
 import org.cojen.tupl.table.Converter;
 
-import static org.cojen.tupl.table.expr.Type.*;
-
 /**
  * 
  *

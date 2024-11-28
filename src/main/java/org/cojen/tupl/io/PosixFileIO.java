@@ -34,11 +34,7 @@ import java.lang.invoke.VarHandle;
 
 import java.nio.channels.ClosedChannelException;
 
-import java.util.Arrays;
 import java.util.EnumSet;
-import java.util.List;
-import java.util.NoSuchElementException;
-import java.util.Optional;
 
 import org.cojen.tupl.core.SysInfo;
 
@@ -280,7 +276,7 @@ final class PosixFileIO extends AbstractFileIO {
     }
 
     @Override
-    protected final File file() {
+    protected File file() {
         return mFile;
     }
 
@@ -869,7 +865,7 @@ final class PosixFileIO extends AbstractFileIO {
 
     /** Accounts for OSX not supporting some I/O operations. */
     public static class PlatformHolder {
-        public static final PlatformIO INSTANCE;
+        static final PlatformIO INSTANCE;
         static {
             PlatformIO inst;
             if (OS_TYPE == OSX) {
