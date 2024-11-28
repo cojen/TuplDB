@@ -41,7 +41,6 @@ public class ScannerTest {
     @Before
     public void createTempDb() throws Exception {
         var config = new DatabaseConfig();
-        config.directPageAccess(false);
         config.maxCacheSize(100_000_000);
         mDb = Database.open(config);
     }

@@ -50,7 +50,7 @@ public class BigDecimalColumnTest {
         // range to be less precise. Range based comparisons with BigDecimal aren't feasible
         // because the number of trailing zeros is unbounded.
 
-        Database db = Database.open(new DatabaseConfig().directPageAccess(false));
+        Database db = Database.open(new DatabaseConfig());
         Table<Rec> table = db.openTable(Rec.class);
 
         Rec row1 = table.newRow();
@@ -92,6 +92,8 @@ public class BigDecimalColumnTest {
         float high = 0.0000001f;
         high += Math.ulp(high);
         expect(Set.of(row3), table.newScanner(null, "value1 >= ? && value1 <= ?", low, high));
+
+        db.close();
     }
 
     private static void expect(Set<Rec> set, Scanner<Rec> scanner) throws Exception {

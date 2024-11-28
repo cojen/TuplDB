@@ -40,7 +40,6 @@ import org.cojen.tupl.table.RowStore;
  *
  * @author Brian S O'Neill
  */
-/*P*/
 final class DeadlockDetector extends HashMap<Locker, Boolean> {
     // Note: This code does not consider proper thread-safety and directly examines the
     // contents of locks and lockers. It never modifies anything, so it is relatively safe and

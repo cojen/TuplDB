@@ -39,7 +39,7 @@ package org.cojen.tupl;
 public enum DurabilityMode {
     /**
      * Strongest durability mode, which ensures all modifications are unlikely to be lost in
-     * the event of a sudden power failure or crash. Typically this requires that all data be
+     * the event of a sudden power failure or crash. Typically, this requires that all data be
      * persisted to non-volatile storage. If the database is replicated, it might only
      * guarantee that enough replicas have committed modifications to volatile memory, and so
      * the {@link Database#sync sync} method would also need to be called to achieve stronger

@@ -24,7 +24,6 @@ import java.lang.invoke.VarHandle;
 
 import java.lang.ref.WeakReference;
 
-import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Proxy;
 
 import java.util.function.BiPredicate;
@@ -44,7 +43,7 @@ import org.cojen.tupl.Updater;
 import org.cojen.tupl.io.Utils;
 
 /**
- * Defines a speical client-side wrapper for derived tables which supports restorability. The
+ * Defines a special client-side wrapper for derived tables which supports restorability. The
  * reason why a restorable method won't work is because a row type descriptor must also be
  * returned by the remote call.
  *

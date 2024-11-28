@@ -44,8 +44,8 @@ import org.cojen.tupl.util.Latch;
  * @author Brian S O'Neill
  */
 final class Checkpointer extends Latch implements Runnable {
-    private final ReferenceQueue<CoreDatabase> mRefQueue;
-    private final WeakReference<CoreDatabase> mDatabaseRef;
+    private final ReferenceQueue<LocalDatabase> mRefQueue;
+    private final WeakReference<LocalDatabase> mDatabaseRef;
     private final long mRateNanos;
     private final long mSizeThreshold;
     private final long mDelayThresholdNanos;
@@ -62,7 +62,7 @@ final class Checkpointer extends Latch implements Runnable {
     /**
      * @param extraLimit maximum number of extra checkpoint threads to use
      */
-    Checkpointer(CoreDatabase db, Launcher launcher, int extraLimit) {
+    Checkpointer(LocalDatabase db, Launcher launcher, int extraLimit) {
         mRateNanos = launcher.mCheckpointRateNanos;
         mSizeThreshold = launcher.mCheckpointSizeThreshold;
         mDelayThresholdNanos = launcher.mCheckpointDelayThresholdNanos;
@@ -145,7 +145,7 @@ final class Checkpointer extends Latch implements Runnable {
                     Thread.sleep(delayMillis); 
                 }
 
-                CoreDatabase db = mDatabaseRef.get();
+                LocalDatabase db = mDatabaseRef.get();
                 if (db == null) {
                     close(null);
                     return;
@@ -173,7 +173,7 @@ final class Checkpointer extends Latch implements Runnable {
             }
         } catch (Throwable e) {
             if (!mClosed) {
-                CoreDatabase db = mDatabaseRef.get();
+                LocalDatabase db = mDatabaseRef.get();
                 if (db != null) {
                     Utils.closeQuietly(db, e);
                 }
@@ -183,9 +183,9 @@ final class Checkpointer extends Latch implements Runnable {
     }
 
     /**
-     * Register to close the given object on shutdown or when the CoreDatabase is no longer
+     * Register to close the given object on shutdown or when the LocalDatabase is no longer
      * referenced. The Shutdown object must not maintain a strong reference to the
-     * CoreDatabase.
+     * LocalDatabase.
      *
      * @param obj ignored if null
      * @return false if immediately shutdown

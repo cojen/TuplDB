@@ -26,7 +26,7 @@ import java.io.IOException;
 
 import java.util.EnumSet;
 
-import org.cojen.tupl.unsafe.UnsafeAccess;
+import org.cojen.tupl.core.SysInfo;
 
 import org.cojen.tupl.util.Clutch;
 import org.cojen.tupl.util.Latch;
@@ -38,9 +38,7 @@ import static org.cojen.tupl.io.Utils.rethrow;
  *
  * @author Brian S O'Neill
  */
-abstract class AbstractFileIO extends FileIO {
-    static final int PAGE_SIZE;
-
+abstract sealed class AbstractFileIO extends FileIO permits JavaFileIO, PosixFileIO {
     private static final int MAPPING_SHIFT = 30;
     private static final int MAPPING_SIZE = 1 << MAPPING_SHIFT;
 
@@ -53,14 +51,6 @@ abstract class AbstractFileIO extends FileIO {
     private static final VarHandle cSyncStartNanosHandle;
 
     static {
-        int pageSize = 4096;
-        try {
-            pageSize = UnsafeAccess.tryObtain().pageSize();
-        } catch (Throwable e) {
-            // Ignore. Use default value.
-        }
-        PAGE_SIZE = pageSize;
-
         try {
             cSyncStartNanosHandle = MethodHandles.lookup().findVarHandle
                 (AbstractFileIO.class, "mSyncStartNanos", long.class);
@@ -185,8 +175,8 @@ abstract class AbstractFileIO extends FileIO {
     }
 
     @Override
-    public final void read(long pos, long ptr, int offset, int length) throws IOException {
-        access(true, pos, ptr + offset, length);
+    public final void read(long pos, long addr, int offset, int length) throws IOException {
+        access(true, pos, addr + offset, length);
     }
 
     @Override
@@ -195,8 +185,8 @@ abstract class AbstractFileIO extends FileIO {
     }
 
     @Override
-    public final void write(long pos, long ptr, int offset, int length) throws IOException {
-        access(false, pos, ptr + offset, length);
+    public final void write(long pos, long addr, int offset, int length) throws IOException {
+        access(false, pos, addr + offset, length);
     }
 
     private void access(boolean read, long pos, byte[] buf, int offset, int length)
@@ -262,7 +252,7 @@ abstract class AbstractFileIO extends FileIO {
         }
     }
 
-    private void access(boolean read, long pos, long ptr, int length) throws IOException {
+    private void access(boolean read, long pos, long addr, int length) throws IOException {
         syncWait();
 
         try {
@@ -292,29 +282,29 @@ abstract class AbstractFileIO extends FileIO {
 
                         if (mavail >= length) {
                             if (read) {
-                                mapping.read(mpos, ptr, length);
+                                mapping.read(mpos, addr, length);
                             } else {
-                                mapping.write(mpos, ptr, length);
+                                mapping.write(mpos, addr, length);
                             }
                             return;
                         }
 
                         if (read) {
-                            mapping.read(mpos, ptr, mavail);
+                            mapping.read(mpos, addr, mavail);
                         } else {
-                            mapping.write(mpos, ptr, mavail);
+                            mapping.write(mpos, addr, mavail);
                         }
 
                         pos += mavail;
-                        ptr += mavail;
+                        addr += mavail;
                         length -= mavail;
                     }
                 }
 
                 if (read) {
-                    doRead(pos, ptr, length);
+                    doRead(pos, addr, length);
                 } else {
-                    doWrite(pos, ptr, length);
+                    doWrite(pos, addr, length);
                 }
             } finally {
                 mAccessLock.releaseShared();
@@ -574,7 +564,7 @@ abstract class AbstractFileIO extends FileIO {
             // size then this will not touch all the necessary blocks.
             final long currLength = doLength();
             var buf = new byte[1];
-            for (long endPos = pos + length; pos < endPos; pos += PAGE_SIZE) {
+            for (long endPos = pos + length; pos < endPos; pos += SysInfo.pageSize()) {
                 if (mAccessLock.hasQueuedThreads()) {
                     // Let other accesses in. The length won't change concurrently because the
                     // caller should be holding mRemapLatch exclusively.
@@ -614,13 +604,13 @@ abstract class AbstractFileIO extends FileIO {
     protected abstract void doRead(long pos, byte[] buf, int offset, int length)
         throws IOException;
 
-    protected abstract void doRead(long pos, long ptr, int length)
+    protected abstract void doRead(long pos, long addr, int length)
         throws IOException;
 
     protected abstract void doWrite(long pos, byte[] buf, int offset, int length)
         throws IOException;
 
-    protected abstract void doWrite(long pos, long ptr, int length)
+    protected abstract void doWrite(long pos, long addr, int length)
         throws IOException;
 
     protected abstract Mapping openMapping(boolean readOnly, long pos, int size)

@@ -92,43 +92,35 @@ public abstract class PageArray implements CauseCloseable {
 
     /**
      * @param index zero-based page index to read
-     * @param dst receives read data
+     * @param dstAddr receives read data
      * @throws IndexOutOfBoundsException if index is negative
      * @throws IOException if index is greater than or equal to page count
      */
-    public void readPage(long index, byte[] dst) throws IOException {
-        readPage(index, dst, 0, mPageSize);
+    public void readPage(long index, long dstAddr) throws IOException {
+        readPage(index, dstAddr, 0, mPageSize);
     }
 
     /**
      * @param index zero-based page index to read
-     * @param dst receives read data
+     * @param dstAddr receives read data
      * @param offset offset into data buffer
      * @throws IndexOutOfBoundsException if index is negative
      * @throws IOException if index is greater than or equal to page count
      */
-    public abstract void readPage(long index, byte[] dst, int offset, int length)
+    public abstract void readPage(long index, long dstAddr, int offset, int length)
         throws IOException;
 
     /**
-     * @param index zero-based page index to read
-     * @param dstPtr receives read data
+     * Writes a page, which is lazily flushed. The array grows automatically if the index is
+     * greater than or equal to the current page count. If array supports caching, page must be
+     * immediately copied into it.
+     *
+     * @param index zero-based page index to write
+     * @param srcAddr data to write
      * @throws IndexOutOfBoundsException if index is negative
-     * @throws IOException if index is greater than or equal to page count
      */
-    public void readPage(long index, long dstPtr) throws IOException {
-        readPage(index, dstPtr, 0, mPageSize);
-    }
-
-    /**
-     * @param index zero-based page index to read
-     * @param dstPtr receives read data
-     * @param offset offset into data buffer
-     * @throws IndexOutOfBoundsException if index is negative
-     * @throws IOException if index is greater than or equal to page count
-     */
-    public void readPage(long index, long dstPtr, int offset, int length) throws IOException {
-        throw new UnsupportedOperationException();
+    public void writePage(long index, long srcAddr) throws IOException {
+        writePage(index, srcAddr, 0);
     }
 
     /**
@@ -137,51 +129,11 @@ public abstract class PageArray implements CauseCloseable {
      * immediately copied into it.
      *
      * @param index zero-based page index to write
-     * @param src data to write
-     * @throws IndexOutOfBoundsException if index is negative
-     */
-    public void writePage(long index, byte[] src) throws IOException {
-        writePage(index, src, 0);
-    }
-
-    /**
-     * Writes a page, which is lazily flushed. The array grows automatically if the index is
-     * greater than or equal to the current page count. If array supports caching, page must be
-     * immediately copied into it.
-     *
-     * @param index zero-based page index to write
-     * @param src data to write
+     * @param srcAddr data to write
      * @param offset offset into data buffer
      * @throws IndexOutOfBoundsException if index is negative
      */
-    public abstract void writePage(long index, byte[] src, int offset) throws IOException;
-
-    /**
-     * Writes a page, which is lazily flushed. The array grows automatically if the index is
-     * greater than or equal to the current page count. If array supports caching, page must be
-     * immediately copied into it.
-     *
-     * @param index zero-based page index to write
-     * @param srcPtr data to write
-     * @throws IndexOutOfBoundsException if index is negative
-     */
-    public void writePage(long index, long srcPtr) throws IOException {
-        writePage(index, srcPtr, 0);
-    }
-
-    /**
-     * Writes a page, which is lazily flushed. The array grows automatically if the index is
-     * greater than or equal to the current page count. If array supports caching, page must be
-     * immediately copied into it.
-     *
-     * @param index zero-based page index to write
-     * @param srcPtr data to write
-     * @param offset offset into data buffer
-     * @throws IndexOutOfBoundsException if index is negative
-     */
-    public void writePage(long index, long srcPtr, int offset) throws IOException {
-        throw new UnsupportedOperationException();
-    }
+    public abstract void writePage(long index, long srcAddr, int offset) throws IOException;
 
     /**
      * Same as writePage, except that the given buffer might be altered and a replacement might
@@ -189,32 +141,17 @@ public abstract class PageArray implements CauseCloseable {
      * and the contents of the replacement are undefined.
      *
      * @param index zero-based page index to write
-     * @param buf data to write; implementation might alter the contents
+     * @param bufAddr data to write; implementation might alter the contents
      * @throws IndexOutOfBoundsException if index is negative
      * @return replacement buffer, or same instance if replacement was not performed
      */
-    public byte[] evictPage(long index, byte[] buf) throws IOException {
-        writePage(index, buf);
-        return buf;
-    }
-
-    /**
-     * Same as writePage, except that the given buffer might be altered and a replacement might
-     * be returned. Caller must not alter the original buffer if a replacement was provided,
-     * and the contents of the replacement are undefined.
-     *
-     * @param index zero-based page index to write
-     * @param bufPtr data to write; implementation might alter the contents
-     * @throws IndexOutOfBoundsException if index is negative
-     * @return replacement buffer, or same instance if replacement was not performed
-     */
-    public long evictPage(long index, long bufPtr) throws IOException {
-        writePage(index, bufPtr);
-        return bufPtr;
+    public long evictPage(long index, long bufAddr) throws IOException {
+        writePage(index, bufAddr);
+        return bufAddr;
     }
 
     // Only expected to be called when isFullyMapped.
-    public long directPagePointer(long index) throws IOException {
+    public long directPageAddress(long index) throws IOException {
         throw new UnsupportedOperationException();
     }
 
@@ -227,7 +164,7 @@ public abstract class PageArray implements CauseCloseable {
      */
     // Only expected to be called when isFullyMapped.
     public long dirtyPage(long index) throws IOException {
-        return directPagePointer(index);
+        return directPageAddress(index);
     }
 
     /**
@@ -242,7 +179,7 @@ public abstract class PageArray implements CauseCloseable {
      * @return direct pointer to destination
      */
     // Only expected to be called when isFullyMapped.
-    public long copyPageFromPointer(long srcPointer, long dstIndex) throws IOException {
+    public long copyPageFromAddress(long srcAddr, long dstIndex) throws IOException {
         throw new UnsupportedOperationException();
     }
 

@@ -40,7 +40,6 @@ public class ContendedLockTest {
     public void createTempDb() throws Exception {
         var config = new DatabaseConfig()
             .durabilityMode(DurabilityMode.NO_FLUSH)
-            .directPageAccess(false)
             .lockTimeout(5, TimeUnit.SECONDS);
         mDb = newTempDatabase(getClass(), config);
     }

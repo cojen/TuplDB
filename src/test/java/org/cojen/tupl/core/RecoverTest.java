@@ -51,7 +51,6 @@ public class RecoverTest {
 
     private void createTempDb(DurabilityMode mode) throws Exception {
         mConfig = new DatabaseConfig()
-            .directPageAccess(false)
             .checkpointRate(-1, null)
             .durabilityMode(mode);
         decorate(mConfig);
@@ -1130,7 +1129,6 @@ public class RecoverTest {
     @Test
     public void testUndoNonReplicatedTransaction() throws Exception {
         var config = new DatabaseConfig()
-            .directPageAccess(false)
             .checkpointRate(-1, null)
             .durabilityMode(DurabilityMode.SYNC);
 
@@ -1206,7 +1204,6 @@ public class RecoverTest {
         // transaction commit. It should sweep through and delete any lingering ghost records.
 
         var config = new DatabaseConfig()
-            .directPageAccess(false)
             .checkpointRate(-1, null)
             .durabilityMode(DurabilityMode.SYNC);
 

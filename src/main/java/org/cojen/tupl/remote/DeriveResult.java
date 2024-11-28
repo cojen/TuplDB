@@ -17,17 +17,7 @@
 
 package org.cojen.tupl.remote;
 
-import java.io.IOException;
-
-import java.util.Set;
-
-import org.cojen.dirmi.Pipe;
-import org.cojen.dirmi.RemoteException;
-
-import org.cojen.tupl.DurabilityMode;
 import org.cojen.tupl.Row;
-
-import org.cojen.tupl.diag.QueryPlan;
 
 /**
  * Simple pairing of a derived table and the row type descriptor.

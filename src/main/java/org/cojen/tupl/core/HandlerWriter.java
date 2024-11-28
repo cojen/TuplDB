@@ -24,7 +24,6 @@ import org.cojen.tupl.ext.Handler;
  *
  * @author Brian S O'Neill
  */
-/*P*/
 abstract class HandlerWriter<H extends Handler> implements Handler {
     final LocalDatabase mDatabase;
     final int mHandlerId;

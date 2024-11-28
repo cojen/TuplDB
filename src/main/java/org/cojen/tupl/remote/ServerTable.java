@@ -20,7 +20,6 @@ package org.cojen.tupl.remote;
 import java.io.IOException;
 
 import org.cojen.dirmi.Pipe;
-import org.cojen.dirmi.Session;
 
 import org.cojen.tupl.DurabilityMode;
 import org.cojen.tupl.Query;

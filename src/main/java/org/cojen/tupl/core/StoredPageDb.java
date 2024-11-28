@@ -24,6 +24,10 @@ import java.io.InputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 
+import java.lang.foreign.Arena;
+import java.lang.foreign.MemorySegment;
+import java.lang.foreign.ValueLayout;
+
 import java.security.GeneralSecurityException;
 import java.security.SecureRandom;
 
@@ -55,7 +59,7 @@ import org.cojen.tupl.util.Latch;
 
 import static java.lang.System.arraycopy;
 
-import static org.cojen.tupl.core.PageOps.*;
+import static org.cojen.tupl.core.DirectPageOps.*;
 import static org.cojen.tupl.core.Utils.*;
 
 /**
@@ -131,7 +135,7 @@ final class StoredPageDb extends PageDb {
     static StoredPageDb open(EventListener debugListener,
                              boolean explicitPageSize, int pageSize,
                              File[] files, EnumSet<OpenOption> options,
-                             Supplier<Checksum> checksumFactory, Crypto crypto,
+                             Supplier<? extends Checksum> checksumFactory, Crypto crypto,
                              boolean destroy, long databaseId)
         throws IOException
     {
@@ -157,7 +161,7 @@ final class StoredPageDb extends PageDb {
      * @param databaseId pass 0 to assign the database id automatically
      */
     static StoredPageDb open(EventListener debugListener, PageArray rawArray,
-                             Supplier<Checksum> checksumFactory, Crypto crypto,
+                             Supplier<? extends Checksum> checksumFactory, Crypto crypto,
                              boolean destroy, long databaseId)
         throws IOException
     {
@@ -187,14 +191,14 @@ final class StoredPageDb extends PageDb {
         }
 
         if (files.length == 1) {
-            return new FilePageArray(pageSize, files[0], options);
+            return FilePageArray.factory(pageSize, files[0], options).get();
         }
 
         var arrays = new PageArray[files.length];
 
         try {
             for (int i=0; i<files.length; i++) {
-                arrays[i] = new FilePageArray(pageSize, files[i], options);
+                arrays[i] = FilePageArray.factory(pageSize, files[i], options).get();
             }
 
             return new StripedPageArray(arrays);
@@ -214,7 +218,7 @@ final class StoredPageDb extends PageDb {
     }
 
     private static PageArray decorate(PageArray pa,
-                                      Supplier<Checksum> checksumFactory, Crypto crypto)
+                                      Supplier<? extends Checksum> checksumFactory, Crypto crypto)
     {
         if (crypto != null) {
             pa = new CryptoPageArray(pa, crypto);
@@ -283,7 +287,7 @@ final class StoredPageDb extends PageDb {
                 var header1 = p_null();
 
                 try {
-                    final /*P*/ byte[] header;
+                    final long headerAddr;
                     final int headerOffset;
                     final int commitNumber;
                     boolean issues = false;
@@ -323,7 +327,7 @@ final class StoredPageDb extends PageDb {
                                 throw ex0;
                             }
                             issues = true;
-                            header = header0;
+                            headerAddr = header0;
                             headerOffset = headerOffset0;
                             commitNumber = commitNumber0;
                             break findHeader;
@@ -336,18 +340,18 @@ final class StoredPageDb extends PageDb {
                         }
 
                         if (header0 == p_null()) {
-                            header = header1;
+                            headerAddr = header1;
                             headerOffset = headerOffset1;
                             commitNumber = commitNumber1;
                         } else {
                             // Modulo comparison.
                             int diff = commitNumber1 - commitNumber0;
                             if (diff > 0) {
-                                header = header1;
+                                headerAddr = header1;
                                 headerOffset = headerOffset1;
                                 commitNumber = commitNumber1;
                             } else if (diff < 0) {
-                                header = header0;
+                                headerAddr = header0;
                                 headerOffset = headerOffset0;
                                 commitNumber = commitNumber0;
                             } else {
@@ -368,9 +372,9 @@ final class StoredPageDb extends PageDb {
                     }
 
                     mPageManager = new PageManager
-                        (debugListener, issues, mPageArray, header, I_MANAGER_HEADER);
+                        (debugListener, issues, mPageArray, headerAddr, I_MANAGER_HEADER);
 
-                    mDatabaseId = p_longGetLE(header, I_DATABASE_ID);
+                    mDatabaseId = p_longGetLE(headerAddr, I_DATABASE_ID);
                 } finally {
                     p_delete(header0);
                     p_delete(header1);
@@ -402,7 +406,7 @@ final class StoredPageDb extends PageDb {
     }
 
     @Override
-    Supplier<Checksum> checksumFactory() {
+    Supplier<? extends Checksum> checksumFactory() {
         return TransformedPageArray.checksumFactory(mPageArray.mSource);
     }
 
@@ -489,9 +493,9 @@ final class StoredPageDb extends PageDb {
     }
 
     @Override
-    public void readPage(long id, /*P*/ byte[] page) throws IOException {
+    public void readPage(long id, long pageAddr) throws IOException {
         try {
-            mPageArray.readPage(id, page, 0, pageSize());
+            mPageArray.readPage(id, pageAddr, 0, pageSize());
         } catch (Throwable e) {
             throw closeOnFailure(e);
         }
@@ -515,15 +519,15 @@ final class StoredPageDb extends PageDb {
     }
 
     @Override
-    public void writePage(long id, /*P*/ byte[] page) throws IOException {
+    public void writePage(long id, long pageAddr) throws IOException {
         checkId(id);
-        mPageArray.writePage(id, page, 0);
+        mPageArray.writePage(id, pageAddr, 0);
     }
 
     @Override
-    public /*P*/ byte[] evictPage(long id, /*P*/ byte[] page) throws IOException {
+    public long evictPage(long id, long pageAddr) throws IOException {
         checkId(id);
-        return mPageArray.evictPage(id, page);
+        return mPageArray.evictPage(id, pageAddr);
     }
 
     @Override
@@ -590,8 +594,8 @@ final class StoredPageDb extends PageDb {
     }
 
     @Override
-    public long directPagePointer(long id) throws IOException {
-        return mPageArray.directPagePointer(id);
+    public long directPageAddress(long id) throws IOException {
+        return mPageArray.directPageAddress(id);
     }
 
     @Override
@@ -676,7 +680,7 @@ final class StoredPageDb extends PageDb {
     }
 
     @Override
-    public void commit(boolean resume, /*P*/ byte[] header, final CommitCallback callback)
+    public void commit(boolean resume, long headerAddr, final CommitCallback callback)
         throws IOException
     {
         // Acquire a shared lock to prevent concurrent commits after callback has released
@@ -690,11 +694,11 @@ final class StoredPageDb extends PageDb {
 
             try {
                 if (!resume) {
-                    mPageManager.commitStart(header, I_MANAGER_HEADER);
+                    mPageManager.commitStart(headerAddr, I_MANAGER_HEADER);
                 }
                 if (callback != null) {
                     // Invoke the callback to ensure all dirty pages get written.
-                    callback.prepare(resume, header);
+                    callback.prepare(resume, headerAddr);
                 }
             } catch (DatabaseException e) {
                 if (e.isRecoverable()) {
@@ -705,8 +709,8 @@ final class StoredPageDb extends PageDb {
             }
 
             try {
-                commitHeader(header, commitNumber);
-                mPageManager.commitEnd(header, I_MANAGER_HEADER);
+                commitHeader(headerAddr, commitNumber);
+                mPageManager.commitEnd(headerAddr, I_MANAGER_HEADER);
             } catch (Throwable e) {
                 throw closeOnFailure(e);
             }
@@ -816,7 +820,7 @@ final class StoredPageDb extends PageDb {
      * @param in snapshot source; does not require extra buffering; auto-closed
      */
     static PageDb restoreFromSnapshot(int pageSize, File[] files, EnumSet<OpenOption> options,
-                                      Supplier<Checksum> checksumFactory, Crypto crypto,
+                                      Supplier<? extends Checksum> checksumFactory, Crypto crypto,
                                       InputStream in)
         throws IOException
     {
@@ -833,11 +837,7 @@ final class StoredPageDb extends PageDb {
                 if (checksumFactory != null) {
                     pageSize -= 4; // don't decrypt the checksum
                 }
-                try {
-                    crypto.decryptPage(0, pageSize, buffer, 0);
-                } catch (GeneralSecurityException e) {
-                    throw new DatabaseException(e);
-                }
+                decryptHeader(crypto, pageSize, buffer);
             } else {
                 // Start the with minimum page size and figure out what the actual size is.
                 buffer = new byte[MINIMUM_PAGE_SIZE];
@@ -882,7 +882,7 @@ final class StoredPageDb extends PageDb {
      * @param crypto optional
      * @param in snapshot source; does not require extra buffering; auto-closed
      */
-    static PageDb restoreFromSnapshot(PageArray pa, Supplier<Checksum> checksumFactory,
+    static PageDb restoreFromSnapshot(PageArray pa, Supplier<? extends Checksum> checksumFactory,
                                       Crypto crypto, InputStream in)
         throws IOException
     {
@@ -895,11 +895,7 @@ final class StoredPageDb extends PageDb {
                 if (checksumFactory != null) {
                     pageSize -= 4; // don't decrypt the checksum
                 }
-                try {
-                    crypto.decryptPage(0, pageSize, buffer, 0);
-                } catch (GeneralSecurityException e) {
-                    throw new DatabaseException(e);
-                }
+                decryptHeader(crypto, pageSize, buffer);
             }
 
             checkMagicNumber(decodeLongLE(buffer, I_MAGIC_NUMBER));
@@ -922,7 +918,8 @@ final class StoredPageDb extends PageDb {
     /**
      * @param buffer initialized with page 0 (first header)
      */
-    private static PageDb restoreFromSnapshot(Supplier<Checksum> checksumFactory, Crypto crypto,
+    private static PageDb restoreFromSnapshot(Supplier<? extends Checksum> checksumFactory,
+                                              Crypto crypto,
                                               InputStream in, byte[] buffer, PageArray rawArray)
         throws IOException
     {
@@ -935,24 +932,20 @@ final class StoredPageDb extends PageDb {
         int commitNumber = decodeIntLE(buffer, I_COMMIT_NUMBER);
         long pageCount = decodeLongLE(buffer, I_MANAGER_HEADER + PageManager.I_TOTAL_PAGE_COUNT);
 
-        var bufferPage = p_transferPage(buffer, rawArray.directPageSize());
+        var bufferPageAddr = p_transferPage(buffer, rawArray.directPageSize());
 
         try {
             // Write header and ensure that the incomplete restore state is persisted.
-            writeLogicalHeader(logicalArray, buffer, bufferPage);
+            writeLogicalHeader(logicalArray, buffer, bufferPageAddr);
             logicalArray.sync(false);
 
             // Read header 1 to determine the correct page count, and then preallocate.
             {
                 readFully(in, buffer, 0, buffer.length);
-                rawArray.writePage(1, p_transferArrayToPage(buffer, bufferPage));
+                rawArray.writePage(1, p_transferArrayToPage(buffer, bufferPageAddr));
 
                 if (crypto != null) {
-                    try {
-                        crypto.decryptPage(0, logicalArray.pageSize(), buffer, 0);
-                    } catch (GeneralSecurityException e) {
-                        throw new DatabaseException(e);
-                    }
+                    decryptHeader(crypto, logicalArray.pageSize(), buffer);
                 }
 
                 if (decodeIntLE(buffer, I_COMMIT_NUMBER) > commitNumber) {
@@ -971,7 +964,7 @@ final class StoredPageDb extends PageDb {
                     break;
                 }
                 readFully(in, buffer, amt, buffer.length - amt);
-                rawArray.writePage(index, p_transferArrayToPage(buffer, bufferPage));
+                rawArray.writePage(index, p_transferArrayToPage(buffer, bufferPageAddr));
                 index++;
             }
 
@@ -979,21 +972,17 @@ final class StoredPageDb extends PageDb {
             // pages must be durable before doing this.
 
             rawArray.sync(false);
-            rawArray.readPage(0, bufferPage);
-            p_transferPageToArray(bufferPage, buffer);
+            rawArray.readPage(0, bufferPageAddr);
+            p_transferPageToArray(bufferPageAddr, buffer);
 
             if (crypto != null) {
-                try {
-                    crypto.decryptPage(0, logicalArray.pageSize(), buffer, 0);
-                } catch (GeneralSecurityException e) {
-                    throw new DatabaseException(e);
-                }
+                decryptHeader(crypto, logicalArray.pageSize(), buffer);
             }
 
             encodeLongLE(buffer, I_MAGIC_NUMBER, MAGIC_NUMBER);
-            writeLogicalHeader(logicalArray, buffer, bufferPage);
+            writeLogicalHeader(logicalArray, buffer, bufferPageAddr);
         } finally {
-            p_delete(bufferPage);
+            p_delete(bufferPageAddr);
         }
 
         // Ensure newly restored snapshot is durable and also ensure that PageArray (if a
@@ -1007,14 +996,27 @@ final class StoredPageDb extends PageDb {
         }
     }
 
-    private static void writeLogicalHeader(PageArray pa, byte[] buffer, /*P*/ byte[] bufferPage)
+    private static void decryptHeader(Crypto crypto, int pageSize, byte[] buffer)
+        throws DatabaseException
+    {
+        try (Arena a = Arena.ofConfined()) {
+            MemorySegment ms = a.allocate(pageSize);
+            MemorySegment.copy(buffer, 0, ms, ValueLayout.JAVA_BYTE, 0, pageSize);
+            crypto.decryptPage(0, pageSize, ms.address(), 0);
+            MemorySegment.copy(ms, ValueLayout.JAVA_BYTE, 0, buffer, 0, pageSize);
+        } catch (GeneralSecurityException e) {
+            throw new DatabaseException(e);
+        }
+    }
+
+    private static void writeLogicalHeader(PageArray pa, byte[] buffer, long bufferPageAddr)
         throws IOException
     {
         if (buffer.length != pa.pageSize()) {
             // Assume that the logical page size is smaller.
             buffer = Arrays.copyOfRange(buffer, 0, pa.pageSize());
         }
-        pa.writePage(0, p_transferArrayToPage(buffer, bufferPage));
+        pa.writePage(0, p_transferArrayToPage(buffer, bufferPageAddr));
     }
 
     private IOException closeOnFailure(Throwable e) throws IOException {
@@ -1028,28 +1030,28 @@ final class StoredPageDb extends PageDb {
     }
 
     /**
-     * @param header array length is full page
+     * @param headerAddr length is full page
      */
-    private void commitHeader(final /*P*/ byte[] header, final int commitNumber)
+    private void commitHeader(final long headerAddr, final int commitNumber)
         throws IOException
     {
         final PageArray array = mPageArray;
 
-        p_longPutLE(header, I_MAGIC_NUMBER, MAGIC_NUMBER);
-        p_intPutLE (header, I_PAGE_SIZE, array.pageSize());
-        p_intPutLE (header, I_COMMIT_NUMBER, commitNumber);
-        p_longPutLE(header, I_DATABASE_ID, mDatabaseId);
+        p_longPutLE(headerAddr, I_MAGIC_NUMBER, MAGIC_NUMBER);
+        p_intPutLE (headerAddr, I_PAGE_SIZE, array.pageSize());
+        p_intPutLE (headerAddr, I_COMMIT_NUMBER, commitNumber);
+        p_longPutLE(headerAddr, I_DATABASE_ID, mDatabaseId);
 
         // Durably write the new page store header before returning
         // from this method, to ensure that the manager doesn't start
         // returning uncommitted pages. This would prevent rollback
         // from working because the old pages would get overwritten.
-        setHeaderChecksum(header);
+        setHeaderChecksum(headerAddr);
 
         // Write multiple header copies in the page, in case special recovery is required.
         int dupCount = pageSize() / MINIMUM_PAGE_SIZE;
         for (int i=1; i<dupCount; i++) {
-            p_copy(header, 0, header, i * MINIMUM_PAGE_SIZE, MINIMUM_PAGE_SIZE);
+            p_copy(headerAddr, 0, headerAddr, i * MINIMUM_PAGE_SIZE, MINIMUM_PAGE_SIZE);
         }
 
         // Ensure all writes are flushed before flushing the header. There's
@@ -1059,7 +1061,7 @@ final class StoredPageDb extends PageDb {
 
         mHeaderLatch.acquireExclusive();
         try {
-            array.writePage(commitNumber & 1, header);
+            array.writePage(commitNumber & 1, headerAddr);
             mCommitNumber = commitNumber;
             mHeaderOffset = 0;
         } finally {
@@ -1070,30 +1072,30 @@ final class StoredPageDb extends PageDb {
         array.syncPage(commitNumber & 1);
     }
 
-    private static int setHeaderChecksum(/*P*/ byte[] header) {
+    private static int setHeaderChecksum(long headerAddr) {
         // Clear checksum field before computing.
-        p_intPutLE(header, I_CHECKSUM, 0);
-        int checksum = p_crc32(header, 0, MINIMUM_PAGE_SIZE);
-        p_intPutLE(header, I_CHECKSUM, checksum);
+        p_intPutLE(headerAddr, I_CHECKSUM, 0);
+        int checksum = p_crc32(headerAddr, 0, MINIMUM_PAGE_SIZE);
+        p_intPutLE(headerAddr, I_CHECKSUM, checksum);
         return checksum;
     }
 
-    private /*P*/ byte[] readHeader(EventListener debugListener, int id) throws IOException {
+    private long readHeader(EventListener debugListener, int id) throws IOException {
         mHeaderOffset = 0;
-        var header = p_allocPage(directPageSize());
+        var headerAddr = p_allocPage(directPageSize());
 
         ChecksumException ex;
 
         try {
-            doReadHeader(header, 0, id);
-            return header;
+            doReadHeader(headerAddr, 0, id);
+            return headerAddr;
         } catch (ChecksumException e) {
             if (debugListener != null) {
                 debugListener.notify(EventType.DEBUG, e.toString());
             }
             ex = e;
         } catch (Throwable e) {
-            p_delete(header);
+            p_delete(headerAddr);
             if (e instanceof EOFException) {
                 throw new CorruptDatabaseException("File is smaller than expected");
             }
@@ -1109,9 +1111,9 @@ final class StoredPageDb extends PageDb {
                 break;
             }
             try {
-                doReadHeader(header, offset, id);
+                doReadHeader(headerAddr, offset, id);
                 mHeaderOffset = offset;
-                return header;
+                return headerAddr;
             } catch (ChecksumException e) {
                 if (debugListener != null) {
                     debugListener.notify(EventType.DEBUG, e.toString());
@@ -1123,23 +1125,23 @@ final class StoredPageDb extends PageDb {
         }
 
         // Unable to restore the header.
-        p_delete(header);
+        p_delete(headerAddr);
         throw ex;
     }
 
-    private void doReadHeader(/*P*/ byte[] header, int offset, int id) throws IOException {
-        mPageArray.readPage(id, header, 0, offset + MINIMUM_PAGE_SIZE);
+    private void doReadHeader(long headerAddr, int offset, int id) throws IOException {
+        mPageArray.readPage(id, headerAddr, 0, offset + MINIMUM_PAGE_SIZE);
 
         if (offset != 0) {
             // A copy of the header was read; move it into position.
-            p_copy(header, offset, header, 0, MINIMUM_PAGE_SIZE);
+            p_copy(headerAddr, offset, headerAddr, 0, MINIMUM_PAGE_SIZE);
         }
 
-        checkMagicNumber(p_longGetLE(header, I_MAGIC_NUMBER));
+        checkMagicNumber(p_longGetLE(headerAddr, I_MAGIC_NUMBER));
 
-        int storedChecksum = p_intGetLE(header, I_CHECKSUM);
+        int storedChecksum = p_intGetLE(headerAddr, I_CHECKSUM);
 
-        int computedChecksum = setHeaderChecksum(header);
+        int computedChecksum = setHeaderChecksum(headerAddr);
 
         if (storedChecksum != computedChecksum) {
             throw new ChecksumException(id, storedChecksum, computedChecksum);
@@ -1149,23 +1151,23 @@ final class StoredPageDb extends PageDb {
     private void readPartial(long index, int start, byte[] buf, int offset, int length)
         throws IOException
     {
-        /*P*/ byte[] page;
+        long pageAddr;
         int readLen;
 
         int directPageSize = directPageSize();
         if (directPageSize < 0) { // direct I/O
             readLen = pageSize();
-            page = p_allocPage(directPageSize);
+            pageAddr = p_allocPage(directPageSize);
         } else {
             readLen = start + length;
-            page = p_alloc(readLen);
+            pageAddr = p_alloc(readLen);
         }
 
         try {
-            mPageArray.readPage(index, page, 0, readLen);
-            p_copyToArray(page, start, buf, offset, length);
+            mPageArray.readPage(index, pageAddr, 0, readLen);
+            p_copyToArray(pageAddr, start, buf, offset, length);
         } finally {
-            p_delete(page);
+            p_delete(pageAddr);
         }
     }
 

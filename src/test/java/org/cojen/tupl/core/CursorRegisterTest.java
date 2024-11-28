@@ -56,7 +56,6 @@ public class CursorRegisterTest {
     @Test
     public void tempIndex() throws Exception {
         var config = new DatabaseConfig()
-            .directPageAccess(false)
             .durabilityMode(DurabilityMode.NO_FLUSH);
 
         Database db = newTempDatabase(getClass(), config);
@@ -77,7 +76,7 @@ public class CursorRegisterTest {
     public void noRedo() throws Exception {
         // Register doesn't work if transaction doesn't redo.
 
-        Database db = Database.open(new DatabaseConfig().directPageAccess(false));
+        Database db = Database.open(new DatabaseConfig());
         Index ix = db.openIndex("test");
 
         Transaction txn = db.newTransaction();
@@ -86,12 +85,13 @@ public class CursorRegisterTest {
 
         c = ix.newCursor(null);
         assertFalse(c.register());
+
+        db.close();
     }
 
     @Test
     public void reopenRecover() throws Exception {
         var config = new DatabaseConfig()
-            .directPageAccess(false)
             .durabilityMode(DurabilityMode.NO_FLUSH);
 
         Database db = newTempDatabase(getClass(), config);
@@ -140,7 +140,6 @@ public class CursorRegisterTest {
     @SuppressWarnings("unchecked")
     public void longRunningCursors() throws Exception {
         var config = new DatabaseConfig()
-            .directPageAccess(false)
             .checkpointRate(-1, null)
             .durabilityMode(DurabilityMode.NO_FLUSH);
 
@@ -211,7 +210,6 @@ public class CursorRegisterTest {
         // Verify that cursor key is registered, to recover cursors which write to a stream.
 
         var config = new DatabaseConfig()
-            .directPageAccess(false)
             .checkpointRate(-1, null)
             .durabilityMode(DurabilityMode.NO_FLUSH);
 
@@ -257,7 +255,6 @@ public class CursorRegisterTest {
         // Test nested transaction commits against a registered cursor.
 
         var config = new DatabaseConfig()
-            .directPageAccess(false)
             .checkpointRate(-1, null)
             .durabilityMode(DurabilityMode.NO_FLUSH);
 
@@ -336,7 +333,6 @@ public class CursorRegisterTest {
             .localSocket(leaderSocket);
 
         var config = new DatabaseConfig()
-            .directPageAccess(false)
             .durabilityMode(DurabilityMode.NO_FLUSH)
             .lockTimeout(5, TimeUnit.SECONDS)
             .replicate(replConfig);

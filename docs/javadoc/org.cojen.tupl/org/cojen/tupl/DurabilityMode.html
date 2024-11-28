@@ -214,7 +214,7 @@ the order they are declared.</div>
 <div class="horizontal-scroll">
 <div class="member-signature"><span class="modifiers">public static final</span>&nbsp;<span class="return-type"><a href="DurabilityMode.html" title="enum class in org.cojen.tupl">DurabilityMode</a></span>&nbsp;<span class="element-name">SYNC</span></div>
 <div class="block">Strongest durability mode, which ensures all modifications are unlikely to be lost in
- the event of a sudden power failure or crash. Typically this requires that all data be
+ the event of a sudden power failure or crash. Typically, this requires that all data be
  persisted to non-volatile storage. If the database is replicated, it might only
  guarantee that enough replicas have committed modifications to volatile memory, and so
  the <a href="Database.html#sync()"><code>sync</code></a> method would also need to be called to achieve stronger

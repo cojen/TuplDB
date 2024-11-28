@@ -78,6 +78,7 @@ loadScripts(document, 'script');</script>
 <li><a href="#dataFiles(java.io.File...)" tabindex="0">dataFiles(File...)</a></li>
 <li><a href="#mapDataFiles(boolean)" tabindex="0">mapDataFiles(boolean)</a></li>
 <li><a href="#dataPageArray(org.cojen.tupl.io.PageArray)" tabindex="0">dataPageArray(PageArray)</a></li>
+<li><a href="#dataPageArray(java.util.function.Supplier)" tabindex="0">dataPageArray(Supplier)</a></li>
 <li><a href="#minCacheSize(long)" tabindex="0">minCacheSize(long)</a></li>
 <li><a href="#maxCacheSize(long)" tabindex="0">maxCacheSize(long)</a></li>
 <li><a href="#cacheSize(long)" tabindex="0">cacheSize(long)</a></li>
@@ -100,7 +101,7 @@ loadScripts(document, 'script');</script>
 <li><a href="#replicate(org.cojen.tupl.repl.StreamReplicator)" tabindex="0">replicate(StreamReplicator)</a></li>
 <li><a href="#maxReplicaThreads(int)" tabindex="0">maxReplicaThreads(int)</a></li>
 <li><a href="#enableJMX(boolean)" tabindex="0">enableJMX(boolean)</a></li>
-<li><a href="#encrypt(org.cojen.tupl.ext.Crypto)" tabindex="0">encrypt(Crypto)</a></li>
+<li><a href="#encrypt(java.util.function.Supplier)" tabindex="0">encrypt(Supplier)</a></li>
 <li><a href="#checksumPages(java.util.function.Supplier)" tabindex="0">checksumPages(Supplier)</a></li>
 <li><a href="#compressPages(int,long,java.util.function.Supplier)" tabindex="0">compressPages(int, long, Supplier)</a></li>
 <li><a href="#customHandlers(java.util.Map)" tabindex="0">customHandlers(Map)</a></li>
@@ -152,7 +153,7 @@ implements <a href="https://docs.oracle.com/en/java/javase/23/docs/api/java.base
 <section class="method-summary" id="method-summary">
 <h2>Method Summary</h2>
 <div id="method-summary-table">
-<div class="table-tabs" role="tablist" aria-orientation="horizontal"><button id="method-summary-table-tab0" role="tab" aria-selected="true" aria-controls="method-summary-table.tabpanel" tabindex="0" onkeydown="switchTab(event)" onclick="show('method-summary-table', 'method-summary-table', 3)" class="active-table-tab">All Methods</button><button id="method-summary-table-tab2" role="tab" aria-selected="false" aria-controls="method-summary-table.tabpanel" tabindex="-1" onkeydown="switchTab(event)" onclick="show('method-summary-table', 'method-summary-table-tab2', 3)" class="table-tab">Instance Methods</button><button id="method-summary-table-tab4" role="tab" aria-selected="false" aria-controls="method-summary-table.tabpanel" tabindex="-1" onkeydown="switchTab(event)" onclick="show('method-summary-table', 'method-summary-table-tab4', 3)" class="table-tab">Concrete Methods</button></div>
+<div class="table-tabs" role="tablist" aria-orientation="horizontal"><button id="method-summary-table-tab0" role="tab" aria-selected="true" aria-controls="method-summary-table.tabpanel" tabindex="0" onkeydown="switchTab(event)" onclick="show('method-summary-table', 'method-summary-table', 3)" class="active-table-tab">All Methods</button><button id="method-summary-table-tab2" role="tab" aria-selected="false" aria-controls="method-summary-table.tabpanel" tabindex="-1" onkeydown="switchTab(event)" onclick="show('method-summary-table', 'method-summary-table-tab2', 3)" class="table-tab">Instance Methods</button><button id="method-summary-table-tab4" role="tab" aria-selected="false" aria-controls="method-summary-table.tabpanel" tabindex="-1" onkeydown="switchTab(event)" onclick="show('method-summary-table', 'method-summary-table-tab4', 3)" class="table-tab">Concrete Methods</button><button id="method-summary-table-tab6" role="tab" aria-selected="false" aria-controls="method-summary-table.tabpanel" tabindex="-1" onkeydown="switchTab(event)" onclick="show('method-summary-table', 'method-summary-table-tab6', 3)" class="table-tab">Deprecated Methods</button></div>
 <div id="method-summary-table.tabpanel" role="tabpanel" aria-labelledby="method-summary-table-tab0">
 <div class="summary-table three-column-summary">
 <div class="table-header col-first">Modifier and Type</div>
@@ -201,7 +202,7 @@ implements <a href="https://docs.oracle.com/en/java/javase/23/docs/api/java.base
 <div class="block">Set the minimum redo log size required for an automatic <a href="Database.html#checkpoint()">checkpoint</a> to actually be performed.</div>
 </div>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#checksumPages(java.util.function.Supplier)" class="member-name-link">checksumPages</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/23/docs/api/java.base/java/util/function/Supplier.html" title="class or interface in java.util.function" class="external-link">Supplier</a>&lt;<a href="https://docs.oracle.com/en/java/javase/23/docs/api/java.base/java/util/zip/Checksum.html" title="class or interface in java.util.zip" class="external-link">Checksum</a>&gt;&nbsp;factory)</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#checksumPages(java.util.function.Supplier)" class="member-name-link">checksumPages</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/23/docs/api/java.base/java/util/function/Supplier.html" title="class or interface in java.util.function" class="external-link">Supplier</a>&lt;? extends <a href="https://docs.oracle.com/en/java/javase/23/docs/api/java.base/java/util/zip/Checksum.html" title="class or interface in java.util.zip" class="external-link">Checksum</a>&gt;&nbsp;factory)</code></div>
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">Enable 32-bit checksums for all of the underlying database pages.</div>
 </div>
@@ -216,7 +217,7 @@ implements <a href="https://docs.oracle.com/en/java/javase/23/docs/api/java.base
 <div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></code></div>
 <div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#compressPages(int,long,java.util.function.Supplier)" class="member-name-link">compressPages</a><wbr>(int&nbsp;fullPageSize,
  long&nbsp;cacheSize,
- <a href="https://docs.oracle.com/en/java/javase/23/docs/api/java.base/java/util/function/Supplier.html" title="class or interface in java.util.function" class="external-link">Supplier</a>&lt;<a href="io/PageCompressor.html" title="interface in org.cojen.tupl.io">PageCompressor</a>&gt;&nbsp;factory)</code></div>
+ <a href="https://docs.oracle.com/en/java/javase/23/docs/api/java.base/java/util/function/Supplier.html" title="class or interface in java.util.function" class="external-link">Supplier</a>&lt;? extends <a href="io/PageCompressor.html" title="interface in org.cojen.tupl.io">PageCompressor</a>&gt;&nbsp;factory)</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">Compress the underlying database pages, reducing overall size at the cost of
  performance.</div>
@@ -245,115 +246,121 @@ implements <a href="https://docs.oracle.com/en/java/javase/23/docs/api/java.base
  separate devices.</div>
 </div>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#dataPageArray(org.cojen.tupl.io.PageArray)" class="member-name-link">dataPageArray</a><wbr>(<a href="io/PageArray.html" title="class in org.cojen.tupl.io">PageArray</a>&nbsp;array)</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#dataPageArray(java.util.function.Supplier)" class="member-name-link">dataPageArray</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/23/docs/api/java.base/java/util/function/Supplier.html" title="class or interface in java.util.function" class="external-link">Supplier</a>&lt;? extends <a href="io/PageArray.html" title="class in org.cojen.tupl.io">PageArray</a>&gt;&nbsp;factory)</code></div>
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">Use a custom storage layer instead of the default data file.</div>
 </div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>void</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#debugOpen(java.io.PrintStream,java.util.Map)" class="member-name-link">debugOpen</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/23/docs/api/java.base/java/io/PrintStream.html" title="class or interface in java.io" class="external-link">PrintStream</a>&nbsp;out,
- <a href="https://docs.oracle.com/en/java/javase/23/docs/api/java.base/java/util/Map.html" title="class or interface in java.util" class="external-link">Map</a>&lt;<a href="https://docs.oracle.com/en/java/javase/23/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>,<wbr>?&gt;&nbsp;properties)</code></div>
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#dataPageArray(org.cojen.tupl.io.PageArray)" class="member-name-link">dataPageArray</a><wbr>(<a href="io/PageArray.html" title="class in org.cojen.tupl.io">PageArray</a>&nbsp;array)</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="block">Use a custom storage layer instead of the default data file.</div>
+</div>
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>void</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#debugOpen(java.io.PrintStream,java.util.Map)" class="member-name-link">debugOpen</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/23/docs/api/java.base/java/io/PrintStream.html" title="class or interface in java.io" class="external-link">PrintStream</a>&nbsp;out,
+ <a href="https://docs.oracle.com/en/java/javase/23/docs/api/java.base/java/util/Map.html" title="class or interface in java.util" class="external-link">Map</a>&lt;<a href="https://docs.oracle.com/en/java/javase/23/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>,<wbr>?&gt;&nbsp;properties)</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">Opens the database in read-only mode for debugging purposes, and then closes it.</div>
 </div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#directPageAccess(boolean)" class="member-name-link">directPageAccess</a><wbr>(boolean&nbsp;direct)</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
-<div class="block">Set true to allocate all pages off the Java heap, offering increased performance and
- reduced garbage collection activity.</div>
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4 method-summary-table-tab6"><code><a href="DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4 method-summary-table-tab6"><code><a href="#directPageAccess(boolean)" class="member-name-link">directPageAccess</a><wbr>(boolean&nbsp;direct)</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4 method-summary-table-tab6">
+<div class="block"><span class="deprecated-label">Deprecated.</span>
+<div class="deprecation-comment">direct page access is always enabled</div>
 </div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#durabilityMode(org.cojen.tupl.DurabilityMode)" class="member-name-link">durabilityMode</a><wbr>(<a href="DurabilityMode.html" title="enum class in org.cojen.tupl">DurabilityMode</a>&nbsp;durabilityMode)</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+</div>
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#durabilityMode(org.cojen.tupl.DurabilityMode)" class="member-name-link">durabilityMode</a><wbr>(<a href="DurabilityMode.html" title="enum class in org.cojen.tupl">DurabilityMode</a>&nbsp;durabilityMode)</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">Set the default transaction durability mode, which is <a href="DurabilityMode.html#SYNC"><code>SYNC</code></a> if not overridden.</div>
 </div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#enableJMX(boolean)" class="member-name-link">enableJMX</a><wbr>(boolean&nbsp;enable)</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">&nbsp;</div>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#encrypt(org.cojen.tupl.ext.Crypto)" class="member-name-link">encrypt</a><wbr>(<a href="ext/Crypto.html" title="interface in org.cojen.tupl.ext">Crypto</a>&nbsp;crypto)</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#enableJMX(boolean)" class="member-name-link">enableJMX</a><wbr>(boolean&nbsp;enable)</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">&nbsp;</div>
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#encrypt(java.util.function.Supplier)" class="member-name-link">encrypt</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/23/docs/api/java.base/java/util/function/Supplier.html" title="class or interface in java.util.function" class="external-link">Supplier</a>&lt;? extends <a href="ext/Crypto.html" title="interface in org.cojen.tupl.ext">Crypto</a>&gt;&nbsp;factory)</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">Enable full encryption of the data files, transaction logs, snapshots, and cache priming
  sets.</div>
 </div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#eventListener(org.cojen.tupl.diag.EventListener)" class="member-name-link">eventListener</a><wbr>(<a href="diag/EventListener.html" title="interface in org.cojen.tupl.diag">EventListener</a>&nbsp;listener)</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#eventListener(org.cojen.tupl.diag.EventListener)" class="member-name-link">eventListener</a><wbr>(<a href="diag/EventListener.html" title="interface in org.cojen.tupl.diag">EventListener</a>&nbsp;listener)</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">Set a listener which receives notifications of actions being performed by the
  database.</div>
 </div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#eventListeners(org.cojen.tupl.diag.EventListener...)" class="member-name-link">eventListeners</a><wbr>(<a href="diag/EventListener.html" title="interface in org.cojen.tupl.diag">EventListener</a>...&nbsp;listeners)</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#eventListeners(org.cojen.tupl.diag.EventListener...)" class="member-name-link">eventListeners</a><wbr>(<a href="diag/EventListener.html" title="interface in org.cojen.tupl.diag">EventListener</a>...&nbsp;listeners)</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">Set multiple listeners which receive notifications of actions being performed by the
  database.</div>
 </div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#lockTimeout(long,java.util.concurrent.TimeUnit)" class="member-name-link">lockTimeout</a><wbr>(long&nbsp;timeout,
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#lockTimeout(long,java.util.concurrent.TimeUnit)" class="member-name-link">lockTimeout</a><wbr>(long&nbsp;timeout,
  <a href="https://docs.oracle.com/en/java/javase/23/docs/api/java.base/java/util/concurrent/TimeUnit.html" title="class or interface in java.util.concurrent" class="external-link">TimeUnit</a>&nbsp;unit)</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">Set the default lock acquisition timeout, which is 1 second if not
  overridden.</div>
 </div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#lockUpgradeRule(org.cojen.tupl.LockUpgradeRule)" class="member-name-link">lockUpgradeRule</a><wbr>(<a href="LockUpgradeRule.html" title="enum class in org.cojen.tupl">LockUpgradeRule</a>&nbsp;lockUpgradeRule)</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#lockUpgradeRule(org.cojen.tupl.LockUpgradeRule)" class="member-name-link">lockUpgradeRule</a><wbr>(<a href="LockUpgradeRule.html" title="enum class in org.cojen.tupl">LockUpgradeRule</a>&nbsp;lockUpgradeRule)</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">Set the default lock upgrade rule, which is <a href="LockUpgradeRule.html#STRICT"><code>STRICT</code></a> if not
  overridden.</div>
 </div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#mapDataFiles(boolean)" class="member-name-link">mapDataFiles</a><wbr>(boolean&nbsp;mapped)</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#mapDataFiles(boolean)" class="member-name-link">mapDataFiles</a><wbr>(boolean&nbsp;mapped)</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">Enable memory mapping of the data files.</div>
 </div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#maxCacheSize(long)" class="member-name-link">maxCacheSize</a><wbr>(long&nbsp;maxBytes)</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#maxCacheSize(long)" class="member-name-link">maxCacheSize</a><wbr>(long&nbsp;maxBytes)</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">Set the maximum cache size, overriding the default.</div>
 </div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#maxCheckpointThreads(int)" class="member-name-link">maxCheckpointThreads</a><wbr>(int&nbsp;num)</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#maxCheckpointThreads(int)" class="member-name-link">maxCheckpointThreads</a><wbr>(int&nbsp;num)</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">Specify the maximum number of threads for performing checkpointing, to speed it up.</div>
 </div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#maxReplicaThreads(int)" class="member-name-link">maxReplicaThreads</a><wbr>(int&nbsp;num)</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#maxReplicaThreads(int)" class="member-name-link">maxReplicaThreads</a><wbr>(int&nbsp;num)</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">If replication is enabled, specify the maximum number of threads to process incoming
  changes.</div>
 </div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#minCacheSize(long)" class="member-name-link">minCacheSize</a><wbr>(long&nbsp;minBytes)</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#minCacheSize(long)" class="member-name-link">minCacheSize</a><wbr>(long&nbsp;minBytes)</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">Set the minimum cache size, overriding the default.</div>
 </div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#pageSize(int)" class="member-name-link">pageSize</a><wbr>(int&nbsp;size)</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#pageSize(int)" class="member-name-link">pageSize</a><wbr>(int&nbsp;size)</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">Set the page size, which is 4096 bytes by default.</div>
 </div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#prepareHandlers(java.util.Map)" class="member-name-link">prepareHandlers</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/23/docs/api/java.base/java/util/Map.html" title="class or interface in java.util" class="external-link">Map</a>&lt;<a href="https://docs.oracle.com/en/java/javase/23/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>,<wbr>? extends <a href="ext/PrepareHandler.html" title="interface in org.cojen.tupl.ext">PrepareHandler</a>&gt;&nbsp;handlers)</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#prepareHandlers(java.util.Map)" class="member-name-link">prepareHandlers</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/23/docs/api/java.base/java/util/Map.html" title="class or interface in java.util" class="external-link">Map</a>&lt;<a href="https://docs.oracle.com/en/java/javase/23/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>,<wbr>? extends <a href="ext/PrepareHandler.html" title="interface in org.cojen.tupl.ext">PrepareHandler</a>&gt;&nbsp;handlers)</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">Provide handlers for recovering prepared transactions.</div>
 </div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#readOnly(boolean)" class="member-name-link">readOnly</a><wbr>(boolean&nbsp;readOnly)</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#readOnly(boolean)" class="member-name-link">readOnly</a><wbr>(boolean&nbsp;readOnly)</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">Open the database file in read only mode.</div>
 </div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#replicate(org.cojen.tupl.repl.ReplicatorConfig)" class="member-name-link">replicate</a><wbr>(<a href="repl/ReplicatorConfig.html" title="class in org.cojen.tupl.repl">ReplicatorConfig</a>&nbsp;config)</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#replicate(org.cojen.tupl.repl.ReplicatorConfig)" class="member-name-link">replicate</a><wbr>(<a href="repl/ReplicatorConfig.html" title="class in org.cojen.tupl.repl">ReplicatorConfig</a>&nbsp;config)</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">Enable replication using the given configuration.</div>
 </div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#replicate(org.cojen.tupl.repl.StreamReplicator)" class="member-name-link">replicate</a><wbr>(<a href="repl/StreamReplicator.html" title="interface in org.cojen.tupl.repl">StreamReplicator</a>&nbsp;repl)</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#replicate(org.cojen.tupl.repl.StreamReplicator)" class="member-name-link">replicate</a><wbr>(<a href="repl/StreamReplicator.html" title="interface in org.cojen.tupl.repl">StreamReplicator</a>&nbsp;repl)</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">Enable replication with an explicit <a href="repl/StreamReplicator.html" title="interface in org.cojen.tupl.repl"><code>StreamReplicator</code></a> instance.</div>
 </div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#syncWrites(boolean)" class="member-name-link">syncWrites</a><wbr>(boolean&nbsp;fileSync)</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#syncWrites(boolean)" class="member-name-link">syncWrites</a><wbr>(boolean&nbsp;fileSync)</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">Set true to ensure all writes to the main database file are immediately durable,
  although not checkpointed.</div>
 </div>
@@ -464,6 +471,19 @@ implements <a href="https://docs.oracle.com/en/java/javase/23/docs/api/java.base
 <div class="horizontal-scroll">
 <div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type"><a href="DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></span>&nbsp;<span class="element-name">dataPageArray</span><wbr><span class="parameters">(<a href="io/PageArray.html" title="class in org.cojen.tupl.io">PageArray</a>&nbsp;array)</span></div>
 <div class="block">Use a custom storage layer instead of the default data file.</div>
+</div>
+</section>
+</li>
+<li>
+<section class="detail" id="dataPageArray(java.util.function.Supplier)">
+<h3>dataPageArray</h3>
+<div class="horizontal-scroll">
+<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type"><a href="DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></span>&nbsp;<span class="element-name">dataPageArray</span><wbr><span class="parameters">(<a href="https://docs.oracle.com/en/java/javase/23/docs/api/java.base/java/util/function/Supplier.html" title="class or interface in java.util.function" class="external-link">Supplier</a>&lt;? extends <a href="io/PageArray.html" title="class in org.cojen.tupl.io">PageArray</a>&gt;&nbsp;factory)</span></div>
+<div class="block">Use a custom storage layer instead of the default data file.</div>
+<dl class="notes">
+<dt>Parameters:</dt>
+<dd><code>factory</code> - creates a new PageArray</dd>
+</dl>
 </div>
 </section>
 </li>
@@ -652,10 +672,11 @@ implements <a href="https://docs.oracle.com/en/java/javase/23/docs/api/java.base
 <section class="detail" id="directPageAccess(boolean)">
 <h3>directPageAccess</h3>
 <div class="horizontal-scroll">
-<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type"><a href="DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></span>&nbsp;<span class="element-name">directPageAccess</span><wbr><span class="parameters">(boolean&nbsp;direct)</span></div>
-<div class="block">Set true to allocate all pages off the Java heap, offering increased performance and
- reduced garbage collection activity. By default, direct page access is enabled if
- supported.</div>
+<div class="member-signature"><span class="annotations"><a href="https://docs.oracle.com/en/java/javase/23/docs/api/java.base/java/lang/Deprecated.html" title="class or interface in java.lang" class="external-link">@Deprecated</a>
+</span><span class="modifiers">public</span>&nbsp;<span class="return-type"><a href="DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></span>&nbsp;<span class="element-name">directPageAccess</span><wbr><span class="parameters">(boolean&nbsp;direct)</span></div>
+<div class="deprecation-block"><span class="deprecated-label">Deprecated.</span>
+<div class="deprecation-comment">direct page access is always enabled</div>
+</div>
 </div>
 </section>
 </li>
@@ -733,10 +754,10 @@ implements <a href="https://docs.oracle.com/en/java/javase/23/docs/api/java.base
 </section>
 </li>
 <li>
-<section class="detail" id="encrypt(org.cojen.tupl.ext.Crypto)">
+<section class="detail" id="encrypt(java.util.function.Supplier)">
 <h3>encrypt</h3>
 <div class="horizontal-scroll">
-<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type"><a href="DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></span>&nbsp;<span class="element-name">encrypt</span><wbr><span class="parameters">(<a href="ext/Crypto.html" title="interface in org.cojen.tupl.ext">Crypto</a>&nbsp;crypto)</span></div>
+<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type"><a href="DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></span>&nbsp;<span class="element-name">encrypt</span><wbr><span class="parameters">(<a href="https://docs.oracle.com/en/java/javase/23/docs/api/java.base/java/util/function/Supplier.html" title="class or interface in java.util.function" class="external-link">Supplier</a>&lt;? extends <a href="ext/Crypto.html" title="interface in org.cojen.tupl.ext">Crypto</a>&gt;&nbsp;factory)</span></div>
 <div class="block">Enable full encryption of the data files, transaction logs, snapshots, and cache priming
  sets. Option has no effect if database is non-durable. If replication is enabled,
  encryption is not applied to the replication stream. A <a href="repl/StreamReplicator.html" title="interface in org.cojen.tupl.repl"><code>StreamReplicator</code></a>
@@ -745,6 +766,10 @@ implements <a href="https://docs.oracle.com/en/java/javase/23/docs/api/java.base
  <p>Allocated but never used pages within the data files are unencrypted, although they
  contain no information. Temporary files used by in-progress snapshots contain encrypted
  content.</div>
+<dl class="notes">
+<dt>Parameters:</dt>
+<dd><code>factory</code> - creates a new crypto instance</dd>
+</dl>
 </div>
 </section>
 </li>
@@ -752,7 +777,7 @@ implements <a href="https://docs.oracle.com/en/java/javase/23/docs/api/java.base
 <section class="detail" id="checksumPages(java.util.function.Supplier)">
 <h3>checksumPages</h3>
 <div class="horizontal-scroll">
-<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type"><a href="DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></span>&nbsp;<span class="element-name">checksumPages</span><wbr><span class="parameters">(<a href="https://docs.oracle.com/en/java/javase/23/docs/api/java.base/java/util/function/Supplier.html" title="class or interface in java.util.function" class="external-link">Supplier</a>&lt;<a href="https://docs.oracle.com/en/java/javase/23/docs/api/java.base/java/util/zip/Checksum.html" title="class or interface in java.util.zip" class="external-link">Checksum</a>&gt;&nbsp;factory)</span></div>
+<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type"><a href="DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></span>&nbsp;<span class="element-name">checksumPages</span><wbr><span class="parameters">(<a href="https://docs.oracle.com/en/java/javase/23/docs/api/java.base/java/util/function/Supplier.html" title="class or interface in java.util.function" class="external-link">Supplier</a>&lt;? extends <a href="https://docs.oracle.com/en/java/javase/23/docs/api/java.base/java/util/zip/Checksum.html" title="class or interface in java.util.zip" class="external-link">Checksum</a>&gt;&nbsp;factory)</span></div>
 <div class="block">Enable 32-bit checksums for all of the underlying database pages. The page size reported
  by the database will be 4 bytes smaller, to make room for the checksum.</div>
 <dl class="notes">
@@ -768,7 +793,7 @@ implements <a href="https://docs.oracle.com/en/java/javase/23/docs/api/java.base
 <div class="horizontal-scroll">
 <div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type"><a href="DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></span>&nbsp;<span class="element-name">compressPages</span><wbr><span class="parameters">(int&nbsp;fullPageSize,
  long&nbsp;cacheSize,
- <a href="https://docs.oracle.com/en/java/javase/23/docs/api/java.base/java/util/function/Supplier.html" title="class or interface in java.util.function" class="external-link">Supplier</a>&lt;<a href="io/PageCompressor.html" title="interface in org.cojen.tupl.io">PageCompressor</a>&gt;&nbsp;factory)</span></div>
+ <a href="https://docs.oracle.com/en/java/javase/23/docs/api/java.base/java/util/function/Supplier.html" title="class or interface in java.util.function" class="external-link">Supplier</a>&lt;? extends <a href="io/PageCompressor.html" title="interface in org.cojen.tupl.io">PageCompressor</a>&gt;&nbsp;factory)</span></div>
 <div class="block">Compress the underlying database pages, reducing overall size at the cost of
  performance. To be effective, the given full page size must be larger than physical page
  size. A full page size of 65536 bytes paired with the default physical page size of 4096

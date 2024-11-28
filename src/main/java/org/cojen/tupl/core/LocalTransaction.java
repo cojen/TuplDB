@@ -1654,14 +1654,14 @@ public final class LocalTransaction extends Locker implements CoreTransaction {
      * Caller must hold commit lock.
      *
      * @param op OP_UNUPDATE or OP_UNDELETE
-     * @param payload page with Node-encoded key/value entry
+     * @param payloadAddr page with Node-encoded key/value entry
      */
-    final void pushUndoStore(long indexId, byte op, /*P*/ byte[] payload, int off, int len)
+    final void pushUndoStore(long indexId, byte op, long payloadAddr, int off, int len)
         throws IOException
     {
         check();
         try {
-            undoLog().pushNodeEncoded(indexId, op, payload, off, len);
+            undoLog().pushNodeEncoded(indexId, op, payloadAddr, off, len);
         } catch (Throwable e) {
             borked(e);
         }
@@ -1734,12 +1734,12 @@ public final class LocalTransaction extends Locker implements CoreTransaction {
     /**
      * Caller must hold commit lock.
      */
-    final void pushUnwrite(long indexId, byte[] key, long pos, /*P*/ byte[] b, int off, int len)
+    final void pushUnwrite(long indexId, byte[] key, long pos, long addr, int off, int len)
         throws IOException
     {
         check();
         try {
-            undoLog().pushUnwrite(indexId, key, pos, b, off, len);
+            undoLog().pushUnwrite(indexId, key, pos, addr, off, len);
         } catch (Throwable e) {
             borked(e);
         }

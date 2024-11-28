@@ -43,7 +43,7 @@ public class FilteringTest {
     public void arrayColumnOrderingA() throws Exception {
         // Verify basic filter ordering.
 
-        Database db = Database.open(new DatabaseConfig().directPageAccess(false));
+        Database db = Database.open(new DatabaseConfig());
         Table<A> table = db.openTable(A.class);
 
         int[] nums = {-1_000_000_000, -100, 0, 100, 1_000_000_000};
@@ -68,13 +68,15 @@ public class FilteringTest {
         findArrayRows(table, nums, "value2", false);
         findArrayRows(table, nums, "value3", true);
         findArrayRows(table, nums, "value4", true);
+
+        db.close();
     }
 
     @Test
     public void arrayColumnOrderingB() throws Exception {
         // Verify basic filter ordering.
 
-        Database db = Database.open(new DatabaseConfig().directPageAccess(false));
+        Database db = Database.open(new DatabaseConfig());
         Table<B> table = db.openTable(B.class);
 
         int[] nums = {-1_000_000_000, -100, 0, 100, 1_000_000_000};
@@ -91,13 +93,15 @@ public class FilteringTest {
 
         findArrayRows(table, nums, "id1", true);
         findArrayRows(table, nums, "id2", true);
+
+        db.close();
     }
 
     @Test
     public void arrayColumnOrderingC() throws Exception {
         // Verify basic filter ordering.
 
-        Database db = Database.open(new DatabaseConfig().directPageAccess(false));
+        Database db = Database.open(new DatabaseConfig());
         Table<C> table = db.openTable(C.class);
 
         int[] nums = {-1_000_000_000, -100, 0, 100, 1_000_000_000};
@@ -114,13 +118,15 @@ public class FilteringTest {
 
         findArrayRows(table, nums, "id1", true);
         findArrayRows(table, nums, "id2", true);
+
+        db.close();
     }
 
     @Test
     public void arrayColumnOrderingAB() throws Exception {
         // Verify basic filter ordering.
 
-        Database db = Database.open(new DatabaseConfig().directPageAccess(false));
+        Database db = Database.open(new DatabaseConfig());
         Table<AB> table = db.openTable(AB.class);
 
         byte[] nums = {-100, 0, 100};
@@ -145,13 +151,15 @@ public class FilteringTest {
         findArrayRows(table, nums, "value2", false);
         findArrayRows(table, nums, "value3", true);
         findArrayRows(table, nums, "value4", true);
+
+        db.close();
     }
 
     @Test
     public void arrayColumnOrderingBB() throws Exception {
         // Verify basic filter ordering.
 
-        Database db = Database.open(new DatabaseConfig().directPageAccess(false));
+        Database db = Database.open(new DatabaseConfig());
         Table<BB> table = db.openTable(BB.class);
 
         byte[] nums = {-100, 0, 100};
@@ -168,13 +176,15 @@ public class FilteringTest {
 
         findArrayRows(table, nums, "id1", true);
         findArrayRows(table, nums, "id2", true);
+
+        db.close();
     }
 
     @Test
     public void arrayColumnOrderingCB() throws Exception {
         // Verify basic filter ordering.
 
-        Database db = Database.open(new DatabaseConfig().directPageAccess(false));
+        Database db = Database.open(new DatabaseConfig());
         Table<CB> table = db.openTable(CB.class);
 
         byte[] nums = {-100, 0, 100};
@@ -191,13 +201,15 @@ public class FilteringTest {
 
         findArrayRows(table, nums, "id1", true);
         findArrayRows(table, nums, "id2", true);
+
+        db.close();
     }
 
     @Test
     public void arrayColumnOrderingF() throws Exception {
         // Verify basic filter ordering.
 
-        Database db = Database.open(new DatabaseConfig().directPageAccess(false));
+        Database db = Database.open(new DatabaseConfig());
         Table<F> table = db.openTable(F.class);
 
         float[] nums = {-1_000_000_000, -100, 0, 100, 1_000_000_000};
@@ -218,13 +230,15 @@ public class FilteringTest {
         findArrayRows(table, nums, "id2");
         findArrayRows(table, nums, "value1");
         findArrayRows(table, nums, "value2");
+
+        db.close();
     }
 
     @Test
     public void arrayColumnOrderingG() throws Exception {
         // Verify basic filter ordering.
 
-        Database db = Database.open(new DatabaseConfig().directPageAccess(false));
+        Database db = Database.open(new DatabaseConfig());
         Table<G> table = db.openTable(G.class);
 
         float[] nums = {-1_000_000_000, -100, 0, 100, 1_000_000_000};
@@ -241,6 +255,8 @@ public class FilteringTest {
 
         findArrayRows(table, nums, "id1");
         findArrayRows(table, nums, "id2");
+
+        db.close();
     }
 
     private void findArrayRows(Table table, int[] nums, String column, boolean unsigned)
@@ -580,8 +596,8 @@ public class FilteringTest {
         // Test a "true" filter which returns everything, and with a "false" filter which
         // returns nothing.
 
-        Database db = Database.open(new DatabaseConfig().directPageAccess(false).
-                                    lockTimeout(10, TimeUnit.MILLISECONDS));
+        Database db = Database.open(new DatabaseConfig()
+                                    .lockTimeout(10, TimeUnit.MILLISECONDS));
         Table<MyRow> table = db.openTable(MyRow.class);
 
         for (int i=0; i<3; i++) {
@@ -621,6 +637,8 @@ public class FilteringTest {
         table.newScanner(null, "name >= ?1 && name < ?1");
 
         txn.reset();
+
+        db.close();
     }
 
     @PrimaryKey("id")
@@ -636,7 +654,7 @@ public class FilteringTest {
     public void columnToColumn() throws Exception {
         // Basic column to column filtering.
 
-        Database db = Database.open(new DatabaseConfig().directPageAccess(false));
+        Database db = Database.open(new DatabaseConfig());
         Table<MyRow2> table = db.openTable(MyRow2.class);
 
         for (int i=0; i<10; i++) {
@@ -670,6 +688,8 @@ public class FilteringTest {
             count++;
         }
         assertEquals(2, count);
+
+        db.close();
     }
 
     @PrimaryKey("id")
@@ -686,7 +706,7 @@ public class FilteringTest {
 
     @Test
     public void filterString() throws Exception {
-        Database db = Database.open(new DatabaseConfig().directPageAccess(false));
+        Database db = Database.open(new DatabaseConfig());
         Table<MyRow3> table = db.openTable(MyRow3.class);
 
         String str = table.newScanner(null).toString();
@@ -718,11 +738,13 @@ public class FilteringTest {
         int[][] b = {{-1, 2}, {-3, 4}};
         str = table.newScanner(null, "array2 in ?", (Object) b).toString();
         assertTrue(str.contains("array2 in [[4294967295, 2], [4294967293, 4]]"));
+
+        db.close();
     }
 
     @Test
     public void filterString2() throws Exception {
-        Database db = Database.open(new DatabaseConfig().directPageAccess(false));
+        Database db = Database.open(new DatabaseConfig());
         Table<MyRow2> table = db.openTable(MyRow2.class);
 
         {
@@ -753,6 +775,8 @@ public class FilteringTest {
             assertEquals("{id=4, name1=b, name2=b}", row.toString());
             assertNull(scanner.step());
         }
+
+        db.close();
     }
 
     @PrimaryKey("id")

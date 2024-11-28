@@ -43,7 +43,6 @@ import org.cojen.tupl.util.Runner;
  * @author Brian S O'Neill
  * @see ReplEngine
  */
-/*P*/
 final class ReplController extends ReplWriter {
     private static final VarHandle cCheckpointPosHandle, cSwitchingHandle;
 
@@ -107,7 +106,7 @@ final class ReplController extends ReplWriter {
             return null;
         }
 
-        CoreDatabase db = mEngine.mDatabase;
+        LocalDatabase db = mEngine.mDatabase;
 
         // Can now send control messages.
         mRepl.controlMessageAcceptor(message -> {

@@ -51,7 +51,7 @@ public class MergeViewTest {
 
     @Before
     public void createTempDb() throws Exception {
-        mDb = Database.open(new DatabaseConfig().directPageAccess(false));
+        mDb = Database.open(new DatabaseConfig());
         mFirstView = mDb.openIndex("first");
         mSecondView = mDb.openIndex("second");
         mFirstMap = new TreeMap<>();

@@ -374,16 +374,16 @@ final class Split {
     }
 
     /**
-     * @param dest destination page of parent internal node
+     * @param destAddr destination page of parent internal node
      * @param destLoc location in destination page
      * @return updated destLoc
      */
-    final int copySplitKeyToParent(final /*P*/ byte[] dest, final int destLoc) {
+    final int copySplitKeyToParent(final long destAddr, final int destLoc) {
         byte[] actualKey = mActualKey;
         if (actualKey == mFullKey) {
-            return Node.encodeNormalKey(actualKey, dest, destLoc);
+            return Node.encodeNormalKey(actualKey, destAddr, destLoc);
         } else {
-            return Node.encodeFragmentedKey(actualKey, dest, destLoc);
+            return Node.encodeFragmentedKey(actualKey, destAddr, destLoc);
         }
     }
 }

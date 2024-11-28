@@ -37,7 +37,6 @@ public class TempIndexTest {
     @Before
     public void createTempDb() throws Exception {
         mConfig = new DatabaseConfig()
-            .directPageAccess(false)
             .checkpointRate(-1, null);
         mDb = newTempDatabase(getClass(), mConfig);
     }

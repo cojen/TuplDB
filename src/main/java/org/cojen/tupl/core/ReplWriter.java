@@ -42,7 +42,6 @@ import org.cojen.tupl.util.Parker;
  *
  * @author Brian S O'Neill
  */
-/*P*/
 class ReplWriter extends RedoWriter {
     final ReplEngine mEngine;
 

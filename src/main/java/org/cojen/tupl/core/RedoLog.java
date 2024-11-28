@@ -56,7 +56,6 @@ import static org.cojen.tupl.core.Utils.*;
  *
  * @author Brian S O'Neill
  */
-/*P*/
 final class RedoLog extends RedoWriter {
     private static final long MAGIC_NUMBER = 431399725605778814L;
     private static final int ENCODING_VERSION = 20130106;

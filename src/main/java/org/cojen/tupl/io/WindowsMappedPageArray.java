@@ -22,8 +22,6 @@ import java.io.IOException;
 
 import java.util.EnumSet;
 
-import com.sun.jna.platform.win32.WinNT;
-
 import org.cojen.tupl.diag.EventListener;
 
 /**
@@ -31,9 +29,9 @@ import org.cojen.tupl.diag.EventListener;
  *
  * @author Brian S O'Neill
  */
-class WindowsMappedPageArray extends MappedPageArray {
-    private final WinNT.HANDLE mFileHandle;
-    private final WinNT.HANDLE mMappingHandle;
+final class WindowsMappedPageArray extends MappedPageArray {
+    private final int mFileHandle;
+    private final int mMappingHandle;
 
     private final boolean mNonDurable;
 
@@ -46,10 +44,10 @@ class WindowsMappedPageArray extends MappedPageArray {
         super(pageSize, pageCount, options);
 
         if (file == null) {
-            setMappingPtr(WindowsFileIO.valloc(pageSize * pageCount, listener));
+            setMappingAddr(WindowsFileIO.valloc(pageSize * pageCount, listener));
 
-            mFileHandle = null;
-            mMappingHandle = null;
+            mFileHandle = WindowsFileIO.INVALID_HANDLE_VALUE;
+            mMappingHandle = WindowsFileIO.INVALID_HANDLE_VALUE;
             mNonDurable = true;
             mEmpty = true;
 
@@ -65,7 +63,7 @@ class WindowsMappedPageArray extends MappedPageArray {
         mFileHandle = mf.fileHandle();
         mMappingHandle = mf.mappingHandle();
 
-        setMappingPtr(mf.addr());
+        setMappingAddr(mf.addr());
     }
 
     @Override
@@ -79,24 +77,24 @@ class WindowsMappedPageArray extends MappedPageArray {
     }
 
     @Override
-    void doSync(long mappingPtr, boolean metadata) throws IOException {
+    void doSync(long mappingAddr, boolean metadata) throws IOException {
         if (!mNonDurable) {
-            WindowsFileIO.flushMapping(mFileHandle, mappingPtr, super.pageCount() * pageSize());
+            WindowsFileIO.flushMapping(mFileHandle, mappingAddr, super.pageCount() * pageSize());
         }
         mEmpty = false;
     }
 
     @Override
-    void doSyncPage(long mappingPtr, long index) throws IOException {
+    void doSyncPage(long mappingAddr, long index) throws IOException {
         if (!mNonDurable) {
             int pageSize = pageSize();
-            WindowsFileIO.flushMapping(mFileHandle, mappingPtr + index * pageSize, pageSize);
+            WindowsFileIO.flushMapping(mFileHandle, mappingAddr + index * pageSize, pageSize);
         }
         mEmpty = false;
     }
 
     @Override
-    void doClose(long mappingPtr) throws IOException {
-        WindowsFileIO.closeMappedFile(mMappingHandle, mFileHandle, mappingPtr);
+    void doClose(long mappingAddr) throws IOException {
+        WindowsFileIO.closeMappedFile(mMappingHandle, mFileHandle, mappingAddr);
     }
 }

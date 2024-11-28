@@ -106,6 +106,10 @@ loadScripts(document, 'script');</script>
 <div class="block">Stripe the database data file across several files, expected to be on
  separate devices.</div>
 </dd>
+<dt><a href="../org.cojen.tupl/org/cojen/tupl/DatabaseConfig.html#dataPageArray(java.util.function.Supplier)" class="member-name-link">dataPageArray(Supplier&lt;? extends PageArray&gt;)</a> - Method in class org.cojen.tupl.<a href="../org.cojen.tupl/org/cojen/tupl/DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></dt>
+<dd>
+<div class="block">Use a custom storage layer instead of the default data file.</div>
+</dd>
 <dt><a href="../org.cojen.tupl/org/cojen/tupl/DatabaseConfig.html#dataPageArray(org.cojen.tupl.io.PageArray)" class="member-name-link">dataPageArray(PageArray)</a> - Method in class org.cojen.tupl.<a href="../org.cojen.tupl/org/cojen/tupl/DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></dt>
 <dd>
 <div class="block">Use a custom storage layer instead of the default data file.</div>
@@ -191,41 +195,23 @@ loadScripts(document, 'script');</script>
 <dd>
 <div class="block">Decodes a 16-bit unsigned integer, in little-endian format.</div>
 </dd>
-<dt><a href="../org.cojen.tupl/org/cojen/tupl/io/PageCompressor.html#decompress(byte%5B%5D,int,int,byte%5B%5D,int,int)" class="member-name-link">decompress(byte[], int, int, byte[], int, int)</a> - Method in interface org.cojen.tupl.io.<a href="../org.cojen.tupl/org/cojen/tupl/io/PageCompressor.html" title="interface in org.cojen.tupl.io">PageCompressor</a></dt>
-<dd>
-<div class="block">Decompress to a byte array.</div>
-</dd>
 <dt><a href="../org.cojen.tupl/org/cojen/tupl/io/PageCompressor.html#decompress(byte%5B%5D,int,int,long,int,int)" class="member-name-link">decompress(byte[], int, int, long, int, int)</a> - Method in interface org.cojen.tupl.io.<a href="../org.cojen.tupl/org/cojen/tupl/io/PageCompressor.html" title="interface in org.cojen.tupl.io">PageCompressor</a></dt>
 <dd>
-<div class="block">Decompress to a raw memory pointer.</div>
+<div class="block">Decompress to a raw memory address.</div>
 </dd>
 <dt><a href="../org.cojen.tupl/org/cojen/tupl/io/Utils.html#decrement(byte%5B%5D,int,int)" class="member-name-link">decrement(byte[], int, int)</a> - Static method in class org.cojen.tupl.io.<a href="../org.cojen.tupl/org/cojen/tupl/io/Utils.html" title="class in org.cojen.tupl.io">Utils</a></dt>
 <dd>
 <div class="block">Subtracts one from an unsigned integer, represented as a byte array.</div>
 </dd>
-<dt><a href="../org.cojen.tupl/org/cojen/tupl/ext/Crypto.html#decryptPage(long,int,byte%5B%5D,int)" class="member-name-link">decryptPage(long, int, byte[], int)</a> - Method in interface org.cojen.tupl.ext.<a href="../org.cojen.tupl/org/cojen/tupl/ext/Crypto.html" title="interface in org.cojen.tupl.ext">Crypto</a></dt>
-<dd>
-<div class="block">Called by multiple threads to decrypt a fixed-size database
- page.</div>
-</dd>
-<dt><a href="../org.cojen.tupl/org/cojen/tupl/ext/CipherCrypto.html#decryptPage(long,int,byte%5B%5D,int,byte%5B%5D,int)" class="member-name-link">decryptPage(long, int, byte[], int, byte[], int)</a> - Method in class org.cojen.tupl.ext.<a href="../org.cojen.tupl/org/cojen/tupl/ext/CipherCrypto.html" title="class in org.cojen.tupl.ext">CipherCrypto</a></dt>
-<dd>&nbsp;</dd>
-<dt><a href="../org.cojen.tupl/org/cojen/tupl/ext/Crypto.html#decryptPage(long,int,byte%5B%5D,int,byte%5B%5D,int)" class="member-name-link">decryptPage(long, int, byte[], int, byte[], int)</a> - Method in interface org.cojen.tupl.ext.<a href="../org.cojen.tupl/org/cojen/tupl/ext/Crypto.html" title="interface in org.cojen.tupl.ext">Crypto</a></dt>
-<dd>
-<div class="block">Called by multiple threads to decrypt a fixed-size database
- page.</div>
-</dd>
 <dt><a href="../org.cojen.tupl/org/cojen/tupl/ext/Crypto.html#decryptPage(long,int,long,int)" class="member-name-link">decryptPage(long, int, long, int)</a> - Method in interface org.cojen.tupl.ext.<a href="../org.cojen.tupl/org/cojen/tupl/ext/Crypto.html" title="interface in org.cojen.tupl.ext">Crypto</a></dt>
 <dd>
-<div class="block">Called by multiple threads to decrypt a fixed-size database
- page.</div>
+<div class="block">Called by multiple threads to decrypt a fixed-size database page.</div>
 </dd>
 <dt><a href="../org.cojen.tupl/org/cojen/tupl/ext/CipherCrypto.html#decryptPage(long,int,long,int,long,int)" class="member-name-link">decryptPage(long, int, long, int, long, int)</a> - Method in class org.cojen.tupl.ext.<a href="../org.cojen.tupl/org/cojen/tupl/ext/CipherCrypto.html" title="class in org.cojen.tupl.ext">CipherCrypto</a></dt>
 <dd>&nbsp;</dd>
 <dt><a href="../org.cojen.tupl/org/cojen/tupl/ext/Crypto.html#decryptPage(long,int,long,int,long,int)" class="member-name-link">decryptPage(long, int, long, int, long, int)</a> - Method in interface org.cojen.tupl.ext.<a href="../org.cojen.tupl/org/cojen/tupl/ext/Crypto.html" title="interface in org.cojen.tupl.ext">Crypto</a></dt>
 <dd>
-<div class="block">Called by multiple threads to decrypt a fixed-size database
- page.</div>
+<div class="block">Called by multiple threads to decrypt a fixed-size database page.</div>
 </dd>
 <dt><a href="../org.cojen.tupl/org/cojen/tupl/Cursor.html#delete()" class="member-name-link">delete()</a> - Method in interface org.cojen.tupl.<a href="../org.cojen.tupl/org/cojen/tupl/Cursor.html" title="interface in org.cojen.tupl">Cursor</a></dt>
 <dd>
@@ -303,16 +289,17 @@ loadScripts(document, 'script');</script>
 </dd>
 <dt><a href="../org.cojen.tupl/org/cojen/tupl/DatabaseConfig.html#directPageAccess(boolean)" class="member-name-link">directPageAccess(boolean)</a> - Method in class org.cojen.tupl.<a href="../org.cojen.tupl/org/cojen/tupl/DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></dt>
 <dd>
-<div class="block">Set true to allocate all pages off the Java heap, offering increased performance and
- reduced garbage collection activity.</div>
+<div class="deprecation-block"><span class="deprecated-label">Deprecated.</span>
+<div class="deprecation-comment">direct page access is always enabled</div>
+</div>
 </dd>
-<dt><a href="../org.cojen.tupl/org/cojen/tupl/io/JoinedPageArray.html#directPagePointer(long)" class="member-name-link">directPagePointer(long)</a> - Method in class org.cojen.tupl.io.<a href="../org.cojen.tupl/org/cojen/tupl/io/JoinedPageArray.html" title="class in org.cojen.tupl.io">JoinedPageArray</a></dt>
+<dt><a href="../org.cojen.tupl/org/cojen/tupl/io/JoinedPageArray.html#directPageAddress(long)" class="member-name-link">directPageAddress(long)</a> - Method in class org.cojen.tupl.io.<a href="../org.cojen.tupl/org/cojen/tupl/io/JoinedPageArray.html" title="class in org.cojen.tupl.io">JoinedPageArray</a></dt>
 <dd>&nbsp;</dd>
-<dt><a href="../org.cojen.tupl/org/cojen/tupl/io/MappedPageArray.html#directPagePointer(long)" class="member-name-link">directPagePointer(long)</a> - Method in class org.cojen.tupl.io.<a href="../org.cojen.tupl/org/cojen/tupl/io/MappedPageArray.html" title="class in org.cojen.tupl.io">MappedPageArray</a></dt>
+<dt><a href="../org.cojen.tupl/org/cojen/tupl/io/MappedPageArray.html#directPageAddress(long)" class="member-name-link">directPageAddress(long)</a> - Method in class org.cojen.tupl.io.<a href="../org.cojen.tupl/org/cojen/tupl/io/MappedPageArray.html" title="class in org.cojen.tupl.io">MappedPageArray</a></dt>
 <dd>&nbsp;</dd>
-<dt><a href="../org.cojen.tupl/org/cojen/tupl/io/PageArray.html#directPagePointer(long)" class="member-name-link">directPagePointer(long)</a> - Method in class org.cojen.tupl.io.<a href="../org.cojen.tupl/org/cojen/tupl/io/PageArray.html" title="class in org.cojen.tupl.io">PageArray</a></dt>
+<dt><a href="../org.cojen.tupl/org/cojen/tupl/io/PageArray.html#directPageAddress(long)" class="member-name-link">directPageAddress(long)</a> - Method in class org.cojen.tupl.io.<a href="../org.cojen.tupl/org/cojen/tupl/io/PageArray.html" title="class in org.cojen.tupl.io">PageArray</a></dt>
 <dd>&nbsp;</dd>
-<dt><a href="../org.cojen.tupl/org/cojen/tupl/io/StripedPageArray.html#directPagePointer(long)" class="member-name-link">directPagePointer(long)</a> - Method in class org.cojen.tupl.io.<a href="../org.cojen.tupl/org/cojen/tupl/io/StripedPageArray.html" title="class in org.cojen.tupl.io">StripedPageArray</a></dt>
+<dt><a href="../org.cojen.tupl/org/cojen/tupl/io/StripedPageArray.html#directPageAddress(long)" class="member-name-link">directPageAddress(long)</a> - Method in class org.cojen.tupl.io.<a href="../org.cojen.tupl/org/cojen/tupl/io/StripedPageArray.html" title="class in org.cojen.tupl.io">StripedPageArray</a></dt>
 <dd>&nbsp;</dd>
 <dt><a href="../org.cojen.tupl/org/cojen/tupl/io/FilePageArray.html#directPageSize()" class="member-name-link">directPageSize()</a> - Method in class org.cojen.tupl.io.<a href="../org.cojen.tupl/org/cojen/tupl/io/FilePageArray.html" title="class in org.cojen.tupl.io">FilePageArray</a></dt>
 <dd>&nbsp;</dd>

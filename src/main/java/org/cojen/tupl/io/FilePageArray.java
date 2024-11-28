@@ -23,15 +23,25 @@ import java.io.IOException;
 import java.util.EnumSet;
 import java.util.Objects;
 
+import java.util.function.Supplier;
+
+import org.cojen.tupl.core.CheckedSupplier;
+
 /**
  * Basic {@link PageArray} implementation which accesses a file.
  *
  * @author Brian S O'Neill
  */
-public class FilePageArray extends PageArray {
+public final class FilePageArray extends PageArray {
     final FileIO mFio;
 
-    public FilePageArray(int pageSize, File file, EnumSet<OpenOption> options) throws IOException {
+    public static Supplier<PageArray> factory(int pageSize, File file,
+                                              EnumSet<OpenOption> options)
+    {
+        return (CheckedSupplier<PageArray>) () -> new FilePageArray(pageSize, file, options);
+    }
+
+    private FilePageArray(int pageSize, File file, EnumSet<OpenOption> options) throws IOException {
         this(pageSize, FileIO.open(file, options));
     }
 
@@ -87,31 +97,17 @@ public class FilePageArray extends PageArray {
     }
 
     @Override
-    public void readPage(long index, byte[] dst, int offset, int length) throws IOException {
+    public void readPage(long index, long dstAddr, int offset, int length) throws IOException {
         if (index < 0) {
             throw new IndexOutOfBoundsException(String.valueOf(index));
         }
-        mFio.read(index * mPageSize, dst, offset, length);
+        mFio.read(index * mPageSize, dstAddr, offset, length);
     }
 
     @Override
-    public void readPage(long index, long dstPtr, int offset, int length) throws IOException {
-        if (index < 0) {
-            throw new IndexOutOfBoundsException(String.valueOf(index));
-        }
-        mFio.read(index * mPageSize, dstPtr, offset, length);
-    }
-
-    @Override
-    public void writePage(long index, byte[] src, int offset) throws IOException {
+    public void writePage(long index, long srcAddr, int offset) throws IOException {
         int pageSize = mPageSize;
-        mFio.write(index * pageSize, src, offset, pageSize);
-    }
-
-    @Override
-    public void writePage(long index, long srcPtr, int offset) throws IOException {
-        int pageSize = mPageSize;
-        mFio.write(index * pageSize, srcPtr, offset, pageSize);
+        mFio.write(index * pageSize, srcAddr, offset, pageSize);
     }
 
     @Override

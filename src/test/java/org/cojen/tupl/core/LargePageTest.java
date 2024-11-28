@@ -43,7 +43,7 @@ public class LargePageTest {
     }
 
     private static DatabaseConfig newConfig() {
-        return new DatabaseConfig().directPageAccess(false).pageSize(65536);
+        return new DatabaseConfig().pageSize(65536);
     }
 
     @Test
@@ -122,6 +122,8 @@ public class LargePageTest {
         fastAssertArrayEquals(v1, ix.load(null, k1));
         fastAssertArrayEquals(v2, ix.load(null, k2));
         fastAssertArrayEquals(v3, ix.load(null, k3));
+
+        db.close();
     }
 
     @Test

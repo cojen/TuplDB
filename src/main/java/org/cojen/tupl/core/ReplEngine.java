@@ -63,7 +63,6 @@ import static org.cojen.tupl.core.Utils.*;
  * @author Brian S O'Neill
  * @see ReplController
  */
-/*P*/
 class ReplEngine implements RedoVisitor, ThreadFactory {
     private static final int MAX_QUEUE_SIZE = 1000;
     private static final int MAX_KEEP_ALIVE_MILLIS = 60_000;

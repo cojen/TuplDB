@@ -42,7 +42,6 @@ public class AnalyzeTest {
     public void createTempDb() throws Exception {
         var config = new DatabaseConfig();
         config.durabilityMode(DurabilityMode.NO_FLUSH);
-        config.directPageAccess(false);
         config.checkpointRate(-1, null);
         mDb = newTempDatabase(getClass(), config);
     }

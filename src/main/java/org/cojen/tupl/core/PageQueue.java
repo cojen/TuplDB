@@ -27,7 +27,7 @@ import org.cojen.tupl.WriteFailureException;
 import org.cojen.tupl.diag.EventListener;
 import org.cojen.tupl.diag.EventType;
 
-import static org.cojen.tupl.core.PageOps.*;
+import static org.cojen.tupl.core.DirectPageOps.*;
 import static org.cojen.tupl.core.Utils.scramble;
 
 /**
@@ -88,7 +88,7 @@ final class PageQueue implements IntegerRef {
     // These fields are guarded by remove lock provided by caller.
     private long mRemovePageCount;
     private long mRemoveNodeCount;
-    private /*P*/ byte[] mRemoveHead;
+    private long mRemoveHeadAddr;
     private long mRemoveHeadId;
     private int mRemoveHeadOffset;
     private long mRemoveHeadFirstPageId;
@@ -104,7 +104,7 @@ final class PageQueue implements IntegerRef {
     // These fields are guarded by mAppendLock.
     private final ReentrantLock mAppendLock;
     private final IdHeap mAppendHeap;
-    private final /*P*/ byte[] mAppendTail;
+    private final long mAppendTailAddr;
     private volatile long mAppendTailId;
     private long mAppendPageCount;
     private long mAppendNodeCount;
@@ -113,8 +113,8 @@ final class PageQueue implements IntegerRef {
     /**
      * Returns true if a valid PageQueue instance is encoded in the header.
      */
-    static boolean exists(/*P*/ byte[] header, int offset) {
-        return p_longGetLE(header, offset + I_REMOVE_HEAD_ID) != 0;
+    static boolean exists(long headerAddr, int offset) {
+        return p_longGetLE(headerAddr, offset + I_REMOVE_HEAD_ID) != 0;
     }
 
     /**
@@ -143,7 +143,7 @@ final class PageQueue implements IntegerRef {
         mIsReserve = isReserve;
         mAggressive = aggressive;
 
-        mRemoveHead = p_callocPage(manager.directPageSize());
+        mRemoveHeadAddr = p_callocPage(manager.directPageSize());
 
         if (appendLock == null) {
             // This lock must be reentrant. The appendPage method can call into
@@ -158,15 +158,15 @@ final class PageQueue implements IntegerRef {
         }
 
         mAppendHeap = new IdHeap(mPageSize - I_NODE_START);
-        mAppendTail = p_callocPage(manager.directPageSize());
+        mAppendTailAddr = p_callocPage(manager.directPageSize());
     }
 
     /**
      * Must be called when object is no longer referenced.
      */
     void delete() {
-        p_delete(mRemoveHead);
-        p_delete(mAppendTail);
+        p_delete(mRemoveHeadAddr);
+        p_delete(mAppendTailAddr);
     }
 
     /**
@@ -206,15 +206,15 @@ final class PageQueue implements IntegerRef {
     /**
      * Initialize a restored queue. Caller must hold append and remove locks.
      */
-    void init(EventListener debugListener, /*P*/ byte[] header, int offset) throws IOException {
-        mRemovePageCount = p_longGetLE(header, offset + I_REMOVE_PAGE_COUNT);
-        mRemoveNodeCount = p_longGetLE(header, offset + I_REMOVE_NODE_COUNT);
+    void init(EventListener debugListener, long headerAddr, int offset) throws IOException {
+        mRemovePageCount = p_longGetLE(headerAddr, offset + I_REMOVE_PAGE_COUNT);
+        mRemoveNodeCount = p_longGetLE(headerAddr, offset + I_REMOVE_NODE_COUNT);
 
-        mRemoveHeadId = p_longGetLE(header, offset + I_REMOVE_HEAD_ID);
-        mRemoveHeadOffset = p_intGetLE(header, offset + I_REMOVE_HEAD_OFFSET);
-        mRemoveHeadFirstPageId = p_longGetLE(header, offset + I_REMOVE_HEAD_FIRST_PAGE_ID);
+        mRemoveHeadId = p_longGetLE(headerAddr, offset + I_REMOVE_HEAD_ID);
+        mRemoveHeadOffset = p_intGetLE(headerAddr, offset + I_REMOVE_HEAD_OFFSET);
+        mRemoveHeadFirstPageId = p_longGetLE(headerAddr, offset + I_REMOVE_HEAD_FIRST_PAGE_ID);
 
-        mAppendHeadId = mAppendTailId = p_longGetLE(header, offset + I_APPEND_HEAD_ID);
+        mAppendHeadId = mAppendTailId = p_longGetLE(headerAddr, offset + I_APPEND_HEAD_ID);
 
         if (debugListener != null) {
             String type;
@@ -239,9 +239,9 @@ final class PageQueue implements IntegerRef {
         if (mRemoveHeadId == 0) {
             mRemoveStoppedId = mAppendHeadId;
         } else {
-            var head = readRemoveNode(mRemoveHeadId);
+            long headAddr = readRemoveNode(mRemoveHeadId);
             if (mRemoveHeadFirstPageId == 0) {
-                mRemoveHeadFirstPageId = p_longGetBE(head, I_FIRST_PAGE_ID);
+                mRemoveHeadFirstPageId = p_longGetBE(headAddr, I_FIRST_PAGE_ID);
             }
         }
     }
@@ -319,10 +319,10 @@ final class PageQueue implements IntegerRef {
 
             mRemovePageCount--;
 
-            final var head = mRemoveHead;
-            if (mRemoveHeadOffset < pageSize(head)) {
+            final long headAddr = mRemoveHeadAddr;
+            if (mRemoveHeadOffset < mPageSize) {
                 // Pass this as an IntegerRef to mRemoveHeadOffset.
-                long delta = p_ulongGetVar(head, this);
+                long delta = p_ulongGetVar(headAddr, this);
                 if (delta > 0) {
                     mRemoveHeadFirstPageId = pageId + delta;
                     return pageId;
@@ -338,7 +338,7 @@ final class PageQueue implements IntegerRef {
             }
 
             // Move to the next node in the list.
-            long nextId = p_longGetBE(head, I_NEXT_NODE_ID);
+            long nextId = p_longGetBE(headAddr, I_NEXT_NODE_ID);
 
             if (nextId == (mAggressive ? mAppendTailId : mAppendHeadId)) {
                 // Cannot remove from the append list. Those pages are off limits.
@@ -372,19 +372,19 @@ final class PageQueue implements IntegerRef {
         if (mManager.isPageOutOfBounds(id)) {
             throw new CorruptDatabaseException("Invalid node id in free list: " + id);
         }
-        var head = readRemoveNode(id);
+        long headAddr = readRemoveNode(id);
         mRemoveHeadId = id;
         mRemoveHeadOffset = I_NODE_START;
-        mRemoveHeadFirstPageId = p_longGetBE(head, I_FIRST_PAGE_ID);
+        mRemoveHeadFirstPageId = p_longGetBE(headAddr, I_FIRST_PAGE_ID);
     }
 
     /**
      * Caller must hold remove lock.
      *
-     * @return mRemoveHead
+     * @return mRemoveHeadAddr
      */
-    private /*P*/ byte[] readRemoveNode(long id) throws IOException {
-        var head = mRemoveHead;
+    private long readRemoveNode(long id) throws IOException {
+        var headAddr = mRemoveHeadAddr;
 
         LocalDatabase cache = mManager.mPageCache;
         Node node;
@@ -397,35 +397,28 @@ final class PageQueue implements IntegerRef {
         // acquisition shouldn't spin more than once.
 
         if (cache == null || mIsReserve || (node = cache.nodeMapGetExclusiveSpin(id)) == null) {
-            mManager.mPageArray.readPage(id, head);
+            mManager.mPageArray.readPage(id, headAddr);
         } else {
             cache.nodeMapRemove(node);
 
             if (node.mCachedState != Node.CACHED_CLEAN) {
-                mManager.mPageArray.writePage(id, node.mPage);
+                mManager.mPageArray.writePage(id, node.mPageAddr);
                 node.mCachedState = Node.CACHED_CLEAN;
             }
 
-            /*P*/ // [
-            // Swap the pages.
-            mRemoveHead = node.mPage;
-            node.mPage = head;
-            head = mRemoveHead;
-            /*P*/ // |
-            /*P*/ // if (cache.mFullyMapped) {
-            /*P*/ //     p_copy(node.mPage, 0, head, 0, mPageSize);
-            /*P*/ // } else {
-            /*P*/ //     // Swap the pages.
-            /*P*/ //     mRemoveHead = node.mPage;
-            /*P*/ //     node.mPage = head;
-            /*P*/ //     head = mRemoveHead;
-            /*P*/ // }
-            /*P*/ // ]
+            if (cache.mFullyMapped) {
+                p_copy(node.mPageAddr, 0, headAddr, 0, mPageSize);
+            } else {
+                // Swap the pages.
+                mRemoveHeadAddr = node.mPageAddr;
+                node.mPageAddr = headAddr;
+                headAddr = mRemoveHeadAddr;
+            }
 
             node.unused();
         }
 
-        return head;
+        return headAddr;
     }
 
     /**
@@ -502,12 +495,12 @@ final class PageQueue implements IntegerRef {
             // newTailId must always be a valid page, even for the reserve list.
             long newTailId = mManager.allocPage();
 
-            /*P*/ byte[] tailBuf;
+            long tailBufAddr;
             Node node;
 
             LocalDatabase cache = mManager.mPageCache;
             if (cache == null || mIsReserve) {
-                tailBuf = mAppendTail;
+                tailBufAddr = mAppendTailAddr;
                 node = null;
             } else {
                 // Note that commit lock isn't held, but the append lock is held. Switching
@@ -515,30 +508,30 @@ final class PageQueue implements IntegerRef {
                 // all append locks of all PageQueues. The correct state should be captured.
                 // Can throw an IOException, so do this before changing any state.
                 node = cache.tryAllocRawDirtyNode(mAppendTailId);
-                tailBuf = node == null ? mAppendTail : node.mPage;
+                tailBufAddr = node == null ? mAppendTailAddr : node.mPageAddr;
             }
 
             long firstPageId = appendHeap.remove();
-            p_longPutBE(tailBuf, I_NEXT_NODE_ID, newTailId);
-            p_longPutBE(tailBuf, I_FIRST_PAGE_ID, firstPageId);
+            p_longPutBE(tailBufAddr, I_NEXT_NODE_ID, newTailId);
+            p_longPutBE(tailBufAddr, I_FIRST_PAGE_ID, firstPageId);
 
             int end = appendHeap.drain(firstPageId,
-                                       tailBuf,
+                                       tailBufAddr,
                                        I_NODE_START,
-                                       pageSize(tailBuf) - I_NODE_START);
+                                       mPageSize - I_NODE_START);
 
             // Clean out any cruft from previous usage and ensure delta terminator.
-            p_clear(tailBuf, end, pageSize(tailBuf));
+            p_clear(tailBufAddr, end, mPageSize);
 
             if (node != null) {
                 cache.nodeMapPut(node);
                 node.releaseExclusive();
             } else {
                 try {
-                    mManager.mPageArray.writePage(mAppendTailId, tailBuf);
+                    mManager.mPageArray.writePage(mAppendTailId, tailBufAddr);
                 } catch (IOException e) {
                     // Undo.
-                    appendHeap.undrain(firstPageId, tailBuf, I_NODE_START, end);
+                    appendHeap.undrain(firstPageId, tailBufAddr, I_NODE_START, end);
                     mManager.recyclePage(newTailId);
                     throw WriteFailureException.from(e);
                 }
@@ -569,9 +562,9 @@ final class PageQueue implements IntegerRef {
     /**
      * Caller must hold append and remove locks and have called preCommit.
      */
-    void commitStart(/*P*/ byte[] header, int offset) {
-        p_longPutLE(header, offset + I_REMOVE_PAGE_COUNT, mRemovePageCount + mAppendPageCount);
-        p_longPutLE(header, offset + I_REMOVE_NODE_COUNT, mRemoveNodeCount + mAppendNodeCount);
+    void commitStart(long headerAddr, int offset) {
+        p_longPutLE(headerAddr, offset + I_REMOVE_PAGE_COUNT, mRemovePageCount + mAppendPageCount);
+        p_longPutLE(headerAddr, offset + I_REMOVE_NODE_COUNT, mRemoveNodeCount + mAppendNodeCount);
 
         if (mRemoveHeadId == 0 && mAppendPageCount > 0) {
             long headId = mAppendHeadId;
@@ -588,18 +581,18 @@ final class PageQueue implements IntegerRef {
                 }
             }
 
-            p_longPutLE(header, offset + I_REMOVE_HEAD_ID, headId);
-            p_intPutLE (header, offset + I_REMOVE_HEAD_OFFSET, I_NODE_START);
+            p_longPutLE(headerAddr, offset + I_REMOVE_HEAD_ID, headId);
+            p_intPutLE (headerAddr, offset + I_REMOVE_HEAD_OFFSET, I_NODE_START);
             // First page is defined in node itself, and init method reads it.
-            p_longPutLE(header, offset + I_REMOVE_HEAD_FIRST_PAGE_ID, 0);
+            p_longPutLE(headerAddr, offset + I_REMOVE_HEAD_FIRST_PAGE_ID, 0);
         } else {
-            p_longPutLE(header, offset + I_REMOVE_HEAD_ID, mRemoveHeadId);
-            p_intPutLE (header, offset + I_REMOVE_HEAD_OFFSET, mRemoveHeadOffset);
-            p_longPutLE(header, offset + I_REMOVE_HEAD_FIRST_PAGE_ID, mRemoveHeadFirstPageId);
+            p_longPutLE(headerAddr, offset + I_REMOVE_HEAD_ID, mRemoveHeadId);
+            p_intPutLE (headerAddr, offset + I_REMOVE_HEAD_OFFSET, mRemoveHeadOffset);
+            p_longPutLE(headerAddr, offset + I_REMOVE_HEAD_FIRST_PAGE_ID, mRemoveHeadFirstPageId);
         }
 
         // Post-commit, all appended pages are eligible to be removed.
-        p_longPutLE(header, offset + I_APPEND_HEAD_ID, mAppendTailId);
+        p_longPutLE(headerAddr, offset + I_APPEND_HEAD_ID, mAppendTailId);
 
         // Increase counts now, but not all pages are not available until after
         // commitEnd is called.
@@ -613,10 +606,10 @@ final class PageQueue implements IntegerRef {
     /**
      * Caller must hold remove lock.
      *
-     * @param header header with contents filled in by commitStart
+     * @param headerAddr header with contents filled in by commitStart
      */
-    void commitEnd(/*P*/ byte[] header, int offset) throws IOException {
-        long newAppendHeadId = p_longGetLE(header, offset + I_APPEND_HEAD_ID);
+    void commitEnd(long headerAddr, int offset) throws IOException {
+        long newAppendHeadId = p_longGetLE(headerAddr, offset + I_APPEND_HEAD_ID);
 
         if (mRemoveHeadId == 0
             && mRemoveStoppedId != newAppendHeadId && mRemoveStoppedId != mAppendTailId)
@@ -670,7 +663,7 @@ final class PageQueue implements IntegerRef {
         long nodeId = mRemoveHeadId;
 
         if (nodeId != 0) {
-            var node = p_clonePage(mRemoveHead, mManager.directPageSize());
+            var nodeAddr = p_clonePage(mRemoveHeadAddr, mManager.directPageSize());
             try {
                 long pageId = mRemoveHeadFirstPageId;
                 var nodeOffsetRef = new IntegerRef.Value();
@@ -685,8 +678,8 @@ final class PageQueue implements IntegerRef {
                     hash += scramble(pageId);
                     count++;
 
-                    if (nodeOffsetRef.value < pageSize(node)) {
-                        long delta = p_ulongGetVar(node, nodeOffsetRef);
+                    if (nodeOffsetRef.value < mPageSize) {
+                        long delta = p_ulongGetVar(nodeAddr, nodeOffsetRef);
                         if (delta > 0) {
                             pageId += delta;
                             continue;
@@ -701,30 +694,22 @@ final class PageQueue implements IntegerRef {
 
                     // Move to the next queue node.
 
-                    nodeId = p_longGetBE(node, I_NEXT_NODE_ID);
+                    nodeId = p_longGetBE(nodeAddr, I_NEXT_NODE_ID);
                     if (nodeId == mAppendTailId) {
                         break;
                     }
 
-                    mManager.mPageArray.readPage(nodeId, node);
+                    mManager.mPageArray.readPage(nodeId, nodeAddr);
 
-                    pageId = p_longGetBE(node, I_FIRST_PAGE_ID);
+                    pageId = p_longGetBE(nodeAddr, I_FIRST_PAGE_ID);
                     nodeOffsetRef.value = I_NODE_START;
                 }
             } finally {
-                p_delete(node);
+                p_delete(nodeAddr);
             }
         }
 
         return hash == expectedHash && count == (endId - startId);
-    }
-
-    private int pageSize(/*P*/ byte[] page) {
-        /*P*/ // [
-        return page.length;
-        /*P*/ // |
-        /*P*/ // return mPageSize;
-        /*P*/ // ]
     }
 
     // Required by IntegerRef.

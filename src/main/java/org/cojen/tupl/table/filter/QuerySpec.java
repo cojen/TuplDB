@@ -34,14 +34,11 @@ import org.cojen.tupl.table.OrderBy;
  * @see Parser#parseQuery
  */
 public record QuerySpec(Map<String, ColumnInfo> projection, OrderBy orderBy, RowFilter filter) {
-    public QuerySpec(Map<String, ColumnInfo> projection, OrderBy orderBy, RowFilter filter) {
+    public QuerySpec {
         if (orderBy != null && orderBy.isEmpty()) {
             orderBy = null;
         }
         Objects.requireNonNull(filter);
-        this.projection = projection;
-        this.orderBy = orderBy;
-        this.filter = filter;
     }
 
     public QuerySpec withProjection(Map<String, ColumnInfo> proj) {

@@ -43,7 +43,6 @@ import static org.cojen.tupl.core.Utils.*;
  *
  * @author Brian S O'Neill
  */
-/*P*/
 final class TransactionContext extends Latch implements Flushable {
     private final static VarHandle cHighTxnIdHandle;
 

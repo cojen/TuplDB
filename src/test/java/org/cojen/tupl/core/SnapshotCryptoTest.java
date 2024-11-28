@@ -34,6 +34,6 @@ public class SnapshotCryptoTest extends SnapshotTest {
     @Override
     public void decorate(DatabaseConfig config) throws Exception {
         byte[] key = {-83,64,-124,26,-124,-4,92,79,50,-54,-119,75,-93,-102,-113,-101};
-        config.encrypt(new CipherCrypto(key));
+        config.encrypt(CipherCrypto.factory(key));
     }
 }

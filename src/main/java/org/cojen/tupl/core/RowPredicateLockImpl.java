@@ -39,7 +39,6 @@ import org.cojen.tupl.util.Latch;
  *
  * @author Brian S O'Neill
  */
-/*P*/
 final class RowPredicateLockImpl<R> implements RowPredicateLock<R> {
     private final LockManager mManager;
     private final long mIndexId;
@@ -303,8 +302,7 @@ final class RowPredicateLockImpl<R> implements RowPredicateLock<R> {
     public Closer addPredicate(Transaction txn, RowPredicate<R> predicate)
         throws LockFailureException
     {
-        if (predicate instanceof Evaluator) {
-            var evaluator = (Evaluator<R>) predicate;
+        if (predicate instanceof Evaluator<R> evaluator) {
             addEvaluator(txn, evaluator);
             return evaluator;
         } else {

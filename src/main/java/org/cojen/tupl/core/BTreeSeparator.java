@@ -39,7 +39,6 @@ import org.cojen.tupl.Transaction;
  *
  * @author Brian S O'Neill
  */
-/*P*/
 @SuppressWarnings("serial")
 abstract class BTreeSeparator extends LongAdder {
     protected final LocalDatabase mDatabase;
@@ -355,7 +354,7 @@ abstract class BTreeSeparator extends LongAdder {
                             if (tcursor == null) {
                                 LocalDatabase db = mDatabase;
                                 if (db != null) {
-                                    mTarget = db.newTemporaryIndex();
+                                    mTarget = db.newTemporaryTree();
                                     tcursor = mTarget.newCursor(Transaction.BOGUS);
                                     tcursor.mKeyOnly = true;
                                     tcursor.firstLeaf();

@@ -35,7 +35,7 @@ public final class Rebuilder {
     private final Launcher mOldLauncher, mNewLauncher;
     private final int mNumThreads;
 
-    private CoreDatabase mOldDb, mNewDb;
+    private LocalDatabase mOldDb, mNewDb;
 
     public Rebuilder(Launcher oldLauncher, Launcher newLauncher, int numThreads) {
         mOldLauncher = oldLauncher.clone();
@@ -43,7 +43,7 @@ public final class Rebuilder {
         mNumThreads = numThreads;
     }
 
-    public CoreDatabase run() throws IOException {
+    public LocalDatabase run() throws IOException {
         try {
             doRun();
             mNewDb.checkpoint();
@@ -64,13 +64,6 @@ public final class Rebuilder {
             // Both databases must not be concurrently modified by any other threads. This is
             // always possible with a replicated database.
             throw new IllegalStateException("Cannot rebuild a replicated database");
-        }
-
-        // Page access mode must be consistent in order for the parallelCopy method to work.
-        if (mNewLauncher.mDirectPageAccess == null) {
-            mNewLauncher.mDirectPageAccess = mOldLauncher.mDirectPageAccess;
-        } else {
-            mOldLauncher.mDirectPageAccess = mNewLauncher.mDirectPageAccess;
         }
 
         mOldLauncher.mMkdirs = false;

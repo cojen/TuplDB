@@ -140,7 +140,7 @@ public enum EventType {
         /** Category for clean shutdown operations. */
         SHUTDOWN,
 
-        /** A panic indicates that something is wrong with the database and it must be shutdown. */
+        /** A panic indicates that something is wrong with the database, and it must be shutdown. */
         PANIC;
     }
 }

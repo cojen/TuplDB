@@ -41,7 +41,7 @@ import org.cojen.tupl.diag.IndexStats;
 
 import org.cojen.tupl.views.ViewUtils;
 
-import static org.cojen.tupl.core.PageOps.*;
+import static org.cojen.tupl.core.DirectPageOps.*;
 import static org.cojen.tupl.core.Utils.*;
 
 import static java.util.Arrays.compareUnsigned;
@@ -939,7 +939,7 @@ public class BTreeCursor extends CoreValueAccessor implements Cursor {
             while (true) {
                 if (!node.isBottomInternal()) {
                     try {
-                        checkClosedIndexException(node.mPage);
+                        checkClosedIndexException(node.mPageAddr);
                         throw new CorruptDatabaseException(node.toString());
                     } finally {
                         node.releaseShared();
@@ -1086,7 +1086,7 @@ public class BTreeCursor extends CoreValueAccessor implements Cursor {
         while (true) {
             if (!node.isBottomInternal()) {
                 try {
-                    checkClosedIndexException(node.mPage);
+                    checkClosedIndexException(node.mPageAddr);
                     throw new CorruptDatabaseException(node.toString());
                 } finally {
                     node.releaseShared();
@@ -1556,7 +1556,7 @@ public class BTreeCursor extends CoreValueAccessor implements Cursor {
             while (true) {
                 if (!node.isBottomInternal()) {
                     try {
-                        checkClosedIndexException(node.mPage);
+                        checkClosedIndexException(node.mPageAddr);
                         throw new CorruptDatabaseException(node.toString());
                     } finally {
                         node.releaseShared();
@@ -2684,7 +2684,7 @@ public class BTreeCursor extends CoreValueAccessor implements Cursor {
             int numKeys;
 
             freeBytes = node.availableBytes();
-            totalBytes = pageSize(node.mPage);
+            totalBytes = pageSize();
 
             if (pos < 0 || (numKeys = node.numKeys()) <= 0) {
                 keyBytes = 0;
@@ -2694,11 +2694,11 @@ public class BTreeCursor extends CoreValueAccessor implements Cursor {
 
                 node.retrieveKeyStats(pos, stats);
                 keyBytes = ((double) stats[0]) * numKeys;
-                totalBytes += ((double) stats[1]) * pageSize(node.mPage);
+                totalBytes += ((double) stats[1]) * pageSize();
 
                 node.retrieveLeafValueStats(pos, stats);
                 valueBytes = ((double) stats[0]) * numKeys;
-                totalBytes += ((double) stats[1]) * pageSize(node.mPage);
+                totalBytes += ((double) stats[1]) * pageSize();
             }
 
             frame = frame.pop();
@@ -2718,7 +2718,7 @@ public class BTreeCursor extends CoreValueAccessor implements Cursor {
             try {
                 scalar = node.numKeys() + 1; // internal nodes have +1 children
                 availBytes = node.availableInternalBytes();
-                pageSize = pageSize(node.mPage);
+                pageSize = pageSize();
                 frame = frame.pop();
             } finally {
                 node.releaseShared();
@@ -2918,7 +2918,7 @@ public class BTreeCursor extends CoreValueAccessor implements Cursor {
                     if (pos >= 0) {
                         mValue = keyOnly ? node.hasLeafValue(pos) : node.retrieveLeafValue(pos);
                     } else {
-                        checkClosedIndexException(node.mPage);
+                        checkClosedIndexException(node.mPageAddr);
                         mValue = null;
                     }
                     return true;
@@ -3399,7 +3399,7 @@ public class BTreeCursor extends CoreValueAccessor implements Cursor {
                 CommitLock.Shared shared = prepareStoreUpgrade(leaf, null);
 
                 Node node = leaf.mNode;
-                if (isClosedOrDeleted(node.mPage)) {
+                if (isClosedOrDeleted(node.mPageAddr)) {
                     node.releaseExclusive();
                     shared.release();
                     return false;
@@ -3448,18 +3448,18 @@ public class BTreeCursor extends CoreValueAccessor implements Cursor {
 
             try {
                 if (pos >= 0) { // value must still exist
-                    var page = node.mPage;
-                    int loc = p_ushortGetLE(page, node.searchVecStart() + pos);
+                    var pageAddr = node.mPageAddr;
+                    int loc = p_ushortGetLE(pageAddr, node.searchVecStart() + pos);
 
                     // Skip the key.
-                    loc += Node.keyLengthAtLoc(page, loc);
+                    loc += Node.keyLengthAtLoc(pageAddr, loc);
 
-                    if (p_byteGet(page, loc) == 0) { // value must still be empty
+                    if (p_byteGet(pageAddr, loc) == 0) { // value must still be empty
                         if (ghost != null) {
                             ghost.bind(node, pos);
                             mTree.mLockManager.ghosted(mTree.mId, mKey, keyHash(), ghost);
                         }
-                        p_bytePut(page, loc, -1); // ghost value
+                        p_bytePut(pageAddr, loc, -1); // ghost value
                         mValue = null;
                     }
                 }
@@ -4576,10 +4576,10 @@ public class BTreeCursor extends CoreValueAccessor implements Cursor {
      * shared, which is always released. The cursor is also always reset.
      */
     private void reachedEnd(Node node) throws ClosedIndexException {
-        boolean closed = isClosedOrDeleted(node.mPage);
+        boolean closed = isClosedOrDeleted(node.mPageAddr);
         resetLatched(node);
         if (closed) {
-            throw newClosedIndexException(node.mPage);
+            throw newClosedIndexException(node.mPageAddr);
         }
     }
 
@@ -4608,9 +4608,9 @@ public class BTreeCursor extends CoreValueAccessor implements Cursor {
             Node tnode = notSplitDirty(tleaf);
 
             try {
-                final var spage = source.mPage;
-                final int sloc = p_ushortGetLE(spage, source.searchVecStart());
-                final int encodedLen = Node.leafEntryLengthAtLoc(spage, sloc);
+                final var spageAddr = source.mPageAddr;
+                final int sloc = p_ushortGetLE(spageAddr, source.searchVecStart());
+                final int encodedLen = Node.leafEntryLengthAtLoc(spageAddr, sloc);
 
                 final int tpos = tleaf.mNodePos;
                 // Pass a null frame to disable rebalancing. It's not useful here, and it
@@ -4621,7 +4621,7 @@ public class BTreeCursor extends CoreValueAccessor implements Cursor {
                     tnode.splitLeafAscendingAndCopyEntry(mTree, source, 0, encodedLen);
                     tnode = mTree.finishSplitCritical(tleaf, tnode);
                 } else {
-                    p_copy(spage, sloc, tnode.mPage, tloc, encodedLen);
+                    p_copy(spageAddr, sloc, tnode.mPageAddr, tloc, encodedLen);
                 }
 
                 // Prepare for next append.
@@ -4667,9 +4667,9 @@ public class BTreeCursor extends CoreValueAccessor implements Cursor {
                 final int spos = sleaf.mNodePos;
 
                 try {
-                    final var spage = snode.mPage;
-                    final int sloc = p_ushortGetLE(spage, snode.searchVecStart() + spos);
-                    final int encodedLen = Node.leafEntryLengthAtLoc(spage, sloc);
+                    final var spageAddr = snode.mPageAddr;
+                    final int sloc = p_ushortGetLE(spageAddr, snode.searchVecStart() + spos);
+                    final int encodedLen = Node.leafEntryLengthAtLoc(spageAddr, sloc);
 
                     final int tpos = tleaf.mNodePos;
                     // Pass a null frame to disable rebalancing. It's not useful here, and it
@@ -4680,7 +4680,7 @@ public class BTreeCursor extends CoreValueAccessor implements Cursor {
                         tnode.splitLeafAscendingAndCopyEntry(mTree, snode, spos, encodedLen);
                         tnode = mTree.finishSplitCritical(tleaf, tnode);
                     } else {
-                        p_copy(spage, sloc, tnode.mPage, tloc, encodedLen);
+                        p_copy(spageAddr, sloc, tnode.mPageAddr, tloc, encodedLen);
                     }
 
                     // Prepare for next append.
@@ -4945,7 +4945,7 @@ public class BTreeCursor extends CoreValueAccessor implements Cursor {
                                         long highestNodeId)
         throws IOException
     {
-        int pLen = pageSize(node.mPage);
+        int pLen = pageSize();
         long pos = 0;
         while (true) {
             int result;
@@ -5268,7 +5268,7 @@ public class BTreeCursor extends CoreValueAccessor implements Cursor {
         // TODO: If the fragmented value is very large and sparse, then scanning over the value
         // in this fashion is very slow. Need to somehow skip over the gaps.
 
-        int pageSize = mTree.pageSize();
+        int pageSize = pageSize();
         var buf = new byte[1];
 
         while (true) {
@@ -5712,7 +5712,7 @@ public class BTreeCursor extends CoreValueAccessor implements Cursor {
                     rightAvail = nodeAvail;
                 }
 
-                int rem = leftAvail + rightAvail - pageSize(node.mPage) + Node.TN_HEADER_SIZE;
+                int rem = leftAvail + rightAvail - pageSize() + Node.TN_HEADER_SIZE;
 
                 if (rem >= 0) {
                     // Enough space will remain in the selected node, so proceed with merge.
@@ -5922,11 +5922,11 @@ public class BTreeCursor extends CoreValueAccessor implements Cursor {
             rightAvail = nodeAvail;
         }
 
-        var parentPage = parentNode.mPage;
-        int parentEntryLoc = p_ushortGetLE(parentPage, parentNode.searchVecStart() + leftPos);
-        int parentEntryLen = Node.keyLengthAtLoc(parentPage, parentEntryLoc);
+        var parentPageAddr = parentNode.mPageAddr;
+        int parentEntryLoc = p_ushortGetLE(parentPageAddr, parentNode.searchVecStart() + leftPos);
+        int parentEntryLen = Node.keyLengthAtLoc(parentPageAddr, parentEntryLoc);
         int remaining = leftAvail - parentEntryLen
-            + rightAvail - pageSize(parentPage) + (Node.TN_HEADER_SIZE - 2);
+            + rightAvail - pageSize() + (Node.TN_HEADER_SIZE - 2);
 
         if (remaining < 0) {
             if (rightNode != null) {
@@ -5950,7 +5950,7 @@ public class BTreeCursor extends CoreValueAccessor implements Cursor {
 
             try {
                 Node.moveInternalToLeftAndDelete
-                    (mTree, leftNode, rightNode, parentPage, parentEntryLoc, parentEntryLen);
+                    (mTree, leftNode, rightNode, parentPageAddr, parentEntryLoc, parentEntryLen);
             } catch (Throwable e) {
                 leftNode.releaseExclusive();
                 parentNode.releaseExclusive();
@@ -5963,11 +5963,7 @@ public class BTreeCursor extends CoreValueAccessor implements Cursor {
         mergeInternal(parentFrame, parentNode, leftNode);
     }
 
-    private int pageSize(/*P*/ byte[] page) {
-        /*P*/ // [
-        return page.length;
-        /*P*/ // |
-        /*P*/ // return mTree.pageSize();
-        /*P*/ // ]
+    private int pageSize() {
+        return mTree.pageSize();
     }
 }

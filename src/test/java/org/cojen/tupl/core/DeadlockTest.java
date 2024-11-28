@@ -182,7 +182,6 @@ public class DeadlockTest {
     @Test
     public void deadlockInfo() throws Throwable {
         Database db = Database.open(new DatabaseConfig()
-                                    .directPageAccess(false)
                                     .lockUpgradeRule(LockUpgradeRule.UNCHECKED));
 
         Index ix = db.openIndex("test");
@@ -222,11 +221,13 @@ public class DeadlockTest {
 
         // No deadlock detected here.
         assertEquals(LockResult.TIMED_OUT_LOCK, txn2.tryLockExclusive(ix.id(), key, 0));
+
+        db.close();
     }
 
     @Test
     public void deadlockAttachments() throws Throwable {
-        Database db = Database.open(new DatabaseConfig().directPageAccess(false));
+        Database db = Database.open(new DatabaseConfig());
 
         Index ix = db.openIndex("test");
 
@@ -321,7 +322,7 @@ public class DeadlockTest {
 
     @Test
     public void selfDeadlock() throws Throwable {
-        Database db = Database.open(new DatabaseConfig().directPageAccess(false));
+        Database db = Database.open(new DatabaseConfig());
         Index ix = db.openIndex("test");
 
         Transaction txn1 = db.newTransaction();
@@ -362,13 +363,15 @@ public class DeadlockTest {
         } catch (LockTimeoutException e) {
             assertEquals("txn1", e.ownerAttachment());
         }
+
+        db.close();
     }
 
     @Test
     public void sharedOwner() throws Throwable {
         // Not really a deadlock test. Checks for shared lock owner attachments.
 
-        Database db = Database.open(new DatabaseConfig().directPageAccess(false));
+        Database db = Database.open(new DatabaseConfig());
         Index ix = db.openIndex("test");
 
         Transaction txn1 = db.newTransaction();
@@ -421,6 +424,8 @@ public class DeadlockTest {
             Object att = e.ownerAttachment();
             assertTrue("txn1".equals(att) || "txn2".equals(att));
         }
+
+        db.close();
     }
 
     @Test
@@ -428,7 +433,7 @@ public class DeadlockTest {
         // Regression test. Deleting an entry within a transaction would cause the attachment
         // check code to fail with a ClassCastException.
 
-        Database db = Database.open(new DatabaseConfig().directPageAccess(false));
+        Database db = Database.open(new DatabaseConfig());
         Index ix = db.openIndex("test");
 
         byte[] key = "key".getBytes();
@@ -453,6 +458,8 @@ public class DeadlockTest {
         } catch (LockTimeoutException e) {
             assertEquals("foo", e.ownerAttachment());
         }
+
+        db.close();
     }
 
     @Test

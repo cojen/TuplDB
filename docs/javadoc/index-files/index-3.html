@@ -188,7 +188,7 @@ loadScripts(document, 'script');</script>
 <dd>&nbsp;</dd>
 <dt><a href="../org.cojen.tupl/org/cojen/tupl/ChecksumException.html#%3Cinit%3E(java.lang.String,long,long)" class="member-name-link">ChecksumException(String, long, long)</a> - Constructor for exception class org.cojen.tupl.<a href="../org.cojen.tupl/org/cojen/tupl/ChecksumException.html" title="class in org.cojen.tupl">ChecksumException</a></dt>
 <dd>&nbsp;</dd>
-<dt><a href="../org.cojen.tupl/org/cojen/tupl/DatabaseConfig.html#checksumPages(java.util.function.Supplier)" class="member-name-link">checksumPages(Supplier&lt;Checksum&gt;)</a> - Method in class org.cojen.tupl.<a href="../org.cojen.tupl/org/cojen/tupl/DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></dt>
+<dt><a href="../org.cojen.tupl/org/cojen/tupl/DatabaseConfig.html#checksumPages(java.util.function.Supplier)" class="member-name-link">checksumPages(Supplier&lt;? extends Checksum&gt;)</a> - Method in class org.cojen.tupl.<a href="../org.cojen.tupl/org/cojen/tupl/DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></dt>
 <dd>
 <div class="block">Enable 32-bit checksums for all of the underlying database pages.</div>
 </dd>
@@ -451,19 +451,15 @@ loadScripts(document, 'script');</script>
 <dd>
 <div class="block">Compare the current key to the one given.</div>
 </dd>
-<dt><a href="../org.cojen.tupl/org/cojen/tupl/io/PageCompressor.html#compress(byte%5B%5D,int,int)" class="member-name-link">compress(byte[], int, int)</a> - Method in interface org.cojen.tupl.io.<a href="../org.cojen.tupl/org/cojen/tupl/io/PageCompressor.html" title="interface in org.cojen.tupl.io">PageCompressor</a></dt>
-<dd>
-<div class="block">Compress to a byte array.</div>
-</dd>
 <dt><a href="../org.cojen.tupl/org/cojen/tupl/io/PageCompressor.html#compress(long,int,int)" class="member-name-link">compress(long, int, int)</a> - Method in interface org.cojen.tupl.io.<a href="../org.cojen.tupl/org/cojen/tupl/io/PageCompressor.html" title="interface in org.cojen.tupl.io">PageCompressor</a></dt>
 <dd>
-<div class="block">Compress to a byte array from a raw memory pointer.</div>
+<div class="block">Compress to a byte array from a raw memory address.</div>
 </dd>
 <dt><a href="../org.cojen.tupl/org/cojen/tupl/io/PageCompressor.html#compressedBytes()" class="member-name-link">compressedBytes()</a> - Method in interface org.cojen.tupl.io.<a href="../org.cojen.tupl/org/cojen/tupl/io/PageCompressor.html" title="interface in org.cojen.tupl.io">PageCompressor</a></dt>
 <dd>
 <div class="block">Target of the compress method.</div>
 </dd>
-<dt><a href="../org.cojen.tupl/org/cojen/tupl/DatabaseConfig.html#compressPages(int,long,java.util.function.Supplier)" class="member-name-link">compressPages(int, long, Supplier&lt;PageCompressor&gt;)</a> - Method in class org.cojen.tupl.<a href="../org.cojen.tupl/org/cojen/tupl/DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></dt>
+<dt><a href="../org.cojen.tupl/org/cojen/tupl/DatabaseConfig.html#compressPages(int,long,java.util.function.Supplier)" class="member-name-link">compressPages(int, long, Supplier&lt;? extends PageCompressor&gt;)</a> - Method in class org.cojen.tupl.<a href="../org.cojen.tupl/org/cojen/tupl/DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></dt>
 <dd>
 <div class="block">Compress the underlying database pages, reducing overall size at the cost of
  performance.</div>
@@ -537,13 +533,13 @@ loadScripts(document, 'script');</script>
 <dd>&nbsp;</dd>
 <dt><a href="../org.cojen.tupl/org/cojen/tupl/io/StripedPageArray.html#copyPage(long,long)" class="member-name-link">copyPage(long, long)</a> - Method in class org.cojen.tupl.io.<a href="../org.cojen.tupl/org/cojen/tupl/io/StripedPageArray.html" title="class in org.cojen.tupl.io">StripedPageArray</a></dt>
 <dd>&nbsp;</dd>
-<dt><a href="../org.cojen.tupl/org/cojen/tupl/io/JoinedPageArray.html#copyPageFromPointer(long,long)" class="member-name-link">copyPageFromPointer(long, long)</a> - Method in class org.cojen.tupl.io.<a href="../org.cojen.tupl/org/cojen/tupl/io/JoinedPageArray.html" title="class in org.cojen.tupl.io">JoinedPageArray</a></dt>
+<dt><a href="../org.cojen.tupl/org/cojen/tupl/io/JoinedPageArray.html#copyPageFromAddress(long,long)" class="member-name-link">copyPageFromAddress(long, long)</a> - Method in class org.cojen.tupl.io.<a href="../org.cojen.tupl/org/cojen/tupl/io/JoinedPageArray.html" title="class in org.cojen.tupl.io">JoinedPageArray</a></dt>
 <dd>&nbsp;</dd>
-<dt><a href="../org.cojen.tupl/org/cojen/tupl/io/MappedPageArray.html#copyPageFromPointer(long,long)" class="member-name-link">copyPageFromPointer(long, long)</a> - Method in class org.cojen.tupl.io.<a href="../org.cojen.tupl/org/cojen/tupl/io/MappedPageArray.html" title="class in org.cojen.tupl.io">MappedPageArray</a></dt>
+<dt><a href="../org.cojen.tupl/org/cojen/tupl/io/MappedPageArray.html#copyPageFromAddress(long,long)" class="member-name-link">copyPageFromAddress(long, long)</a> - Method in class org.cojen.tupl.io.<a href="../org.cojen.tupl/org/cojen/tupl/io/MappedPageArray.html" title="class in org.cojen.tupl.io">MappedPageArray</a></dt>
 <dd>&nbsp;</dd>
-<dt><a href="../org.cojen.tupl/org/cojen/tupl/io/PageArray.html#copyPageFromPointer(long,long)" class="member-name-link">copyPageFromPointer(long, long)</a> - Method in class org.cojen.tupl.io.<a href="../org.cojen.tupl/org/cojen/tupl/io/PageArray.html" title="class in org.cojen.tupl.io">PageArray</a></dt>
+<dt><a href="../org.cojen.tupl/org/cojen/tupl/io/PageArray.html#copyPageFromAddress(long,long)" class="member-name-link">copyPageFromAddress(long, long)</a> - Method in class org.cojen.tupl.io.<a href="../org.cojen.tupl/org/cojen/tupl/io/PageArray.html" title="class in org.cojen.tupl.io">PageArray</a></dt>
 <dd>&nbsp;</dd>
-<dt><a href="../org.cojen.tupl/org/cojen/tupl/io/StripedPageArray.html#copyPageFromPointer(long,long)" class="member-name-link">copyPageFromPointer(long, long)</a> - Method in class org.cojen.tupl.io.<a href="../org.cojen.tupl/org/cojen/tupl/io/StripedPageArray.html" title="class in org.cojen.tupl.io">StripedPageArray</a></dt>
+<dt><a href="../org.cojen.tupl/org/cojen/tupl/io/StripedPageArray.html#copyPageFromAddress(long,long)" class="member-name-link">copyPageFromAddress(long, long)</a> - Method in class org.cojen.tupl.io.<a href="../org.cojen.tupl/org/cojen/tupl/io/StripedPageArray.html" title="class in org.cojen.tupl.io">StripedPageArray</a></dt>
 <dd>&nbsp;</dd>
 <dt><a href="../org.cojen.tupl/org/cojen/tupl/Table.html#copyRow(R,R)" class="member-name-link">copyRow(R, R)</a> - Method in interface org.cojen.tupl.<a href="../org.cojen.tupl/org/cojen/tupl/Table.html" title="interface in org.cojen.tupl">Table</a></dt>
 <dd>

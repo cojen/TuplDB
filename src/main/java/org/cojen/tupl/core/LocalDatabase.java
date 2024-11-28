@@ -72,6 +72,7 @@ import org.cojen.tupl.CacheExhaustedException;
 import org.cojen.tupl.ConfirmationInterruptedException;
 import org.cojen.tupl.CorruptDatabaseException;
 import org.cojen.tupl.Cursor;
+import org.cojen.tupl.Database;
 import org.cojen.tupl.DatabaseException;
 import org.cojen.tupl.DatabaseFullException;
 import org.cojen.tupl.DurabilityMode;
@@ -113,7 +114,7 @@ import org.cojen.tupl.util.Latch;
 import org.cojen.tupl.util.Runner;
 
 import static org.cojen.tupl.core.Node.*;
-import static org.cojen.tupl.core.PageOps.*;
+import static org.cojen.tupl.core.DirectPageOps.*;
 import static org.cojen.tupl.core.Utils.*;
 
 /**
@@ -123,7 +124,7 @@ import static org.cojen.tupl.core.Utils.*;
  *
  * @author Brian S O'Neill
  */
-final class LocalDatabase extends CoreDatabase {
+public final class LocalDatabase implements Database {
     private static final int DEFAULT_CACHE_NODES = 1000;
     // +2 for registry and key map root nodes, +1 for one user index, and +2 for at least one
     // usage list to function correctly.
@@ -217,12 +218,8 @@ final class LocalDatabase extends CoreDatabase {
 
     // Set during checkpoint after commit state has switched. If checkpoint aborts, next
     // checkpoint will resume with this commit header and master undo log.
-    /*P*/ // [
-    private byte[] mCommitHeader;
-    /*P*/ // |
-    /*P*/ // private long mCommitHeader = p_null();
-    /*P*/ // private static final VarHandle cCommitHeaderHandle;
-    /*P*/ // ]
+    private long mCommitHeaderAddr = p_null();
+    private static final VarHandle cCommitHeaderAddrHandle;
     private UndoLog mCommitMasterUndoLog;
 
     // Typically opposite of mCommitState, or negative if checkpoint is not in
@@ -285,9 +282,7 @@ final class LocalDatabase extends CoreDatabase {
 
     final TempFileManager mTempFileManager;
 
-    /*P*/ // [|
-    /*P*/ // final boolean mFullyMapped;
-    /*P*/ // ]
+    final boolean mFullyMapped;
 
     // Maps registered cursor ids to index ids.
     private BTree mCursorRegistry;
@@ -318,11 +313,9 @@ final class LocalDatabase extends CoreDatabase {
                 MethodHandles.lookup().findVarHandle
                 (LocalDatabase.class, "mClosed", int.class);
 
-            /*P*/ // [|
-            /*P*/ // cCommitHeaderHandle =
-            /*P*/ //     MethodHandles.lookup().findVarHandle
-            /*P*/ //     (LocalDatabase.class, "mCommitHeader", long.class);
-            /*P*/ // ]
+            cCommitHeaderAddrHandle =
+                MethodHandles.lookup().findVarHandle
+                (LocalDatabase.class, "mCommitHeaderAddr", long.class);
 
             cNodeMapElementHandle = MethodHandles.arrayElementVarHandle(Node[].class);
         } catch (Throwable e) {
@@ -402,6 +395,11 @@ final class LocalDatabase extends CoreDatabase {
         launcher.mEventListener = mEventListener = 
             SafeEventListener.makeSafe(launcher.mEventListener);
 
+        if (mEventListener != null) {
+            String kind = DirectPageOpsSelector.kindStr();
+            mEventListener.notify(EventType.DEBUG, "DirectPageOps kind: %1$s", kind);
+        }
+
         mCustomHandlers = Launcher.mapClone(launcher.mCustomHandlers);
         mCustomHandlersById = Launcher.newByIdMap(mCustomHandlers);
 
@@ -463,9 +461,7 @@ final class LocalDatabase extends CoreDatabase {
 
             final long cacheInitStart = System.nanoTime();
 
-            /*P*/ // [|
-            /*P*/ // boolean fullyMapped = false;
-            /*P*/ // ]
+            boolean fullyMapped = false;
 
             EventListener debugListener = null;
             if (launcher.mDebugOpen != null) {
@@ -480,12 +476,12 @@ final class LocalDatabase extends CoreDatabase {
                     mPageDb = new NonPageDb(pageSize);
                 } else {
                     Crypto crypto = launcher.mDataCrypto;
+                    Supplier<? extends Checksum> checksumFactory = launcher.mChecksumFactory;
                     mPageDb = StoredPageDb.open
                         (debugListener, dataPageArray,
-                         launcher.mChecksumFactory, crypto, destroy, databaseId);
-                    /*P*/ // [|
-                    /*P*/ // fullyMapped = crypto == null && dataPageArray.isFullyMapped();
-                    /*P*/ // ]
+                         checksumFactory, crypto, destroy, databaseId);
+                    fullyMapped = crypto == null && checksumFactory == null
+                        && dataPageArray.isFullyMapped();
                 }
             } else {
                 EnumSet<OpenOption> options = launcher.createOpenOptions();
@@ -505,9 +501,7 @@ final class LocalDatabase extends CoreDatabase {
                 mPageDb = pageDb;
             }
 
-            /*P*/ // [|
-            /*P*/ // mFullyMapped = fullyMapped;
-            /*P*/ // ]
+            mFullyMapped = fullyMapped;
 
             mCommitLock = mPageDb.commitLock();
 
@@ -565,12 +559,10 @@ final class LocalDatabase extends CoreDatabase {
                 arenaAlloc: {
                     // If database is fully mapped, then no cache pages are allocated at all.
                     // Nodes point directly to a mapped region of memory.
-                    /*P*/ // [|
-                    /*P*/ // if (mFullyMapped) {
-                    /*P*/ //     mArena = null;
-                    /*P*/ //     break arenaAlloc;
-                    /*P*/ // }
-                    /*P*/ // ]
+                    if (mFullyMapped) {
+                        mArena = null;
+                        break arenaAlloc;
+                    }
 
                     try {
                         mArena = p_arenaAlloc(mPageDb.directPageSize(), minCache, mEventListener);
@@ -627,7 +619,7 @@ final class LocalDatabase extends CoreDatabase {
                     group.initialize(mArena, size);
                 }
             } catch (OutOfMemoryError e) {
-                groups = null;
+                groups = null; // help free memory
                 var oom = new OutOfMemoryError
                     ("Unable to allocate the minimum required number of cache nodes: " +
                      minCache + " (" + (minCache * (long) (pageSize + NODE_OVERHEAD)) + " bytes)");
@@ -1055,7 +1047,6 @@ final class LocalDatabase extends CoreDatabase {
     /**
      * Called by ReplController.
      */
-    @Override
     long writeControlMessage(byte[] message) throws IOException {
         // Commit lock must be held to prevent a checkpoint from starting. If the control
         // message fails to be applied, panic the database. If the database is kept open after
@@ -1338,7 +1329,6 @@ final class LocalDatabase extends CoreDatabase {
     /**
      * Allows access to internal indexes which can use the redo log.
      */
-    @Override
     Index anyIndexById(long id) throws IOException {
         return anyIndexById(null, id);
     }
@@ -1404,7 +1394,7 @@ final class LocalDatabase extends CoreDatabase {
         final Node root = tree.mRoot;
         root.acquireExclusive();
         try {
-            checkClosedIndexException(root.mPage);
+            checkClosedIndexException(root.mPageAddr);
 
             if (Tree.isInternal(tree.mId)) {
                 throw new IllegalStateException("Cannot rename an internal index");
@@ -1616,7 +1606,7 @@ final class LocalDatabase extends CoreDatabase {
 
                 if (!doMoveToTrash(txn, tree.mIdBytes)) {
                     // Handle concurrent delete attempt.
-                    throw newClosedIndexException(tree.mRoot.mPage);
+                    throw newClosedIndexException(tree.mRoot.mPageAddr);
                 }
 
                 if (txn.mRedo != null) {
@@ -1657,7 +1647,7 @@ final class LocalDatabase extends CoreDatabase {
         Node root = tree.close(true, true);
         if (root == null) {
             // Handle concurrent close attempt.
-            throw newClosedIndexException(tree.mRoot.mPage);
+            throw newClosedIndexException(tree.mRoot.mPageAddr);
         }
 
         BTree trashed = newBTreeInstance(tree.mId, tree.mIdBytes, tree.mName, root);
@@ -1688,7 +1678,7 @@ final class LocalDatabase extends CoreDatabase {
         try {
             root.acquireExclusive();
 
-            if (!root.hasKeys() && !isClosedOrDeleted(root.mPage)) {
+            if (!root.hasKeys() && !isClosedOrDeleted(root.mPageAddr)) {
                 // Delete and remove from trash.
                 prepareToDelete(root);
                 deleteNode(root);
@@ -1886,7 +1876,11 @@ final class LocalDatabase extends CoreDatabase {
     }
 
     @Override
-    public BTree newTemporaryIndex() throws IOException {
+    public Index newTemporaryIndex() throws IOException {
+        return newTemporaryTree();
+    }
+
+    BTree newTemporaryTree() throws IOException {
         CommitLock.Shared shared = mCommitLock.acquireShared();
         try {
             return newTemporaryTree(false);
@@ -1945,11 +1939,9 @@ final class LocalDatabase extends CoreDatabase {
                     root = allocLatchedNode(NodeGroup.MODE_UNEVICTABLE);
                     root.id(rootId);
                     try {
-                        /*P*/ // [|
-                        /*P*/ // if (mFullyMapped) {
-                        /*P*/ //     root.mPage = mPageDb.dirtyPage(rootId);
-                        /*P*/ // }
-                        /*P*/ // ]
+                        if (mFullyMapped) {
+                            root.mPageAddr = mPageDb.dirtyPage(rootId);
+                        }
                         root.mGroup.addDirty(root, mCommitState);
                     } catch (Throwable e) {
                         root.releaseExclusive();
@@ -2369,7 +2361,12 @@ final class LocalDatabase extends CoreDatabase {
         return new ParallelSorter(this, Runner.current());
     }
 
-    @Override
+    /**
+     * Copies all entries from a source index into a new temporary index, which can be null if
+     * empty. No threads should be active in the source index.
+     *
+     * @param workerCount maximum parallelism; must be at least 1
+     */
     Tree parallelCopy(Index source, int workerCount) throws IOException {
         var copier = new BTreeCopier(this, (BTree) source, Runner.current(), workerCount);
         copier.start();
@@ -2405,7 +2402,7 @@ final class LocalDatabase extends CoreDatabase {
      *
      * @param in snapshot source; does not require extra buffering; auto-closed
      */
-    static CoreDatabase restoreFromSnapshot(Launcher launcher, InputStream in) throws IOException {
+    static LocalDatabase restoreFromSnapshot(Launcher launcher, InputStream in) throws IOException {
         if (launcher.mReadOnly) {
             throw new IllegalArgumentException("Cannot restore into a read-only database");
         }
@@ -2715,12 +2712,18 @@ final class LocalDatabase extends CoreDatabase {
         checkpoint(0, 0, 0);
     }
 
-    @Override
+    /**
+     * Performs a checkpoint if automatic checkpoints are currently enabled.
+     *
+     * @return false if no checkpoint was performed
+     */
     public boolean checkpointIfEnabled() throws IOException {
         return mCheckpointer != null && mCheckpointer.isEnabled() && checkpoint(0, 0, 0);
     }
 
-    @Override
+    /**
+     * Called by Checkpointer task.
+     */
     boolean checkpoint(long sizeThreshold, long delayThresholdNanos) throws IOException {
         return checkpoint(0, sizeThreshold, delayThresholdNanos);
     }
@@ -2994,7 +2997,6 @@ final class LocalDatabase extends CoreDatabase {
     /**
      * @return false if stopped
      */
-    @Override
     boolean scanAllIndexes(ScanVisitor visitor) throws IOException {
         if (!scan(visitor, mRegistry) || !scan(visitor, mRegistryKeyMap)
             || !scan(visitor, openFragmentedTrash(false))
@@ -3280,11 +3282,7 @@ final class LocalDatabase extends CoreDatabase {
     }
 
     private void deleteCommitHeader() {
-        /*P*/ // [
-        mCommitHeader = null;
-        /*P*/ // |
-        /*P*/ // p_delete((long) cCommitHeaderHandle.getAndSet(this, p_null()));
-        /*P*/ // ]
+        p_delete((long) cCommitHeaderAddrHandle.getAndSet(this, p_null()));
     }
 
     @Override
@@ -3411,7 +3409,6 @@ final class LocalDatabase extends CoreDatabase {
         return true;
     }
 
-    @Override
     public boolean isInTrash(Transaction txn, long treeId) throws IOException {
         return mRegistryKeyMap.exists(txn, newKey(RK_TRASH_ID, treeId));
     }
@@ -3428,7 +3425,7 @@ final class LocalDatabase extends CoreDatabase {
         try {
             if (root != null) {
                 root.acquireExclusive();
-                if (isClosedOrDeleted(root.mPage)) {
+                if (isClosedOrDeleted(root.mPageAddr)) {
                     // Database has been closed.
                     root.releaseExclusive();
                     return;
@@ -3575,7 +3572,6 @@ final class LocalDatabase extends CoreDatabase {
     /**
      * @return a non-null RowStore instance
      */
-    @Override
     public RowStore rowStore() throws IOException {
         return rowStore(true);
     }
@@ -3625,17 +3621,13 @@ final class LocalDatabase extends CoreDatabase {
             Node rootNode = allocLatchedNode(NodeGroup.MODE_UNEVICTABLE);
 
             try {
-                /*P*/ // [
-                rootNode.asEmptyRoot();
-                /*P*/ // |
-                /*P*/ // if (mFullyMapped) {
-                /*P*/ //     rootNode.mPage = p_nonTreePage(); // always an empty leaf node
-                /*P*/ //     rootNode.id(0);
-                /*P*/ //     rootNode.mCachedState = CACHED_CLEAN;
-                /*P*/ // } else {
-                /*P*/ //     rootNode.asEmptyRoot();
-                /*P*/ // }
-                /*P*/ // ]
+                if (mFullyMapped) {
+                    rootNode.mPageAddr = p_nonTreePage(); // always an empty leaf node
+                    rootNode.id(0);
+                    rootNode.mCachedState = CACHED_CLEAN;
+                } else {
+                    rootNode.asEmptyRoot();
+                }
                 return rootNode;
             } finally {
                 rootNode.releaseExclusive();
@@ -4162,17 +4154,28 @@ final class LocalDatabase extends CoreDatabase {
         }
     }
 
-    @Override
+    /**
+     * @param owner the upgradable owner of the lock
+     */
     public DetachedLock newDetachedLock(Transaction owner) {
         return mLockManager.newDetachedLock((LocalTransaction) owner);
     }
 
-    @Override
     public <R> RowPredicateLock<R> newRowPredicateLock(long indexId) {
         return new RowPredicateLockImpl<R>(mLockManager, indexId);
     }
 
-    @Override
+    /**
+     * Defines anonymous secondary indexes and invokes a callback which should transactionally
+     * store references to them. Next, a redo op is written which notifies replicas that the
+     * set of secondaries has changed. Finally, the transaction is committed.
+     *
+     * @param txn is committed as a side effect; will be switched to SYNC mode if replicated
+     * @param primaryIndexId index id in the notification op; pass 0 to disable notification
+     * @param ids each array slot is filled in with a new identifier
+     * @param callback invoked after the ids are filled in, with the commit lock held
+     * @throws NullPointerException if any parameter is null
+     */
     public void createSecondaryIndexes(Transaction txn, long primaryIndexId,
                                        long[] ids, Runnable callback)
         throws IOException
@@ -4253,7 +4256,11 @@ final class LocalDatabase extends CoreDatabase {
         return name.length == 0 && !mRegistryKeyMap.exists(txn, newKey(RK_INDEX_NAME, name));
     }
 
-    @Override
+    /**
+     * Add a listener which observes incoming replication operations.
+     *
+     * @return false if replication isn't enabled or if the listener was already added
+     */
     public boolean addRedoListener(RedoListener listener) {
         if (mRedoWriter instanceof ReplWriter rw) {
             return rw.mEngine.addRedoListener(listener);
@@ -4261,7 +4268,11 @@ final class LocalDatabase extends CoreDatabase {
         return false;
     }
 
-    @Override
+    /**
+     * Remove a listener which was added earlier.
+     *
+     * @return false if the listener wasn't found
+     */
     public boolean removeRedoListener(RedoListener listener) {
         if (mRedoWriter instanceof ReplWriter rw) {
             return rw.mEngine.removeRedoListener(listener);
@@ -4269,7 +4280,10 @@ final class LocalDatabase extends CoreDatabase {
         return false;
     }
 
-    @Override
+    /**
+     * Invoke the given callback with the redo lock held, which ensures that no incoming
+     * replication operations are being processed.
+     */
     public void withRedoLock(Runnable callback) {
         if (mRedoWriter instanceof ReplWriter rw) {
             rw.mEngine.withRedoLock(callback);
@@ -4304,14 +4318,6 @@ final class LocalDatabase extends CoreDatabase {
      */
     int pageSize() {
         return mPageSize;
-    }
-
-    private int pageSize(/*P*/ byte[] page) {
-        /*P*/ // [
-        return page.length;
-        /*P*/ // |
-        /*P*/ // return mPageSize;
-        /*P*/ // ]
     }
 
     /**
@@ -4663,9 +4669,6 @@ final class LocalDatabase extends CoreDatabase {
         }
 
         try {
-            /*P*/ // [
-            node.type(TYPE_FRAGMENT);
-            /*P*/ // ]
             readNode(node, nodeId);
         } catch (Throwable t) {
             // Something went wrong reading the node. Remove the node from the map, now that
@@ -4716,9 +4719,6 @@ final class LocalDatabase extends CoreDatabase {
         }
 
         try {
-            /*P*/ // [
-            node.type(TYPE_FRAGMENT);
-            /*P*/ // ]
             if (read) {
                 readNode(node, nodeId);
             }
@@ -5024,11 +5024,9 @@ final class LocalDatabase extends CoreDatabase {
      * @return null if another dirty node would need to be evicted
      */
     Node tryAllocRawDirtyNode(long id) throws IOException {
-        /*P*/ // [|
-        /*P*/ // if (mFullyMapped) {
-        /*P*/ //     return null;
-        /*P*/ // }
-        /*P*/ // ]
+        if (mFullyMapped) {
+            return null;
+        }
 
         NodeGroup[] groups = mNodeGroups;
         int groupIx = ThreadLocalRandom.current().nextInt(groups.length);
@@ -5036,11 +5034,7 @@ final class LocalDatabase extends CoreDatabase {
         Node node = groups[groupIx].tryAllocLatchedNode(1, NodeGroup.MODE_NO_EVICT);
 
         if (node != null) {
-            /*P*/ // [
-            node.type(Node.TYPE_FRAGMENT);
-            /*P*/ // |
-            /*P*/ // node.type(Node.TYPE_NONE);
-            /*P*/ // ]
+            node.type(Node.TYPE_NONE);
             node.id(id);
             node.mGroup.addDirty(node, mCommitState);
         }
@@ -5065,11 +5059,9 @@ final class LocalDatabase extends CoreDatabase {
     Node allocDirtyNode(int mode) throws IOException {
         Node node = mPageDb.allocLatchedNode(this, mode);
 
-        /*P*/ // [|
-        /*P*/ // if (mFullyMapped) {
-        /*P*/ //     node.mPage = mPageDb.dirtyPage(node.id());
-        /*P*/ // }
-        /*P*/ // ]
+        if (mFullyMapped) {
+            node.mPageAddr = mPageDb.dirtyPage(node.id());
+        }
 
         node.mGroup.addDirty(node, mCommitState);
         return node;
@@ -5082,9 +5074,6 @@ final class LocalDatabase extends CoreDatabase {
     Node allocDirtyFragmentNode() throws IOException {
         Node node = allocDirtyNode();
         nodeMapPut(node);
-        /*P*/ // [
-        node.type(TYPE_FRAGMENT);
-        /*P*/ // ]
         return node;
     }
 
@@ -5278,16 +5267,14 @@ final class LocalDatabase extends CoreDatabase {
      * Caller must hold commit lock and exclusive latch on node.
      */
     private void dirty(Node node, long newId) throws IOException {
-        /*P*/ // [|
-        /*P*/ // if (mFullyMapped) {
-        /*P*/ //     if (node.mPage == p_nonTreePage()) {
-        /*P*/ //         node.mPage = mPageDb.dirtyPage(newId);
-        /*P*/ //         node.asEmptyRoot();
-        /*P*/ //     } else if (!isClosedOrDeleted(node.mPage)) {
-        /*P*/ //         node.mPage = mPageDb.copyPage(node.id(), newId); // copy on write
-        /*P*/ //     }
-        /*P*/ // }
-        /*P*/ // ]
+        if (mFullyMapped) {
+            if (node.mPageAddr == p_nonTreePage()) {
+                node.mPageAddr = mPageDb.dirtyPage(newId);
+                node.asEmptyRoot();
+            } else if (!isClosedOrDeleted(node.mPageAddr)) {
+                node.mPageAddr = mPageDb.copyPage(node.id(), newId); // copy on write
+            }
+        }
 
         node.id(newId);
         node.mGroup.addDirty(node, mCommitState);
@@ -5430,7 +5417,7 @@ final class LocalDatabase extends CoreDatabase {
      * @param maxInline maximum allowed inline size; must not be more than 65535
      * @return null if max is too small
      */
-    final byte[] fragment(final byte[] value, final long vlength, int max, int maxInline)
+    byte[] fragment(final byte[] value, final long vlength, int max, int maxInline)
         throws IOException
     {
         final int pageSize = mPageSize;
@@ -5498,7 +5485,7 @@ final class LocalDatabase extends CoreDatabase {
                             Node node = allocDirtyFragmentNode();
                             try {
                                 encodeInt48LE(newValue, poffset, node.id());
-                                p_copyFromArray(value, voffset, node.mPage, 0, pageSize);
+                                p_copyFromArray(value, voffset, node.mPageAddr, 0, pageSize);
                                 if (pageCount == 1) {
                                     break;
                                 }
@@ -5571,13 +5558,13 @@ final class LocalDatabase extends CoreDatabase {
                                 Node node = allocDirtyFragmentNode();
                                 try {
                                     encodeInt48LE(newValue, poffset, node.id());
-                                    var page = node.mPage;
+                                    long pageAddr = node.mPageAddr;
                                     if (pageCount > 1) {
-                                        p_copyFromArray(value, voffset, page, 0, pageSize);
+                                        p_copyFromArray(value, voffset, pageAddr, 0, pageSize);
                                     } else {
-                                        p_copyFromArray(value, voffset, page, 0, remainder);
+                                        p_copyFromArray(value, voffset, pageAddr, 0, remainder);
                                         // Zero fill the rest, making it easier to extend later.
-                                        p_clear(page, remainder, pageSize(page));
+                                        p_clear(pageAddr, remainder, pageSize());
                                         break;
                                     }
                                 } finally {
@@ -5670,12 +5657,12 @@ final class LocalDatabase extends CoreDatabase {
         return levels;
     }
 
-    static long decodeFullFragmentedValueLength(int header, /*P*/ byte[] fragmented, int off) {
+    static long decodeFullFragmentedValueLength(int header, long fragmentedAddr, int off) {
         return switch ((header >> 2) & 0x03) {
-            default -> p_ushortGetLE(fragmented, off);
-            case 1 -> p_intGetLE(fragmented, off) & 0xffffffffL;
-            case 2 -> p_uint48GetLE(fragmented, off);
-            case 3 -> p_longGetLE(fragmented, off);
+            default -> p_ushortGetLE(fragmentedAddr, off);
+            case 1 -> p_intGetLE(fragmentedAddr, off) & 0xffffffffL;
+            case 2 -> p_uint48GetLE(fragmentedAddr, off);
+            case 3 -> p_longGetLE(fragmentedAddr, off);
         };
     }
 
@@ -5688,7 +5675,7 @@ final class LocalDatabase extends CoreDatabase {
                                           byte[] value, int voffset, long vlength)
         throws IOException
     {
-        var page = inode.mPage;
+        long pageAddr = inode.mPageAddr;
         level--;
         long levelCap = levelCap(level);
 
@@ -5698,15 +5685,15 @@ final class LocalDatabase extends CoreDatabase {
         try {
             for (int i=0; i<childNodeCount; i++) {
                 Node childNode = allocDirtyFragmentNode();
-                p_int48PutLE(page, poffset, childNode.id());
+                p_int48PutLE(pageAddr, poffset, childNode.id());
                 poffset += 6;
 
                 int len = (int) Math.min(levelCap, vlength);
                 if (level <= 0) {
-                    var childPage = childNode.mPage;
-                    p_copyFromArray(value, voffset, childPage, 0, len);
+                    long childPageAddr = childNode.mPageAddr;
+                    p_copyFromArray(value, voffset, childPageAddr, 0, len);
                     // Zero fill the rest, making it easier to extend later.
-                    p_clear(childPage, len, pageSize(childPage));
+                    p_clear(childPageAddr, len, pageSize());
                     childNode.releaseExclusive();
                 } else {
                     try {
@@ -5723,7 +5710,7 @@ final class LocalDatabase extends CoreDatabase {
             // Zero fill the rest, making it easier to extend later. If an exception was
             // thrown, this simplifies cleanup. All of the allocated pages are referenced,
             // but the rest are not.
-            p_clear(page, poffset, pageSize(page));
+            p_clear(pageAddr, poffset, pageSize());
         }
     }
 
@@ -5747,9 +5734,9 @@ final class LocalDatabase extends CoreDatabase {
     /**
      * Reconstruct a fragmented key.
      */
-    byte[] reconstructKey(/*P*/ byte[] fragmented, int off, int len) throws IOException {
+    byte[] reconstructKey(long fragmentedAddr, int off, int len) throws IOException {
         try {
-            return reconstruct(fragmented, off, len);
+            return reconstruct(fragmentedAddr, off, len);
         } catch (LargeValueException e) {
             throw new LargeKeyException(e.length(), e.getCause());
         }
@@ -5758,8 +5745,8 @@ final class LocalDatabase extends CoreDatabase {
     /**
      * Reconstruct a fragmented value.
      */
-    byte[] reconstruct(/*P*/ byte[] fragmented, int off, int len) throws IOException {
-        return reconstruct(fragmented, off, len, null);
+    byte[] reconstruct(long fragmentedAddr, int off, int len) throws IOException {
+        return reconstruct(fragmentedAddr, off, len, null);
     }
 
     /**
@@ -5769,17 +5756,17 @@ final class LocalDatabase extends CoreDatabase {
      * {@literal (>0 if fragmented)}
      * @return null if stats requested
      */
-    byte[] reconstruct(/*P*/ byte[] fragmented, int off, int len, long[] stats)
+    byte[] reconstruct(long fragmentedAddr, int off, int len, long[] stats)
         throws IOException
     {
-        int header = p_byteGet(fragmented, off++);
+        int header = p_byteGet(fragmentedAddr, off++);
         len--;
 
         long vLen;
         switch ((header >> 2) & 0x03) {
-            default -> vLen = p_ushortGetLE(fragmented, off);
+            default -> vLen = p_ushortGetLE(fragmentedAddr, off);
             case 1 -> {
-                vLen = p_intGetLE(fragmented, off);
+                vLen = p_intGetLE(fragmentedAddr, off);
                 if (vLen < 0) {
                     vLen &= 0xffffffffL;
                     if (stats == null) {
@@ -5788,13 +5775,13 @@ final class LocalDatabase extends CoreDatabase {
                 }
             }
             case 2 -> {
-                vLen = p_uint48GetLE(fragmented, off);
+                vLen = p_uint48GetLE(fragmentedAddr, off);
                 if (vLen > Integer.MAX_VALUE && stats == null) {
                     throw new LargeValueException(vLen);
                 }
             }
             case 3 -> {
-                vLen = p_longGetLE(fragmented, off);
+                vLen = p_longGetLE(fragmentedAddr, off);
                 if (vLen < 0 || (vLen > Integer.MAX_VALUE && stats == null)) {
                     throw new LargeValueException(vLen);
                 }
@@ -5822,11 +5809,11 @@ final class LocalDatabase extends CoreDatabase {
         int vOff = 0;
         if ((header & 0x02) != 0) {
             // Inline content.
-            int inLen = p_ushortGetLE(fragmented, off);
+            int inLen = p_ushortGetLE(fragmentedAddr, off);
             off += 2;
             len -= 2;
             if (value != null) {
-                p_copyToArray(fragmented, off, value, vOff, inLen);
+                p_copyToArray(fragmentedAddr, off, value, vOff, inLen);
             }
             off += inLen;
             len -= inLen;
@@ -5839,7 +5826,7 @@ final class LocalDatabase extends CoreDatabase {
         if ((header & 0x01) == 0) {
             // Direct pointers.
             while (len >= 6) {
-                long nodeId = p_uint48GetLE(fragmented, off);
+                long nodeId = p_uint48GetLE(fragmentedAddr, off);
                 off += 6;
                 len -= 6;
                 int pLen;
@@ -5850,10 +5837,10 @@ final class LocalDatabase extends CoreDatabase {
                     Node node = nodeMapLoadFragment(nodeId);
                     pagesRead++;
                     try {
-                        var page = node.mPage;
-                        pLen = Math.min((int) vLen, pageSize(page));
+                        long pageAddr = node.mPageAddr;
+                        pLen = Math.min((int) vLen, pageSize());
                         if (value != null) {
-                            p_copyToArray(page, 0, value, vOff, pLen);
+                            p_copyToArray(pageAddr, 0, value, vOff, pLen);
                         }
                     } finally {
                         node.releaseShared();
@@ -5864,7 +5851,7 @@ final class LocalDatabase extends CoreDatabase {
             }
         } else {
             // Indirect pointers.
-            long inodeId = p_uint48GetLE(fragmented, off);
+            long inodeId = p_uint48GetLE(fragmentedAddr, off);
             if (inodeId != 0) {
                 Node inode = nodeMapLoadFragment(inodeId);
                 pagesRead++;
@@ -5894,14 +5881,14 @@ final class LocalDatabase extends CoreDatabase {
         try {
             long pagesRead = 0;
 
-            var page = inode.mPage;
+            long pageAddr = inode.mPageAddr;
             level--;
             long levelCap = levelCap(level);
 
             int childNodeCount = childNodeCount(vlength, levelCap);
 
             for (int poffset = 0, i=0; i<childNodeCount; poffset += 6, i++) {
-                long childNodeId = p_uint48GetLE(page, poffset);
+                long childNodeId = p_uint48GetLE(pageAddr, poffset);
                 int len = (int) Math.min(levelCap, vlength);
 
                 if (childNodeId != 0) {
@@ -5909,7 +5896,7 @@ final class LocalDatabase extends CoreDatabase {
                     pagesRead++;
                     if (level <= 0) {
                         if (value != null) {
-                            p_copyToArray(childNode.mPage, 0, value, voffset, len);
+                            p_copyToArray(childNode.mPageAddr, 0, value, voffset, len);
                         }
                         childNode.releaseShared();
                     } else {
@@ -5933,10 +5920,10 @@ final class LocalDatabase extends CoreDatabase {
      *
      * @param fragmented page containing fragmented value 
      */
-    void deleteFragments(/*P*/ byte[] fragmented, int off, int len)
+    void deleteFragments(long fragmentedAddr, int off, int len)
         throws IOException
     {
-        int header = p_byteGet(fragmented, off++);
+        int header = p_byteGet(fragmentedAddr, off++);
         len--;
 
         long vLen;
@@ -5945,10 +5932,10 @@ final class LocalDatabase extends CoreDatabase {
             vLen = 0;
         } else {
             vLen = switch ((header >> 2) & 0x03) {
-                default -> p_ushortGetLE(fragmented, off);
-                case 1 -> p_intGetLE(fragmented, off) & 0xffffffffL;
-                case 2 -> p_uint48GetLE(fragmented, off);
-                case 3 -> p_longGetLE(fragmented, off);
+                default -> p_ushortGetLE(fragmentedAddr, off);
+                case 1 -> p_intGetLE(fragmentedAddr, off) & 0xffffffffL;
+                case 2 -> p_uint48GetLE(fragmentedAddr, off);
+                case 3 -> p_longGetLE(fragmentedAddr, off);
             };
         }
 
@@ -5960,7 +5947,7 @@ final class LocalDatabase extends CoreDatabase {
 
         if ((header & 0x02) != 0) {
             // Skip inline content.
-            int inLen = 2 + p_ushortGetLE(fragmented, off);
+            int inLen = 2 + p_ushortGetLE(fragmentedAddr, off);
             off += inLen;
             len -= inLen;
         }
@@ -5968,14 +5955,14 @@ final class LocalDatabase extends CoreDatabase {
         if ((header & 0x01) == 0) {
             // Direct pointers.
             while (len >= 6) {
-                long nodeId = p_uint48GetLE(fragmented, off);
+                long nodeId = p_uint48GetLE(fragmentedAddr, off);
                 off += 6;
                 len -= 6;
                 deleteFragment(nodeId);
             }
         } else {
             // Indirect pointers.
-            long inodeId = p_uint48GetLE(fragmented, off);
+            long inodeId = p_uint48GetLE(fragmentedAddr, off);
             if (inodeId != 0) {
                 Node inode = removeInode(inodeId);
                 int levels = calculateInodeLevels(vLen);
@@ -5991,7 +5978,7 @@ final class LocalDatabase extends CoreDatabase {
     private void deleteMultilevelFragments(int level, Node inode, long vlength)
         throws IOException
     {
-        var page = inode.mPage;
+        long pageAddr = inode.mPageAddr;
         level--;
         long levelCap = levelCap(level);
 
@@ -5999,7 +5986,7 @@ final class LocalDatabase extends CoreDatabase {
         int childNodeCount = childNodeCount(vlength, levelCap);
         var childNodeIds = new long[childNodeCount];
         for (int poffset = 0, i=0; i<childNodeCount; poffset += 6, i++) {
-            childNodeIds[i] = p_uint48GetLE(page, poffset);
+            childNodeIds[i] = p_uint48GetLE(pageAddr, poffset);
         }
         deleteNode(inode);
 
@@ -6023,9 +6010,6 @@ final class LocalDatabase extends CoreDatabase {
         Node node = nodeMapGetAndRemove(nodeId);
         if (node == null) {
             node = allocLatchedNode(NodeGroup.MODE_UNEVICTABLE);
-            /*P*/ // [
-            node.type(TYPE_FRAGMENT);
-            /*P*/ // ]
             try {
                 readNode(node, nodeId);
             } catch (Throwable e) {
@@ -6165,15 +6149,11 @@ final class LocalDatabase extends CoreDatabase {
      * Reads the node page, sets the id and cached state. Node must be latched exclusively.
      */
     void readNode(Node node, long id) throws IOException {
-        /*P*/ // [
-        mPageDb.readPage(id, node.mPage);
-        /*P*/ // |
-        /*P*/ // if (mFullyMapped) {
-        /*P*/ //     node.mPage = mPageDb.directPagePointer(id);
-        /*P*/ // } else {
-        /*P*/ //     mPageDb.readPage(id, node.mPage);
-        /*P*/ // }
-        /*P*/ // ]
+        if (mFullyMapped) {
+            node.mPageAddr = mPageDb.directPageAddress(id);
+        } else {
+            mPageDb.readPage(id, node.mPageAddr);
+        }
 
         node.id(id);
 
@@ -6196,51 +6176,44 @@ final class LocalDatabase extends CoreDatabase {
         }
     }
 
-    @Override
+    /**
+     * Atomically swaps the root nodes of two trees.
+     */
+    public void rootSwap(Index a, Index b) throws IOException {
+        ((Tree) a).rootSwap((Tree) b);
+    }
+
     long databaseId() {
         return mPageDb.databaseId();
     }
 
-    @Override
-    boolean isDirectPageAccess() {
-        /*P*/ // [
-        return false;
-        /*P*/ // |
-        /*P*/ // return true;
-        /*P*/ // ]
-    }
-
-    @Override
     boolean isCacheOnly() {
         return mPageDb.isCacheOnly();
     }
 
-    @Override
     boolean isReadOnly() {
         return mReadOnly;
     }
 
-    @Override
     Crypto dataCrypto() {
         return mPageDb.dataCrypto();
     }
 
-    @Override
-    Supplier<Checksum> checksumFactory() {
+    Supplier<? extends Checksum> checksumFactory() {
         return mPageDb.checksumFactory();
     }
 
-    @Override
     Tree registry() {
         return mRegistry;
     }
 
-    @Override
     Tree registryKeyMap() {
         return mRegistryKeyMap;
     }
 
-    @Override
+    /**
+     * @return null if none
+     */
     public EventListener eventListener() {
         return mEventListener;
     }
@@ -6362,11 +6335,11 @@ final class LocalDatabase extends CoreDatabase {
 
         final Node root = mRegistry.mRoot;
 
-        var header = mCommitHeader;
+        long headerAddr = mCommitHeaderAddr;
 
         final long nowNanos = System.nanoTime();
 
-        if (force == 0 && header == p_null()) {
+        if (force == 0 && headerAddr == p_null()) {
             thresholdCheck : {
                 if (delayThresholdNanos == 0) {
                     break thresholdCheck;
@@ -6441,9 +6414,9 @@ final class LocalDatabase extends CoreDatabase {
         boolean resume = true;
         UndoLog masterUndoLog = mCommitMasterUndoLog;
 
-        if (header == p_null()) {
+        if (headerAddr == p_null()) {
             // Not resumed. Allocate new header early, before acquiring locks.
-            header = p_callocPage(mPageDb.directPageSize());
+            headerAddr = p_callocPage(mPageDb.directPageSize());
             resume = false;
             if (masterUndoLog != null) {
                 // TODO: Thrown when closed? After storage device was full.
@@ -6455,7 +6428,7 @@ final class LocalDatabase extends CoreDatabase {
 
         try {
             int hoff = mPageDb.extraCommitDataOffset();
-            p_intPutLE(header, hoff + I_ENCODING_VERSION, mEncodingVersion);
+            p_intPutLE(headerAddr, hoff + I_ENCODING_VERSION, mEncodingVersion);
 
             if (redo != null) {
                 // File-based redo log should create a new file, but not write to it yet.
@@ -6485,7 +6458,7 @@ final class LocalDatabase extends CoreDatabase {
             mCheckpointFlushState = CHECKPOINT_FLUSH_PREPARE;
 
             if (!resume) {
-                p_longPutLE(header, hoff + I_ROOT_PAGE_ID, root.id());
+                p_longPutLE(headerAddr, hoff + I_ROOT_PAGE_ID, root.id());
             }
 
             final long redoNum, redoPos, redoTxnId;
@@ -6501,10 +6474,10 @@ final class LocalDatabase extends CoreDatabase {
                 redoTxnId = redo.checkpointTransactionId();
             }
 
-            p_longPutLE(header, hoff + I_CHECKPOINT_NUMBER, redoNum);
-            p_longPutLE(header, hoff + I_REDO_TXN_ID, redoTxnId);
-            p_longPutLE(header, hoff + I_REDO_POSITION, redoPos);
-            p_longPutLE(header, hoff + I_REPL_ENCODING, redo == null ? 0 : redo.encoding());
+            p_longPutLE(headerAddr, hoff + I_CHECKPOINT_NUMBER, redoNum);
+            p_longPutLE(headerAddr, hoff + I_REDO_TXN_ID, redoTxnId);
+            p_longPutLE(headerAddr, hoff + I_REDO_POSITION, redoPos);
+            p_longPutLE(headerAddr, hoff + I_REPL_ENCODING, redo == null ? 0 : redo.encoding());
 
             // TODO: I don't like all this activity with exclusive commit lock held. UndoLog
             // can be refactored to store into a special Tree, but this requires more features
@@ -6551,16 +6524,16 @@ final class LocalDatabase extends CoreDatabase {
                     }
                 }
 
-                p_longPutLE(header, hoff + I_TRANSACTION_ID, txnId);
-                p_longPutLE(header, hoff + I_MASTER_UNDO_LOG_PAGE_ID, masterUndoLogId);
+                p_longPutLE(headerAddr, hoff + I_TRANSACTION_ID, txnId);
+                p_longPutLE(headerAddr, hoff + I_MASTER_UNDO_LOG_PAGE_ID, masterUndoLogId);
             }
 
-            mCommitHeader = header;
+            mCommitHeaderAddr = headerAddr;
 
-            mPageDb.commit(resume, header, this::checkpointFlush);
+            mPageDb.commit(resume, headerAddr, this::checkpointFlush);
         } catch (Throwable e) {
-            if (mCommitHeader != header) {
-                p_delete(header);
+            if (mCommitHeaderAddr != headerAddr) {
+                p_delete(headerAddr);
             }
 
             if (mCheckpointFlushState == CHECKPOINT_FLUSH_PREPARE) {
@@ -6642,12 +6615,12 @@ final class LocalDatabase extends CoreDatabase {
      * Method is invoked with exclusive commit lock and shared root node latch held. Both are
      * released by this method.
      */
-    private void checkpointFlush(boolean resume, /*P*/ byte[] header) throws IOException {
+    private void checkpointFlush(boolean resume, long headerAddr) throws IOException {
         int stateToFlush = mCommitState;
 
         if (resume) {
             // Resume after an aborted checkpoint.
-            if (header != mCommitHeader) {
+            if (headerAddr != mCommitHeaderAddr) {
                 throw new AssertionError();
             }
             stateToFlush ^= 1;
@@ -6656,7 +6629,7 @@ final class LocalDatabase extends CoreDatabase {
                 mInitialReadState = CACHED_CLEAN; // Must be set before switching commit state.
             }
             mCommitState = (byte) (stateToFlush ^ 1);
-            mCommitHeader = header;
+            mCommitHeaderAddr = headerAddr;
         }
 
         mCheckpointFlushState = stateToFlush;
@@ -6688,7 +6661,7 @@ final class LocalDatabase extends CoreDatabase {
     }
 
     // Called by StoredPageDb with header latch held.
-    static long readRedoPosition(/*P*/ byte[] header, int offset) {
+    static long readRedoPosition(long header, int offset) {
         return p_longGetLE(header, offset + I_REDO_POSITION);
     }
 }

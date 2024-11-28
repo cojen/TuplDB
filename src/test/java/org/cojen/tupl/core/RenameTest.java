@@ -36,8 +36,7 @@ public class RenameTest {
 
     @Before
     public void createTempDb() throws Exception {
-        mConfig = new DatabaseConfig()
-            .directPageAccess(false).durabilityMode(DurabilityMode.NO_FLUSH);
+        mConfig = new DatabaseConfig().durabilityMode(DurabilityMode.NO_FLUSH);
         mDb = newTempDatabase(getClass(), mConfig);
     }
 

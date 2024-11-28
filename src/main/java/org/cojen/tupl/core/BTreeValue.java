@@ -26,7 +26,7 @@ import java.util.Arrays;
 import org.cojen.tupl.LargeKeyException;
 import org.cojen.tupl.LargeValueException;
 
-import static org.cojen.tupl.core.PageOps.*;
+import static org.cojen.tupl.core.DirectPageOps.*;
 import static org.cojen.tupl.core.Utils.*;
 
 /**
@@ -64,33 +64,33 @@ final class BTreeValue {
             return -2;
         }
 
-        final var page = node.mPage;
-        int loc = p_ushortGetLE(page, node.searchVecStart() + nodePos);
+        final long pageAddr = node.mPageAddr;
+        int loc = p_ushortGetLE(pageAddr, node.searchVecStart() + nodePos);
 
         final int header, len;
         if (isKey) {
-            header = p_byteGet(page, loc++);
+            header = p_byteGet(pageAddr, loc++);
             if (header >= 0) {
                 // Not fragmented.
                 return pos >= (header + 1) ? -2 : -1;
             }
 
-            len = ((header & 0x3f) << 8) | p_ubyteGet(page, loc++);
+            len = ((header & 0x3f) << 8) | p_ubyteGet(pageAddr, loc++);
         } else {
             // Skip the key.
-            loc += Node.keyLengthAtLoc(page, loc);
+            loc += Node.keyLengthAtLoc(pageAddr, loc);
 
-            header = p_byteGet(page, loc++);
+            header = p_byteGet(pageAddr, loc++);
             if (header >= 0) {
                 // Not fragmented.
                 return pos >= header ? -2 : -1;
             }
 
             if ((header & 0x20) == 0) {
-                len = 1 + (((header & 0x1f) << 8) | p_ubyteGet(page, loc++));
+                len = 1 + (((header & 0x1f) << 8) | p_ubyteGet(pageAddr, loc++));
             } else if (header != -1) {
                 len = 1 + (((header & 0x0f) << 16)
-                           | (p_ubyteGet(page, loc++) << 8) | p_ubyteGet(page, loc++));
+                           | (p_ubyteGet(pageAddr, loc++) << 8) | p_ubyteGet(pageAddr, loc++));
             } else {
                 // Ghost.
                 return -2;
@@ -104,8 +104,8 @@ final class BTreeValue {
 
         // Read the fragment header, as described by the LocalDatabase.fragment method.
 
-        final int fHeader = p_byteGet(page, loc++);
-        long fLen = LocalDatabase.decodeFullFragmentedValueLength(fHeader, page, loc);
+        final int fHeader = p_byteGet(pageAddr, loc++);
+        long fLen = LocalDatabase.decodeFullFragmentedValueLength(fHeader, pageAddr, loc);
 
         if (pos >= fLen) {
             return -2;
@@ -115,7 +115,7 @@ final class BTreeValue {
 
         if ((fHeader & 0x02) != 0) {
             // Inline content.
-            final int fInlineLen = p_ushortGetLE(page, loc);
+            final int fInlineLen = p_ushortGetLE(pageAddr, loc);
             pos -= fInlineLen;
             if (pos < 0) {
                 // Positioned within inline content.
@@ -129,14 +129,14 @@ final class BTreeValue {
 
         if ((fHeader & 0x01) == 0) {
             // Direct pointers.
-            loc += (((int) pos) / pageSize(db, page)) * 6;
-            final long fNodeId = p_uint48GetLE(page, loc);
+            loc += (((int) pos) / db.pageSize()) * 6;
+            final long fNodeId = p_uint48GetLE(pageAddr, loc);
             return fNodeId > highestNodeId ? 0 : -1; 
         }
 
         // Indirect pointers.
 
-        final long inodeId = p_uint48GetLE(page, loc);
+        final long inodeId = p_uint48GetLE(pageAddr, loc);
         if (inodeId == 0) {
             // Sparse value.
             return -1;
@@ -152,7 +152,7 @@ final class BTreeValue {
         while (true) {
             level--;
             long levelCap = db.levelCap(level);
-            long childNodeId = p_uint48GetLE(inode.mPage, ((int) (pos / levelCap)) * 6);
+            long childNodeId = p_uint48GetLE(inode.mPageAddr, ((int) (pos / levelCap)) * 6);
             inode.releaseShared();
             if (childNodeId > highestNodeId) {
                 return 0;
@@ -181,12 +181,12 @@ final class BTreeValue {
             return;
         }
 
-        final var page = node.mPage;
-        int loc = p_ushortGetLE(page, node.searchVecStart() + nodePos);
+        final long pageAddr = node.mPageAddr;
+        int loc = p_ushortGetLE(pageAddr, node.searchVecStart() + nodePos);
 
         final int header;
         if (isKey) {
-            header = p_byteGet(page, loc);
+            header = p_byteGet(pageAddr, loc);
             if (header >= 0) {
                 // Not fragmented.
                 return;
@@ -194,8 +194,8 @@ final class BTreeValue {
             loc += 2;
         } else {
             // Skip the key.
-            loc += Node.keyLengthAtLoc(page, loc);
-            header = p_byteGet(page, loc);
+            loc += Node.keyLengthAtLoc(pageAddr, loc);
+            header = p_byteGet(pageAddr, loc);
             if (header >= 0) {
                 // Not fragmented.
                 return;
@@ -217,15 +217,15 @@ final class BTreeValue {
 
         // Read the fragment header, as described by the LocalDatabase.fragment method.
 
-        final int fHeader = p_byteGet(page, loc++);
+        final int fHeader = p_byteGet(pageAddr, loc++);
         final long fLen; // length of fragmented value (when fully reconstructed)
 
         switch ((fHeader >> 2) & 0x03) {
-            default -> fLen = p_ushortGetLE(page, loc);
-            case 1 -> fLen = p_intGetLE(page, loc) & 0xffffffffL;
-            case 2 -> fLen = p_uint48GetLE(page, loc);
+            default -> fLen = p_ushortGetLE(pageAddr, loc);
+            case 1 -> fLen = p_intGetLE(pageAddr, loc) & 0xffffffffL;
+            case 2 -> fLen = p_uint48GetLE(pageAddr, loc);
             case 3 -> {
-                fLen = p_longGetLE(page, loc);
+                fLen = p_longGetLE(pageAddr, loc);
                 if (fLen < 0) {
                     node.releaseExclusive();
                     if (isKey) {
@@ -242,7 +242,7 @@ final class BTreeValue {
         int fInlineLen = 0;
         if ((fHeader & 0x02) != 0) {
             // Inline content.
-            fInlineLen = p_ushortGetLE(page, loc);
+            fInlineLen = p_ushortGetLE(pageAddr, loc);
             if (pos < fInlineLen) {
                 return;
             }
@@ -260,13 +260,13 @@ final class BTreeValue {
         try {
             if ((fHeader & 0x01) == 0) {
                 // Direct pointers.
-                loc += (((int) (pos - fInlineLen)) / pageSize(db, page)) * 6;
-                final long fNodeId = p_uint48GetLE(page, loc);
+                loc += (((int) (pos - fInlineLen)) / db.pageSize()) * 6;
+                final long fNodeId = p_uint48GetLE(pageAddr, loc);
                 if (fNodeId != 0) {
                     final Node fNode = db.nodeMapLoadFragmentExclusive(fNodeId, true);
                     try {
                         if (db.markFragmentDirty(fNode)) {
-                            p_int48PutLE(page, loc, fNode.id());
+                            p_int48PutLE(pageAddr, loc, fNode.id());
                         }
                     } finally {
                         fNode.releaseExclusive();
@@ -277,7 +277,7 @@ final class BTreeValue {
 
             // Indirect pointers.
 
-            final long inodeId = p_uint48GetLE(page, loc);
+            final long inodeId = p_uint48GetLE(pageAddr, loc);
             if (inodeId == 0) {
                 // Sparse value.
                 return;
@@ -286,7 +286,7 @@ final class BTreeValue {
             final Node inode = db.nodeMapLoadFragmentExclusive(inodeId, true);
             try {
                 if (db.markFragmentDirty(inode)) {
-                    p_int48PutLE(page, loc, inode.id());
+                    p_int48PutLE(pageAddr, loc, inode.id());
                 }
             } catch (Throwable e) {
                 throw releaseExclusive(inode, e);
@@ -354,28 +354,29 @@ final class BTreeValue {
                 }
             }
 
-            var page = node.mPage;
-            int loc = p_ushortGetLE(page, node.searchVecStart() + nodePos);
+            long pageAddr = node.mPageAddr;
+            int loc = p_ushortGetLE(pageAddr, node.searchVecStart() + nodePos);
 
             final int kHeaderLoc = loc;
 
             // Skip the key.
-            loc += Node.keyLengthAtLoc(page, loc);
+            loc += Node.keyLengthAtLoc(pageAddr, loc);
 
             final int vHeaderLoc = loc; // location of raw value header
             final int vLen;             // length of raw value sans header
 
             nonFrag: {
-                final int vHeader = p_byteGet(page, loc++); // header byte of raw value
+                final int vHeader = p_byteGet(pageAddr, loc++); // header byte of raw value
 
                 decodeLen: if (vHeader >= 0) {
                     vLen = vHeader;
                 } else {
                     if ((vHeader & 0x20) == 0) {
-                        vLen = 1 + (((vHeader & 0x1f) << 8) | p_ubyteGet(page, loc++));
+                        vLen = 1 + (((vHeader & 0x1f) << 8) | p_ubyteGet(pageAddr, loc++));
                     } else if (vHeader != -1) {
                         vLen = 1 + (((vHeader & 0x0f) << 16)
-                                    | (p_ubyteGet(page, loc++) << 8) | p_ubyteGet(page, loc++));
+                                    | (p_ubyteGet(pageAddr, loc++) << 8)
+                                    | p_ubyteGet(pageAddr, loc++));
                     } else {
                         // ghost
                         if (op <= OP_CLEAR) {
@@ -384,7 +385,7 @@ final class BTreeValue {
                         }
 
                         // Replace the ghost with an empty value.
-                        p_bytePut(page, vHeaderLoc, 0);
+                        p_bytePut(pageAddr, vHeaderLoc, 0);
                         vLen = 0;
                         break decodeLen;
                     }
@@ -405,8 +406,8 @@ final class BTreeValue {
                     if (bLen <= 0 || pos >= vLen) {
                         bLen = 0;
                     } else {
-                        bLen = Math.min((int) (vLen - pos), bLen);
-                        p_copyToArray(page, (int) (loc + pos), b, bOff, (int) bLen);
+                        bLen = Math.min(vLen - pos, bLen);
+                        p_copyToArray(pageAddr, (int) (loc + pos), b, bOff, (int) bLen);
                     }
                     return bLen;
 
@@ -415,11 +416,12 @@ final class BTreeValue {
                         int iLoc = (int) (loc + pos);
                         int iLen = (int) Math.min(bLen, vLen - pos);
                         if (txn != null) try {
-                            txn.pushUnwrite(cursor.mTree.mId, cursor.mKey, pos, page, iLoc, iLen);
+                            txn.pushUnwrite(cursor.mTree.mId, cursor.mKey, pos,
+                                            pageAddr, iLoc, iLen);
                         } catch (Throwable e) {
                             throw releaseExclusive(node, e);
                         }
-                        p_clear(page, iLoc, iLoc + iLen);
+                        p_clear(pageAddr, iLoc, iLoc + iLen);
                     }
                     return 0;
 
@@ -436,8 +438,8 @@ final class BTreeValue {
                         int garbageAccum = oldLen - newLen;
 
                         if (txn != null) try {
-                            txn.pushUnwrite(cursor.mTree.mId, cursor.mKey,
-                                            pos, page, loc + newLen, garbageAccum);
+                            txn.pushUnwrite(cursor.mTree.mId, cursor.mKey, pos,
+                                            pageAddr, loc + newLen, garbageAccum);
                         } catch (Throwable e) {
                             throw releaseExclusive(node, e);
                         }
@@ -446,22 +448,22 @@ final class BTreeValue {
                             final int vShift;
 
                             if (newLen <= 127) {
-                                p_bytePut(page, vHeaderLoc, newLen);
+                                p_bytePut(pageAddr, vHeaderLoc, newLen);
                                 vShift = loc - (vHeaderLoc + 1);
                             } else if (newLen <= 8192) {
-                                p_bytePut(page, vHeaderLoc, 0x80 | ((newLen - 1) >> 8));
-                                p_bytePut(page, vHeaderLoc + 1, newLen - 1);
+                                p_bytePut(pageAddr, vHeaderLoc, 0x80 | ((newLen - 1) >> 8));
+                                p_bytePut(pageAddr, vHeaderLoc + 1, newLen - 1);
                                 vShift = loc - (vHeaderLoc + 2);
                             } else {
-                                p_bytePut(page, vHeaderLoc, 0xa0 | ((newLen - 1) >> 16));
-                                p_bytePut(page, vHeaderLoc + 1, (newLen - 1) >> 8);
-                                p_bytePut(page, vHeaderLoc + 2, newLen - 1);
+                                p_bytePut(pageAddr, vHeaderLoc, 0xa0 | ((newLen - 1) >> 16));
+                                p_bytePut(pageAddr, vHeaderLoc + 1, (newLen - 1) >> 8);
+                                p_bytePut(pageAddr, vHeaderLoc + 2, newLen - 1);
                                 break shift;
                             }
 
                             if (vShift > 0) {
                                 garbageAccum += vShift;
-                                p_copy(page, loc, page, loc - vShift, newLen);
+                                p_copy(pageAddr, loc, pageAddr, loc - vShift, newLen);
                             }
                         }
 
@@ -480,12 +482,12 @@ final class BTreeValue {
                             int iLoc = (int) (loc + pos);
                             int iLen = (int) bLen;
                             if (txn != null) try {
-                                txn.pushUnwrite(cursor.mTree.mId, cursor.mKey,
-                                                pos, page, iLoc, iLen);
+                                txn.pushUnwrite(cursor.mTree.mId, cursor.mKey, pos,
+                                                pageAddr, iLoc, iLen);
                             } catch (Throwable e) {
                                 throw releaseExclusive(node, e);
                             }
-                            p_copyFromArray(b, bOff, page, iLoc, iLen);
+                            p_copyFromArray(b, bOff, pageAddr, iLoc, iLen);
                             return 0;
                         } else if (pos == 0 && bOff == 0 && bLen == b.length) {
                             // Writing over the entire value and extending.
@@ -494,7 +496,8 @@ final class BTreeValue {
                                 if (txn != null) {
                                     // Copy whole entry into undo log.
                                     txn.pushUndoStore(tree.mId, UndoLog.OP_UNUPDATE,
-                                                      page, kHeaderLoc, loc + vLen - kHeaderLoc);
+                                                      pageAddr, kHeaderLoc,
+                                                      loc + vLen - kHeaderLoc);
                                 }
                                 node.updateLeafValue(tree, nodePos, 0, b);
                             } catch (Throwable e) {
@@ -510,12 +513,12 @@ final class BTreeValue {
                             int iLoc = (int) (loc + pos);
                             int iLen = (int) (vLen - pos);
                             if (txn != null) try {
-                                txn.pushUnwrite(cursor.mTree.mId, cursor.mKey,
-                                                pos, page, iLoc, iLen);
+                                txn.pushUnwrite(cursor.mTree.mId, cursor.mKey, pos,
+                                                pageAddr, iLoc, iLen);
                             } catch (Throwable e) {
                                 throw releaseExclusive(node, e);
                             }
-                            p_copyFromArray(b, bOff, page, iLoc, iLen);
+                            p_copyFromArray(b, bOff, pageAddr, iLoc, iLen);
                             pos = vLen;
                             bOff += iLen;
                             bLen -= iLen;
@@ -539,7 +542,7 @@ final class BTreeValue {
                     }
 
                     oldValue = new byte[vLen];
-                    p_copyToArray(page, loc, oldValue, 0, oldValue.length);
+                    p_copyToArray(pageAddr, loc, oldValue, 0, oldValue.length);
 
                     node.deleteLeafEntry(nodePos);
                 } catch (Throwable e) {
@@ -574,14 +577,14 @@ final class BTreeValue {
             long fLen;      // length of fragmented value (when fully reconstructed)
 
             fHeaderLoc = loc;
-            fHeader = p_byteGet(page, loc++);
+            fHeader = p_byteGet(pageAddr, loc++);
 
             switch ((fHeader >> 2) & 0x03) {
-                default -> fLen = p_ushortGetLE(page, loc);
-                case 1 -> fLen = p_intGetLE(page, loc) & 0xffffffffL;
-                case 2 -> fLen = p_uint48GetLE(page, loc);
+                default -> fLen = p_ushortGetLE(pageAddr, loc);
+                case 1 -> fLen = p_intGetLE(pageAddr, loc) & 0xffffffffL;
+                case 2 -> fLen = p_uint48GetLE(pageAddr, loc);
                 case 3 -> {
-                    fLen = p_longGetLE(page, loc);
+                    fLen = p_longGetLE(pageAddr, loc);
                     if (fLen < 0) {
                         node.release(op > OP_READ);
                         throw new LargeValueException(fLen);
@@ -600,22 +603,22 @@ final class BTreeValue {
                     return 0;
                 }
 
-                bLen = (int) Math.min(fLen - pos, bLen);
+                bLen = Math.min(fLen - pos, bLen);
                 final int total = (int) bLen;
 
                 if ((fHeader & 0x02) != 0) {
                     // Inline content.
-                    final int fInlineLen = p_ushortGetLE(page, loc);
+                    final int fInlineLen = p_ushortGetLE(pageAddr, loc);
                     loc += 2;
                     final int amt = (int) (fInlineLen - pos);
                     if (amt <= 0) {
                         // Not reading any inline content.
                         pos -= fInlineLen;
                     } else if (bLen <= amt) {
-                        p_copyToArray(page, (int) (loc + pos), b, bOff, (int) bLen);
+                        p_copyToArray(pageAddr, (int) (loc + pos), b, bOff, (int) bLen);
                         return bLen;
                     } else {
-                        p_copyToArray(page, (int) (loc + pos), b, bOff, amt);
+                        p_copyToArray(pageAddr, (int) (loc + pos), b, bOff, amt);
                         bLen -= amt;
                         bOff += amt;
                         pos = 0;
@@ -628,18 +631,18 @@ final class BTreeValue {
                 if ((fHeader & 0x01) == 0) {
                     // Direct pointers.
                     final int ipos = (int) pos;
-                    final int pageSize = pageSize(db, page);
+                    final int pageSize = db.pageSize();
                     loc += (ipos / pageSize) * 6;
                     int fNodeOff = ipos % pageSize;
                     while (true) {
                         final int amt = Math.min((int) bLen, pageSize - fNodeOff);
-                        final long fNodeId = p_uint48GetLE(page, loc);
+                        final long fNodeId = p_uint48GetLE(pageAddr, loc);
                         if (fNodeId == 0) {
                             // Reading a sparse value.
                             Arrays.fill(b, bOff, bOff + amt, (byte) 0);
                         } else {
                             final Node fNode = db.nodeMapLoadFragment(fNodeId);
-                            p_copyToArray(fNode.mPage, fNodeOff, b, bOff, amt);
+                            p_copyToArray(fNode.mPageAddr, fNodeOff, b, bOff, amt);
                             fNode.releaseShared();
                         }
                         bLen -= amt;
@@ -654,7 +657,7 @@ final class BTreeValue {
 
                 // Indirect pointers.
 
-                final long inodeId = p_uint48GetLE(page, loc);
+                final long inodeId = p_uint48GetLE(pageAddr, loc);
                 if (inodeId == 0) {
                     // Reading a sparse value.
                     Arrays.fill(b, bOff, bOff + (int) bLen, (byte) 0);
@@ -701,7 +704,7 @@ final class BTreeValue {
 
                 if ((fHeader & 0x02) != 0) {
                     // Inline content.
-                    fInlineLen = p_ushortGetLE(page, loc);
+                    fInlineLen = p_ushortGetLE(pageAddr, loc);
                     fInlineLoc += 2;
                     loc += 2;
 
@@ -712,26 +715,27 @@ final class BTreeValue {
                             // Only clearing inline content.
                             int iLen = (int) bLen;
                             if (txn != null) try {
-                                txn.pushUnwrite(cursor.mTree.mId, cursor.mKey,
-                                                pos, page, iLoc, iLen);
+                                txn.pushUnwrite(cursor.mTree.mId, cursor.mKey, pos,
+                                                pageAddr, iLoc, iLen);
                             } catch (Throwable e) {
                                 throw releaseExclusive(node, e);
                             }
-                            p_clear(page, iLoc, iLoc + iLen);
+                            p_clear(pageAddr, iLoc, iLoc + iLen);
                             if (op == OP_SET_LENGTH) {
                                 // Fragmented value encoding isn't used for pure inline
                                 // content, and so this case isn't expected.
                                 fHeaderLoc = truncateFragmented
-                                    (node, page, vHeaderLoc, vLen, iLen);
-                                updateLengthField(page, fHeaderLoc, finalLength);
+                                    (node, pageAddr, vHeaderLoc, vLen, iLen);
+                                updateLengthField(pageAddr, fHeaderLoc, finalLength);
                             }
                             return 0;
                         }
                         int iLen = (int) amt;
                         if (txn != null) {
-                            txn.pushUnwrite(cursor.mTree.mId, cursor.mKey, pos, page, iLoc, iLen);
+                            txn.pushUnwrite(cursor.mTree.mId, cursor.mKey, pos,
+                                            pageAddr, iLoc, iLen);
                         }
-                        p_clear(page, iLoc, iLoc + iLen);
+                        p_clear(pageAddr, iLoc, iLoc + iLen);
                         bLen -= amt;
                         pos = fInlineLen;
                     }
@@ -746,7 +750,7 @@ final class BTreeValue {
                 if ((fHeader & 0x01) != 0) try {
                     // Indirect pointers.
 
-                    long inodeId = p_uint48GetLE(page, loc);
+                    long inodeId = p_uint48GetLE(pageAddr, loc);
 
                     if (inodeId == 0) {
                         if (op == OP_CLEAR) {
@@ -758,7 +762,7 @@ final class BTreeValue {
                         Node inode = db.nodeMapLoadFragmentExclusive(inodeId, true);
                         try {
                             if (db.markFragmentDirty(inode)) {
-                                p_int48PutLE(page, loc, inode.id());
+                                p_int48PutLE(pageAddr, loc, inode.id());
                             }
 
                             int levels = db.calculateInodeLevels(fLen - fInlineLen);
@@ -777,7 +781,7 @@ final class BTreeValue {
                             }
 
                             do {
-                                long childNodeId = p_uint48GetLE(inode.mPage, 0);
+                                long childNodeId = p_uint48GetLE(inode.mPageAddr, 0);
 
                                 if (childNodeId == 0) {
                                     inodeId = 0;
@@ -800,26 +804,26 @@ final class BTreeValue {
                                 inodeId = inode.id();
                             } while (--levels > newLevels);
 
-                            p_int48PutLE(page, loc, inodeId);
+                            p_int48PutLE(pageAddr, loc, inodeId);
 
                             if (newLevels <= 0) {
                                 if (pos == 0) {
                                     // Convert to an empty value.
-                                    p_bytePut(page, vHeaderLoc, 0);
+                                    p_bytePut(pageAddr, vHeaderLoc, 0);
                                     int garbageAccum = fHeaderLoc - vHeaderLoc + vLen - 1;
                                     node.garbage(node.garbage() + garbageAccum);
                                     db.deleteNode(inode);
                                     break clearNodes;
                                 }
                                 // Convert to direct pointer format.
-                                p_bytePut(page, fHeaderLoc, fHeader & ~0x01);
+                                p_bytePut(pageAddr, fHeaderLoc, fHeader & ~0x01);
                             }
                         } finally {
                             inode.releaseExclusive();
                         }
                     }
 
-                    updateLengthField(page, fHeaderLoc, finalLength);
+                    updateLengthField(pageAddr, fHeaderLoc, finalLength);
                     return 0;
                 } catch (Throwable e) {
                     throw releaseExclusive(node, e);
@@ -829,7 +833,7 @@ final class BTreeValue {
 
                 final LocalDatabase db = node.getDatabase();
                 final int ipos = (int) (pos - fInlineLen);
-                final int pageSize = pageSize(db, page);
+                final int pageSize = db.pageSize();
                 loc += (ipos / pageSize) * 6;
                 int fNodeOff = ipos % pageSize;
 
@@ -837,7 +841,7 @@ final class BTreeValue {
 
                 while (true) try {
                     final int amt = Math.min((int) bLen, pageSize - fNodeOff);
-                    final long fNodeId = p_uint48GetLE(page, loc);
+                    final long fNodeId = p_uint48GetLE(pageAddr, loc);
 
                     if (fNodeId != 0) {
                         if (amt >= pageSize || toEnd && fNodeOff <= 0) {
@@ -847,27 +851,27 @@ final class BTreeValue {
                             } else {
                                 Node fNode = db.nodeMapLoadFragmentExclusive(fNodeId, true);
                                 try {
-                                    txn.pushUnwrite(cursor.mTree.mId, cursor.mKey,
-                                                    pos, fNode.mPage, 0, amt);
+                                    txn.pushUnwrite(cursor.mTree.mId, cursor.mKey, pos,
+                                                    fNode.mPageAddr, 0, amt);
                                 } catch (Throwable e) {
                                     fNode.releaseExclusive();
                                 }
                                 db.deleteNode(fNode);
                             }
-                            p_int48PutLE(page, loc, 0);
+                            p_int48PutLE(pageAddr, loc, 0);
                         } else {
                             // Partial clear of inode.
                             Node fNode = db.nodeMapLoadFragmentExclusive(fNodeId, true);
                             try {
                                 if (db.markFragmentDirty(fNode)) {
-                                    p_int48PutLE(page, loc, fNode.id());
+                                    p_int48PutLE(pageAddr, loc, fNode.id());
                                 }
-                                var fNodePage = fNode.mPage;
+                                var fNodePageAddr = fNode.mPageAddr;
                                 if (txn != null) {
-                                    txn.pushUnwrite(cursor.mTree.mId, cursor.mKey,
-                                                    pos, fNodePage, fNodeOff, amt);
+                                    txn.pushUnwrite(cursor.mTree.mId, cursor.mKey, pos,
+                                                    fNodePageAddr, fNodeOff, amt);
                                 }
-                                p_clear(fNode.mPage, fNodeOff, fNodeOff + amt);
+                                p_clear(fNode.mPageAddr, fNodeOff, fNodeOff + amt);
                             } finally {
                                 fNode.releaseExclusive();
                             }
@@ -886,11 +890,11 @@ final class BTreeValue {
                                 int len = (int) finalLength;
                                 shrinkage = shrinkage - ipos + fInlineLen - len;
                                 fragmentedToNormal
-                                    (node, page, vHeaderLoc, fInlineLoc, len, shrinkage);
+                                    (node, pageAddr, vHeaderLoc, fInlineLoc, len, shrinkage);
                             } else {
                                 fHeaderLoc = truncateFragmented
-                                    (node, page, vHeaderLoc, vLen, shrinkage);
-                                updateLengthField(page, fHeaderLoc, finalLength);
+                                    (node, pageAddr, vHeaderLoc, vLen, shrinkage);
+                                updateLengthField(pageAddr, fHeaderLoc, finalLength);
                             }
                         }
 
@@ -908,7 +912,7 @@ final class BTreeValue {
                 int fInlineLen = 0;
                 if ((fHeader & 0x02) != 0) {
                     // Inline content.
-                    fInlineLen = p_ushortGetLE(page, loc);
+                    fInlineLen = p_ushortGetLE(pageAddr, loc);
                     loc += 2;
                     final long amt = fInlineLen - pos;
                     if (amt > 0) {
@@ -917,21 +921,22 @@ final class BTreeValue {
                             // Only writing inline content.
                             int iLen = (int) bLen;
                             if (txn != null) {
-                                txn.pushUnwrite(cursor.mTree.mId, cursor.mKey,
-                                                pos, page, iLoc, iLen);
+                                txn.pushUnwrite(cursor.mTree.mId, cursor.mKey, pos,
+                                                pageAddr, iLoc, iLen);
                             }
-                            p_copyFromArray(b, bOff, page, iLoc, iLen);
+                            p_copyFromArray(b, bOff, pageAddr, iLoc, iLen);
                             return 0;
                         }
                         // Write just the inline region, and then never touch it again if
                         // continued to the outermost loop.
                         int iLen = (int) amt;
                         if (txn != null) try {
-                            txn.pushUnwrite(cursor.mTree.mId, cursor.mKey, pos, page, iLoc, iLen);
+                            txn.pushUnwrite(cursor.mTree.mId, cursor.mKey, pos,
+                                            pageAddr, iLoc, iLen);
                         } catch (Throwable e) {
                             throw releaseExclusive(node, e);
                         }
-                        p_copyFromArray(b, bOff, page, iLoc, iLen);
+                        p_copyFromArray(b, bOff, pageAddr, iLoc, iLen);
                         bLen -= amt;
                         bOff += amt;
                         pos = fInlineLen;
@@ -962,7 +967,7 @@ final class BTreeValue {
                         // Indirect pointers.
 
                         final int levels = db.calculateInodeLevels(fLen - fInlineLen);
-                        final Node inode = prepareMultilevelWrite(db, page, loc);
+                        final Node inode = prepareMultilevelWrite(db, pageAddr, loc);
                         writeMultilevelFragments
                             (txn, cursor, pos, pos - fInlineLen,
                              levels, inode, b, bOff, (int) bLen);
@@ -972,7 +977,7 @@ final class BTreeValue {
                         throw releaseExclusive(node, e);
                     }
 
-                    pageSize = pageSize(db, page);
+                    pageSize = db.pageSize();
                 } else {
                     // Extend the value.
 
@@ -998,7 +1003,7 @@ final class BTreeValue {
                             }
                         }
 
-                        Node inode = prepareMultilevelWrite(db, page, loc);
+                        Node inode = prepareMultilevelWrite(db, pageAddr, loc);
 
                         // Levels required before extending...
                         int levels = db.calculateInodeLevels(fLen - fInlineLen);
@@ -1013,7 +1018,7 @@ final class BTreeValue {
                                 throw new AssertionError();
                             }
 
-                            pageSize = pageSize(db, page);
+                            pageSize = db.pageSize();
 
                             var newNodes = new Node[newLevels - levels];
                             for (int i=0; i<newNodes.length; i++) {
@@ -1034,20 +1039,20 @@ final class BTreeValue {
                             }
 
                             for (Node upper : newNodes) {
-                                var upage = upper.mPage;
-                                p_int48PutLE(upage, 0, inode.id());
+                                var upageAddr = upper.mPageAddr;
+                                p_int48PutLE(upageAddr, 0, inode.id());
                                 inode.releaseExclusive();
                                 // Zero-fill the rest.
-                                p_clear(upage, 6, pageSize);
+                                p_clear(upageAddr, 6, pageSize);
                                 inode = upper;
                             }
 
                             levels = newLevels;
 
-                            p_int48PutLE(page, loc, inode.id());
+                            p_int48PutLE(pageAddr, loc, inode.id());
                         }
 
-                        updateLengthField(page, fHeaderLoc, endPos);
+                        updateLengthField(pageAddr, fHeaderLoc, endPos);
 
                         writeMultilevelFragments
                             (txn, cursor, pos, pos - fInlineLen,
@@ -1060,7 +1065,7 @@ final class BTreeValue {
 
                     // Extend the value with direct pointers.
 
-                    pageSize = pageSize(db, page);
+                    pageSize = db.pageSize();
 
                     long ptrGrowth = pointerCount(pageSize, endPos - fInlineLen)
                         - pointerCount(pageSize, fLen - fInlineLen);
@@ -1077,7 +1082,7 @@ final class BTreeValue {
                         }
 
                         // Page reference might have changed.
-                        page = node.mPage;
+                        pageAddr = node.mPageAddr;
 
                         // Fix broken location variables that are still required.
                         int delta = newLoc - fHeaderLoc;
@@ -1097,7 +1102,7 @@ final class BTreeValue {
                         throw releaseExclusive(node, e);
                     }
 
-                    updateLengthField(page, fHeaderLoc, endPos);
+                    updateLengthField(pageAddr, fHeaderLoc, endPos);
                 }
 
                 // Direct pointers.
@@ -1109,7 +1114,7 @@ final class BTreeValue {
                 while (true) try {
                     final int amt = Math.min((int) bLen, pageSize - fNodeOff);
                     if (amt > 0) {
-                        final long fNodeId = p_uint48GetLE(page, loc);
+                        final long fNodeId = p_uint48GetLE(pageAddr, loc);
                         if (fNodeId == 0) {
                             // Writing into a sparse value. Allocate a node and point to it.
                             if (txn != null) {
@@ -1117,13 +1122,13 @@ final class BTreeValue {
                             }
                             final Node fNode = db.allocDirtyFragmentNode();
                             try {
-                                p_int48PutLE(page, loc, fNode.id());
+                                p_int48PutLE(pageAddr, loc, fNode.id());
 
                                 // Now write to the new page, zero-filling the gaps.
-                                var fNodePage = fNode.mPage;
-                                p_clear(fNodePage, 0, fNodeOff);
-                                p_copyFromArray(b, bOff, fNodePage, fNodeOff, amt);
-                                p_clear(fNodePage, fNodeOff + amt, pageSize);
+                                var fNodePageAddr = fNode.mPageAddr;
+                                p_clear(fNodePageAddr, 0, fNodeOff);
+                                p_copyFromArray(b, bOff, fNodePageAddr, fNodeOff, amt);
+                                p_clear(fNodePageAddr, fNodeOff + amt, pageSize);
                             } finally {
                                 fNode.releaseExclusive();
                             }
@@ -1135,8 +1140,8 @@ final class BTreeValue {
                             } else {
                                 fNode = db.nodeMapLoadFragmentExclusive(fNodeId, true);
                                 try {
-                                    txn.pushUnwrite(cursor.mTree.mId, cursor.mKey,
-                                                    pos, fNode.mPage, fNodeOff, amt);
+                                    txn.pushUnwrite(cursor.mTree.mId, cursor.mKey, pos,
+                                                    fNode.mPageAddr, fNodeOff, amt);
                                 } catch (Throwable e) {
                                     fNode.releaseExclusive();
                                     throw e;
@@ -1145,9 +1150,9 @@ final class BTreeValue {
 
                             try {
                                 if (db.markFragmentDirty(fNode)) {
-                                    p_int48PutLE(page, loc, fNode.id());
+                                    p_int48PutLE(pageAddr, loc, fNode.id());
                                 }
-                                p_copyFromArray(b, bOff, fNode.mPage, fNodeOff, amt);
+                                p_copyFromArray(b, bOff, fNode.mPageAddr, fNodeOff, amt);
                             } finally {
                                 fNode.releaseExclusive();
                             }
@@ -1183,7 +1188,7 @@ final class BTreeValue {
         LocalDatabase db = inode.getDatabase();
 
         start: while (true) {
-            var page = inode.mPage;
+            long pageAddr = inode.mPageAddr;
             level--;
             long levelCap = db.levelCap(level);
 
@@ -1193,7 +1198,7 @@ final class BTreeValue {
             long ppos = pos % levelCap;
 
             while (true) {
-                long childNodeId = p_uint48GetLE(page, poffset);
+                long childNodeId = p_uint48GetLE(pageAddr, poffset);
                 int len = (int) Math.min(levelCap - ppos, bLen);
 
                 bLen -= len;
@@ -1214,7 +1219,7 @@ final class BTreeValue {
                         throw e;
                     }
                     if (level <= 0) {
-                        p_copyToArray(childNode.mPage, (int) ppos, b, bOff, len);
+                        p_copyToArray(childNode.mPageAddr, (int) ppos, b, bOff, len);
                         childNode.releaseShared();
                         if (bLen <= 0) {
                             inode.releaseShared();
@@ -1251,16 +1256,16 @@ final class BTreeValue {
      * @param loc location of root inode in the page
      * @return dirtied root inode with exclusive latch held
      */
-    private static Node prepareMultilevelWrite(LocalDatabase db, /*P*/ byte[] page, int loc)
+    private static Node prepareMultilevelWrite(LocalDatabase db, long pageAddr, int loc)
         throws IOException
     {
         final Node inode;
-        final long inodeId = p_uint48GetLE(page, loc);
+        final long inodeId = p_uint48GetLE(pageAddr, loc);
 
         if (inodeId == 0) {
             // Writing into a sparse value. Allocate a node and point to it.
             inode = db.allocDirtyFragmentNode();
-            p_clear(inode.mPage, 0, pageSize(db, inode.mPage));
+            p_clear(inode.mPageAddr, 0, db.pageSize());
         } else {
             inode = db.nodeMapLoadFragmentExclusive(inodeId, true);
             try {
@@ -1273,7 +1278,7 @@ final class BTreeValue {
             }
         }
 
-        p_int48PutLE(page, loc, inode.id());
+        p_int48PutLE(pageAddr, loc, inode.id());
 
         return inode;
     }
@@ -1295,7 +1300,7 @@ final class BTreeValue {
         LocalDatabase db = inode.getDatabase();
 
         start: while (true) {
-            var page = inode.mPage;
+            long pageAddr = inode.mPageAddr;
             level--;
             long levelCap = db.levelCap(level);
 
@@ -1304,10 +1309,10 @@ final class BTreeValue {
             // Handle a possible partial write to the first page.
             ppos %= levelCap;
 
-            final int pageSize = pageSize(db, page);
+            final int pageSize = db.pageSize();
 
             while (true) {
-                long childNodeId = p_uint48GetLE(page, poffset);
+                long childNodeId = p_uint48GetLE(pageAddr, poffset);
                 int len = (int) Math.min(levelCap - ppos, bLen);
 
                 bLen -= len;
@@ -1324,7 +1329,7 @@ final class BTreeValue {
                                 childNode = db.allocDirtyFragmentNode();
                                 if (ppos > 0 || len < pageSize) {
                                     // New page must be zero-filled.
-                                    p_clear(childNode.mPage, 0, pageSize);
+                                    p_clear(childNode.mPageAddr, 0, pageSize);
                                 }
                             } else {
                                 if (txn == null) {
@@ -1334,8 +1339,8 @@ final class BTreeValue {
                                 } else {
                                     // Obtain node from cache, fully reading it for the undo log.
                                     childNode = db.nodeMapLoadFragmentExclusive(childNodeId, true);
-                                    txn.pushUnwrite(cursor.mTree.mId, cursor.mKey,
-                                                    pos, childNode.mPage, (int) ppos, len);
+                                    txn.pushUnwrite(cursor.mTree.mId, cursor.mKey, pos,
+                                                    childNode.mPageAddr, (int) ppos, len);
                                 }
 
                                 try {
@@ -1351,10 +1356,10 @@ final class BTreeValue {
                             throw releaseExclusive(inode, e);
                         }
 
-                        p_int48PutLE(page, poffset, childNode.id());
+                        p_int48PutLE(pageAddr, poffset, childNode.id());
                     }
 
-                    p_copyFromArray(b, bOff, childNode.mPage, (int) ppos, len);
+                    p_copyFromArray(b, bOff, childNode.mPageAddr, (int) ppos, len);
                     childNode.releaseExclusive();
 
                     if (bLen <= 0) {
@@ -1369,7 +1374,7 @@ final class BTreeValue {
                                 // Writing into a sparse value. Allocate a node and point to it.
                                 childNode = db.allocDirtyFragmentNode();
                                 // New page must be zero-filled.
-                                p_clear(childNode.mPage, 0, pageSize);
+                                p_clear(childNode.mPageAddr, 0, pageSize);
                             } else {
                                 // Obtain node from cache, fully reading if necessary.
                                 childNode = db.nodeMapLoadFragmentExclusive(childNodeId, true);
@@ -1386,7 +1391,7 @@ final class BTreeValue {
                             throw releaseExclusive(inode, e);
                         }
 
-                        p_int48PutLE(page, poffset, childNode.id());
+                        p_int48PutLE(pageAddr, poffset, childNode.id());
                     }
 
                     if (bLen <= 0) {
@@ -1431,7 +1436,7 @@ final class BTreeValue {
     {
         LocalDatabase db = inode.getDatabase();
 
-        var page = inode.mPage;
+        long pageAddr = inode.mPageAddr;
         level--;
         long levelCap = db.levelCap(level);
 
@@ -1442,7 +1447,7 @@ final class BTreeValue {
 
         while (true) {
             long len = Math.min(levelCap - ppos, clearLen);
-            long childNodeId = p_uint48GetLE(page, poffset);
+            long childNodeId = p_uint48GetLE(pageAddr, poffset);
 
             if (childNodeId != 0) {
                 if (len >= levelCap || toEnd && ppos <= 0) {
@@ -1456,8 +1461,8 @@ final class BTreeValue {
                                     break full;
                                 }
                                 childNode = db.nodeMapLoadFragmentExclusive(childNodeId, true);
-                                txn.pushUnwrite(cursor.mTree.mId, cursor.mKey,
-                                                pos, childNode.mPage, 0, (int) len);
+                                txn.pushUnwrite(cursor.mTree.mId, cursor.mKey, pos,
+                                                childNode.mPageAddr, 0, (int) len);
                             } else {
                                 childNode = db.nodeMapLoadFragmentExclusive(childNodeId, true);
                                 clearMultilevelFragments
@@ -1473,21 +1478,21 @@ final class BTreeValue {
                         db.deleteNode(childNode);
                     }
 
-                    p_int48PutLE(page, poffset, 0);
+                    p_int48PutLE(pageAddr, poffset, 0);
                 } else {
                     // Partial clear of inode.
                     Node childNode = db.nodeMapLoadFragmentExclusive(childNodeId, true);
                     try {
                         if (db.markFragmentDirty(childNode)) {
-                            p_int48PutLE(page, poffset, childNode.id());
+                            p_int48PutLE(pageAddr, poffset, childNode.id());
                         }
                         if (level <= 0) {
-                            var childPage = childNode.mPage;
+                            var childPageAddr = childNode.mPageAddr;
                             if (txn != null) {
-                                txn.pushUnwrite(cursor.mTree.mId, cursor.mKey,
-                                                pos, childPage, (int) ppos, (int) len);
+                                txn.pushUnwrite(cursor.mTree.mId, cursor.mKey, pos,
+                                                childPageAddr, (int) ppos, (int) len);
                             }
-                            p_clear(childPage, (int) ppos, (int) (ppos + len));
+                            p_clear(childPageAddr, (int) ppos, (int) (ppos + len));
                         } else {
                             clearMultilevelFragments
                                 (txn, cursor, pos, ppos, level, childNode, len, toEnd);
@@ -1522,13 +1527,13 @@ final class BTreeValue {
         LocalDatabase db = inode.getDatabase();
 
         while (true) {
-            var page = inode.mPage;
+            long pageAddr = inode.mPageAddr;
             level--;
             long levelCap = db.levelCap(level);
 
             int poffset = ((int) (ppos / levelCap)) * 6;
 
-            final long childNodeId = p_uint48GetLE(page, poffset);
+            final long childNodeId = p_uint48GetLE(pageAddr, poffset);
             if (childNodeId == 0) {
                 // Sparse value.
                 return;
@@ -1539,7 +1544,7 @@ final class BTreeValue {
                 childNode = db.nodeMapLoadFragmentExclusive(childNodeId, true);
                 try {
                     if (db.markFragmentDirty(childNode)) {
-                        p_int48PutLE(page, poffset, childNode.id());
+                        p_int48PutLE(pageAddr, poffset, childNode.id());
                     }
                 } catch (Throwable e) {
                     throw releaseExclusive(childNode, e);
@@ -1601,18 +1606,18 @@ final class BTreeValue {
      * @param fHeaderLoc location of fragmented value header
      * @param fLen new fragmented value length
      */
-    private static void updateLengthField(/*P*/ byte[] page, int fHeaderLoc, long fLen) {
-        int fHeader = p_byteGet(page, fHeaderLoc);
+    private static void updateLengthField(long pageAddr, int fHeaderLoc, long fLen) {
+        int fHeader = p_byteGet(pageAddr, fHeaderLoc);
 
         switch ((fHeader >> 2) & 0x03) {
             case 0 -> // (2 byte length field)
-                    p_shortPutLE(page, fHeaderLoc + 1, (int) fLen);
+                    p_shortPutLE(pageAddr, fHeaderLoc + 1, (int) fLen);
             case 1 -> // (4 byte length field)
-                    p_intPutLE(page, fHeaderLoc + 1, (int) fLen);
+                    p_intPutLE(pageAddr, fHeaderLoc + 1, (int) fLen);
             case 2 -> // (6 byte length field)
-                    p_int48PutLE(page, fHeaderLoc + 1, fLen);
+                    p_int48PutLE(pageAddr, fHeaderLoc + 1, fLen);
             default -> // (8 byte length field)
-                    p_longPutLE(page, fHeaderLoc + 1, fLen);
+                    p_longPutLE(pageAddr, fHeaderLoc + 1, fLen);
         }
     }
 
@@ -1654,24 +1659,25 @@ final class BTreeValue {
         try {
             final int igrowth = (int) growth;
             final var newValue = new byte[vLen + igrowth];
-            final var page = node.mPage;
+            final long pageAddr = node.mPageAddr;
 
             // Update the header with the new field size.
-            int fHeader = p_byteGet(page, fHeaderLoc);
+            int fHeader = p_byteGet(pageAddr, fHeaderLoc);
             newValue[0] = (byte) (fHeader + (igrowth << 1));
 
             // Copy the length field.
             int srcLoc = fHeaderLoc + 1;
             int fieldLen = skipFragmentedLengthField(0, fHeader);
-            p_copyToArray(page, srcLoc, newValue, 1, fieldLen);
+            p_copyToArray(pageAddr, srcLoc, newValue, 1, fieldLen);
 
             // Copy the rest.
             srcLoc += fieldLen;
             int dstLoc = 1 + fieldLen + igrowth;
-            p_copyToArray(page, srcLoc, newValue, dstLoc, newValue.length - dstLoc);
+            p_copyToArray(pageAddr, srcLoc, newValue, dstLoc, newValue.length - dstLoc);
 
             // Clear the fragmented bit so that the update method doesn't delete the pages.
-            p_bytePut(page, vHeaderLoc, p_byteGet(page, vHeaderLoc) & ~Node.ENTRY_FRAGMENTED);
+            p_bytePut(pageAddr, vHeaderLoc,
+                      p_byteGet(pageAddr, vHeaderLoc) & ~Node.ENTRY_FRAGMENTED);
 
             // The fragmented bit is set again by this call.
             node.updateLeafValue(tree, frame.mNodePos, Node.ENTRY_FRAGMENTED, newValue);
@@ -1742,11 +1748,12 @@ final class BTreeValue {
 
         try {
             final var newValue = new byte[newValueLen];
-            final var page = node.mPage;
-            p_copyToArray(page, fHeaderLoc, newValue, 0, vLen);
+            final long pageAddr = node.mPageAddr;
+            p_copyToArray(pageAddr, fHeaderLoc, newValue, 0, vLen);
 
             // Clear the fragmented bit so that the update method doesn't delete the pages.
-            p_bytePut(page, vHeaderLoc, p_byteGet(page, vHeaderLoc) & ~Node.ENTRY_FRAGMENTED);
+            p_bytePut(pageAddr, vHeaderLoc,
+                      p_byteGet(pageAddr, vHeaderLoc) & ~Node.ENTRY_FRAGMENTED);
 
             // The fragmented bit is set again by this call.
             node.updateLeafValue(tree, frame.mNodePos, Node.ENTRY_FRAGMENTED, newValue);
@@ -1769,7 +1776,7 @@ final class BTreeValue {
             return -1;
         }
 
-        return p_ushortGetLE(node.mPage, node.searchVecStart() + frame.mNodePos) + fOffset;
+        return p_ushortGetLE(node.mPageAddr, node.searchVecStart() + frame.mNodePos) + fOffset;
     }
 
     /**
@@ -1799,11 +1806,11 @@ final class BTreeValue {
         throws IOException
     {
         final Node node = frame.mNode;
-        final var page = node.mPage;
+        final long pageAddr = node.mPageAddr;
 
         int loc = fHeaderLoc;
-        final int fHeader = p_byteGet(page, loc++);
-        final long fLen = LocalDatabase.decodeFullFragmentedValueLength(fHeader, page, loc);
+        final int fHeader = p_byteGet(pageAddr, loc++);
+        final long fLen = LocalDatabase.decodeFullFragmentedValueLength(fHeader, pageAddr, loc);
 
         loc = skipFragmentedLengthField(loc, fHeader);
 
@@ -1811,7 +1818,7 @@ final class BTreeValue {
         if ((fHeader & 0x02) == 0) {
             fInlineLen = 0;
         } else {
-            fInlineLen = p_ushortGetLE(page, loc);
+            fInlineLen = p_ushortGetLE(pageAddr, loc);
             loc = loc + 2 + fInlineLen;
         }
 
@@ -1820,7 +1827,7 @@ final class BTreeValue {
         final int tailLen = fHeaderLoc + vLen - loc; // length of all the direct pointers, in bytes
 
         final LocalDatabase db = node.getDatabase();
-        final int pageSize = pageSize(db, page);
+        final int pageSize = db.pageSize();
         final int shrinkage;
 
         if (fInlineLen > 0) {
@@ -1835,7 +1842,7 @@ final class BTreeValue {
                 // current entry. So reconstruct the full value and update it.
                 byte[] newValue;
                 try {
-                    byte[] fullValue = db.reconstruct(page, fHeaderLoc, vLen);
+                    byte[] fullValue = db.reconstruct(pageAddr, fHeaderLoc, vLen);
                     int max = db.mMaxFragmentedEntrySize - (vHeaderLoc - kHeaderLoc);
                     // Encode it this time without any inline content.
                     newValue = db.fragment(fullValue, fullValue.length, max, 0);
@@ -1868,10 +1875,11 @@ final class BTreeValue {
                     shrinkage = 2 + fInlineLen;
                 } else {
                     rightNode = db.allocDirtyFragmentNode();
-                    p_clear(rightNode.mPage, fInlineLen, pageSize);
+                    p_clear(rightNode.mPageAddr, fInlineLen, pageSize);
                     shrinkage = 2 + fInlineLen - 6;
                 }
-                leftNode = shiftDirectRight(db, page, loc, loc + tailLen, fInlineLen, rightNode);
+                leftNode = shiftDirectRight
+                    (db, pageAddr, loc, loc + tailLen, fInlineLen, rightNode);
             } catch (Throwable e) {
                 node.releaseExclusive();
                 try {
@@ -1887,19 +1895,19 @@ final class BTreeValue {
             }
 
             // Move the inline content in place now that room has been made.
-            p_copy(page, loc - fInlineLen, leftNode.mPage, 0, fInlineLen);
+            p_copy(pageAddr, loc - fInlineLen, leftNode.mPageAddr, 0, fInlineLen);
             leftNode.releaseExclusive();
 
             // Shift page contents over inline content and inline length header.
-            p_copy(page, loc, page, loc - fInlineLen - 2, tailLen);
+            p_copy(pageAddr, loc, pageAddr, loc - fInlineLen - 2, tailLen);
 
             if (rightNode != null) {
                 // Reference the new node.
-                p_int48PutLE(page, loc - fInlineLen - 2 + tailLen, rightNode.id());
+                p_int48PutLE(pageAddr, loc - fInlineLen - 2 + tailLen, rightNode.id());
             }
 
             // Clear the inline length field.
-            p_bytePut(page, fHeaderLoc, fHeader & ~0x02);
+            p_bytePut(pageAddr, fHeaderLoc, fHeader & ~0x02);
         } else {
             // Convert to indirect format.
 
@@ -1911,34 +1919,34 @@ final class BTreeValue {
                     throw releaseExclusive(node, e);
                 }
 
-                var ipage = inode.mPage;
-                p_copy(page, loc, ipage, 0, tailLen);
+                var ipageAddr = inode.mPageAddr;
+                p_copy(pageAddr, loc, ipageAddr, 0, tailLen);
                 // Zero-fill the rest.
-                p_clear(ipage, tailLen, pageSize);
+                p_clear(ipageAddr, tailLen, pageSize);
 
                 // Reference the root inode.
-                p_int48PutLE(page, loc, inode.id());
+                p_int48PutLE(pageAddr, loc, inode.id());
                 inode.releaseExclusive();
             }
 
             // Switch to indirect format.
-            p_bytePut(page, fHeaderLoc, fHeader | 0x01);
+            p_bytePut(pageAddr, fHeaderLoc, fHeader | 0x01);
 
             shrinkage = tailLen - 6;
         }
 
         // Update the raw value length.
         int newLen = vLen - shrinkage - 1; // minus one as required by field encoding
-        int header = p_byteGet(page, vHeaderLoc);
+        int header = p_byteGet(pageAddr, vHeaderLoc);
         if ((header & 0x20) == 0) {
             // Field length is 1..8192.
-            p_bytePut(page, vHeaderLoc, (header & 0xe0) | (newLen >> 8));
-            p_bytePut(page, vHeaderLoc + 1, newLen);
+            p_bytePut(pageAddr, vHeaderLoc, (header & 0xe0) | (newLen >> 8));
+            p_bytePut(pageAddr, vHeaderLoc + 1, newLen);
         } else {
             // Field length is 1..1048576.
-            p_bytePut(page, vHeaderLoc, (header & 0xf0) | (newLen >> 16));
-            p_bytePut(page, vHeaderLoc + 1, newLen >> 8);
-            p_bytePut(page, vHeaderLoc + 2, newLen);
+            p_bytePut(pageAddr, vHeaderLoc, (header & 0xf0) | (newLen >> 16));
+            p_bytePut(pageAddr, vHeaderLoc + 1, newLen >> 8);
+            p_bytePut(pageAddr, vHeaderLoc + 2, newLen);
         }
 
         // Update the garbage field.
@@ -1961,7 +1969,7 @@ final class BTreeValue {
      * @param dstNode optional rightmost fragment node to shift into, latched exclusively
      * @return leftmost fragment node, latched exclusively
      */
-    private static Node shiftDirectRight(LocalDatabase db, final /*P*/ byte[] page,
+    private static Node shiftDirectRight(LocalDatabase db, final long pageAddr,
                                          int startLoc, int endLoc, int amount,
                                          Node dstNode)
         throws IOException
@@ -1969,24 +1977,24 @@ final class BTreeValue {
         // First make sure all the fragment nodes are dirtied, in case of an exception.
 
         final var fNodes = new Node[(endLoc - startLoc) / 6];
-        final int pageSize = pageSize(db, page);
+        final int pageSize = db.pageSize();
 
         try {
             boolean requireDest = true;
             for (int i = 0, loc = startLoc; loc < endLoc; i++, loc += 6) {
-                long fNodeId = p_uint48GetLE(page, loc);
+                long fNodeId = p_uint48GetLE(pageAddr, loc);
                 if (fNodeId != 0) {
                     Node fNode = db.nodeMapLoadFragmentExclusive(fNodeId, true);
                     fNodes[i] = fNode;
                     if (db.markFragmentDirty(fNode)) {
-                        p_int48PutLE(page, loc, fNode.id());
+                        p_int48PutLE(pageAddr, loc, fNode.id());
                     }
                     requireDest = true;
                 } else if (requireDest) {
                     Node fNode = db.allocDirtyFragmentNode();
-                    p_clear(fNode.mPage, 0, pageSize);
+                    p_clear(fNode.mPageAddr, 0, pageSize);
                     fNodes[i] = fNode;
-                    p_int48PutLE(page, loc, fNode.id());
+                    p_int48PutLE(pageAddr, loc, fNode.id());
                     requireDest = false;
                 }
             }
@@ -2003,16 +2011,16 @@ final class BTreeValue {
             Node fNode = fNodes[i];
             if (fNode == null) {
                 if (dstNode != null) {
-                    p_clear(dstNode.mPage, 0, amount);
+                    p_clear(dstNode.mPageAddr, 0, amount);
                     dstNode.releaseExclusive();
                 }
             } else {
-                var fPage = fNode.mPage;
+                var fPageAddr = fNode.mPageAddr;
                 if (dstNode != null) {
-                    p_copy(fPage, pageSize - amount, dstNode.mPage, 0, amount);
+                    p_copy(fPageAddr, pageSize - amount, dstNode.mPageAddr, 0, amount);
                     dstNode.releaseExclusive();
                 }
-                p_copy(fPage, 0, fPage, amount, pageSize - amount);
+                p_copy(fPageAddr, 0, fPageAddr, amount, pageSize - amount);
             }
             dstNode = fNode;
         }
@@ -2027,24 +2035,24 @@ final class BTreeValue {
      * @param fInlineLen length of inline content to keep (normal value length)
      * @param shrinkage amount of bytes freed due to pointer deletion and inline reduction
      */
-    private static void fragmentedToNormal(final Node node, final /*P*/ byte[] page,
+    private static void fragmentedToNormal(final Node node, final long pageAddr,
                                            final int vHeaderLoc, final int fInlineLoc,
                                            final int fInlineLen, final int shrinkage)
     {
         int loc = vHeaderLoc;
 
         if (fInlineLen <= 127) {
-            p_bytePut(page, loc++, fInlineLen);
+            p_bytePut(pageAddr, loc++, fInlineLen);
         } else if (fInlineLen <= 8192) {
-            p_bytePut(page, loc++, 0x80 | ((fInlineLen - 1) >> 8));
-            p_bytePut(page, loc++, fInlineLen - 1);
+            p_bytePut(pageAddr, loc++, 0x80 | ((fInlineLen - 1) >> 8));
+            p_bytePut(pageAddr, loc++, fInlineLen - 1);
         } else {
-            p_bytePut(page, loc++, 0xa0 | ((fInlineLen - 1) >> 16));
-            p_bytePut(page, loc++, (fInlineLen - 1) >> 8);
-            p_bytePut(page, loc++, fInlineLen - 1);
+            p_bytePut(pageAddr, loc++, 0xa0 | ((fInlineLen - 1) >> 16));
+            p_bytePut(pageAddr, loc++, (fInlineLen - 1) >> 8);
+            p_bytePut(pageAddr, loc++, fInlineLen - 1);
         }
 
-        p_copy(page, fInlineLoc, page, loc, fInlineLen);
+        p_copy(pageAddr, fInlineLoc, pageAddr, loc, fInlineLen);
 
         node.garbage(node.garbage() + shrinkage + (fInlineLoc - loc));
     }
@@ -2054,7 +2062,7 @@ final class BTreeValue {
      *
      * @return updated fHeaderLoc
      */
-    private static int truncateFragmented(final Node node, final /*P*/ byte[] page,
+    private static int truncateFragmented(final Node node, final long pageAddr,
                                           final int vHeaderLoc, final int vLen, int shrinkage)
     {
         final int newLen = vLen - shrinkage;
@@ -2063,25 +2071,17 @@ final class BTreeValue {
         // Note: It's sometimes possible to convert from the 3-byte field to the 2-byte field.
         // It requires that the value be shifted over, and so it's not worth the trouble.
 
-        if ((p_byteGet(page, loc) & 0x20) == 0) {
-            p_bytePut(page, loc++, 0xc0 | ((newLen - 1) >> 8));
+        if ((p_byteGet(pageAddr, loc) & 0x20) == 0) {
+            p_bytePut(pageAddr, loc++, 0xc0 | ((newLen - 1) >> 8));
         } else {
-            p_bytePut(page, loc++, 0xe0 | ((newLen - 1) >> 16));
-            p_bytePut(page, loc++, (newLen - 1) >> 8);
+            p_bytePut(pageAddr, loc++, 0xe0 | ((newLen - 1) >> 16));
+            p_bytePut(pageAddr, loc++, (newLen - 1) >> 8);
         }
-        p_bytePut(page, loc++, newLen - 1);
+        p_bytePut(pageAddr, loc++, newLen - 1);
 
         node.garbage(node.garbage() + shrinkage);
 
         return loc;
-    }
-
-    private static int pageSize(LocalDatabase db, /*P*/ byte[] page) {
-        /*P*/ // [
-        return page.length;
-        /*P*/ // |
-        /*P*/ // return db.pageSize();
-        /*P*/ // ]
     }
 
     /**

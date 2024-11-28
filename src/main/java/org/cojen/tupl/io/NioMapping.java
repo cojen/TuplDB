@@ -22,12 +22,10 @@ import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.io.UncheckedIOException;
 
-import java.nio.ByteBuffer;
-import java.nio.MappedByteBuffer;
+import java.lang.foreign.Arena;
+import java.lang.foreign.MemorySegment;
 
 import java.nio.channels.FileChannel;
-
-import org.cojen.tupl.unsafe.DirectAccess;
 
 import static java.nio.channels.FileChannel.MapMode.*;
 
@@ -36,55 +34,34 @@ import static java.nio.channels.FileChannel.MapMode.*;
  *
  * @author Brian S O'Neill
  */
-final class NioMapping extends Mapping {
+final class NioMapping extends DirectMapping {
+    private final Arena mArena;
     private final RandomAccessFile mRaf;
     private final FileChannel mChannel;
-    private final MappedByteBuffer mBuffer;
+    private final MemorySegment mSegment;
 
     NioMapping(File file, boolean readOnly, long position, int size) throws IOException {
-        mRaf = new RandomAccessFile(file, readOnly ? "r" : "rw");
-        mChannel = mRaf.getChannel();
-        mBuffer = mChannel.map(readOnly ? READ_ONLY : READ_WRITE, position, size);
+        this(file, readOnly, position, size, Arena.ofShared(), null, null, null);
     }
 
-    @Override
-    int size() {
-        return mBuffer.capacity();
-    }
-
-    @Override
-    void read(int start, byte[] b, int off, int len) {
-        ByteBuffer src = mBuffer.slice();
-        src.position(start);
-        src.get(b, off, len);
-    }
-
-    @Override
-    void read(int start, long ptr, int len) {
-        ByteBuffer src = mBuffer.slice();
-        src.limit(start + len);
-        src.position(start);
-        DirectAccess.ref(ptr, len).put(src);
-    }
-
-    @Override
-    void write(int start, byte[] b, int off, int len) {
-        ByteBuffer dst = mBuffer.slice();
-        dst.position(start);
-        dst.put(b, off, len);
-    }
-
-    @Override
-    void write(int start, long ptr, int len) {
-        ByteBuffer dst = mBuffer.slice();
-        dst.position(start);
-        dst.put(DirectAccess.ref(ptr, len));
+    private NioMapping(File file, boolean readOnly, long position, int size, Arena arena,
+                       RandomAccessFile raf, FileChannel channel, MemorySegment segment)
+        throws IOException
+    {
+        super((segment =
+               (channel =
+                (raf = new RandomAccessFile(file, readOnly ? "r" : "rw")).getChannel())
+               .map(readOnly ? READ_ONLY : READ_WRITE, position, size, arena)).address(), size);
+        mArena = arena;
+        mRaf = raf;
+        mChannel = channel;
+        mSegment = segment;
     }
 
     @Override
     void sync(boolean metadata) throws IOException {
         try {
-            mBuffer.force();
+            mSegment.force();
         } catch (UncheckedIOException e) {
             throw e.getCause();
         }
@@ -93,7 +70,11 @@ final class NioMapping extends Mapping {
 
     @Override
     public void close() throws IOException {
-        DirectAccess.delete(mBuffer);
+        try {
+            mArena.close();
+        } catch (IllegalStateException e) {
+            // Already closed.
+        }
         mRaf.close();
     }
 }

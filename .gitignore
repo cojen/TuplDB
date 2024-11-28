@@ -3,7 +3,6 @@
 /javadoc
 *~
 /.gitignore~
-_*.java
 .DS_Store
 .idea
 *.ipr

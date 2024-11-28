@@ -28,7 +28,6 @@ import org.cojen.tupl.Entry;
  *
  * @author Brian S O'Neill
  */
-/*P*/
 class SortReverseScanner extends SortScanner {
     SortReverseScanner(LocalDatabase db) {
         super(db);

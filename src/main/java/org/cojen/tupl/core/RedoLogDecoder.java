@@ -31,7 +31,6 @@ import org.cojen.tupl.util.Latch;
  *
  * @author Brian S O'Neill
  */
-/*P*/
 final class RedoLogDecoder extends RedoDecoder {
     private final EventListener mListener;
 

@@ -38,7 +38,6 @@ import org.cojen.tupl.util.Latch;
  *
  * @author Brian S O'Neill
  */
-/*P*/
 public final class LockManager {
     // Parameter passed to Bucket.tryLock. For new Lock instances, value will be stored as-is
     // into Lock.mLockCount field, which is why the numbers seem a bit weird.

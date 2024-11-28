@@ -47,7 +47,6 @@ public class ShutdownTest {
 
     private void createTempDb(DurabilityMode mode) throws Exception {
         mConfig = new DatabaseConfig()
-            .directPageAccess(false)
             .checkpointRate(-1, null)
             .durabilityMode(mode);
         decorate(mConfig);

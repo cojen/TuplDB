@@ -23,7 +23,6 @@ import java.util.Map;
 
 import java.util.function.Consumer;
 
-import org.cojen.maker.Field;
 import org.cojen.maker.MethodMaker;
 import org.cojen.maker.Variable;
 

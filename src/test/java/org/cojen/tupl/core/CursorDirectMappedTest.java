@@ -26,7 +26,7 @@ import static org.cojen.tupl.TestUtils.*;
  *
  * @author Brian S O'Neill
  */
-public class CursorDirectMappedTest extends CursorDirectTest {
+public class CursorDirectMappedTest extends CursorTest {
     public static void main(String[] args) throws Exception {
         org.junit.runner.JUnitCore.main(CursorDirectMappedTest.class.getName());
     }

@@ -34,6 +34,6 @@ public class SnapshotCompressedTest extends SnapshotTest {
     @Override
     public void decorate(DatabaseConfig config) throws Exception {
         config.cacheSize(400_000_000L)
-            .compressPages(16384, 1_000_000L, () -> PageCompressor.zlib(1));
+            .compressPages(16384, 1_000_000L, PageCompressor.zlib(1));
     }
 }
