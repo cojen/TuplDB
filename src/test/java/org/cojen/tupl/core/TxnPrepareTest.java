@@ -53,7 +53,6 @@ public class TxnPrepareTest {
 
     protected DatabaseConfig newConfig(PrepareHandler recovery) {
         var config = new DatabaseConfig()
-            .directPageAccess(false)
             .lockTimeout(5000, TimeUnit.MILLISECONDS)
             .checkpointRate(-1, null);
 

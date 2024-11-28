@@ -151,7 +151,7 @@ final class NonPageDb extends PageDb {
     }
 
     @Override
-    public void readPage(long id, /*P*/ byte[] page) throws IOException {
+    public void readPage(long id, long pageAddr) throws IOException {
         fail(false);
     }
 
@@ -168,14 +168,14 @@ final class NonPageDb extends PageDb {
     }
 
     @Override
-    public void writePage(long id, /*P*/ byte[] page) throws IOException {
+    public void writePage(long id, long pageAddr) throws IOException {
         fail(true);
     }
 
     @Override
-    public /*P*/ byte[] evictPage(long id, /*P*/ byte[] page) throws IOException {
-        writePage(id, page);
-        return page;
+    public long evictPage(long id, long pageAddr) throws IOException {
+        writePage(id, pageAddr);
+        return pageAddr;
     }
 
     @Override
@@ -234,7 +234,7 @@ final class NonPageDb extends PageDb {
     }
 
     @Override
-    public void commit(boolean resume, /*P*/ byte[] header, CommitCallback callback)
+    public void commit(boolean resume, long headerAddr, CommitCallback callback)
         throws IOException
     {
         // This is more of an assertion failure.

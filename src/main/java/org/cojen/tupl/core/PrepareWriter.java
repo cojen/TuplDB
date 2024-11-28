@@ -28,7 +28,6 @@ import org.cojen.tupl.ext.PrepareHandler;
  *
  * @author Brian S O'Neill
  */
-/*P*/
 final class PrepareWriter extends HandlerWriter<PrepareHandler> implements PrepareHandler {
     PrepareWriter(LocalDatabase db, int handlerId, PrepareHandler recoveryHandler) {
         super(db, handlerId, recoveryHandler);

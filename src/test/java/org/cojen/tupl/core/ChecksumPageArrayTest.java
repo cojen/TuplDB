@@ -19,6 +19,10 @@ package org.cojen.tupl.core;
 
 import java.io.File;
 
+import java.lang.foreign.Arena;
+import java.lang.foreign.MemorySegment;
+import java.lang.foreign.ValueLayout;
+
 import java.util.EnumSet;
 
 import java.util.zip.CRC32C;
@@ -32,9 +36,6 @@ import org.cojen.tupl.io.FilePageArray;
 import org.cojen.tupl.io.OpenOption;
 import org.cojen.tupl.io.PageArray;
 import org.cojen.tupl.io.Utils;
-
-import org.cojen.tupl.unsafe.DirectAccess;
-import org.cojen.tupl.unsafe.UnsafeAccess;
 
 /**
  * 
@@ -67,6 +68,11 @@ public class ChecksumPageArrayTest {
         basic(false);
     }
 
+    @Test
+    public void basicDirect() throws Exception {
+        basic(true);
+    }
+
     private void basic(boolean directIO) throws Exception {
         var options = EnumSet.of(OpenOption.CREATE);
 
@@ -74,64 +80,7 @@ public class ChecksumPageArrayTest {
             options.add(OpenOption.DIRECT_IO);
         }
 
-        mSource = new FilePageArray(512, mFile, options);
-
-        PageArray pa = ChecksumPageArray.open(mSource, CRC32C::new);
-        int pageSize = 512 - 4;
-        assertEquals(pageSize, pa.pageSize());
-
-        int physicalPageSize = pageSize;
-
-        if (pa.isDirectIO()) {
-            // Page sizes must match.
-            physicalPageSize += 4;
-        }
-
-        int writeOffset = 10;
-        var writePage = new byte[writeOffset + physicalPageSize];
-        for (int i=0; i<writePage.length; i++) {
-            writePage[i] = (byte) i;
-        }
-
-        pa.writePage(1, writePage, writeOffset);
-
-        int readOffset = 20;
-        var readPage = new byte[readOffset + physicalPageSize];
-        pa.readPage(1, readPage, readOffset, physicalPageSize);
-
-        for (int i=0; i<pageSize; i++) {
-            assertEquals(writePage[writeOffset + i], readPage[readOffset + i]);
-        }
-
-        var srcPage = new byte[pageSize + 4];
-        mSource.readPage(1, srcPage);
-
-        for (int i=0; i<pageSize; i++) {
-            assertEquals(srcPage[i], readPage[readOffset + i]);
-        }
-
-        var crc = new CRC32C();
-        crc.update(writePage, writeOffset, pageSize);
-        int expectedCrc = (int) crc.getValue();
-
-        int actualCrc = Utils.decodeIntLE(srcPage, pageSize);
-
-        assertEquals(expectedCrc, actualCrc);
-    }
-
-    @Test
-    public void basicPtrs() throws Exception {
-        basicPtrs(false);
-    }
-
-    private void basicPtrs(boolean directIO) throws Exception {
-        var options = EnumSet.of(OpenOption.CREATE);
-
-        if (directIO) {
-            options.add(OpenOption.DIRECT_IO);
-        }
-
-        mSource = new FilePageArray(4096, mFile, options);
+        mSource = FilePageArray.factory(4096, mFile, options).get();
 
         PageArray pa = ChecksumPageArray.open(mSource, CRC32C::new);
         int pageSize = 4096 - 4;
@@ -144,45 +93,41 @@ public class ChecksumPageArrayTest {
             physicalPageSize += 4;
         }
 
-        int writeOffset = directIO ? 0 : 15;
-        int writePageSize = writeOffset + physicalPageSize;
-        long writePagePtr = alloc(writePageSize, pa);
-        for (int i=0; i<writePageSize; i++) {
-            DirectPageOps.p_bytePut(writePagePtr, i, i);
+        try (Arena a = Arena.ofConfined()) {
+            int writeOffset = directIO ? 0 : 15;
+            MemorySegment writePage = a.allocate
+                (writeOffset + physicalPageSize, SysInfo.pageSize());
+            for (int i=0; i<writePage.byteSize(); i++) {
+                writePage.set(ValueLayout.JAVA_BYTE, i, (byte) i);
+            }
+
+            pa.writePage(2, writePage.address(), writeOffset);
+
+            int readOffset = 25;
+            MemorySegment readPage = a.allocate(readOffset + physicalPageSize, SysInfo.pageSize());
+            pa.readPage(2, readPage.address(), readOffset, physicalPageSize);
+
+            for (int i=0; i<pageSize; i++) {
+                assertEquals(writePage.get(ValueLayout.JAVA_BYTE, writeOffset + i),
+                             readPage.get(ValueLayout.JAVA_BYTE, readOffset + i));
+            }
+
+            MemorySegment srcPage = a.allocate(pageSize + 4, SysInfo.pageSize());
+            mSource.readPage(2, srcPage.address());
+
+            for (int i=0; i<pageSize; i++) {
+                assertEquals(srcPage.get(ValueLayout.JAVA_BYTE, i),
+                             readPage.get(ValueLayout.JAVA_BYTE, readOffset + i));
+            }
+
+            var crc = new CRC32C();
+            crc.update(writePage.asByteBuffer()
+                       .position(writeOffset).limit(writeOffset + pageSize));
+            int expectedCrc = (int) crc.getValue();
+
+            int actualCrc = srcPage.get(ValueLayout.JAVA_INT, pageSize);
+
+            assertEquals(expectedCrc, actualCrc);
         }
-
-        pa.writePage(2, writePagePtr, writeOffset);
-
-        int readOffset = 25;
-        int readPageSize = readOffset + physicalPageSize;
-        long readPagePtr = alloc(readPageSize, pa);
-        pa.readPage(2, readPagePtr, readOffset, physicalPageSize);
-
-        for (int i=0; i<pageSize; i++) {
-            assertEquals(DirectPageOps.p_byteGet(writePagePtr, writeOffset + i),
-                         DirectPageOps.p_byteGet(readPagePtr, readOffset + i));
-        }
-
-        var srcPage = new byte[pageSize + 4];
-        mSource.readPage(2, srcPage);
-
-        for (int i=0; i<pageSize; i++) {
-            assertEquals(srcPage[i], DirectPageOps.p_byteGet(readPagePtr, readOffset + i));
-        }
-
-        var crc = new CRC32C();
-        crc.update(DirectAccess.ref(writePagePtr + writeOffset, pageSize));
-        int expectedCrc = (int) crc.getValue();
-
-        int actualCrc = Utils.decodeIntLE(srcPage, pageSize);
-
-        assertEquals(expectedCrc, actualCrc);
-
-        UnsafeAccess.free(writePagePtr);
-        UnsafeAccess.free(readPagePtr);
-    }
-
-    private static long alloc(int size, PageArray pa) {
-        return UnsafeAccess.alloc(size, pa.isDirectIO());
     }
 }

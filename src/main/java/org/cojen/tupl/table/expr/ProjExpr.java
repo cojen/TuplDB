@@ -296,7 +296,7 @@ public final class ProjExpr extends WrappedExpr implements Attr {
      *
      * @param rowType defines the row columns
      * @param rowVar references a row instance
-     * @param valueVar the value to to set
+     * @param valueVar the value to set
      */
     public void makeSetColumn(TupleType rowType, Variable rowVar, Variable valueVar) {
         Type type = type();

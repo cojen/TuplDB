@@ -30,6 +30,8 @@ import java.nio.charset.StandardCharsets;
 
 import javax.net.ssl.SSLContext;
 
+import org.cojen.tupl.core.Rebuilder;
+
 import org.cojen.tupl.diag.CompactionObserver;
 import org.cojen.tupl.diag.DatabaseStats;
 import org.cojen.tupl.diag.EventListener;
@@ -118,11 +120,31 @@ public interface Database extends CauseCloseable, Flushable {
     }
 
     /**
+     * Open an existing database and copy all the data into a new database, which can have a
+     * different configuration.
+     *
+     * @param numThreads pass 0 for default, or if negative, the actual number will be {@code
+     * (-numThreads * availableProcessors)}.
+     * @return the newly built database
+     * @throws IllegalStateException if the new database already exists or if either is replicated
+     */
+    public static Database rebuild(DatabaseConfig oldConfig, DatabaseConfig newConfig,
+                                   int numThreads)
+        throws IOException
+    {
+        if (numThreads <= 0) {
+            int procs = Runtime.getRuntime().availableProcessors();
+            numThreads = numThreads == 0 ? procs : procs * -numThreads;
+        }
+        return new Rebuilder(oldConfig.mLauncher, newConfig.mLauncher, numThreads).run();
+    }
+
+    /**
      * Returns the given named index, creating it if necessary.
      *
      * @return shared Index instance
      */
-    public abstract Index openIndex(byte[] name) throws IOException;
+    public Index openIndex(byte[] name) throws IOException;
 
     /**
      * Returns the given named index, creating it if necessary. Name is UTF-8
@@ -139,7 +161,7 @@ public interface Database extends CauseCloseable, Flushable {
      *
      * @return shared Index instance; null if not found
      */
-    public abstract Index findIndex(byte[] name) throws IOException;
+    public Index findIndex(byte[] name) throws IOException;
 
     /**
      * Returns the given named index, returning null if not found. Name is UTF-8
@@ -157,7 +179,7 @@ public interface Database extends CauseCloseable, Flushable {
      * @return shared Index instance
      * @throws IllegalArgumentException if id is reserved
      */
-    public abstract Index indexById(long id) throws IOException;
+    public Index indexById(long id) throws IOException;
 
     /**
      * Returns an index by its identifier, returning null if not found.
@@ -217,7 +239,7 @@ public interface Database extends CauseCloseable, Flushable {
      * @throws IllegalStateException if name is already in use by another index
      * @throws IllegalStateException if index belongs to another database instance
      */
-    public abstract void renameIndex(Index index, byte[] newName) throws IOException;
+    public void renameIndex(Index index, byte[] newName) throws IOException;
 
     /**
      * Renames the given index to the one given. Name is UTF-8 encoded.
@@ -252,7 +274,7 @@ public interface Database extends CauseCloseable, Flushable {
      * @see EventListener
      * @see Index#drop Index.drop
      */
-    public abstract Runnable deleteIndex(Index index) throws IOException;
+    public Runnable deleteIndex(Index index) throws IOException;
 
     /**
      * Creates a new unnamed temporary index. Temporary indexes never get written to the redo
@@ -260,21 +282,21 @@ public interface Database extends CauseCloseable, Flushable {
      * explicitly {@linkplain #deleteIndex deleted} when no longer needed, rather than waiting
      * until the database is re-opened.
      */
-    public abstract Index newTemporaryIndex() throws IOException;
+    public Index newTemporaryIndex() throws IOException;
 
     /**
      * Returns an {@linkplain UnmodifiableViewException unmodifiable} View which maps all
      * available index names to identifiers. Identifiers are long integers, {@linkplain
      * org.cojen.tupl.io.Utils#decodeLongBE big-endian} encoded.
      */
-    public abstract View indexRegistryByName() throws IOException;
+    public View indexRegistryByName() throws IOException;
 
     /**
      * Returns an {@linkplain UnmodifiableViewException unmodifiable} View which maps all
      * available index identifiers to names. Identifiers are long integers, {@linkplain
      * org.cojen.tupl.io.Utils#decodeLongBE big-endian} encoded.
      */
-    public abstract View indexRegistryById() throws IOException;
+    public View indexRegistryById() throws IOException;
 
     /**
      * Returns a new Transaction with the {@linkplain DatabaseConfig#durabilityMode default}
@@ -288,7 +310,7 @@ public interface Database extends CauseCloseable, Flushable {
      * Returns a new Transaction with the given durability mode. If null, the
      * {@linkplain DatabaseConfig#durabilityMode default} is used.
      */
-    public abstract Transaction newTransaction(DurabilityMode durabilityMode);
+    public Transaction newTransaction(DurabilityMode durabilityMode);
 
     /**
      * Returns a handler instance suitable for writing custom redo and undo operations. A
@@ -298,7 +320,7 @@ public interface Database extends CauseCloseable, Flushable {
      * @return new writer instance
      * @throws IllegalStateException if no recovery instance by the given name is installed
      */
-    public abstract CustomHandler customWriter(String name) throws IOException;
+    public CustomHandler customWriter(String name) throws IOException;
 
     /**
      * Returns a handler instance suitable for preparing transactions. A corresponding recovery
@@ -308,14 +330,14 @@ public interface Database extends CauseCloseable, Flushable {
      * @return new writer instance
      * @throws IllegalStateException if no recovery instance by the given name is installed
      */
-    public abstract PrepareHandler prepareWriter(String name) throws IOException;
+    public PrepareHandler prepareWriter(String name) throws IOException;
 
     /**
      * Returns a new Sorter instance. The standard algorithm is a parallel external mergesort,
      * which attempts to use all available processors. All external storage is maintained in
      * the database itself, in the form of temporary indexes.
      */
-    public abstract Sorter newSorter();
+    public Sorter newSorter();
 
     /**
      * Preallocates pages for immediate use. The actual amount allocated
@@ -323,7 +345,7 @@ public interface Database extends CauseCloseable, Flushable {
      *
      * @return actual amount allocated
      */
-    public abstract long preallocate(long bytes) throws IOException;
+    public long preallocate(long bytes) throws IOException;
 
     /**
      * Set a soft capacity limit for the database, to prevent filling up the storage
@@ -382,7 +404,7 @@ public interface Database extends CauseCloseable, Flushable {
      *
      * @return a snapshot control object, which must be closed when no longer needed
      */
-    public abstract Snapshot beginSnapshot() throws IOException;
+    public Snapshot beginSnapshot() throws IOException;
 
     /**
      * Restore from a {@linkplain #beginSnapshot snapshot}, into the data files defined by the
@@ -404,7 +426,7 @@ public interface Database extends CauseCloseable, Flushable {
      * @param out cache priming destination; buffering is recommended; not auto-closed
      * @see DatabaseConfig#cachePriming
      */
-    public abstract void createCachePrimer(OutputStream out) throws IOException;
+    public void createCachePrimer(OutputStream out) throws IOException;
 
     /**
      * Prime the cache, from a set encoded {@linkplain #createCachePrimer earlier}.
@@ -412,7 +434,7 @@ public interface Database extends CauseCloseable, Flushable {
      * @param in caching priming source; buffering is recommended; auto-closed
      * @see DatabaseConfig#cachePriming
      */
-    public abstract void applyCachePrimer(InputStream in) throws IOException;
+    public void applyCachePrimer(InputStream in) throws IOException;
 
     /**
      * Returns an object for enabling remote access into this database. As long as the server
@@ -423,12 +445,12 @@ public interface Database extends CauseCloseable, Flushable {
      *
      * @see #connect connect
      */
-    public abstract Server newServer() throws IOException;
+    public Server newServer() throws IOException;
 
     /**
      * Returns a collection of database statistics.
      */
-    public abstract DatabaseStats stats();
+    public DatabaseStats stats();
 
     /**
      * Flushes all committed transactions, but not durably. Transactions committed with
@@ -439,14 +461,14 @@ public interface Database extends CauseCloseable, Flushable {
      * Calling this method on a replicated database has no effect.
      */
     @Override
-    public abstract void flush() throws IOException;
+    public void flush() throws IOException;
 
     /**
      * Durably flushes all committed transactions. Transactions committed with {@linkplain
      * DurabilityMode#NO_FLUSH no-flush} and {@linkplain DurabilityMode#NO_SYNC no-sync}
      * effectively become {@linkplain DurabilityMode#SYNC sync} durable.
      */
-    public abstract void sync() throws IOException;
+    public void sync() throws IOException;
 
     /**
      * Durably sync and checkpoint all changes to the database. In addition to ensuring that
@@ -454,7 +476,7 @@ public interface Database extends CauseCloseable, Flushable {
      * modifications are durable. Checkpoints are performed automatically by a background
      * thread, at a {@linkplain DatabaseConfig#checkpointRate configurable} rate.
      */
-    public abstract void checkpoint() throws IOException;
+    public void checkpoint() throws IOException;
 
     /**
      * Temporarily suspend automatic checkpoints and wait for any in-progress checkpoint to
@@ -463,7 +485,7 @@ public interface Database extends CauseCloseable, Flushable {
      *
      * @throws IllegalStateException if suspended more than 2<sup>31</sup> times
      */
-    public abstract void suspendCheckpoints();
+    public void suspendCheckpoints();
 
     /**
      * Resume automatic checkpoints after having been temporarily {@link #suspendCheckpoints
@@ -471,7 +493,7 @@ public interface Database extends CauseCloseable, Flushable {
      *
      * @throws IllegalStateException if resumed more than suspended
      */
-    public abstract void resumeCheckpoints();
+    public void resumeCheckpoints();
 
     /**
      * Returns the checkpoint commit lock, which can be held to prevent checkpoints from
@@ -483,7 +505,7 @@ public interface Database extends CauseCloseable, Flushable {
      * modifications, if a checkpoint is trying to start. In addition, a thread holding the
      * commit lock must not attempt to issue a checkpoint, because deadlock is possible.
      */
-    public abstract Lock commitLock();
+    public Lock commitLock();
 
     /**
      * Compacts the database by shrinking the database file. The compaction target is the
@@ -508,21 +530,24 @@ public interface Database extends CauseCloseable, Flushable {
      * @throws IllegalArgumentException if compaction target is out of bounds
      * @throws IllegalStateException if compaction is already in progress
      */
-    public abstract boolean compactFile(CompactionObserver observer, double target)
+    public boolean compactFile(CompactionObserver observer, double target)
         throws IOException;
 
     /**
-     * Verifies the integrity of the database and all indexes.
+     * Verifies the integrity of the database and all indexes. Using multiple threads speeds up
+     * verification, even though some nodes might be visited multiple times.
      *
      * @param observer optional observer; pass null for default
+     * @param numThreads pass 0 for default, or if negative, the actual number will be {@code
+     * (-numThreads * availableProcessors)}.
      * @return true if verification passed
      */
-    public abstract boolean verify(VerificationObserver observer) throws IOException;
+    public boolean verify(VerificationObserver observer, int numThreads) throws IOException;
 
     /**
      * Returns true if the database instance is currently the leader.
      */
-    public abstract boolean isLeader();
+    public boolean isLeader();
 
     /**
      * Registers the given task to start in a separate thread when the database instance has
@@ -534,7 +559,7 @@ public interface Database extends CauseCloseable, Flushable {
      * @param acquired called when leadership is acquired (can be null)
      * @param lost called when leadership is lost (can be null)
      */
-    public abstract void uponLeader(Runnable acquired, Runnable lost);
+    public void uponLeader(Runnable acquired, Runnable lost);
 
     /**
      * If the database instance is currently acting as a leader, attempt to give up leadership
@@ -542,7 +567,7 @@ public interface Database extends CauseCloseable, Flushable {
      * is returned. When false is returned, the database is likely still the leader, either
      * because the database isn't replicated, or because no replicas exist to failover to.
      */
-    public abstract boolean failover() throws IOException;
+    public boolean failover() throws IOException;
 
     /**
      * Closes the database, ensuring durability of committed transactions. No
@@ -565,17 +590,17 @@ public interface Database extends CauseCloseable, Flushable {
      * @see #shutdown
      */
     @Override
-    public abstract void close(Throwable cause) throws IOException;
+    public void close(Throwable cause) throws IOException;
 
     /**
      * Returns true if database was explicitly closed, or if it was closed due to a panic.
      */
-    public abstract boolean isClosed();
+    public boolean isClosed();
 
     /**
      * Cleanly closes the database, ensuring durability of all modifications. A checkpoint is
      * issued first, and so a quick recovery is performed when the database is re-opened. As a
      * side effect of shutting down, all extraneous files are deleted.
      */
-    public abstract void shutdown() throws IOException;
+    public void shutdown() throws IOException;
 }

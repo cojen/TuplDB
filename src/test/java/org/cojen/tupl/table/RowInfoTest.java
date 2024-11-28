@@ -233,6 +233,8 @@ public class RowInfoTest {
         Test100 row = db.openTable(Test100.class).newRow();
         assertEquals(123, row.compareTo(""));
         assertEquals(234, row.compareTo(row));
+
+        db.close();
     }
 
     @PrimaryKey("a")

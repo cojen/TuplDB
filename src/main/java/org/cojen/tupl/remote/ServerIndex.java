@@ -79,8 +79,11 @@ class ServerIndex extends ServerView<Index> implements RemoteIndex {
     }
 
     @Override
-    public boolean verify(int flags, RemoteVerificationObserver remote) throws IOException {
-        return VerificationObserverRelay.verify(flags, remote, mView::verify);
+    public boolean verify(int flags, RemoteVerificationObserver remote, int numThreads)
+        throws IOException
+    {
+        return VerificationObserverRelay.verify
+            (flags, remote, obs -> mView.verify(obs, numThreads));
     }
 
     @Override

@@ -27,9 +27,9 @@ import org.cojen.tupl.Transaction;
  *
  * @author Brian S O'Neill
  */
-/*P*/
 abstract class BTreeMerger extends BTreeSeparator {
     /**
+     * @param db is only used for calling newTemporaryIndex
      * @param executor used for parallel separation; pass null to use only the starting thread
      * @param workerCount maximum parallelism; must be at least 1
      */

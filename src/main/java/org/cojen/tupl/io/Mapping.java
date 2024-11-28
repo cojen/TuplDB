@@ -18,7 +18,6 @@
 package org.cojen.tupl.io;
 
 import java.io.Closeable;
-import java.io.File;
 import java.io.IOException;
 
 /**
@@ -31,11 +30,11 @@ abstract class Mapping implements Closeable {
 
     abstract void read(int start, byte[] b, int off, int len);
 
-    abstract void read(int start, long ptr, int length);
+    abstract void read(int start, long addr, int length);
 
     abstract void write(int start, byte[] b, int off, int len);
 
-    abstract void write(int start, long ptr, int length);
+    abstract void write(int start, long addr, int length);
 
     abstract void sync(boolean metadata) throws IOException;
 }

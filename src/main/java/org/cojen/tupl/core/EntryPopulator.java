@@ -24,7 +24,7 @@ import org.cojen.tupl.Entry;
 import org.cojen.tupl.table.RowMaker;
 
 /**
- * Singleton Entry populator shared by the SortScanner class and the generated _SortScanner class.
+ * Singleton Entry populator use by the SortScanner class.
  *
  * @author Brian S O'Neill
  */

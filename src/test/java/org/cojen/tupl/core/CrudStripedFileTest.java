@@ -42,7 +42,7 @@ public class CrudStripedFileTest extends CrudTest {
         for (int i=0; i<files.length; i++) {
             files[i] = new File(newTempBaseFile(getClass()).getPath() + ".db");
         }
-        var config = new DatabaseConfig().dataFiles(files).directPageAccess(false);
+        var config = new DatabaseConfig().dataFiles(files);
         mDb = newTempDatabase(getClass(), config);
     }
 }

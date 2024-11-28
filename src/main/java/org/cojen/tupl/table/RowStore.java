@@ -57,8 +57,8 @@ import org.cojen.tupl.Transaction;
 import org.cojen.tupl.UniqueConstraintException;
 import org.cojen.tupl.View;
 
-import org.cojen.tupl.core.CoreDatabase;
 import org.cojen.tupl.core.LHashTable;
+import org.cojen.tupl.core.LocalDatabase;
 import org.cojen.tupl.core.RowPredicateLock;
 import org.cojen.tupl.core.ScanVisitor;
 import org.cojen.tupl.core.TupleKey;
@@ -78,7 +78,7 @@ import static org.cojen.tupl.table.SchemaChangeListener.*;
  */
 public final class RowStore {
     private final WeakReference<RowStore> mSelfRef;
-    final CoreDatabase mDatabase;
+    final LocalDatabase mDatabase;
 
     /* Schema metadata for all types.
 
@@ -142,7 +142,7 @@ public final class RowStore {
 
     private static final int TASK_DELETE_SCHEMA = 1, TASK_NOTIFY_SCHEMA = 2;
 
-    public RowStore(CoreDatabase db, Index schemata) throws IOException {
+    public RowStore(LocalDatabase db, Index schemata) throws IOException {
         mSelfRef = new WeakReference<>(this);
         mDatabase = db;
         mSchemata = schemata;

@@ -151,8 +151,7 @@ public class DatabaseReplicatorTest {
                 .baseFile(mReplBaseFiles[i])
                 .replicate(mReplicators[i])
                 .eventListener(listener)
-                .lockTimeout(5, TimeUnit.SECONDS)
-                .directPageAccess(false);
+                .lockTimeout(5, TimeUnit.SECONDS);
 
             if (handlerSupplier != null) {
                 mDbConfigs[i].prepareHandlers(Map.of("TestHandler", handlerSupplier.get()));

@@ -44,7 +44,7 @@ public class CrudSelfUnionTest extends CrudNonDurableTest {
 
     @Override
     protected boolean verify(View view) throws Exception {
-        return mViews.get(view).verify(null);
+        return mViews.get(view).verify(null, 1);
     }
 
     static class Self implements Combiner {

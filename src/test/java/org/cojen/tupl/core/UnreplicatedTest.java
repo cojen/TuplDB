@@ -38,7 +38,6 @@ public class UnreplicatedTest {
     public void createTempDb() throws Exception {
         mRepl = new NonReplicator();
         mConfig = new DatabaseConfig()
-            .directPageAccess(false)
             .checkpointRate(-1, null)
             .durabilityMode(DurabilityMode.SYNC) // need to wait for commit confirmation
             .replicate(mRepl);

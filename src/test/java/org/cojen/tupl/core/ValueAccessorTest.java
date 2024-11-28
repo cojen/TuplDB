@@ -43,7 +43,7 @@ public class ValueAccessorTest {
     @Before
     public void createTempDb() throws Exception {
         var config = new DatabaseConfig()
-            .directPageAccess(false).pageSize(512).durabilityMode(DurabilityMode.NO_SYNC);
+            .pageSize(512).durabilityMode(DurabilityMode.NO_SYNC);
         config = decorate(config);
         mConfig = config;
         mDb = newTempDatabase(getClass(), config);
@@ -472,7 +472,7 @@ public class ValueAccessorTest {
         accessor.close();
 
         if (fullCheck) {
-            assertTrue(ix.verify(null));
+            assertTrue(ix.verify(null, 0));
         }
 
         ix.delete(Transaction.BOGUS, key);
@@ -500,7 +500,7 @@ public class ValueAccessorTest {
     private void truncateNonFragmented(boolean undo) throws Exception {
         // Use large page to test 3-byte value header encoding.
         var config = new DatabaseConfig()
-            .directPageAccess(false).pageSize(32768).durabilityMode(DurabilityMode.NO_SYNC);
+            .pageSize(32768).durabilityMode(DurabilityMode.NO_SYNC);
         Database db = newTempDatabase(getClass(), decorate(config));
 
         truncate(db, 10, 5, undo);     // 1-byte header to 1
@@ -528,7 +528,7 @@ public class ValueAccessorTest {
 
         // Use large page to test 3-byte value header encoding.
         var config = new DatabaseConfig()
-            .directPageAccess(false).pageSize(32768).durabilityMode(DurabilityMode.NO_SYNC);
+            .pageSize(32768).durabilityMode(DurabilityMode.NO_SYNC);
         Database db = newTempDatabase(getClass(), decorate(config));
 
         truncate(db, 65536, 10, undo);       // no inline content; two pointers to one
@@ -577,7 +577,7 @@ public class ValueAccessorTest {
             fastAssertArrayEquals(value, ix.load(null, key));
         }
 
-        assertTrue(ix.verify(null));
+        assertTrue(ix.verify(null, 1));
     }
 
     @Test
@@ -616,7 +616,7 @@ public class ValueAccessorTest {
             assertEquals(0, loaded2[i]);
         }
 
-        assertTrue(ix.verify(null));
+        assertTrue(ix.verify(null, -1));
     }
 
     @Test
@@ -770,7 +770,7 @@ public class ValueAccessorTest {
             }
         }
 
-        assertTrue(ix.verify(null));
+        assertTrue(ix.verify(null, 0));
     }
 
     @Test
@@ -803,7 +803,7 @@ public class ValueAccessorTest {
     public void writeNonFragmented() throws Exception {
         // Use large page to test 3-byte value header encoding.
         var config = new DatabaseConfig()
-            .directPageAccess(false).pageSize(32768).durabilityMode(DurabilityMode.NO_SYNC);
+            .pageSize(32768).durabilityMode(DurabilityMode.NO_SYNC);
         Database db = newTempDatabase(getClass(), decorate(config));
 
         writeNonFragmented(db, 50);
@@ -856,7 +856,7 @@ public class ValueAccessorTest {
             fastAssertArrayEquals(expect, ix.load(null, key));
         }
 
-        assertTrue(ix.verify(null));
+        assertTrue(ix.verify(null, 1));
     }
 
     @Test
@@ -886,7 +886,7 @@ public class ValueAccessorTest {
 
         fastAssertArrayEquals(value2, ix.load(Transaction.BOGUS, key));
 
-        assertTrue(ix.verify(null));
+        assertTrue(ix.verify(null, 1));
     }
 
     @Test
@@ -922,16 +922,16 @@ public class ValueAccessorTest {
 
         fastAssertArrayEquals(value2, ix.load(null, key));
 
-        assertTrue(ix.verify(null));
+        assertTrue(ix.verify(null, 1));
         ix.store(Transaction.BOGUS, key, null);
-        assertTrue(ix.verify(null));
+        assertTrue(ix.verify(null, 1));
     }
 
     @Test
     public void convertToIndirectWithLargePages() throws Exception {
         // Use large page to test 3-byte value header encoding.
         var config = new DatabaseConfig()
-            .directPageAccess(false).pageSize(32768).durabilityMode(DurabilityMode.NO_SYNC);
+            .pageSize(32768).durabilityMode(DurabilityMode.NO_SYNC);
         Database db = newTempDatabase(getClass(), decorate(config));
 
         Index ix = db.openIndex("test");
@@ -1207,7 +1207,7 @@ public class ValueAccessorTest {
 
         accessor.close();
 
-        assertTrue(ix.verify(null));
+        assertTrue(ix.verify(null, 1));
     }
 
     @Test
@@ -1661,7 +1661,7 @@ public class ValueAccessorTest {
     @Test
     public void noRedo() throws Exception {
         teardown();
-        DatabaseConfig config = decorate(new DatabaseConfig().directPageAccess(false));
+        DatabaseConfig config = decorate(new DatabaseConfig());
         Database db = Database.open(config);
         Index ix = db.openIndex("test");
         final byte[] key = "hello".getBytes();
@@ -1790,7 +1790,7 @@ public class ValueAccessorTest {
         fastAssertArrayEquals(new byte[100_000], c.value());
         c.close();
 
-        assertTrue(ix.verify(null));
+        assertTrue(ix.verify(null, 1));
     }
 
     @Test
@@ -1806,7 +1806,7 @@ public class ValueAccessorTest {
         fastAssertArrayEquals(new byte[1], c.value());
         c.close();
 
-        assertTrue(ix.verify(null));
+        assertTrue(ix.verify(null, 1));
 
         // Do again with rollback.
 
@@ -1824,7 +1824,7 @@ public class ValueAccessorTest {
         fastAssertArrayEquals(expect, c.value());
         c.close();
 
-        assertTrue(ix.verify(null));
+        assertTrue(ix.verify(null, 0));
     }
 
     @Test
@@ -1847,7 +1847,7 @@ public class ValueAccessorTest {
         fastAssertArrayEquals(new byte[0], c.value());
         c.close();
 
-        assertTrue(ix.verify(null));
+        assertTrue(ix.verify(null, 0));
 
         // Do again with rollback.
 
@@ -1865,7 +1865,7 @@ public class ValueAccessorTest {
         fastAssertArrayEquals(expect, c.value());
         c.close();
 
-        assertTrue(ix.verify(null));
+        assertTrue(ix.verify(null, -1));
     }
 
     @Test

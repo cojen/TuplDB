@@ -57,7 +57,6 @@ public class CustomLogTest {
         mRecoveryHandler2 = new Handler();
 
         mConfig = new DatabaseConfig()
-            .directPageAccess(false)
             .checkpointRate(-1, null)
             .customHandlers(Map.of("TestHandler", mRecoveryHandler,
                                    "TestHandler2", mRecoveryHandler2));
@@ -149,7 +148,7 @@ public class CustomLogTest {
 
         txn.reset();
 
-        Database db = Database.open(new DatabaseConfig().directPageAccess(false));
+        Database db = Database.open(new DatabaseConfig());
         txn = db.newTransaction();
 
         try {
@@ -173,6 +172,8 @@ public class CustomLogTest {
             // Not installed.
             assertTrue(e.getMessage().indexOf("foo") > 0);
         }
+
+        db.close();
     }
 
     @Test

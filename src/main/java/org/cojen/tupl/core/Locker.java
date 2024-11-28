@@ -46,7 +46,6 @@ import static org.cojen.tupl.core.LockManager.*;
  *
  * @author Brian S O'Neill
  */
-/*P*/
 class Locker implements DatabaseAccess { // weak access to database
     final LockManager mManager;
     final int mHash;

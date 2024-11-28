@@ -28,7 +28,7 @@ import org.cojen.tupl.util.Latch;
  *
  * @author Brian S. O'Neill
  */
-final class VerifyObserver extends VerificationObserver {
+class VerifyObserver extends VerificationObserver {
     private final VerificationObserver mWrapped;
 
     private volatile boolean mFailed;
@@ -46,43 +46,43 @@ final class VerifyObserver extends VerificationObserver {
     }
 
     @Override
-    public boolean indexBegin(Index index, int height) {
+    public final boolean indexBegin(Index index, int height) {
         return mWrapped.indexBegin(index, height);
     }
 
     @Override
-    public boolean indexComplete(Index index, boolean passed, String message) {
+    public final boolean indexComplete(Index index, boolean passed, String message) {
         return mWrapped.indexComplete(index, passed & !mFailed, message);
     }
 
     @Override
-    public boolean indexNodePassed(long id, int level,
-                                   int entryCount, int freeBytes, int largeValueCount)
+    public final boolean indexNodePassed(long id, int level,
+                                         int entryCount, int freeBytes, int largeValueCount)
     {
         return mWrapped.indexNodePassed(id, level, entryCount, freeBytes, largeValueCount);
     }
 
     @Override
-    public boolean indexNodeFailed(long id, int level, String message) {
+    public final boolean indexNodeFailed(long id, int level, String message) {
         mFailed = true;
         return mWrapped.indexNodeFailed(id, level, message);
     }
 
-    boolean passed() {
+    final boolean passed() {
         return !mFailed;
     }
 
     /**
      * @see Node#verifyTreeNode
      */
-    void heldShared() {
+    final void heldShared() {
         mLatched = true;
     }
 
     /**
      * @see Node#verifyTreeNode
      */
-    void releaseShared(Latch latch) {
+    final void releaseShared(Latch latch) {
         if (mLatched) {
             mLatched = false;
             latch.releaseShared();

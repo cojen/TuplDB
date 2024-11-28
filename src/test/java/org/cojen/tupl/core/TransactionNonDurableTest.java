@@ -40,7 +40,6 @@ public class TransactionNonDurableTest extends TransactionTest {
     @Override
     protected Database newTempDatabase() throws Exception {
         var config = new DatabaseConfig();
-        config.directPageAccess(false);
         config.maxCacheSize(200000000);
         return Database.open(config);
     }

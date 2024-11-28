@@ -22,16 +22,14 @@ import java.io.File;
 
 import java.util.EnumSet;
 
-import com.sun.jna.platform.win32.WinNT;
-
 /**
  * 
  *
  * @author Brian S O'Neill
  */
 final class WindowsMapping extends DirectMapping {
-    private final WinNT.HANDLE mFileHandle;
-    private final WinNT.HANDLE mMappingHandle;
+    private final int mFileHandle;
+    private final int mMappingHandle;
 
     WindowsMapping(File file, boolean readOnly, long position, int size) throws IOException {
         this(open(file, readOnly, position, size), size);
@@ -56,11 +54,11 @@ final class WindowsMapping extends DirectMapping {
 
     @Override
     void sync(boolean metadata) throws IOException {
-        WindowsFileIO.flushMapping(mFileHandle, mPtr, mSize);
+        WindowsFileIO.flushMapping(mFileHandle, mAddr, mSize);
     }
 
     @Override
     public void close() throws IOException {
-        WindowsFileIO.closeMappedFile(mFileHandle, mMappingHandle, mPtr);
+        WindowsFileIO.closeMappedFile(mFileHandle, mMappingHandle, mAddr);
     }
 }

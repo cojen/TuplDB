@@ -28,7 +28,7 @@ import static org.junit.Assert.*;
 
 import org.cojen.tupl.*;
 
-import org.cojen.tupl.core.CoreDatabase;
+import org.cojen.tupl.core.LocalDatabase;
 
 /**
  * 
@@ -42,7 +42,7 @@ public class SortTranscoderTest {
 
     @Before
     public void setup() throws Exception {
-        mDb = (CoreDatabase) Database.open(new DatabaseConfig());
+        mDb = (LocalDatabase) Database.open(new DatabaseConfig());
     }
 
     @After
@@ -51,7 +51,7 @@ public class SortTranscoderTest {
         mDb = null;
     }
 
-    private CoreDatabase mDb;
+    private LocalDatabase mDb;
 
     @Test
     public void permute() throws Exception {

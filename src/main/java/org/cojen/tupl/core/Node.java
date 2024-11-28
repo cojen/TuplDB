@@ -32,7 +32,7 @@ import org.cojen.tupl.WriteFailureException;
 
 import org.cojen.tupl.util.Clutch;
 
-import static org.cojen.tupl.core.PageOps.*;
+import static org.cojen.tupl.core.DirectPageOps.*;
 
 import static org.cojen.tupl.core.Utils.EMPTY_BYTES;
 import static org.cojen.tupl.core.Utils.rethrow;
@@ -71,9 +71,6 @@ final class Node extends Clutch implements DatabaseAccess {
 
     static final byte
         TYPE_NONE     = 0,
-        /*P*/ // [
-        TYPE_FRAGMENT = (byte) 0x20, // 0b0010_000_0 (never persisted)
-        /*P*/ // ]
         TYPE_UNDO_LOG = (byte) 0x40, // 0b0100_000_0
         TYPE_TN_IN    = (byte) 0x64, // 0b0110_010_0
         TYPE_TN_BIN   = (byte) 0x74, // 0b0111_010_0
@@ -260,21 +257,11 @@ final class Node extends Clutch implements DatabaseAccess {
      */
 
     // Raw contents of node.
-    /*P*/ byte[] mPage;
+    long mPageAddr;
 
     private long mId;
 
     byte mCachedState;
-
-    /*P*/ // [
-    // Entries from header, available as fields for quick access.
-    private byte mType;
-    private int mGarbage;
-    private int mLeftSegTail;
-    private int mRightSegTail;
-    private int mSearchVecStart;
-    private int mSearchVecEnd;
-    /*P*/ // ]
 
     // Next in NodeMap collision chain.
     Node mNodeMapNext;
@@ -285,9 +272,9 @@ final class Node extends Clutch implements DatabaseAccess {
     // Set by a partially completed split.
     Split mSplit;
 
-    Node(NodeGroup group, /*P*/ byte[] page) {
+    Node(NodeGroup group, long pageAddr) {
         mGroup = group;
-        mPage = page;
+        mPageAddr = pageAddr;
     }
 
     // Construct a stub node, latched exclusively.
@@ -295,22 +282,13 @@ final class Node extends Clutch implements DatabaseAccess {
         super(EXCLUSIVE);
 
         mGroup = group;
-        mPage = p_stubTreePage();
+        mPageAddr = p_stubTreePage();
 
         // Special stub id. Page 0 and 1 are never used by nodes, and negative indicates that
         // node shouldn't be persisted.
         id(-1);
 
         mCachedState = CACHED_CLEAN;
-
-        /*P*/ // [
-        type(TYPE_TN_IN);
-        garbage(0);
-        leftSegTail(TN_HEADER_SIZE);
-        rightSegTail(TN_HEADER_SIZE + 8 - 1);
-        searchVecStart(TN_HEADER_SIZE);
-        searchVecEnd(TN_HEADER_SIZE - 2); // inclusive
-        /*P*/ // ]
     }
 
     // Construct a "lock" object for use when loading a node. See loadChild method.
@@ -342,17 +320,15 @@ final class Node extends Clutch implements DatabaseAccess {
      * Must be called when object is no longer referenced. Caller must acquire exclusive latch.
      */
     void doDelete(LocalDatabase db) {
-        /*P*/ // [|
-        /*P*/ // if (db.mFullyMapped) {
-        /*P*/ //     // Cannot delete mapped pages.
-        /*P*/ //     closeRoot(p_closedTreePage());
-        /*P*/ //     return;
-        /*P*/ // }
-        /*P*/ // ]
+        if (db.mFullyMapped) {
+            // Cannot delete mapped pages.
+            closeRoot(p_closedTreePage());
+            return;
+        }
 
-        var page = mPage;
-        if (!isClosedOrDeleted(page)) {
-            p_delete(page);
+        long pageAddr = mPageAddr;
+        if (!isClosedOrDeleted(pageAddr)) {
+            p_delete(pageAddr);
             closeRoot(p_closedTreePage());
         }
     }
@@ -392,7 +368,7 @@ final class Node extends Clutch implements DatabaseAccess {
         type((byte) (TYPE_TN_LEAF | LOW_EXTREMITY | HIGH_EXTREMITY));
         garbage(0);
         leftSegTail(TN_HEADER_SIZE);
-        int pageSize = pageSize(mPage);
+        int pageSize = pageSize();
         rightSegTail(pageSize - 1);
         // Position search vector on the left side, but appendToSortLeaf will move it to the
         // right. It's not safe to position an empty search vector on the right side, because
@@ -406,33 +382,25 @@ final class Node extends Clutch implements DatabaseAccess {
      *
      * @page page p_closedTreePage or p_deletedTreePage
      */
-    void closeRoot(/*P*/ byte[] page) {
+    void closeRoot(long pageAddr) {
         // Prevent node from being marked dirty.
         id(CLOSED_ID);
         mCachedState = CACHED_CLEAN;
-        mPage = page;
+        mPageAddr = pageAddr;
         readFields();
     }
 
     Node cloneNode() {
-        var newNode = new Node(mGroup, mPage);
+        var newNode = new Node(mGroup, mPageAddr);
         newNode.id(id());
         newNode.mCachedState = mCachedState;
-        /*P*/ // [
-        newNode.type(type());
-        newNode.garbage(garbage());
-        newNode.leftSegTail(leftSegTail());
-        newNode.rightSegTail(rightSegTail());
-        newNode.searchVecStart(searchVecStart());
-        newNode.searchVecEnd(searchVecEnd());
-        /*P*/ // ]
         return newNode;
     }
 
     private void clearEntries() {
         garbage(0);
         leftSegTail(TN_HEADER_SIZE);
-        int pageSize = pageSize(mPage);
+        int pageSize = pageSize();
         rightSegTail(pageSize - 1);
         // Search vector location must be even.
         searchVecStart((TN_HEADER_SIZE + ((pageSize - TN_HEADER_SIZE) >> 1)) & ~1);
@@ -507,7 +475,7 @@ final class Node extends Clutch implements DatabaseAccess {
             lock = new Node(childId);
 
             if (childId <= 1) {
-                checkClosedIndexException(mPage);
+                checkClosedIndexException(mPageAddr);
                 throw new CorruptDatabaseException("Illegal child id: " + childId);
             }
         } catch (Throwable e) {
@@ -638,27 +606,16 @@ final class Node extends Clutch implements DatabaseAccess {
         Node child = db.allocDirtyNode();
         db.nodeMapPut(child);
 
-        /*P*/ byte[] newRootPage;
+        long newRootPageAddr;
 
-        /*P*/ // [
-        newRootPage = child.mPage;
-        child.mPage = mPage;
-        child.type(type());
-        child.garbage(garbage());
-        child.leftSegTail(leftSegTail());
-        child.rightSegTail(rightSegTail());
-        child.searchVecStart(searchVecStart());
-        child.searchVecEnd(searchVecEnd());
-        /*P*/ // |
-        /*P*/ // if (db.mFullyMapped) {
-        /*P*/ //     // Page cannot change, so copy it instead.
-        /*P*/ //     newRootPage = mPage;
-        /*P*/ //     p_copy(newRootPage, 0, child.mPage, 0, db.pageSize());
-        /*P*/ // } else {
-        /*P*/ //     newRootPage = child.mPage;
-        /*P*/ //     child.mPage = mPage;
-        /*P*/ // }
-        /*P*/ // ]
+        if (db.mFullyMapped) {
+            // Page cannot change, so copy it instead.
+            newRootPageAddr = mPageAddr;
+            p_copy(newRootPageAddr, 0, child.mPageAddr, 0, db.pageSize());
+        } else {
+            newRootPageAddr = child.mPageAddr;
+            child.mPageAddr = mPageAddr;
+        }
 
         final Split split = mSplit;
         final Node sibling = rebindSplitFrames(split);
@@ -681,28 +638,23 @@ final class Node extends Clutch implements DatabaseAccess {
             right = child;
         }
 
-        int leftSegTail = split.copySplitKeyToParent(newRootPage, TN_HEADER_SIZE);
+        int leftSegTail = split.copySplitKeyToParent(newRootPageAddr, TN_HEADER_SIZE);
 
         // Create new single-element search vector. Center it using the same formula as the
         // compactInternal method.
-        final int searchVecStart = pageSize(newRootPage) -
-            (((pageSize(newRootPage) - leftSegTail + (2 + 8 + 8)) >> 1) & ~1);
-        p_shortPutLE(newRootPage, searchVecStart, TN_HEADER_SIZE);
-        p_longPutLE(newRootPage, searchVecStart + 2, left.id());
-        p_longPutLE(newRootPage, searchVecStart + 2 + 8, right.id());
+        final int searchVecStart = pageSize() -
+            (((pageSize() - leftSegTail + (2 + 8 + 8)) >> 1) & ~1);
+        p_shortPutLE(newRootPageAddr, searchVecStart, TN_HEADER_SIZE);
+        p_longPutLE(newRootPageAddr, searchVecStart + 2, left.id());
+        p_longPutLE(newRootPageAddr, searchVecStart + 2 + 8, right.id());
 
         byte newType = isLeaf() ? (byte) (TYPE_TN_BIN | LOW_EXTREMITY | HIGH_EXTREMITY)
             : (byte) (TYPE_TN_IN | LOW_EXTREMITY | HIGH_EXTREMITY);
 
-        mPage = newRootPage;
-        /*P*/ // [
-        type(newType);
-        garbage(0);
-        /*P*/ // |
-        /*P*/ // p_intPutLE(newRootPage, 0, newType & 0xff); // type, reserved byte, and garbage
-        /*P*/ // ]
+        mPageAddr = newRootPageAddr;
+        p_intPutLE(newRootPageAddr, 0, newType & 0xff); // type, reserved byte, and garbage
         leftSegTail(leftSegTail);
-        rightSegTail(pageSize(newRootPage) - 1);
+        rightSegTail(pageSize() - 1);
         searchVecStart(searchVecStart);
         searchVecEnd(searchVecStart);
 
@@ -754,33 +706,20 @@ final class Node extends Clutch implements DatabaseAccess {
     }
 
     private void readFields() throws IllegalStateException {
-        var page = mPage;
+        long pageAddr = mPageAddr;
 
-        byte type = p_byteGet(page, 0);
-
-        /*P*/ // [
-        type(type);
-
-        // For undo log node, this is top entry pointer.
-        garbage(p_ushortGetLE(page, 2));
-        /*P*/ // ]
+        byte type = p_byteGet(pageAddr, 0);
 
         if (type != TYPE_UNDO_LOG) {
-            /*P*/ // [
-            leftSegTail(p_ushortGetLE(page, 4));
-            rightSegTail(p_ushortGetLE(page, 6));
-            searchVecStart(p_ushortGetLE(page, 8));
-            searchVecEnd(p_ushortGetLE(page, 10));
-            /*P*/ // ]
             type &= ~(LOW_EXTREMITY | HIGH_EXTREMITY);
             if (type >= 0 && type != TYPE_TN_IN && type != TYPE_TN_BIN) {
                 throw new IllegalStateException("Unknown node type: " + type + ", id: " + id());
             }
         }
 
-        if (p_byteGet(page, 1) != 0) {
+        if (p_byteGet(pageAddr, 1) != 0) {
             throw new IllegalStateException
-                ("Illegal reserved byte in node: " + p_byteGet(page, 1) + ", id: " + id());
+                ("Illegal reserved byte in node: " + p_byteGet(pageAddr, 1) + ", id: " + id());
         }
     }
 
@@ -788,39 +727,19 @@ final class Node extends Clutch implements DatabaseAccess {
      * Caller must hold any latch, which is not released, even if an exception is thrown.
      */
     void write(PageDb db) throws WriteFailureException {
-        var page = prepareWrite();
+        long pageAddr = prepareWrite();
         try {
-            db.writePage(id(), page);
+            db.writePage(id(), pageAddr);
         } catch (IOException e) {
             throw WriteFailureException.from(e);
         }
     }
 
-    private /*P*/ byte[] prepareWrite() {
+    private long prepareWrite() {
         if (mSplit != null) {
             throw new AssertionError("Cannot write partially split node");
         }
-
-        var page = mPage;
-
-        /*P*/ // [
-        if (type() != TYPE_FRAGMENT) {
-            p_bytePut(page, 0, type());
-            p_bytePut(page, 1, 0); // reserved
-
-            // For undo log node, this is top entry pointer.
-            p_shortPutLE(page, 2, garbage());
-
-            if (type() != TYPE_UNDO_LOG) {
-                p_shortPutLE(page, 4, leftSegTail());
-                p_shortPutLE(page, 6, rightSegTail());
-                p_shortPutLE(page, 8, searchVecStart());
-                p_shortPutLE(page, 10, searchVecEnd());
-            }
-        }
-        /*P*/ // ]
-
-        return page;
+        return mPageAddr;
     }
 
     /**
@@ -861,10 +780,10 @@ final class Node extends Clutch implements DatabaseAccess {
             long id = id();
             if (id > 0) {
                 if (mCachedState != CACHED_CLEAN) {
-                    var page = prepareWrite();
-                    var newPage = db.mPageDb.evictPage(id, page);
-                    if (newPage != page) {
-                        mPage = newPage;
+                    long pageAddr = prepareWrite();
+                    long newPageAddr = db.mPageDb.evictPage(id, pageAddr);
+                    if (newPageAddr != pageAddr) {
+                        mPageAddr = newPageAddr;
                     }
                     mCachedState = CACHED_CLEAN;
                 }
@@ -891,11 +810,11 @@ final class Node extends Clutch implements DatabaseAccess {
      *
      * @page page p_closedTreePage or p_deletedTreePage
      */
-    void invalidateCursors(/*P*/ byte[] page) {
-        invalidateCursors(page, createClosedNode(page));
+    void invalidateCursors(long pageAddr) {
+        invalidateCursors(pageAddr, createClosedNode(pageAddr));
     }
 
-    private void invalidateCursors(/*P*/ byte[] page, Node closed) {
+    private void invalidateCursors(long pageAddr, Node closed) {
         int pos = isLeaf() ? -1 : 0;
 
         closed.acquireExclusive();
@@ -921,14 +840,14 @@ final class Node extends Clutch implements DatabaseAccess {
         int childPtr = searchVecEnd() + 2;
         final int highestPtr = childPtr + (highestInternalPos() << 2);
         for (; childPtr <= highestPtr; childPtr += 8) {
-            long childId = childIdByOffset(mPage, childPtr);
+            long childId = childIdByOffset(mPageAddr, childPtr);
             Node child = db.nodeMapGetExclusive(childId);
             if (child != null) {
                 try {
                     if (closed == null) {
-                        closed = createClosedNode(page);
+                        closed = createClosedNode(pageAddr);
                     }
-                    child.invalidateCursors(page, closed);
+                    child.invalidateCursors(pageAddr, closed);
                 } finally {
                     child.releaseExclusive();
                 }
@@ -939,20 +858,16 @@ final class Node extends Clutch implements DatabaseAccess {
     /**
      * @page page p_closedTreePage or p_deletedTreePage
      */
-    private static Node createClosedNode(/*P*/ byte[] page) {
-        var closed = new Node(null, page);
+    private static Node createClosedNode(long pageAddr) {
+        var closed = new Node(null, pageAddr);
         closed.id(CLOSED_ID);
         closed.mCachedState = CACHED_CLEAN;
         closed.readFields();
         return closed;
     }
 
-    private int pageSize(/*P*/ byte[] page) {
-        /*P*/ // [
-        return page.length;
-        /*P*/ // |
-        /*P*/ // return mGroup.pageSize();
-        /*P*/ // ]
+    private int pageSize() {
+        return mGroup.pageSize();
     }
 
     /**
@@ -975,154 +890,98 @@ final class Node extends Clutch implements DatabaseAccess {
      * Get the node type.
      */
     byte type() {
-        /*P*/ // [
-        return mType;
-        /*P*/ // |
-        /*P*/ // return p_byteGet(mPage, 0);
-        /*P*/ // ]
+        return p_byteGet(mPageAddr, 0);
     }
 
     /**
      * Set the node type.
      */
     void type(byte type) {
-        /*P*/ // [
-        mType = type;
-        /*P*/ // |
-        /*P*/ // p_shortPutLE(mPage, 0, type & 0xff); // clear reserved byte too
-        /*P*/ // ]
+        p_shortPutLE(mPageAddr, 0, type & 0xff); // clear reserved byte too
     }
 
     /**
      * Get the node garbage size.
      */
     int garbage() {
-        /*P*/ // [
-        return mGarbage;
-        /*P*/ // |
-        /*P*/ // return p_ushortGetLE(mPage, 2);
-        /*P*/ // ]
+        return p_ushortGetLE(mPageAddr, 2);
     }
 
     /**
      * Set the node garbage size.
      */
     void garbage(int garbage) {
-        /*P*/ // [
-        mGarbage = garbage;
-        /*P*/ // |
-        /*P*/ // p_shortPutLE(mPage, 2, garbage);
-        /*P*/ // ]
+        p_shortPutLE(mPageAddr, 2, garbage);
     }
 
     /**
      * Get the undo log node top entry pointer. (same field as garbage)
      */
     int undoTop() {
-        /*P*/ // [
-        return mGarbage;
-        /*P*/ // |
-        /*P*/ // return p_ushortGetLE(mPage, 2);
-        /*P*/ // ]
+        return p_ushortGetLE(mPageAddr, 2);
     }
 
     /**
      * Set the undo log node top entry pointer. (same field as garbage)
      */
     void undoTop(int top) {
-        /*P*/ // [
-        mGarbage = top;
-        /*P*/ // |
-        /*P*/ // p_shortPutLE(mPage, 2, top);
-        /*P*/ // ]
+        p_shortPutLE(mPageAddr, 2, top);
     }
 
     /**
      * Get the left segment tail pointer.
      */
     private int leftSegTail() {
-        /*P*/ // [
-        return mLeftSegTail;
-        /*P*/ // |
-        /*P*/ // return p_ushortGetLE(mPage, 4);
-        /*P*/ // ]
+        return p_ushortGetLE(mPageAddr, 4);
     }
 
     /**
      * Set the left segment tail pointer.
      */
     private void leftSegTail(int tail) {
-        /*P*/ // [
-        mLeftSegTail = tail;
-        /*P*/ // |
-        /*P*/ // p_shortPutLE(mPage, 4, tail);
-        /*P*/ // ]
+        p_shortPutLE(mPageAddr, 4, tail);
     }
 
     /**
      * Get the right segment tail pointer.
      */
     private int rightSegTail() {
-        /*P*/ // [
-        return mRightSegTail;
-        /*P*/ // |
-        /*P*/ // return p_ushortGetLE(mPage, 6);
-        /*P*/ // ]
+        return p_ushortGetLE(mPageAddr, 6);
     }
 
     /**
      * Set the right segment tail pointer.
      */
     private void rightSegTail(int tail) {
-        /*P*/ // [
-        mRightSegTail = tail;
-        /*P*/ // |
-        /*P*/ // p_shortPutLE(mPage, 6, tail);
-        /*P*/ // ]
+        p_shortPutLE(mPageAddr, 6, tail);
     }
 
     /**
      * Get the search vector start pointer.
      */
     int searchVecStart() {
-        /*P*/ // [
-        return mSearchVecStart;
-        /*P*/ // |
-        /*P*/ // return p_ushortGetLE(mPage, 8);
-        /*P*/ // ]
+        return p_ushortGetLE(mPageAddr, 8);
     }
 
     /**
      * Set the search vector start pointer.
      */
     void searchVecStart(int start) {
-        /*P*/ // [
-        mSearchVecStart = start;
-        /*P*/ // |
-        /*P*/ // p_shortPutLE(mPage, 8, start);
-        /*P*/ // ]
+        p_shortPutLE(mPageAddr, 8, start);
     }
 
     /**
      * Get the search vector end pointer.
      */
     int searchVecEnd() {
-        /*P*/ // [
-        return mSearchVecEnd;
-        /*P*/ // |
-        /*P*/ // return p_ushortGetLE(mPage, 10);
-        /*P*/ // ]
+        return p_ushortGetLE(mPageAddr, 10);
     }
 
     /**
      * Set the search vector end pointer.
      */
     void searchVecEnd(int end) {
-        /*P*/ // [
-        mSearchVecEnd = end;
-        /*P*/ // |
-        /*P*/ // p_shortPutLE(mPage, 10, end);
-        /*P*/ // ]
+        p_shortPutLE(mPageAddr, 10, end);
     }
 
     /**
@@ -1244,12 +1103,12 @@ final class Node extends Clutch implements DatabaseAccess {
      * @param highPos 2-based search vector position (inclusive)
      */
     int countNonGhostKeys(int lowPos, int highPos) {
-        final var page = mPage;
+        final long pageAddr = mPageAddr;
 
         int count = 0;
         for (int i = lowPos; i <= highPos; i += 2) {
-            int loc = p_ushortGetLE(page, i);
-            if (p_byteGet(page, loc + keyLengthAtLoc(page, loc)) != -1) {
+            int loc = p_ushortGetLE(pageAddr, i);
+            if (p_byteGet(pageAddr, loc + keyLengthAtLoc(pageAddr, loc)) != -1) {
                 count++;
             }
         }
@@ -1276,7 +1135,7 @@ final class Node extends Clutch implements DatabaseAccess {
     boolean shouldMerge(int availBytes) {
         return mSplit == null
             && (((type() & (LOW_EXTREMITY | HIGH_EXTREMITY)) == 0
-                 && availBytes >= ((pageSize(mPage) - TN_HEADER_SIZE) >> 1))
+                 && availBytes >= ((pageSize() - TN_HEADER_SIZE) >> 1))
                 || !hasKeys());
     }
 
@@ -1296,7 +1155,7 @@ final class Node extends Clutch implements DatabaseAccess {
      * @return 2-based insertion pos, which is negative if key isn't found
      */
     int binarySearch(byte[] key) throws IOException {
-        final var page = mPage;
+        final long pageAddr = mPageAddr;
         final int keyLen = key.length;
         final int startPos = searchVecStart();
         int lowPos = startPos;
@@ -1311,18 +1170,18 @@ final class Node extends Clutch implements DatabaseAccess {
 
             int compareLen, i;
             compare: {
-                int compareLoc = p_ushortGetLE(page, midPos);
-                compareLen = p_byteGet(page, compareLoc++);
+                int compareLoc = p_ushortGetLE(pageAddr, midPos);
+                compareLen = p_byteGet(pageAddr, compareLoc++);
                 if (compareLen >= 0) {
                     compareLen++;
                 } else {
                     int header = compareLen;
-                    compareLen = ((compareLen & 0x3f) << 8) | p_ubyteGet(page, compareLoc++);
+                    compareLen = ((compareLen & 0x3f) << 8) | p_ubyteGet(pageAddr, compareLoc++);
 
                     if ((header & ENTRY_FRAGMENTED) != 0) {
                         // Note: An optimized version wouldn't need to copy the whole key.
                         byte[] compareKey = getDatabase()
-                            .reconstructKey(page, compareLoc, compareLen);
+                            .reconstructKey(pageAddr, compareLoc, compareLen);
 
                         compareLen = compareKey.length;
                         int minLen = Math.min(compareLen, keyLen);
@@ -1348,7 +1207,7 @@ final class Node extends Clutch implements DatabaseAccess {
                 i = 0;//Math.min(lowMatch, highMatch);
 
                 for (; i < minLen8; i += 8) {
-                    long cv = p_longGetBE(page, compareLoc + i);
+                    long cv = p_longGetBE(pageAddr, compareLoc + i);
                     long kv = Utils.decodeLongBE(key, i);
                     int cmp = Long.compareUnsigned(cv, kv);
                     if (cmp != 0) {
@@ -1364,7 +1223,7 @@ final class Node extends Clutch implements DatabaseAccess {
                 }
 
                 for (; i < minLen; i++) {
-                    byte cb = p_byteGet(page, compareLoc + i);
+                    byte cb = p_byteGet(pageAddr, compareLoc + i);
                     byte kb = key[i];
                     if (cb != kb) {
                         if ((cb & 0xff) < (kb & 0xff)) {
@@ -1407,7 +1266,7 @@ final class Node extends Clutch implements DatabaseAccess {
             midPos = highPos;
         }
 
-        final var page = mPage;
+        final long pageAddr = mPageAddr;
         final int keyLen = key.length;
 
         // TODO: Using this feature reduces performance for small keys. Is the potential
@@ -1418,18 +1277,19 @@ final class Node extends Clutch implements DatabaseAccess {
             compare: {
                 int compareLen, i;
                 c2: {
-                    int compareLoc = p_ushortGetLE(page, midPos);
-                    compareLen = p_byteGet(page, compareLoc++);
+                    int compareLoc = p_ushortGetLE(pageAddr, midPos);
+                    compareLen = p_byteGet(pageAddr, compareLoc++);
                     if (compareLen >= 0) {
                         compareLen++;
                     } else {
                         int header = compareLen;
-                        compareLen = ((compareLen & 0x3f) << 8) | p_ubyteGet(page, compareLoc++);
+                        compareLen = ((compareLen & 0x3f) << 8)
+                            | p_ubyteGet(pageAddr, compareLoc++);
 
                         if ((header & ENTRY_FRAGMENTED) != 0) {
                             // Note: An optimized version wouldn't need to copy the whole key.
                             byte[] compareKey = getDatabase()
-                                .reconstructKey(page, compareLoc, compareLen);
+                                .reconstructKey(pageAddr, compareLoc, compareLen);
 
                             compareLen = compareKey.length;
                             int minLen = Math.min(compareLen, keyLen);
@@ -1455,7 +1315,7 @@ final class Node extends Clutch implements DatabaseAccess {
                     i = 0;//Math.min(lowMatch, highMatch);
 
                     for (; i < minLen8; i += 8) {
-                        long cv = p_longGetBE(page, compareLoc + i);
+                        long cv = p_longGetBE(pageAddr, compareLoc + i);
                         long kv = Utils.decodeLongBE(key, i);
                         int cmp = Long.compareUnsigned(cv, kv);
                         if (cmp != 0) {
@@ -1471,7 +1331,7 @@ final class Node extends Clutch implements DatabaseAccess {
                     }
 
                     for (; i < minLen; i++) {
-                        byte cb = p_byteGet(page, compareLoc + i);
+                        byte cb = p_byteGet(pageAddr, compareLoc + i);
                         byte kb = key[i];
                         if (cb != kb) {
                             if ((cb & 0xff) < (kb & 0xff)) {
@@ -1516,21 +1376,21 @@ final class Node extends Clutch implements DatabaseAccess {
      * @param pos position as provided by binarySearch; must be positive
      */
     int compareKey(int pos, byte[] rightKey) throws IOException {
-        final var page = mPage;
-        int loc = p_ushortGetLE(page, searchVecStart() + pos);
-        int keyLen = p_byteGet(page, loc++);
+        final long pageAddr = mPageAddr;
+        int loc = p_ushortGetLE(pageAddr, searchVecStart() + pos);
+        int keyLen = p_byteGet(pageAddr, loc++);
         if (keyLen >= 0) {
             keyLen++;
         } else {
             int header = keyLen;
-            keyLen = ((keyLen & 0x3f) << 8) | p_ubyteGet(page, loc++);
+            keyLen = ((keyLen & 0x3f) << 8) | p_ubyteGet(pageAddr, loc++);
             if ((header & ENTRY_FRAGMENTED) != 0) {
                 // Note: An optimized version wouldn't need to copy the whole key.
-                byte[] leftKey = getDatabase().reconstructKey(page, loc, keyLen);
+                byte[] leftKey = getDatabase().reconstructKey(pageAddr, loc, keyLen);
                 return compareUnsigned(leftKey, rightKey);
             }
         }
-        return p_compareKeysPageToArray(page, loc, keyLen, rightKey, 0, rightKey.length);
+        return p_compareKeysPageToArray(pageAddr, loc, keyLen, rightKey, 0, rightKey.length);
     }
 
     /**
@@ -1540,11 +1400,11 @@ final class Node extends Clutch implements DatabaseAccess {
      * @param rightLoc absolute location of right key
      */
     static int compareKeys(Node left, int leftLoc, Node right, int rightLoc) throws IOException {
-        final var leftPage = left.mPage;
-        final var rightPage = right.mPage;
+        final long leftPageAddr = left.mPageAddr;
+        final long rightPageAddr = right.mPageAddr;
 
-        int leftLen = p_byteGet(leftPage, leftLoc++);
-        int rightLen = p_byteGet(rightPage, rightLoc++);
+        int leftLen = p_byteGet(leftPageAddr, leftLoc++);
+        int rightLen = p_byteGet(rightPageAddr, rightLoc++);
 
         c1: { // break out of this scope when both keys are in the page
             c2: { // break out of this scope when the left key is in the page
@@ -1555,7 +1415,7 @@ final class Node extends Clutch implements DatabaseAccess {
                 }
 
                 int leftHeader = leftLen;
-                leftLen = ((leftLen & 0x3f) << 8) | p_ubyteGet(leftPage, leftLoc++);
+                leftLen = ((leftLen & 0x3f) << 8) | p_ubyteGet(leftPageAddr, leftLoc++);
                 if ((leftHeader & ENTRY_FRAGMENTED) == 0) {
                     // Left key is medium... break out and examine the right key.
                     break c2;
@@ -1563,24 +1423,24 @@ final class Node extends Clutch implements DatabaseAccess {
 
                 // Left key is fragmented...
                 // Note: An optimized version wouldn't need to copy the whole key.
-                byte[] leftKey = left.getDatabase().reconstructKey(leftPage, leftLoc, leftLen);
+                byte[] leftKey = left.getDatabase().reconstructKey(leftPageAddr, leftLoc, leftLen);
 
                 if (rightLen >= 0) {
                     // Left key is fragmented, and right key is tiny.
                     rightLen++;
                 } else {
                     int rightHeader = rightLen;
-                    rightLen = ((rightLen & 0x3f) << 8) | p_ubyteGet(rightPage, rightLoc++);
+                    rightLen = ((rightLen & 0x3f) << 8) | p_ubyteGet(rightPageAddr, rightLoc++);
                     if ((rightHeader & ENTRY_FRAGMENTED) != 0) {
                         // Right key is fragmented too.
                         // Note: An optimized version wouldn't need to copy the whole key.
                         byte[] rightKey = right.getDatabase()
-                            .reconstructKey(rightPage, rightLoc, rightLen);
+                            .reconstructKey(rightPageAddr, rightLoc, rightLen);
                         return compareUnsigned(leftKey, rightKey);
                     }
                 }
 
-                return -p_compareKeysPageToArray(rightPage, rightLoc, rightLen,
+                return -p_compareKeysPageToArray(rightPageAddr, rightLoc, rightLen,
                                                  leftKey, 0, leftKey.length);
             } // end c2
 
@@ -1591,7 +1451,7 @@ final class Node extends Clutch implements DatabaseAccess {
             }
 
             int rightHeader = rightLen;
-            rightLen = ((rightLen & 0x3f) << 8) | p_ubyteGet(rightPage, rightLoc++);
+            rightLen = ((rightLen & 0x3f) << 8) | p_ubyteGet(rightPageAddr, rightLoc++);
             if ((rightHeader & ENTRY_FRAGMENTED) == 0) {
                 // Left key is tiny/medium, right key is medium, and both fit in the page.
                 break c1;
@@ -1599,12 +1459,13 @@ final class Node extends Clutch implements DatabaseAccess {
 
             // Left key is tiny/medium, and right key is fragmented.
             // Note: An optimized version wouldn't need to copy the whole key.
-            byte[] rightKey = right.getDatabase().reconstructKey(rightPage, rightLoc, rightLen);
-            return p_compareKeysPageToArray(leftPage, leftLoc, leftLen,
+            byte[] rightKey = right.getDatabase().reconstructKey(rightPageAddr, rightLoc, rightLen);
+            return p_compareKeysPageToArray(leftPageAddr, leftLoc, leftLen,
                                             rightKey, 0, rightKey.length);
         } // end c1
 
-        return p_compareKeysPageToPage(leftPage, leftLoc, leftLen, rightPage, rightLoc, rightLen);
+        return p_compareKeysPageToPage(leftPageAddr, leftLoc, leftLen,
+                                       rightPageAddr, rightLoc, rightLen);
     }
 
     /**
@@ -1612,17 +1473,17 @@ final class Node extends Clutch implements DatabaseAccess {
      * @param stats {@literal [0]: full length, [1]: number of pages (>0 if fragmented)}
      */
     void retrieveKeyStats(int pos, long[] stats) throws IOException {
-        final var page = mPage;
-        int loc = p_ushortGetLE(page, searchVecStart() + pos);
+        final long pageAddr = mPageAddr;
+        int loc = p_ushortGetLE(pageAddr, searchVecStart() + pos);
 
-        int keyLen = p_byteGet(page, loc++);
+        int keyLen = p_byteGet(pageAddr, loc++);
         if (keyLen >= 0) {
             keyLen++;
         } else {
             int header = keyLen;
-            keyLen = ((keyLen & 0x3f) << 8) | p_ubyteGet(page, loc++);
+            keyLen = ((keyLen & 0x3f) << 8) | p_ubyteGet(pageAddr, loc++);
             if ((header & ENTRY_FRAGMENTED) != 0) {
-                getDatabase().reconstruct(page, loc, keyLen, stats);
+                getDatabase().reconstruct(pageAddr, loc, keyLen, stats);
                 return;
             }
         }
@@ -1635,35 +1496,35 @@ final class Node extends Clutch implements DatabaseAccess {
      * @param pos position as provided by binarySearch; must be positive
      */
     byte[] retrieveKey(int pos) throws IOException {
-        final var page = mPage;
-        return retrieveKeyAtLoc(this, page, p_ushortGetLE(page, searchVecStart() + pos));
+        final long pageAddr = mPageAddr;
+        return retrieveKeyAtLoc(this, pageAddr, p_ushortGetLE(pageAddr, searchVecStart() + pos));
     }
 
     /**
      * @param loc absolute location of entry
      */
-    byte[] retrieveKeyAtLoc(final /*P*/ byte[] page, int loc) throws IOException {
-        return retrieveKeyAtLoc(this, page, loc);
+    byte[] retrieveKeyAtLoc(final long pageAddr, int loc) throws IOException {
+        return retrieveKeyAtLoc(this, pageAddr, loc);
     }
 
     /**
      * @param loc absolute location of entry
      */
-    static byte[] retrieveKeyAtLoc(DatabaseAccess dbAccess, final /*P*/ byte[] page, int loc)
+    static byte[] retrieveKeyAtLoc(DatabaseAccess dbAccess, final long pageAddr, int loc)
         throws IOException
     {
-        int keyLen = p_byteGet(page, loc++);
+        int keyLen = p_byteGet(pageAddr, loc++);
         if (keyLen >= 0) {
             keyLen++;
         } else {
             int header = keyLen;
-            keyLen = ((keyLen & 0x3f) << 8) | p_ubyteGet(page, loc++);
+            keyLen = ((keyLen & 0x3f) << 8) | p_ubyteGet(pageAddr, loc++);
             if ((header & ENTRY_FRAGMENTED) != 0) {
-                return dbAccess.getDatabase().reconstructKey(page, loc, keyLen);
+                return dbAccess.getDatabase().reconstructKey(pageAddr, loc, keyLen);
             }
         }
         var key = new byte[keyLen];
-        p_copyToArray(page, loc, key, 0, keyLen);
+        p_copyToArray(pageAddr, loc, key, 0, keyLen);
         return key;
     }
 
@@ -1671,24 +1532,24 @@ final class Node extends Clutch implements DatabaseAccess {
      * @param loc absolute location of entry
      * @param split store the results here, capturing the actual key if fragmented
      */
-    private void retrieveKeyAtLoc(final /*P*/ byte[] page, int loc, Split split)
+    private void retrieveKeyAtLoc(final long pageAddr, int loc, Split split)
         throws IOException
     {
         byte[] fullKey, actualKey;
-        int keyLen = p_byteGet(page, loc++);
+        int keyLen = p_byteGet(pageAddr, loc++);
         if (keyLen >= 0) {
             keyLen++;
             actualKey = new byte[keyLen];
-            p_copyToArray(page, loc, actualKey, 0, keyLen);
+            p_copyToArray(pageAddr, loc, actualKey, 0, keyLen);
             fullKey = actualKey;
         } else {
             int header = keyLen;
-            keyLen = ((keyLen & 0x3f) << 8) | p_ubyteGet(page, loc++);
+            keyLen = ((keyLen & 0x3f) << 8) | p_ubyteGet(pageAddr, loc++);
             actualKey = new byte[keyLen];
-            p_copyToArray(page, loc, actualKey, 0, keyLen);
+            p_copyToArray(pageAddr, loc, actualKey, 0, keyLen);
             fullKey = actualKey;
             if ((header & ENTRY_FRAGMENTED) != 0) {
-                fullKey = getDatabase().reconstructKey(page, loc, keyLen);
+                fullKey = getDatabase().reconstructKey(pageAddr, loc, keyLen);
             }
         }
         split.setKey(fullKey, actualKey);
@@ -1699,22 +1560,22 @@ final class Node extends Clutch implements DatabaseAccess {
      * @param akeyRef [0] is set to the actual key
      * @return false if key is fragmented and actual doesn't match original
      */
-    private static boolean retrieveActualKeyAtLoc(final /*P*/ byte[] page, int loc,
+    private static boolean retrieveActualKeyAtLoc(final long pageAddr, int loc,
                                                   final byte[][] akeyRef)
         throws IOException
     {
         boolean result = true;
 
-        int keyLen = p_byteGet(page, loc++);
+        int keyLen = p_byteGet(pageAddr, loc++);
         if (keyLen >= 0) {
             keyLen++;
         } else {
             int header = keyLen;
-            keyLen = ((keyLen & 0x3f) << 8) | p_ubyteGet(page, loc++);
+            keyLen = ((keyLen & 0x3f) << 8) | p_ubyteGet(pageAddr, loc++);
             result = (header & ENTRY_FRAGMENTED) == 0;
         }
         var akey = new byte[keyLen];
-        p_copyToArray(page, loc, akey, 0, keyLen);
+        p_copyToArray(pageAddr, loc, akey, 0, keyLen);
         akeyRef[0] = akey;
 
         return result;
@@ -1729,17 +1590,17 @@ final class Node extends Clutch implements DatabaseAccess {
      * @param limitMode positive for LE behavior, negative for GE behavior
      */
     byte[] retrieveKeyCmp(int pos, byte[] limitKey, int limitMode) throws IOException {
-        final var page = mPage;
-        int loc = p_ushortGetLE(page, searchVecStart() + pos);
-        int keyLen = p_byteGet(page, loc++);
+        final long pageAddr = mPageAddr;
+        int loc = p_ushortGetLE(pageAddr, searchVecStart() + pos);
+        int keyLen = p_byteGet(pageAddr, loc++);
         if (keyLen >= 0) {
             keyLen++;
         } else {
             int header = keyLen;
-            keyLen = ((keyLen & 0x3f) << 8) | p_ubyteGet(page, loc++);
+            keyLen = ((keyLen & 0x3f) << 8) | p_ubyteGet(pageAddr, loc++);
 
             if ((header & ENTRY_FRAGMENTED) != 0) {
-                byte[] key = getDatabase().reconstructKey(page, loc, keyLen);
+                byte[] key = getDatabase().reconstructKey(pageAddr, loc, keyLen);
                 int cmp = compareUnsigned(key, limitKey);
                 if (cmp == 0) {
                     return limitKey;
@@ -1749,12 +1610,12 @@ final class Node extends Clutch implements DatabaseAccess {
             }
         }
 
-        int cmp = p_compareKeysPageToArray(page, loc, keyLen, limitKey, 0, limitKey.length);
+        int cmp = p_compareKeysPageToArray(pageAddr, loc, keyLen, limitKey, 0, limitKey.length);
         if (cmp == 0) {
             return limitKey;
         } else if ((cmp ^ limitMode) < 0) {
             var key = new byte[keyLen];
-            p_copyToArray(page, loc, key, 0, keyLen);
+            p_copyToArray(pageAddr, loc, key, 0, keyLen);
             return key;
         } else {
             return null;
@@ -1767,10 +1628,10 @@ final class Node extends Clutch implements DatabaseAccess {
      * @param loc absolute location of entry
      */
     static byte[][] retrieveKeyValueAtLoc(DatabaseAccess dbAccess,
-                                          final /*P*/ byte[] page, int loc)
+                                          final long pageAddr, int loc)
         throws IOException
     {
-        int header = p_byteGet(page, loc++);
+        int header = p_byteGet(pageAddr, loc++);
 
         int keyLen;
         byte[] key;
@@ -1778,17 +1639,17 @@ final class Node extends Clutch implements DatabaseAccess {
             if (header >= 0) {
                 keyLen = header + 1;
             } else {
-                keyLen = ((header & 0x3f) << 8) | p_ubyteGet(page, loc++);
+                keyLen = ((header & 0x3f) << 8) | p_ubyteGet(pageAddr, loc++);
                 if ((header & ENTRY_FRAGMENTED) != 0) {
-                    key = dbAccess.getDatabase().reconstructKey(page, loc, keyLen);
+                    key = dbAccess.getDatabase().reconstructKey(pageAddr, loc, keyLen);
                     break copyKey;
                 }
             }
             key = new byte[keyLen];
-            p_copyToArray(page, loc, key, 0, keyLen);
+            p_copyToArray(pageAddr, loc, key, 0, keyLen);
         }
 
-        return new byte[][] {key, retrieveLeafValueAtLoc(null, page, loc + keyLen)};
+        return new byte[][] {key, retrieveLeafValueAtLoc(null, pageAddr, loc + keyLen)};
     }
 
     /**
@@ -1798,20 +1659,20 @@ final class Node extends Clutch implements DatabaseAccess {
      * immediately after the inline key, with the header stripped off if requested. This
      * format is expected to be used only by UndoLog.
      */
-    static byte[] expandKeyAtLoc(DatabaseAccess dbAccess, /*P*/ byte[] page, int loc, int len,
+    static byte[] expandKeyAtLoc(DatabaseAccess dbAccess, long pageAddr, int loc, int len,
                                  boolean stripValueHeader)
         throws IOException
     {
         int endLoc = loc + len;
 
-        int keyLen = ((p_byteGet(page, loc++) & 0x3f) << 8) | p_ubyteGet(page, loc++);
+        int keyLen = ((p_byteGet(pageAddr, loc++) & 0x3f) << 8) | p_ubyteGet(pageAddr, loc++);
 
         int valueLoc = loc + keyLen;
         int valueLen = endLoc - valueLoc;
 
         if (stripValueHeader) {
             int skip = 1;
-            int header = p_byteGet(page, valueLoc);
+            int header = p_byteGet(pageAddr, valueLoc);
             if (header < 0) {
                 if ((header & 0x20) == 0) {
                     skip = 2;
@@ -1823,7 +1684,7 @@ final class Node extends Clutch implements DatabaseAccess {
             valueLen -= skip;
         }
 
-        byte[] key = dbAccess.getDatabase().reconstructKey(page, loc, keyLen);
+        byte[] key = dbAccess.getDatabase().reconstructKey(pageAddr, loc, keyLen);
         int keyHeaderLen = Utils.calcUnsignedVarIntLength(key.length);
 
         var expanded = new byte[keyHeaderLen + key.length + valueLen];
@@ -1831,7 +1692,7 @@ final class Node extends Clutch implements DatabaseAccess {
         int offset = Utils.encodeUnsignedVarInt(expanded, 0, key.length);
         System.arraycopy(key, 0, expanded, offset, key.length);
         offset += key.length;
-        p_copyToArray(page, valueLoc, expanded, offset, valueLen);
+        p_copyToArray(pageAddr, valueLoc, expanded, offset, valueLen);
 
         return expanded;
     }
@@ -1842,14 +1703,14 @@ final class Node extends Clutch implements DatabaseAccess {
      * @see Utils#midKey
      */
     private byte[] midKey(int lowPos, byte[] highKey) throws IOException {
-        final var lowPage = mPage;
-        int lowLoc = p_ushortGetLE(lowPage, searchVecStart() + lowPos);
-        int lowKeyLen = p_byteGet(lowPage, lowLoc);
+        final long lowPageAddr = mPageAddr;
+        int lowLoc = p_ushortGetLE(lowPageAddr, searchVecStart() + lowPos);
+        int lowKeyLen = p_byteGet(lowPageAddr, lowLoc);
         if (lowKeyLen < 0) {
             // Note: An optimized version wouldn't need to copy the whole key.
-            return Utils.midKey(retrieveKeyAtLoc(lowPage, lowLoc), highKey);
+            return Utils.midKey(retrieveKeyAtLoc(lowPageAddr, lowLoc), highKey);
         } else {
-            return p_midKeyLowPage(lowPage, lowLoc + 1, lowKeyLen + 1, highKey, 0);
+            return p_midKeyLowPage(lowPageAddr, lowLoc + 1, lowKeyLen + 1, highKey, 0);
         }
     }
 
@@ -1859,14 +1720,14 @@ final class Node extends Clutch implements DatabaseAccess {
      * @see Utils#midKey
      */
     private byte[] midKey(byte[] lowKey, int highPos) throws IOException {
-        final var highPage = mPage;
-        int highLoc = p_ushortGetLE(highPage, searchVecStart() + highPos);
-        int highKeyLen = p_byteGet(highPage, highLoc);
+        final long highPageAddr = mPageAddr;
+        int highLoc = p_ushortGetLE(highPageAddr, searchVecStart() + highPos);
+        int highKeyLen = p_byteGet(highPageAddr, highLoc);
         if (highKeyLen < 0) {
             // Note: An optimized version wouldn't need to copy the whole key.
-            return Utils.midKey(lowKey, retrieveKeyAtLoc(highPage, highLoc));
+            return Utils.midKey(lowKey, retrieveKeyAtLoc(highPageAddr, highLoc));
         } else {
-            return p_midKeyHighPage(lowKey, 0, lowKey.length, highPage, highLoc + 1);
+            return p_midKeyHighPage(lowKey, 0, lowKey.length, highPageAddr, highLoc + 1);
         }
     }
 
@@ -1876,27 +1737,27 @@ final class Node extends Clutch implements DatabaseAccess {
      * @see Utils#midKey
      */
     byte[] midKey(int lowPos, Node highNode, int highPos) throws IOException {
-        final var lowPage = mPage;
-        int lowLoc = p_ushortGetLE(lowPage, searchVecStart() + lowPos);
-        int lowKeyLen = p_byteGet(lowPage, lowLoc);
+        final long lowPageAddr = mPageAddr;
+        int lowLoc = p_ushortGetLE(lowPageAddr, searchVecStart() + lowPos);
+        int lowKeyLen = p_byteGet(lowPageAddr, lowLoc);
         if (lowKeyLen < 0) {
             // Note: An optimized version wouldn't need to copy the whole key.
-            return highNode.midKey(retrieveKeyAtLoc(lowPage, lowLoc), highPos);
+            return highNode.midKey(retrieveKeyAtLoc(lowPageAddr, lowLoc), highPos);
         }
 
         lowLoc++;
         lowKeyLen++;
 
-        final var highPage = highNode.mPage;
-        int highLoc = p_ushortGetLE(highPage, highNode.searchVecStart() + highPos);
-        int highKeyLen = p_byteGet(highPage, highLoc);
+        final long highPageAddr = highNode.mPageAddr;
+        int highLoc = p_ushortGetLE(highPageAddr, highNode.searchVecStart() + highPos);
+        int highKeyLen = p_byteGet(highPageAddr, highLoc);
         if (highKeyLen < 0) {
             // Note: An optimized version wouldn't need to copy the whole key.
-            byte[] highKey = retrieveKeyAtLoc(highPage, highLoc);
-            return p_midKeyLowPage(lowPage, lowLoc, lowKeyLen, highKey, 0);
+            byte[] highKey = retrieveKeyAtLoc(highPageAddr, highLoc);
+            return p_midKeyLowPage(lowPageAddr, lowLoc, lowKeyLen, highKey, 0);
         }
 
-        return p_midKeyLowHighPage(lowPage, lowLoc, lowKeyLen, highPage, highLoc + 1);
+        return p_midKeyLowHighPage(lowPageAddr, lowLoc, lowKeyLen, highPageAddr, highLoc + 1);
     }
 
     /**
@@ -1904,10 +1765,10 @@ final class Node extends Clutch implements DatabaseAccess {
      * @return Cursor.NOT_LOADED if value exists, null if ghost
      */
     byte[] hasLeafValue(int pos) {
-        final var page = mPage;
-        int loc = p_ushortGetLE(page, searchVecStart() + pos);
-        loc += keyLengthAtLoc(page, loc);
-        return p_byteGet(page, loc) == -1 ? null : Cursor.NOT_LOADED;
+        final long pageAddr = mPageAddr;
+        int loc = p_ushortGetLE(pageAddr, searchVecStart() + pos);
+        loc += keyLengthAtLoc(pageAddr, loc);
+        return p_byteGet(pageAddr, loc) == -1 ? null : Cursor.NOT_LOADED;
     }
 
     /**
@@ -1915,21 +1776,21 @@ final class Node extends Clutch implements DatabaseAccess {
      * @param stats {@literal [0]: full length, [1]: number of pages (>0 if fragmented)}
      */
     void retrieveLeafValueStats(int pos, long[] stats) throws IOException {
-        final var page = mPage;
-        int loc = p_ushortGetLE(page, searchVecStart() + pos);
-        loc += keyLengthAtLoc(page, loc);
+        final long pageAddr = mPageAddr;
+        int loc = p_ushortGetLE(pageAddr, searchVecStart() + pos);
+        loc += keyLengthAtLoc(pageAddr, loc);
 
-        final int header = p_byteGet(page, loc++);
+        final int header = p_byteGet(pageAddr, loc++);
 
         int len;
         if (header >= 0) {
             len = header;
         } else {
             if ((header & 0x20) == 0) {
-                len = 1 + (((header & 0x1f) << 8) | p_ubyteGet(page, loc++));
+                len = 1 + (((header & 0x1f) << 8) | p_ubyteGet(pageAddr, loc++));
             } else if (header != -1) {
                 len = 1 + (((header & 0x0f) << 16)
-                           | (p_ubyteGet(page, loc++) << 8) | p_ubyteGet(page, loc++));
+                           | (p_ubyteGet(pageAddr, loc++) << 8) | p_ubyteGet(pageAddr, loc++));
             } else {
                 // ghost
                 stats[0] = 0;
@@ -1937,7 +1798,7 @@ final class Node extends Clutch implements DatabaseAccess {
                 return;
             }
             if ((header & ENTRY_FRAGMENTED) != 0) {
-                getDatabase().reconstruct(page, loc, len, stats);
+                getDatabase().reconstruct(pageAddr, loc, len, stats);
                 return;
             }
         }
@@ -1951,16 +1812,16 @@ final class Node extends Clutch implements DatabaseAccess {
      * @return null if ghost
      */
     byte[] retrieveLeafValue(int pos) throws IOException {
-        final var page = mPage;
-        int loc = p_ushortGetLE(page, searchVecStart() + pos);
-        loc += keyLengthAtLoc(page, loc);
-        return retrieveLeafValueAtLoc(this, page, loc);
+        final long pageAddr = mPageAddr;
+        int loc = p_ushortGetLE(pageAddr, searchVecStart() + pos);
+        loc += keyLengthAtLoc(pageAddr, loc);
+        return retrieveLeafValueAtLoc(this, pageAddr, loc);
     }
 
-    static byte[] retrieveLeafValueAtLoc(DatabaseAccess dbAccess, /*P*/ byte[] page, int loc)
+    static byte[] retrieveLeafValueAtLoc(DatabaseAccess dbAccess, long pageAddr, int loc)
         throws IOException
     {
-        final int header = p_byteGet(page, loc++);
+        final int header = p_byteGet(pageAddr, loc++);
         if (header == 0) {
             return EMPTY_BYTES;
         }
@@ -1970,21 +1831,21 @@ final class Node extends Clutch implements DatabaseAccess {
             len = header;
         } else {
             if ((header & 0x20) == 0) {
-                len = 1 + (((header & 0x1f) << 8) | p_ubyteGet(page, loc++));
+                len = 1 + (((header & 0x1f) << 8) | p_ubyteGet(pageAddr, loc++));
             } else if (header != -1) {
                 len = 1 + (((header & 0x0f) << 16)
-                           | (p_ubyteGet(page, loc++) << 8) | p_ubyteGet(page, loc++));
+                           | (p_ubyteGet(pageAddr, loc++) << 8) | p_ubyteGet(pageAddr, loc++));
             } else {
                 // ghost
                 return null;
             }
             if ((header & ENTRY_FRAGMENTED) != 0) {
-                return dbAccess.getDatabase().reconstruct(page, loc, len);
+                return dbAccess.getDatabase().reconstruct(pageAddr, loc, len);
             }
         }
 
         var value = new byte[len];
-        p_copyToArray(page, loc, value, 0, len);
+        p_copyToArray(pageAddr, loc, value, 0, len);
         return value;
     }
 
@@ -1996,9 +1857,9 @@ final class Node extends Clutch implements DatabaseAccess {
      * @param cursor key and value are updated
      */
     void retrieveLeafEntry(int pos, BTreeCursor cursor) throws IOException {
-        final var page = mPage;
-        int loc = p_ushortGetLE(page, searchVecStart() + pos);
-        int header = p_byteGet(page, loc++);
+        final long pageAddr = mPageAddr;
+        int loc = p_ushortGetLE(pageAddr, searchVecStart() + pos);
+        int header = p_byteGet(pageAddr, loc++);
 
         int keyLen;
         byte[] key;
@@ -2006,14 +1867,14 @@ final class Node extends Clutch implements DatabaseAccess {
             if (header >= 0) {
                 keyLen = header + 1;
             } else {
-                keyLen = ((header & 0x3f) << 8) | p_ubyteGet(page, loc++);
+                keyLen = ((header & 0x3f) << 8) | p_ubyteGet(pageAddr, loc++);
                 if ((header & ENTRY_FRAGMENTED) != 0) {
-                    key = getDatabase().reconstructKey(page, loc, keyLen);
+                    key = getDatabase().reconstructKey(pageAddr, loc, keyLen);
                     break copyKey;
                 }
             }
             key = new byte[keyLen];
-            p_copyToArray(page, loc, key, 0, keyLen);
+            p_copyToArray(pageAddr, loc, key, 0, keyLen);
         }
 
         loc += keyLen;
@@ -2021,9 +1882,9 @@ final class Node extends Clutch implements DatabaseAccess {
 
         byte[] value;
         if (cursor.mKeyOnly) {
-            value = p_byteGet(page, loc) == -1 ? null : Cursor.NOT_LOADED;
+            value = p_byteGet(pageAddr, loc) == -1 ? null : Cursor.NOT_LOADED;
         } else {
-            value = retrieveLeafValueAtLoc(this, page, loc);
+            value = retrieveLeafValueAtLoc(this, pageAddr, loc);
         }
 
         cursor.mValue = value;
@@ -2033,19 +1894,19 @@ final class Node extends Clutch implements DatabaseAccess {
      * @param pos position as provided by binarySearch; must be positive
      */
     boolean isFragmentedKey(int pos) {
-        final var page = mPage;
-        int loc = p_ushortGetLE(page, searchVecStart() + pos);
-        return (p_byteGet(page, loc) & 0xc0) == 0xc0;
+        final long pageAddr = mPageAddr;
+        int loc = p_ushortGetLE(pageAddr, searchVecStart() + pos);
+        return (p_byteGet(pageAddr, loc) & 0xc0) == 0xc0;
     }
 
     /**
      * @param pos position as provided by binarySearch; must be positive
      */
     boolean isFragmentedLeafValue(int pos) {
-        final var page = mPage;
-        int loc = p_ushortGetLE(page, searchVecStart() + pos);
-        loc += keyLengthAtLoc(page, loc);
-        int header = p_byteGet(page, loc);
+        final long pageAddr = mPageAddr;
+        int loc = p_ushortGetLE(pageAddr, searchVecStart() + pos);
+        loc += keyLengthAtLoc(pageAddr, loc);
+        int header = p_byteGet(pageAddr, loc);
         return ((header & 0xc0) == 0xc0) & (header < -1);
     }
 
@@ -2066,16 +1927,16 @@ final class Node extends Clutch implements DatabaseAccess {
         // Allocate early, in case out of memory.
         var frame = new GhostFrame();
 
-        final var page = mPage;
-        final int entryLoc = p_ushortGetLE(page, searchVecStart() + pos);
+        final long pageAddr = mPageAddr;
+        final int entryLoc = p_ushortGetLE(pageAddr, searchVecStart() + pos);
         int loc = entryLoc;
 
         // Skip the key.
-        loc += keyLengthAtLoc(page, loc);
+        loc += keyLengthAtLoc(pageAddr, loc);
 
         // Read value header.
         final int valueHeaderLoc = loc;
-        int header = p_byteGet(page, loc++);
+        int header = p_byteGet(pageAddr, loc++);
 
         doUndo: {
             // Note: Similar to leafEntryLengthAtLoc.
@@ -2085,10 +1946,10 @@ final class Node extends Clutch implements DatabaseAccess {
             } else {
                 // Medium value. Move loc to just past end of value.
                 if ((header & 0x20) == 0) {
-                    loc += 2 + (((header & 0x1f) << 8) | p_ubyteGet(page, loc));
+                    loc += 2 + (((header & 0x1f) << 8) | p_ubyteGet(pageAddr, loc));
                 } else if (header != -1) {
                     loc += 3 + (((header & 0x0f) << 16)
-                                | (p_ubyteGet(page, loc) << 8) | p_ubyteGet(page, loc + 1));
+                                | (p_ubyteGet(pageAddr, loc) << 8) | p_ubyteGet(pageAddr, loc + 1));
                 } else {
                     // Already a ghost, so nothing to undo.
                     break doUndo;
@@ -2098,7 +1959,7 @@ final class Node extends Clutch implements DatabaseAccess {
                     int valueStartLoc = valueHeaderLoc + 2 + ((header & 0x20) >> 5);
                     FragmentedTrash.add
                         (tree.mDatabase.fragmentedTrash(),
-                         txn, tree.mId, page,
+                         txn, tree.mId, pageAddr,
                          entryLoc, valueHeaderLoc - entryLoc,  // keyStart, keyLen
                          valueStartLoc, loc - valueStartLoc);  // valueStart, valueLen
                     break doUndo;
@@ -2106,7 +1967,7 @@ final class Node extends Clutch implements DatabaseAccess {
             }
 
             // Copy whole entry into undo log.
-            txn.pushUndoStore(tree.mId, UndoLog.OP_UNDELETE, page, entryLoc, loc - entryLoc);
+            txn.pushUndoStore(tree.mId, UndoLog.OP_UNDELETE, pageAddr, entryLoc, loc - entryLoc);
         }
 
         frame.bind(this, pos);
@@ -2115,7 +1976,7 @@ final class Node extends Clutch implements DatabaseAccess {
         tree.mLockManager.ghosted(tree.mId, key, keyHash, frame);
 
         // Replace value with ghost.
-        p_bytePut(page, valueHeaderLoc, -1);
+        p_bytePut(pageAddr, valueHeaderLoc, -1);
         spaceFreed(valueHeaderLoc + 1, loc);
     }
 
@@ -2129,16 +1990,16 @@ final class Node extends Clutch implements DatabaseAccess {
     void txnPreUpdateLeafEntry(LocalTransaction txn, BTree tree, int pos)
         throws IOException
     {
-        final var page = mPage;
-        final int entryLoc = p_ushortGetLE(page, searchVecStart() + pos);
+        final long pageAddr = mPageAddr;
+        final int entryLoc = p_ushortGetLE(pageAddr, searchVecStart() + pos);
         int loc = entryLoc;
 
         // Skip the key.
-        loc += keyLengthAtLoc(page, loc);
+        loc += keyLengthAtLoc(pageAddr, loc);
 
         // Read value header.
         final int valueHeaderLoc = loc;
-        int header = p_byteGet(page, loc++);
+        int header = p_byteGet(pageAddr, loc++);
 
         examineEntry: {
             // Note: Similar to leafEntryLengthAtLoc.
@@ -2149,10 +2010,10 @@ final class Node extends Clutch implements DatabaseAccess {
             } else {
                 // Medium value. Move loc to just past end of value.
                 if ((header & 0x20) == 0) {
-                    loc += 2 + (((header & 0x1f) << 8) | p_ubyteGet(page, loc));
+                    loc += 2 + (((header & 0x1f) << 8) | p_ubyteGet(pageAddr, loc));
                 } else if (header != -1) {
                     loc += 3 + (((header & 0x0f) << 16)
-                                | (p_ubyteGet(page, loc) << 8) | p_ubyteGet(page, loc + 1));
+                                | (p_ubyteGet(pageAddr, loc) << 8) | p_ubyteGet(pageAddr, loc + 1));
                 } else {
                     // Already a ghost, so nothing to undo.
                     break examineEntry;
@@ -2162,33 +2023,33 @@ final class Node extends Clutch implements DatabaseAccess {
                     int valueStartLoc = valueHeaderLoc + 2 + ((header & 0x20) >> 5);
                     FragmentedTrash.add
                         (tree.mDatabase.fragmentedTrash(),
-                         txn, tree.mId, page,
+                         txn, tree.mId, pageAddr,
                          entryLoc, valueHeaderLoc - entryLoc,  // keyStart, keyLen
                          valueStartLoc, loc - valueStartLoc);  // valueStart, valueLen
                     // Clearing the fragmented bit prevents the update from double-deleting the
                     // fragments, and it also allows the old entry slot to be re-used.
-                    p_bytePut(page, valueHeaderLoc, header & ~ENTRY_FRAGMENTED);
+                    p_bytePut(pageAddr, valueHeaderLoc, header & ~ENTRY_FRAGMENTED);
                     return;
                 }
             }
         }
 
         // Copy whole entry into undo log.
-        txn.pushUndoStore(tree.mId, UndoLog.OP_UNUPDATE, page, entryLoc, loc - entryLoc);
+        txn.pushUndoStore(tree.mId, UndoLog.OP_UNUPDATE, pageAddr, entryLoc, loc - entryLoc);
     }
 
     /**
      * @param pos position as provided by binarySearch; must be positive
      */
     long childId(int pos) {
-        return childIdByOffset(mPage, searchVecEnd() + 2 + (pos << 2));
+        return childIdByOffset(mPageAddr, searchVecEnd() + 2 + (pos << 2));
     }
 
     /**
      * @param offset page offset
      */
-    private static long childIdByOffset(/*P*/ byte[] page, int offset) {
-        return p_longGetLE(page, offset) & 0xffff_ffff_ffffL;
+    private static long childIdByOffset(long pageAddr, int offset) {
+        return p_longGetLE(pageAddr, offset) & 0xffff_ffff_ffffL;
     }
 
     /**
@@ -2199,7 +2060,7 @@ final class Node extends Clutch implements DatabaseAccess {
      * @param pos position as provided by binarySearch; must be positive
      */
     int childEntryCount(int pos) {
-        return p_ushortGetLE(mPage, searchVecEnd() + (2 + 6) + (pos << 2)) - 1;
+        return p_ushortGetLE(mPageAddr, searchVecEnd() + (2 + 6) + (pos << 2)) - 1;
     }
 
     /**
@@ -2212,24 +2073,24 @@ final class Node extends Clutch implements DatabaseAccess {
      */
     void storeChildEntryCount(int pos, int count) {
         if (count < 65535) { // safety check
-            p_shortPutLE(mPage, searchVecEnd() + (2 + 6) + (pos << 2), count + 1);
+            p_shortPutLE(mPageAddr, searchVecEnd() + (2 + 6) + (pos << 2), count + 1);
         }
     }
 
     /**
      * @return length of encoded entry at given location
      */
-    static int leafEntryLengthAtLoc(/*P*/ byte[] page, final int entryLoc) {
-        int loc = entryLoc + keyLengthAtLoc(page, entryLoc);
-        int header = p_byteGet(page, loc++);
+    static int leafEntryLengthAtLoc(long pageAddr, final int entryLoc) {
+        int loc = entryLoc + keyLengthAtLoc(pageAddr, entryLoc);
+        int header = p_byteGet(pageAddr, loc++);
         if (header >= 0) {
             loc += header;
         } else {
             if ((header & 0x20) == 0) {
-                loc += 2 + (((header & 0x1f) << 8) | p_ubyteGet(page, loc));
+                loc += 2 + (((header & 0x1f) << 8) | p_ubyteGet(pageAddr, loc));
             } else if (header != -1) {
                 loc += 3 + (((header & 0x0f) << 16)
-                            | (p_ubyteGet(page, loc) << 8) | p_ubyteGet(page, loc + 1));
+                            | (p_ubyteGet(pageAddr, loc) << 8) | p_ubyteGet(pageAddr, loc + 1));
             }
         }
         return loc - entryLoc;
@@ -2238,10 +2099,10 @@ final class Node extends Clutch implements DatabaseAccess {
     /**
      * @return length of encoded key at given location, including the header
      */
-    static int keyLengthAtLoc(/*P*/ byte[] page, final int keyLoc) {
-        int header = p_byteGet(page, keyLoc);
+    static int keyLengthAtLoc(long pageAddr, final int keyLoc) {
+        int header = p_byteGet(pageAddr, keyLoc);
         return (header >= 0 ? header
-                : (((header & 0x3f) << 8) | p_ubyteGet(page, keyLoc + 1))) + 2;
+                : (((header & 0x3f) << 8) | p_ubyteGet(pageAddr, keyLoc + 1))) + 2;
     }
 
     /**
@@ -2415,14 +2276,14 @@ final class Node extends Clutch implements DatabaseAccess {
 
     void cleanupFragments(Throwable cause, byte[] fragmented) {
         if (fragmented != null) {
-            var copy = p_transfer(fragmented);
+            long copyAddr = p_transfer(fragmented);
             try {
-                getDatabase().deleteFragments(copy, 0, fragmented.length);
+                getDatabase().deleteFragments(copyAddr, 0, fragmented.length);
             } catch (Throwable e) {
                 Utils.suppress(cause, e);
                 panic(cause);
             } finally {
-                p_delete(copy);
+                p_delete(copyAddr);
             }
         }
     }
@@ -2440,7 +2301,7 @@ final class Node extends Clutch implements DatabaseAccess {
         int leftSpace = searchVecStart - leftSegTail();
         int rightSpace = rightSegTail() - searchVecEnd - 1;
 
-        final var page = mPage;
+        final long pageAddr = mPageAddr;
 
         int entryLoc;
         alloc: {
@@ -2449,7 +2310,7 @@ final class Node extends Clutch implements DatabaseAccess {
                 if ((leftSpace -= 2) >= 0 &&
                     (entryLoc = allocPageEntry(encodedLen, leftSpace, rightSpace)) >= 0)
                 {
-                    p_copy(page, searchVecStart, page, searchVecStart -= 2, pos);
+                    p_copy(pageAddr, searchVecStart, pageAddr, searchVecStart -= 2, pos);
                     pos += searchVecStart;
                     searchVecStart(searchVecStart);
                     break alloc;
@@ -2462,7 +2323,7 @@ final class Node extends Clutch implements DatabaseAccess {
                     (entryLoc = allocPageEntry(encodedLen, leftSpace, rightSpace)) >= 0)
                 {
                     pos += searchVecStart;
-                    p_copy(page, pos, page, pos + 2, (searchVecEnd += 2) - pos);
+                    p_copy(pageAddr, pos, pageAddr, pos + 2, (searchVecEnd += 2) - pos);
                     searchVecEnd(searchVecEnd);
                     break alloc;
                 }
@@ -2519,7 +2380,7 @@ final class Node extends Clutch implements DatabaseAccess {
                 return compactLeaf(encodedLen, pos, true);
             }
 
-            p_copies(page,
+            p_copies(pageAddr,
                      searchVecStart, newSearchVecStart, pos,
                      searchVecStart + pos, newSearchVecStart + pos + 2, vecLen - pos);
 
@@ -2529,7 +2390,7 @@ final class Node extends Clutch implements DatabaseAccess {
         }
 
         // Write pointer to new allocation.
-        p_shortPutLE(page, pos, entryLoc);
+        p_shortPutLE(pageAddr, pos, entryLoc);
         return entryLoc;
     }
 
@@ -2580,7 +2441,7 @@ final class Node extends Clutch implements DatabaseAccess {
     private int tryRebalanceLeafLeft(BTree tree, CursorFrame parentFrame,
                                      int pos, int insertLen, int minAmount)
     {
-        final var rightPage = mPage;
+        final long rightPageAddr = mPageAddr;
 
         int moveAmount = 0;
         final int lastSearchVecLoc;
@@ -2593,8 +2454,8 @@ final class Node extends Clutch implements DatabaseAccess {
 
             // Note that loop doesn't examine last entry. At least one must remain.
             for (; searchVecLoc < searchVecEnd; searchVecLoc += 2) {
-                int entryLoc = p_ushortGetLE(rightPage, searchVecLoc);
-                int encodedLen = leafEntryLengthAtLoc(rightPage, entryLoc);
+                int entryLoc = p_ushortGetLE(rightPageAddr, searchVecLoc);
+                int encodedLen = leafEntryLengthAtLoc(rightPageAddr, entryLoc);
 
                 // Find best fitting slot for insert entry.
                 int slack = encodedLen - insertLen;
@@ -2646,7 +2507,7 @@ final class Node extends Clutch implements DatabaseAccess {
 
         final byte[] newKey;
         final int newKeyLen;
-        final /*P*/ byte[] parentPage;
+        final long parentPageAddr;
         final int parentKeyLoc;
         final int parentKeyGrowth;
 
@@ -2660,10 +2521,10 @@ final class Node extends Clutch implements DatabaseAccess {
                     // Only attempt rebalance if new key doesn't need to be fragmented.
                     newKeyLen = calculateAllowedKeyLength(tree.mDatabase, newKey);
                     if (newKeyLen > 0) {
-                        parentPage = parent.mPage;
+                        parentPageAddr = parent.mPageAddr;
                         parentKeyLoc = p_ushortGetLE
-                            (parentPage, parent.searchVecStart() + childPos - 2);
-                        parentKeyGrowth = newKeyLen - keyLengthAtLoc(parentPage, parentKeyLoc);
+                            (parentPageAddr, parent.searchVecStart() + childPos - 2);
+                        parentKeyGrowth = newKeyLen - keyLengthAtLoc(parentPageAddr, parentKeyLoc);
                         if (parentKeyGrowth <= 0 ||
                             parentKeyGrowth <= parent.availableInternalBytes())
                         {
@@ -2692,7 +2553,7 @@ final class Node extends Clutch implements DatabaseAccess {
 
         // Update the parent key.
         if (parentKeyGrowth <= 0) {
-            encodeNormalKey(newKey, parentPage, parentKeyLoc);
+            encodeNormalKey(newKey, parentPageAddr, parentKeyLoc);
             parent.garbage(parent.garbage() - parentKeyGrowth);
         } else {
             parent.updateInternalKey(childPos - 2, parentKeyGrowth, newKey, newKeyLen);
@@ -2703,12 +2564,12 @@ final class Node extends Clutch implements DatabaseAccess {
         final int lastPos = lastSearchVecLoc - searchVecLoc;
 
         for (; searchVecLoc < lastSearchVecLoc; searchVecLoc += 2) {
-            int entryLoc = p_ushortGetLE(rightPage, searchVecLoc);
-            int encodedLen = leafEntryLengthAtLoc(rightPage, entryLoc);
+            int entryLoc = p_ushortGetLE(rightPageAddr, searchVecLoc);
+            int encodedLen = leafEntryLengthAtLoc(rightPageAddr, entryLoc);
             int leftEntryLoc = left.createLeafEntry
                 (null, tree, left.highestLeafPos() + 2, encodedLen);
             // Note: Must access left page each time, since compaction can replace it.
-            p_copy(rightPage, entryLoc, left.mPage, leftEntryLoc, encodedLen);
+            p_copy(rightPageAddr, entryLoc, left.mPageAddr, leftEntryLoc, encodedLen);
             garbageAccum += encodedLen;
         }
 
@@ -2750,9 +2611,9 @@ final class Node extends Clutch implements DatabaseAccess {
         garbage(garbage() - insertLen);
         pos -= lastPos;
         int searchVecStart = searchVecStart();
-        p_copy(rightPage, searchVecStart, rightPage, searchVecStart -= 2, pos);
+        p_copy(rightPageAddr, searchVecStart, rightPageAddr, searchVecStart -= 2, pos);
         searchVecStart(searchVecStart);
-        p_shortPutLE(rightPage, searchVecStart + pos, insertLoc);
+        p_shortPutLE(rightPageAddr, searchVecStart + pos, insertLoc);
         return insertLoc;
     }
 
@@ -2771,7 +2632,7 @@ final class Node extends Clutch implements DatabaseAccess {
     private int tryRebalanceLeafRight(BTree tree, CursorFrame parentFrame,
                                       int pos, int insertLen, int minAmount)
     {
-        final var leftPage = mPage;
+        final long leftPageAddr = mPageAddr;
 
         int moveAmount = 0;
         final int firstSearchVecLoc;
@@ -2784,8 +2645,8 @@ final class Node extends Clutch implements DatabaseAccess {
 
             // Note that loop doesn't examine first entry. At least one must remain.
             for (; searchVecLoc > searchVecStart; searchVecLoc -= 2) {
-                int entryLoc = p_ushortGetLE(leftPage, searchVecLoc);
-                int encodedLen = leafEntryLengthAtLoc(leftPage, entryLoc);
+                int entryLoc = p_ushortGetLE(leftPageAddr, searchVecLoc);
+                int encodedLen = leafEntryLengthAtLoc(leftPageAddr, entryLoc);
 
                 // Find best fitting slot for insert entry.
                 int slack = encodedLen - insertLen;
@@ -2837,7 +2698,7 @@ final class Node extends Clutch implements DatabaseAccess {
 
         final byte[] newKey;
         final int newKeyLen;
-        final /*P*/ byte[] parentPage;
+        final long parentPageAddr;
         final int parentKeyLoc;
         final int parentKeyGrowth;
 
@@ -2851,10 +2712,10 @@ final class Node extends Clutch implements DatabaseAccess {
                     // Only attempt rebalance if new key doesn't need to be fragmented.
                     newKeyLen = calculateAllowedKeyLength(tree.mDatabase, newKey);
                     if (newKeyLen > 0) {
-                        parentPage = parent.mPage;
+                        parentPageAddr = parent.mPageAddr;
                         parentKeyLoc = p_ushortGetLE
-                            (parentPage, parent.searchVecStart() + childPos);
-                        parentKeyGrowth = newKeyLen - keyLengthAtLoc(parentPage, parentKeyLoc);
+                            (parentPageAddr, parent.searchVecStart() + childPos);
+                        parentKeyGrowth = newKeyLen - keyLengthAtLoc(parentPageAddr, parentKeyLoc);
                         if (parentKeyGrowth <= 0 ||
                             parentKeyGrowth <= parent.availableInternalBytes())
                         {
@@ -2883,7 +2744,7 @@ final class Node extends Clutch implements DatabaseAccess {
 
         // Update the parent key.
         if (parentKeyGrowth <= 0) {
-            encodeNormalKey(newKey, parentPage, parentKeyLoc);
+            encodeNormalKey(newKey, parentPageAddr, parentKeyLoc);
             parent.garbage(parent.garbage() - parentKeyGrowth);
         } else {
             parent.updateInternalKey(childPos, parentKeyGrowth, newKey, newKeyLen);
@@ -2894,11 +2755,11 @@ final class Node extends Clutch implements DatabaseAccess {
         final int moved = searchVecLoc - firstSearchVecLoc + 2;
 
         for (; searchVecLoc >= firstSearchVecLoc; searchVecLoc -= 2) {
-            int entryLoc = p_ushortGetLE(leftPage, searchVecLoc);
-            int encodedLen = leafEntryLengthAtLoc(leftPage, entryLoc);
+            int entryLoc = p_ushortGetLE(leftPageAddr, searchVecLoc);
+            int encodedLen = leafEntryLengthAtLoc(leftPageAddr, entryLoc);
             int rightEntryLoc = right.createLeafEntry(null, tree, 0, encodedLen);
             // Note: Must access right page each time, since compaction can replace it.
-            p_copy(leftPage, entryLoc, right.mPage, rightEntryLoc, encodedLen);
+            p_copy(leftPageAddr, entryLoc, right.mPageAddr, rightEntryLoc, encodedLen);
             garbageAccum += encodedLen;
         }
 
@@ -2947,9 +2808,9 @@ final class Node extends Clutch implements DatabaseAccess {
         garbage(garbage() - insertLen);
         pos += searchVecStart();
         int newSearchVecEnd = searchVecEnd() + 2;
-        p_copy(leftPage, pos, leftPage, pos + 2, newSearchVecEnd - pos);
+        p_copy(leftPageAddr, pos, leftPageAddr, pos + 2, newSearchVecEnd - pos);
         searchVecEnd(newSearchVecEnd);
-        p_shortPutLE(leftPage, pos, insertLoc);
+        p_shortPutLE(leftPageAddr, pos, insertLoc);
         return insertLoc;
     }
 
@@ -3038,7 +2899,7 @@ final class Node extends Clutch implements DatabaseAccess {
         splitChild.mSplit = null;
 
         // Write new child id.
-        p_longPutLE(result.mPage, result.mNewChildLoc, newChild.id());
+        p_longPutLE(result.mPageAddr, result.mNewChildLoc, newChild.id());
 
         int entryLoc = result.mEntryLoc;
         if (entryLoc < 0) {
@@ -3047,7 +2908,7 @@ final class Node extends Clutch implements DatabaseAccess {
             mSplit.setKey(split);
         } else {
             // Write key entry itself.
-            split.copySplitKeyToParent(result.mPage, entryLoc);
+            split.copySplitKeyToParent(result.mPageAddr, entryLoc);
         }
 
         splitChild.releaseExclusive();
@@ -3086,7 +2947,7 @@ final class Node extends Clutch implements DatabaseAccess {
         int rightSpace = rightSegTail() - searchVecEnd
             - ((searchVecEnd - searchVecStart) << 2) - 17;
 
-        var page = mPage;
+        long pageAddr = mPageAddr;
 
         int entryLoc;
         alloc: {
@@ -3098,9 +2959,9 @@ final class Node extends Clutch implements DatabaseAccess {
                 if ((leftSpace -= 10) >= 0 &&
                     (entryLoc = allocPageEntry(encodedLen, leftSpace, rightSpace)) >= 0)
                 {
-                    p_copy(page, searchVecStart, page, searchVecStart - 10, keyPos);
-                    p_copy(page, searchVecStart + keyPos,
-                           page, searchVecStart + keyPos - 8,
+                    p_copy(pageAddr, searchVecStart, pageAddr, searchVecStart - 10, keyPos);
+                    p_copy(pageAddr, searchVecStart + keyPos,
+                           pageAddr, searchVecStart + keyPos - 8,
                            searchVecEnd - searchVecStart + 2 - keyPos + newChildPos);
                     searchVecStart(searchVecStart -= 10);
                     keyPos += searchVecStart;
@@ -3120,11 +2981,11 @@ final class Node extends Clutch implements DatabaseAccess {
                 if (leftSpace >= 0 && rightSpace >= 0 &&
                     (entryLoc = allocPageEntry(encodedLen, leftSpace, rightSpace)) >= 0)
                 {
-                    p_copy(page, searchVecStart, page, searchVecStart -= 2, keyPos);
+                    p_copy(pageAddr, searchVecStart, pageAddr, searchVecStart -= 2, keyPos);
                     searchVecStart(searchVecStart);
                     keyPos += searchVecStart;
-                    p_copy(page, searchVecEnd + newChildPos + 2,
-                           page, searchVecEnd + newChildPos + (2 + 8),
+                    p_copy(pageAddr, searchVecEnd + newChildPos + 2,
+                           pageAddr, searchVecEnd + newChildPos + (2 + 8),
                            ((searchVecEnd - searchVecStart) << 2) + 8 - newChildPos);
                     newChildPos += searchVecEnd + 2;
                     break alloc;
@@ -3227,7 +3088,7 @@ final class Node extends Clutch implements DatabaseAccess {
 
             int newSearchVecEnd = newSearchVecStart + vecLen;
 
-            p_copies(page,
+            p_copies(pageAddr,
                      // Move search vector up to new key position.
                      searchVecStart, newSearchVecStart, keyPos,
 
@@ -3248,9 +3109,9 @@ final class Node extends Clutch implements DatabaseAccess {
         }
 
         // Write pointer to key entry.
-        p_shortPutLE(page, keyPos, entryLoc);
+        p_shortPutLE(pageAddr, keyPos, entryLoc);
 
-        result.mPage = page;
+        result.mPageAddr = pageAddr;
         result.mNewChildLoc = newChildPos;
         result.mEntryLoc = entryLoc;
     }
@@ -3284,8 +3145,8 @@ final class Node extends Clutch implements DatabaseAccess {
             return 0;
         }
 
-        final var parentPage = parent.mPage;
-        final var rightPage = mPage;
+        final long parentPageAddr = parent.mPageAddr;
+        final long rightPageAddr = mPageAddr;
 
         int rightShrink = 0;
         int leftGrowth = 0;
@@ -3298,8 +3159,8 @@ final class Node extends Clutch implements DatabaseAccess {
 
             // Note that loop doesn't examine last entry. At least one must remain.
             for (; searchVecLoc < searchVecEnd; searchVecLoc += 2) {
-                int keyLoc = p_ushortGetLE(rightPage, searchVecLoc);
-                int len = keyLengthAtLoc(rightPage, keyLoc) + (2 + 8);
+                int keyLoc = p_ushortGetLE(rightPageAddr, searchVecLoc);
+                int len = keyLengthAtLoc(rightPageAddr, keyLoc) + (2 + 8);
 
                 rightShrink += len;
                 leftGrowth += len;
@@ -3310,8 +3171,8 @@ final class Node extends Clutch implements DatabaseAccess {
                     // Leftmost key to move comes from the parent, and first moved key in the
                     // right node does not affect left node growth.
                     leftGrowth -= len;
-                    keyLoc = p_ushortGetLE(parentPage, parent.searchVecStart() + childPos - 2);
-                    leftGrowth += keyLengthAtLoc(parentPage, keyLoc) + (2 + 8);
+                    keyLoc = p_ushortGetLE(parentPageAddr, parent.searchVecStart() + childPos - 2);
+                    leftGrowth += keyLengthAtLoc(parentPageAddr, keyLoc) + (2 + 8);
 
                     break check;
                 }
@@ -3347,10 +3208,11 @@ final class Node extends Clutch implements DatabaseAccess {
             int leftAvail = left.availableInternalBytes();
             if (leftAvail >= leftGrowth) {
                 // Parent search key will be updated, so verify that it has room.
-                searchKeyLoc = p_ushortGetLE(rightPage, lastSearchVecLoc);
-                searchKeyLen = keyLengthAtLoc(rightPage, searchKeyLoc);
-                parentKeyLoc = p_ushortGetLE(parentPage, parent.searchVecStart() + childPos - 2);
-                parentKeyLen = keyLengthAtLoc(parentPage, parentKeyLoc);
+                searchKeyLoc = p_ushortGetLE(rightPageAddr, lastSearchVecLoc);
+                searchKeyLen = keyLengthAtLoc(rightPageAddr, searchKeyLoc);
+                parentKeyLoc = p_ushortGetLE(parentPageAddr,
+                                             parent.searchVecStart() + childPos - 2);
+                parentKeyLen = keyLengthAtLoc(parentPageAddr, parentKeyLoc);
                 parentKeyGrowth = searchKeyLen - parentKeyLen;
                 if (parentKeyGrowth <= 0 || parentKeyGrowth <= parent.availableInternalBytes()) {
                     // Parent has room for the new search key, so proceed with rebalancing.
@@ -3382,17 +3244,17 @@ final class Node extends Clutch implements DatabaseAccess {
             var result = new InResult();
             left.createInternalEntry(null, result, tree, pos, parentKeyLen, (pos + 2) << 2, false);
             // Note: Must access left page each time, since compaction can replace it.
-            p_copy(parentPage, parentKeyLoc, left.mPage, result.mEntryLoc, parentKeyLen);
+            p_copy(parentPageAddr, parentKeyLoc, left.mPageAddr, result.mEntryLoc, parentKeyLen);
 
             // Remaining keys come from the right node.
             for (; searchVecLoc < lastSearchVecLoc; searchVecLoc += 2) {
-                int keyLoc = p_ushortGetLE(rightPage, searchVecLoc);
-                int encodedLen = keyLengthAtLoc(rightPage, keyLoc);
+                int keyLoc = p_ushortGetLE(rightPageAddr, searchVecLoc);
+                int encodedLen = keyLengthAtLoc(rightPageAddr, keyLoc);
                 pos = left.highestInternalPos();
                 left.createInternalEntry
                     (null, result, tree, pos, encodedLen, (pos + 2) << 2, false);
                 // Note: Must access left page each time, since compaction can replace it.
-                p_copy(rightPage, keyLoc, left.mPage, result.mEntryLoc, encodedLen);
+                p_copy(rightPageAddr, keyLoc, left.mPageAddr, result.mEntryLoc, encodedLen);
                 garbageAccum += encodedLen;
             }
         } catch (IOException e) {
@@ -3402,11 +3264,11 @@ final class Node extends Clutch implements DatabaseAccess {
 
         // Update the parent key after moving it to the left node.
         if (parentKeyGrowth <= 0) {
-            p_copy(rightPage, searchKeyLoc, parentPage, parentKeyLoc, searchKeyLen);
+            p_copy(rightPageAddr, searchKeyLoc, parentPageAddr, parentKeyLoc, searchKeyLen);
             parent.garbage(parent.garbage() - parentKeyGrowth);
         } else {
             parent.updateInternalKeyEncoded
-                (childPos - 2, parentKeyGrowth, rightPage, searchKeyLoc, searchKeyLen);
+                (childPos - 2, parentKeyGrowth, rightPageAddr, searchKeyLoc, searchKeyLen);
         }
 
         // Move encoded child pointers.
@@ -3415,8 +3277,9 @@ final class Node extends Clutch implements DatabaseAccess {
             int len = moved << 2;
             int end = left.searchVecEnd();
             end = end + ((end - left.searchVecStart()) << 2) + (2 + 16) - len;
-            p_copy(rightPage, start, left.mPage, end, len);
-            p_copy(rightPage, start + len, rightPage, start, (start - lastSearchVecLoc) << 2);
+            p_copy(rightPageAddr, start, left.mPageAddr, end, len);
+            p_copy(rightPageAddr, start + len, rightPageAddr,
+                   start, (start - lastSearchVecLoc) << 2);
         }
 
         garbage(garbage() + garbageAccum);
@@ -3472,8 +3335,8 @@ final class Node extends Clutch implements DatabaseAccess {
             return false;
         }
 
-        final var parentPage = parent.mPage;
-        final var leftPage = mPage;
+        final long parentPageAddr = parent.mPageAddr;
+        final long leftPageAddr = mPageAddr;
 
         int leftShrink = 0;
         int rightGrowth = 0;
@@ -3486,8 +3349,8 @@ final class Node extends Clutch implements DatabaseAccess {
 
             // Note that loop doesn't examine first entry. At least one must remain.
             for (; searchVecLoc > searchVecStart; searchVecLoc -= 2) {
-                int keyLoc = p_ushortGetLE(leftPage, searchVecLoc);
-                int len = keyLengthAtLoc(leftPage, keyLoc) + (2 + 8);
+                int keyLoc = p_ushortGetLE(leftPageAddr, searchVecLoc);
+                int len = keyLengthAtLoc(leftPageAddr, keyLoc) + (2 + 8);
 
                 leftShrink += len;
                 rightGrowth += len;
@@ -3498,8 +3361,8 @@ final class Node extends Clutch implements DatabaseAccess {
                     // Rightmost key to move comes from the parent, and first moved key in the
                     // left node does not affect right node growth.
                     rightGrowth -= len;
-                    keyLoc = p_ushortGetLE(parentPage, parent.searchVecStart() + childPos);
-                    rightGrowth += keyLengthAtLoc(parentPage, keyLoc) + (2 + 8);
+                    keyLoc = p_ushortGetLE(parentPageAddr, parent.searchVecStart() + childPos);
+                    rightGrowth += keyLengthAtLoc(parentPageAddr, keyLoc) + (2 + 8);
 
                     break check;
                 }
@@ -3535,10 +3398,10 @@ final class Node extends Clutch implements DatabaseAccess {
             int rightAvail = right.availableInternalBytes();
             if (rightAvail >= rightGrowth) {
                 // Parent search key will be updated, so verify that it has room.
-                searchKeyLoc = p_ushortGetLE(leftPage, firstSearchVecLoc);
-                searchKeyLen = keyLengthAtLoc(leftPage, searchKeyLoc);
-                parentKeyLoc = p_ushortGetLE(parentPage, parent.searchVecStart() + childPos);
-                parentKeyLen = keyLengthAtLoc(parentPage, parentKeyLoc);
+                searchKeyLoc = p_ushortGetLE(leftPageAddr, firstSearchVecLoc);
+                searchKeyLen = keyLengthAtLoc(leftPageAddr, searchKeyLoc);
+                parentKeyLoc = p_ushortGetLE(parentPageAddr, parent.searchVecStart() + childPos);
+                parentKeyLen = keyLengthAtLoc(parentPageAddr, parentKeyLoc);
                 parentKeyGrowth = searchKeyLen - parentKeyLen;
                 if (parentKeyGrowth <= 0 || parentKeyGrowth <= parent.availableInternalBytes()) {
                     // Parent has room for the new search key, so proceed with rebalancing.
@@ -3569,15 +3432,15 @@ final class Node extends Clutch implements DatabaseAccess {
             var result = new InResult();
             right.createInternalEntry(null, result, tree, 0, parentKeyLen, 0, false);
             // Note: Must access right page each time, since compaction can replace it.
-            p_copy(parentPage, parentKeyLoc, right.mPage, result.mEntryLoc, parentKeyLen);
+            p_copy(parentPageAddr, parentKeyLoc, right.mPageAddr, result.mEntryLoc, parentKeyLen);
 
             // Remaining keys come from the left node.
             for (; searchVecLoc > firstSearchVecLoc; searchVecLoc -= 2) {
-                int keyLoc = p_ushortGetLE(leftPage, searchVecLoc);
-                int encodedLen = keyLengthAtLoc(leftPage, keyLoc);
+                int keyLoc = p_ushortGetLE(leftPageAddr, searchVecLoc);
+                int encodedLen = keyLengthAtLoc(leftPageAddr, keyLoc);
                 right.createInternalEntry(null, result, tree, 0, encodedLen, 0, false);
                 // Note: Must access right page each time, since compaction can replace it.
-                p_copy(leftPage, keyLoc, right.mPage, result.mEntryLoc, encodedLen);
+                p_copy(leftPageAddr, keyLoc, right.mPageAddr, result.mEntryLoc, encodedLen);
                 garbageAccum += encodedLen;
             }
         } catch (IOException e) {
@@ -3587,19 +3450,20 @@ final class Node extends Clutch implements DatabaseAccess {
 
         // Update the parent key after moving it to the right node.
         if (parentKeyGrowth <= 0) {
-            p_copy(leftPage, searchKeyLoc, parentPage, parentKeyLoc, searchKeyLen);
+            p_copy(leftPageAddr, searchKeyLoc, parentPageAddr, parentKeyLoc, searchKeyLen);
             parent.garbage(parent.garbage() - parentKeyGrowth);
         } else {
             parent.updateInternalKeyEncoded
-                (childPos, parentKeyGrowth, leftPage, searchKeyLoc, searchKeyLen);
+                (childPos, parentKeyGrowth, leftPageAddr, searchKeyLoc, searchKeyLen);
         }
 
         // Move encoded child pointers.
         {
             int start = searchVecEnd() + 2;
             int len = ((start - searchVecStart()) << 2) + 8 - (moved << 2);
-            p_copy(leftPage, start, leftPage, start - moved, len);
-            p_copy(leftPage, start + len, right.mPage, right.searchVecEnd() + 2, moved << 2);
+            p_copy(leftPageAddr, start, leftPageAddr, start - moved, len);
+            p_copy(leftPageAddr, start + len, right.mPageAddr,
+                   right.searchVecEnd() + 2, moved << 2);
         }
 
         garbage(garbage() + garbageAccum);
@@ -3679,7 +3543,7 @@ final class Node extends Clutch implements DatabaseAccess {
     void updateLeafValue(BTree tree, int pos, int vfrag, byte[] value)
         throws IOException
     {
-        var page = mPage;
+        long pageAddr = mPageAddr;
         final int searchVecStart = searchVecStart();
 
         final int start;
@@ -3687,32 +3551,32 @@ final class Node extends Clutch implements DatabaseAccess {
         final int garbage;
         quick: {
             int loc;
-            start = loc = p_ushortGetLE(page, searchVecStart + pos);
-            loc += keyLengthAtLoc(page, loc);
+            start = loc = p_ushortGetLE(pageAddr, searchVecStart + pos);
+            loc += keyLengthAtLoc(pageAddr, loc);
 
             final int valueHeaderLoc = loc;
 
             // Note: Similar to leafEntryLengthAtLoc and retrieveLeafValueAtLoc.
-            int len = p_byteGet(page, loc++);
+            int len = p_byteGet(pageAddr, loc++);
             if (len < 0) largeValue: {
                 int header;
                 if ((len & 0x20) == 0) {
                     header = len;
-                    len = 1 + (((len & 0x1f) << 8) | p_ubyteGet(page, loc++));
+                    len = 1 + (((len & 0x1f) << 8) | p_ubyteGet(pageAddr, loc++));
                 } else if (len != -1) {
                     header = len;
                     len = 1 + (((len & 0x0f) << 16)
-                               | (p_ubyteGet(page, loc++) << 8) | p_ubyteGet(page, loc++));
+                               | (p_ubyteGet(pageAddr, loc++) << 8) | p_ubyteGet(pageAddr, loc++));
                 } else {
                     // ghost
                     len = 0;
                     break largeValue;
                 }
                 if ((header & ENTRY_FRAGMENTED) != 0) {
-                    tree.mDatabase.deleteFragments(page, loc, len);
+                    tree.mDatabase.deleteFragments(pageAddr, loc, len);
                     // Clearing the fragmented bit prevents the update from double-deleting the
                     // fragments, and it also allows the old entry slot to be re-used.
-                    p_bytePut(page, valueHeaderLoc, header & ~ENTRY_FRAGMENTED);
+                    p_bytePut(pageAddr, valueHeaderLoc, header & ~ENTRY_FRAGMENTED);
                 }
             }
 
@@ -3729,16 +3593,17 @@ final class Node extends Clutch implements DatabaseAccess {
                 // Quick copy with no garbage created.
                 if (valueLen == 0) {
                     // Ensure ghost is replaced.
-                    p_bytePut(page, valueHeaderLoc, 0);
+                    p_bytePut(pageAddr, valueHeaderLoc, 0);
                 } else {
-                    p_copyFromArray(value, 0, page, loc, valueLen);
+                    p_copyFromArray(value, 0, pageAddr, loc, valueLen);
                     if (vfrag != 0) {
-                        p_bytePut(page, valueHeaderLoc, p_byteGet(page, valueHeaderLoc) | vfrag);
+                        p_bytePut(pageAddr, valueHeaderLoc,
+                                  p_byteGet(pageAddr, valueHeaderLoc) | vfrag);
                     }
                 }
             } else {
                 // New entry is smaller, so some space is freed.
-                int valueLoc = copyToLeafValue(page, vfrag, value, valueHeaderLoc);
+                int valueLoc = copyToLeafValue(pageAddr, vfrag, value, valueHeaderLoc);
                 spaceFreed(valueLoc + valueLen, loc + len);
             }
 
@@ -3785,14 +3650,14 @@ final class Node extends Clutch implements DatabaseAccess {
                 // Do full compaction and free up the garbage, or split the node.
 
                 var akeyRef = new byte[1][];
-                boolean isOriginal = retrieveActualKeyAtLoc(page, start, akeyRef);
+                boolean isOriginal = retrieveActualKeyAtLoc(pageAddr, start, akeyRef);
                 byte[] akey = akeyRef[0];
 
                 if ((garbage + remaining) < 0) {
                     if (mSplit == null) {
                         // TODO: use frame for rebalancing
                         // Node is full, so split it.
-                        byte[] okey = isOriginal ? akey : retrieveKeyAtLoc(this, page, start);
+                        byte[] okey = isOriginal ? akey : retrieveKeyAtLoc(this, pageAddr, start);
                         splitLeafAndCreateEntry
                             (tree, okey, akey, vfrag, value, encodedLen, pos, false);
                         return;
@@ -3816,10 +3681,10 @@ final class Node extends Clutch implements DatabaseAccess {
 
                 garbage(garbage);
                 entryLoc = compactLeaf(encodedLen, pos, false);
-                page = mPage;
-                entryLoc = isOriginal ? encodeNormalKey(akey, page, entryLoc)
-                    : encodeFragmentedKey(akey, page, entryLoc);
-                copyToLeafValue(page, vfrag, value, entryLoc);
+                pageAddr = mPageAddr;
+                entryLoc = isOriginal ? encodeNormalKey(akey, pageAddr, entryLoc)
+                    : encodeFragmentedKey(akey, pageAddr, entryLoc);
+                copyToLeafValue(pageAddr, vfrag, value, entryLoc);
                 return;
             }
 
@@ -3843,20 +3708,20 @@ final class Node extends Clutch implements DatabaseAccess {
             } else {
                 // Search vector is misaligned, so do full compaction.
                 var akeyRef = new byte[1][];
-                int loc = p_ushortGetLE(page, searchVecStart + pos);
-                boolean isOriginal = retrieveActualKeyAtLoc(page, loc, akeyRef);
+                int loc = p_ushortGetLE(pageAddr, searchVecStart + pos);
+                boolean isOriginal = retrieveActualKeyAtLoc(pageAddr, loc, akeyRef);
                 byte[] akey = akeyRef[0];
 
                 garbage(garbage);
                 entryLoc = compactLeaf(encodedLen, pos, false);
-                page = mPage;
-                entryLoc = isOriginal ? encodeNormalKey(akey, page, entryLoc)
-                    : encodeFragmentedKey(akey, page, entryLoc);
-                copyToLeafValue(page, vfrag, value, entryLoc);
+                pageAddr = mPageAddr;
+                entryLoc = isOriginal ? encodeNormalKey(akey, pageAddr, entryLoc)
+                    : encodeFragmentedKey(akey, pageAddr, entryLoc);
+                copyToLeafValue(pageAddr, vfrag, value, entryLoc);
                 return;
             }
 
-            p_copy(page, searchVecStart, page, newSearchVecStart, vecLen);
+            p_copy(pageAddr, searchVecStart, pageAddr, newSearchVecStart, vecLen);
 
             pos += newSearchVecStart;
             searchVecStart(newSearchVecStart);
@@ -3869,9 +3734,9 @@ final class Node extends Clutch implements DatabaseAccess {
         }
 
         // Copy existing key, and then copy value.
-        p_copy(page, start, page, entryLoc, keyLen);
-        copyToLeafValue(page, vfrag, value, entryLoc + keyLen);
-        p_shortPutLE(page, pos, entryLoc);
+        p_copy(pageAddr, start, pageAddr, entryLoc, keyLen);
+        copyToLeafValue(pageAddr, vfrag, value, entryLoc + keyLen);
+        p_shortPutLE(pageAddr, pos, entryLoc);
 
         garbage(garbage);
     }
@@ -3887,7 +3752,7 @@ final class Node extends Clutch implements DatabaseAccess {
      */
     void updateInternalKey(int pos, int growth, byte[] key, int encodedLen) {
         int entryLoc = doUpdateInternalKey(pos, growth, encodedLen);
-        encodeNormalKey(key, mPage, entryLoc);
+        encodeNormalKey(key, mPageAddr, entryLoc);
     }
 
     /**
@@ -3897,14 +3762,14 @@ final class Node extends Clutch implements DatabaseAccess {
      *
      * @param pos must be positive
      * @param growth key size growth
-     * @param key page with encoded key
+     * @param keyAddr page with encoded key
      * @param keyStart encoded key start; includes header
      */
     void updateInternalKeyEncoded(int pos, int growth,
-                                  /*P*/ byte[] key, int keyStart, int encodedLen)
+                                  long keyAddr, int keyStart, int encodedLen)
     {
         int entryLoc = doUpdateInternalKey(pos, growth, encodedLen);
-        p_copy(key, keyStart, mPage, entryLoc, encodedLen);
+        p_copy(keyAddr, keyStart, mPageAddr, entryLoc, encodedLen);
     }
 
     /**
@@ -3967,8 +3832,8 @@ final class Node extends Clutch implements DatabaseAccess {
                     break makeRoom;
                 }
 
-                var page = mPage;
-                p_copy(page, searchVecStart, page, newSearchVecStart, vecLen + childIdsLen);
+                long pageAddr = mPageAddr;
+                p_copy(pageAddr, searchVecStart, pageAddr, newSearchVecStart, vecLen + childIdsLen);
 
                 pos += newSearchVecStart;
                 searchVecStart(newSearchVecStart);
@@ -3988,7 +3853,7 @@ final class Node extends Clutch implements DatabaseAccess {
         }
 
         // Point to entry. Caller must copy the key to the location.
-        p_shortPutLE(mPage, pos, entryLoc);
+        p_shortPutLE(mPageAddr, pos, entryLoc);
 
         garbage(garbage);
 
@@ -3999,16 +3864,16 @@ final class Node extends Clutch implements DatabaseAccess {
      * @param pos position as provided by binarySearch; must be positive
      */
     void updateChildRefId(int pos, long id) {
-        p_longPutLE(mPage, searchVecEnd() + 2 + (pos << 2), id);
+        p_longPutLE(mPageAddr, searchVecEnd() + 2 + (pos << 2), id);
     }
 
     /**
      * @param pos position as provided by binarySearch; must be positive
      */
     void deleteLeafEntry(int pos) throws IOException {
-        var page = mPage;
-        int startLoc = p_ushortGetLE(page, searchVecStart() + pos);
-        int endLoc = doDeleteLeafEntry(page, startLoc);
+        long pageAddr = mPageAddr;
+        int startLoc = p_ushortGetLE(pageAddr, searchVecStart() + pos);
+        int endLoc = doDeleteLeafEntry(pageAddr, startLoc);
         finishDeleteLeafEntry(pos, startLoc, endLoc);
     }
 
@@ -4016,37 +3881,37 @@ final class Node extends Clutch implements DatabaseAccess {
      * @param loc start location in page
      * @return location just after end of cleared entry
      */
-    private int doDeleteLeafEntry(/*P*/ byte[] page, int loc) throws IOException {
+    private int doDeleteLeafEntry(long pageAddr, int loc) throws IOException {
         // Note: Similar to leafEntryLengthAtLoc and retrieveLeafValueAtLoc.
 
-        int keyLen = p_byteGet(page, loc++);
+        int keyLen = p_byteGet(pageAddr, loc++);
         if (keyLen >= 0) {
             loc += keyLen + 1;
         } else {
             int header = keyLen;
-            keyLen = ((keyLen & 0x3f) << 8) | p_ubyteGet(page, loc++);
+            keyLen = ((keyLen & 0x3f) << 8) | p_ubyteGet(pageAddr, loc++);
             if ((header & ENTRY_FRAGMENTED) != 0) {
-                getDatabase().deleteFragments(page, loc, keyLen);
+                getDatabase().deleteFragments(pageAddr, loc, keyLen);
             }
             loc += keyLen;
         }
 
-        int header = p_byteGet(page, loc++);
+        int header = p_byteGet(pageAddr, loc++);
         if (header >= 0) {
             loc += header;
         } else largeValue: {
             int len;
             if ((header & 0x20) == 0) {
-                len = 1 + (((header & 0x1f) << 8) | p_ubyteGet(page, loc++));
+                len = 1 + (((header & 0x1f) << 8) | p_ubyteGet(pageAddr, loc++));
             } else if (header != -1) {
                 len = 1 + (((header & 0x0f) << 16)
-                           | (p_ubyteGet(page, loc++) << 8) | p_ubyteGet(page, loc++));
+                           | (p_ubyteGet(pageAddr, loc++) << 8) | p_ubyteGet(pageAddr, loc++));
             } else {
                 // ghost
                 break largeValue;
             }
             if ((header & ENTRY_FRAGMENTED) != 0) {
-                getDatabase().deleteFragments(page, loc, len);
+                getDatabase().deleteFragments(pageAddr, loc, len);
             }
             loc += len;
         }
@@ -4100,7 +3965,7 @@ final class Node extends Clutch implements DatabaseAccess {
      * Finish the delete by only adjusting the search vector.
      */
     private void doFinishDeleteLeafEntry(int pos) {
-        var page = mPage;
+        long pageAddr = mPageAddr;
         int searchVecStart = searchVecStart();
         int searchVecEnd = searchVecEnd();
 
@@ -4108,12 +3973,12 @@ final class Node extends Clutch implements DatabaseAccess {
         // is 65536 and the last entry is deleted, the search vector start is in bounds.
         if (pos < ((searchVecEnd - searchVecStart) >> 1)) {
             // Shift left side of search vector to the right.
-            p_copy(page, searchVecStart, page, searchVecStart += 2, pos);
+            p_copy(pageAddr, searchVecStart, pageAddr, searchVecStart += 2, pos);
             searchVecStart(searchVecStart);
         } else {
             // Shift right side of search vector to the left.
             pos += searchVecStart;
-            p_copy(page, pos + 2, page, pos, searchVecEnd - pos);
+            p_copy(pageAddr, pos + 2, pageAddr, pos, searchVecEnd - pos);
             searchVecEnd(searchVecEnd - 2);
         }
     }
@@ -4153,18 +4018,18 @@ final class Node extends Clutch implements DatabaseAccess {
     {
         tree.mDatabase.prepareToDelete(rightNode);
 
-        final var rightPage = rightNode.mPage;
+        final long rightPageAddr = rightNode.mPageAddr;
         final int searchVecEnd = rightNode.searchVecEnd();
         final int leftEndPos = leftNode.highestLeafPos() + 2;
 
         int searchVecStart = rightNode.searchVecStart();
         while (searchVecStart <= searchVecEnd) {
-            int entryLoc = p_ushortGetLE(rightPage, searchVecStart);
-            int encodedLen = leafEntryLengthAtLoc(rightPage, entryLoc);
+            int entryLoc = p_ushortGetLE(rightPageAddr, searchVecStart);
+            int encodedLen = leafEntryLengthAtLoc(rightPageAddr, entryLoc);
             int leftEntryLoc = leftNode.createLeafEntry
                 (null, tree, leftNode.highestLeafPos() + 2, encodedLen);
             // Note: Must access left page each time, since compaction can replace it.
-            p_copy(rightPage, entryLoc, leftNode.mPage, leftEntryLoc, encodedLen);
+            p_copy(rightPageAddr, entryLoc, leftNode.mPageAddr, leftEntryLoc, encodedLen);
             searchVecStart += 2;
         }
 
@@ -4190,12 +4055,12 @@ final class Node extends Clutch implements DatabaseAccess {
      * Caller must also hold commit lock. The right node is always released as
      * a side effect, but left node is never released by this method.
      *
-     * @param parentPage source of entry to merge from parent
+     * @param parentPageAddr source of entry to merge from parent
      * @param parentLoc location of parent entry
      * @param parentLen length of parent entry
      */
     static void moveInternalToLeftAndDelete(BTree tree, Node leftNode, Node rightNode,
-                                            /*P*/ byte[] parentPage, int parentLoc, int parentLen)
+                                            long parentPageAddr, int parentLoc, int parentLen)
         throws IOException
     {
         tree.mDatabase.prepareToDelete(rightNode);
@@ -4207,20 +4072,20 @@ final class Node extends Clutch implements DatabaseAccess {
             (null, result, tree, leftEndPos, parentLen, (leftEndPos += 2) << 2, false);
 
         // Copy child id associated with parent key.
-        final var rightPage = rightNode.mPage;
+        final long rightPageAddr = rightNode.mPageAddr;
         int rightChildIdsLoc = rightNode.searchVecEnd() + 2;
-        p_copy(rightPage, rightChildIdsLoc, result.mPage, result.mNewChildLoc, 8);
+        p_copy(rightPageAddr, rightChildIdsLoc, result.mPageAddr, result.mNewChildLoc, 8);
         rightChildIdsLoc += 8;
 
         // Write parent key.
-        p_copy(parentPage, parentLoc, result.mPage, result.mEntryLoc, parentLen);
+        p_copy(parentPageAddr, parentLoc, result.mPageAddr, result.mEntryLoc, parentLen);
 
         final int searchVecEnd = rightNode.searchVecEnd();
 
         int searchVecStart = rightNode.searchVecStart();
         while (searchVecStart <= searchVecEnd) {
-            int entryLoc = p_ushortGetLE(rightPage, searchVecStart);
-            int encodedLen = keyLengthAtLoc(rightPage, entryLoc);
+            int entryLoc = p_ushortGetLE(rightPageAddr, searchVecStart);
+            int encodedLen = keyLengthAtLoc(rightPageAddr, entryLoc);
 
             // Allocate entry for left node.
             int pos = leftNode.highestInternalPos();
@@ -4228,12 +4093,12 @@ final class Node extends Clutch implements DatabaseAccess {
                 (null, result, tree, pos, encodedLen, (pos + 2) << 2, false);
 
             // Copy child id.
-            p_copy(rightPage, rightChildIdsLoc, result.mPage, result.mNewChildLoc, 8);
+            p_copy(rightPageAddr, rightChildIdsLoc, result.mPageAddr, result.mNewChildLoc, 8);
             rightChildIdsLoc += 8;
 
             // Copy key.
             // Note: Must access left page each time, since compaction can replace it.
-            p_copy(rightPage, entryLoc, result.mPage, result.mEntryLoc, encodedLen);
+            p_copy(rightPageAddr, entryLoc, result.mPageAddr, result.mEntryLoc, encodedLen);
             searchVecStart += 2;
         }
 
@@ -4258,19 +4123,19 @@ final class Node extends Clutch implements DatabaseAccess {
      * @param childPos non-zero two-based position of the right child
      */
     void deleteRightChildRef(final int childPos) throws IOException {
-        final var page = mPage;
+        final long pageAddr = mPageAddr;
         int keyPos = childPos - 2;
         int searchVecStart = searchVecStart();
 
-        int entryLoc = p_ushortGetLE(page, searchVecStart + keyPos);
-        int keyLen = keyLengthAtLoc(page, entryLoc);
+        int entryLoc = p_ushortGetLE(pageAddr, searchVecStart + keyPos);
+        int keyLen = keyLengthAtLoc(pageAddr, entryLoc);
 
         // If the key is fragmented, must delete it, but only if this is a bottom internal
         // node. In all other cases, the parent key is effectively moved down. See "absorb
         // parent key" in the moveInternalToLeftAndDelete method. Leaf nodes don't absorb the
         // key, which is why only bottom internal nodes can delete it.
-        if (isBottomInternal() && (p_byteGet(page, entryLoc) & 0xc0) == 0xc0) {
-            getDatabase().deleteFragments(page, entryLoc + 2, keyLen - 2);
+        if (isBottomInternal() && (p_byteGet(pageAddr, entryLoc) & 0xc0) == 0xc0) {
+            getDatabase().deleteFragments(pageAddr, entryLoc + 2, keyLen - 2);
         }
 
         // Increment garbage by the size of the encoded entry.
@@ -4285,17 +4150,17 @@ final class Node extends Clutch implements DatabaseAccess {
         // (8 bytes). Determine which shift operations minimize movement.
         if (childLoc < (3 * (searchVecEnd - searchVecStart) + keyPos + 8) >> 1) {
             // Shift child ids right by 8, shift search vector right by 10.
-            p_copy(page, searchVecStart + keyPos + 2,
-                   page, searchVecStart + keyPos + (2 + 8),
+            p_copy(pageAddr, searchVecStart + keyPos + 2,
+                   pageAddr, searchVecStart + keyPos + (2 + 8),
                    searchVecEnd - searchVecStart - keyPos + childLoc);
-            p_copy(page, searchVecStart, page, searchVecStart += 10, keyPos);
+            p_copy(pageAddr, searchVecStart, pageAddr, searchVecStart += 10, keyPos);
             searchVecEnd(searchVecEnd + 8);
         } else {
             // Shift child ids left by 8, shift search vector right by 2.
-            p_copy(page, searchVecEnd + childLoc + (2 + 8),
-                   page, searchVecEnd + childLoc + 2,
+            p_copy(pageAddr, searchVecEnd + childLoc + (2 + 8),
+                   pageAddr, searchVecEnd + childLoc + 2,
                    ((searchVecEnd - searchVecStart) << 2) + 8 - childLoc);
-            p_copy(page, searchVecStart, page, searchVecStart += 2, keyPos);
+            p_copy(pageAddr, searchVecStart, pageAddr, searchVecStart += 2, keyPos);
         }
 
         searchVecStart(searchVecStart);
@@ -4318,16 +4183,16 @@ final class Node extends Clutch implements DatabaseAccess {
      * aren't moved downwards. Fragmented keys are always deleted.
      */
     void deleteLowestChildRef() throws IOException {
-        final var page = mPage;
+        final long pageAddr = mPageAddr;
         final int searchVecStart = searchVecStart();
 
-        final int entryLoc = p_ushortGetLE(page, searchVecStart);
-        final int keyLen = keyLengthAtLoc(page, entryLoc);
+        final int entryLoc = p_ushortGetLE(pageAddr, searchVecStart);
+        final int keyLen = keyLengthAtLoc(pageAddr, entryLoc);
 
         // Unlike deleteRightChildRef, always delete fragmented keys. This method isn't called
         // by anything which moves keys downwards.
-        if ((p_byteGet(page, entryLoc) & 0xc0) == 0xc0) {
-            getDatabase().deleteFragments(page, entryLoc + 2, keyLen - 2);
+        if ((p_byteGet(pageAddr, entryLoc) & 0xc0) == 0xc0) {
+            getDatabase().deleteFragments(pageAddr, entryLoc + 2, keyLen - 2);
         }
 
         // Increment garbage by the size of the encoded entry.
@@ -4335,8 +4200,8 @@ final class Node extends Clutch implements DatabaseAccess {
 
         final int searchVecEnd = searchVecEnd();
 
-        p_copy(page, searchVecStart + 2,
-               page, searchVecStart + (2 + 8),
+        p_copy(pageAddr, searchVecStart + 2,
+               pageAddr, searchVecStart + (2 + 8),
                searchVecEnd - searchVecStart);
 
         searchVecStart(searchVecStart + (2 + 8));
@@ -4371,25 +4236,15 @@ final class Node extends Clutch implements DatabaseAccess {
     }
 
     private void doRootDelete(BTree tree, Node child, Node stub) throws IOException {
-        var oldRootPage = mPage;
+        long oldRootPageAddr = mPageAddr;
 
-        /*P*/ // [
-        mPage = child.mPage;
-        type(child.type());
-        garbage(child.garbage());
-        leftSegTail(child.leftSegTail());
-        rightSegTail(child.rightSegTail());
-        searchVecStart(child.searchVecStart());
-        searchVecEnd(child.searchVecEnd());
-        /*P*/ // |
-        /*P*/ // if (tree.mDatabase.mFullyMapped) {
-        /*P*/ //     // Page cannot change, so copy it instead.
-        /*P*/ //     p_copy(child.mPage, 0, oldRootPage, 0, tree.mDatabase.pageSize());
-        /*P*/ //     oldRootPage = child.mPage;
-        /*P*/ // } else {
-        /*P*/ //     mPage = child.mPage;
-        /*P*/ // }
-        /*P*/ // ]
+        if (tree.mDatabase.mFullyMapped) {
+            // Page cannot change, so copy it instead.
+            p_copy(child.mPageAddr, 0, oldRootPageAddr, 0, tree.mDatabase.pageSize());
+            oldRootPageAddr = child.mPageAddr;
+        } else {
+            mPageAddr = child.mPageAddr;
+        }
 
         // Lock the last frames, preventing concurrent unbinding of those frames...
         var lock = new CursorFrame();
@@ -4415,16 +4270,12 @@ final class Node extends Clutch implements DatabaseAccess {
         stub.fixFrameBindings(lock, thisLastFrame);
 
         // Old page is moved to child, to be recycled after caller deletes the child.
-        /*P*/ // [
-        child.mPage = oldRootPage;
-        /*P*/ // |
-        /*P*/ // if (tree.mDatabase.mFullyMapped) {
-        /*P*/ //     // Must use a special reserved page because existing one will be recycled.
-        /*P*/ //     child.mPage = p_nonTreePage();
-        /*P*/ // } else {
-        /*P*/ //     child.mPage = oldRootPage;
-        /*P*/ // }
-        /*P*/ // ]
+        if (tree.mDatabase.mFullyMapped) {
+            // Must use a special reserved page because existing one will be recycled.
+            child.mPageAddr = p_nonTreePage();
+        } else {
+            child.mPageAddr = oldRootPageAddr;
+        }
     }
 
     /**
@@ -4481,23 +4332,11 @@ final class Node extends Clutch implements DatabaseAccess {
      * exclusively.
      */
     void rootSwap(Node other) {
-        // Need to copy the quick access fields into the page so that they can be read back
-        // correctly below. Not needed for direct page access, which doesn't have these fields.
-        /*P*/ // [
-        prepareWrite();
-        other.prepareWrite();
-        /*P*/ // ]
-
-        int pageSize = pageSize(mPage);
+        int pageSize = pageSize();
         var tempPage = new byte[pageSize];
-        p_copyToArray(mPage, 0, tempPage, 0, pageSize);
-        p_copy(other.mPage, 0, mPage, 0, pageSize);
-        p_copyFromArray(tempPage, 0, other.mPage, 0, pageSize);
-
-        /*P*/ // [
-        readFields();
-        other.readFields();
-        /*P*/ // ]
+        p_copyToArray(mPageAddr, 0, tempPage, 0, pageSize);
+        p_copy(other.mPageAddr, 0, mPageAddr, 0, pageSize);
+        p_copyFromArray(tempPage, 0, other.mPageAddr, 0, pageSize);
     }
 
     private static final int SMALL_KEY_LIMIT = 128;
@@ -4560,33 +4399,33 @@ final class Node extends Clutch implements DatabaseAccess {
 
     /**
      * @param key unencoded key
-     * @param page destination for encoded key, with room for key header
+     * @param pageAddr destination for encoded key, with room for key header
      * @return updated pageLoc
      */
-    static int encodeNormalKey(final byte[] key, final /*P*/ byte[] page, int pageLoc) {
+    static int encodeNormalKey(final byte[] key, final long pageAddr, int pageLoc) {
         final int keyLen = key.length;
 
         if (keyLen <= SMALL_KEY_LIMIT && keyLen > 0) {
-            p_bytePut(page, pageLoc++, keyLen - 1);
+            p_bytePut(pageAddr, pageLoc++, keyLen - 1);
         } else {
-            p_bytePut(page, pageLoc++, 0x80 | (keyLen >> 8));
-            p_bytePut(page, pageLoc++, keyLen);
+            p_bytePut(pageAddr, pageLoc++, 0x80 | (keyLen >> 8));
+            p_bytePut(pageAddr, pageLoc++, keyLen);
         }
-        p_copyFromArray(key, 0, page, pageLoc, keyLen);
+        p_copyFromArray(key, 0, pageAddr, pageLoc, keyLen);
 
         return pageLoc + keyLen;
     }
 
     /**
      * @param key fragmented key
-     * @param page destination for encoded key, with room for key header
+     * @param pageAddr destination for encoded key, with room for key header
      * @return updated pageLoc
      */
-    static int encodeFragmentedKey(final byte[] key, final /*P*/ byte[] page, int pageLoc) {
+    static int encodeFragmentedKey(final byte[] key, final long pageAddr, int pageLoc) {
         final int keyLen = key.length;
-        p_bytePut(page, pageLoc++, (0x80 | ENTRY_FRAGMENTED) | (keyLen >> 8));
-        p_bytePut(page, pageLoc++, keyLen);
-        p_copyFromArray(key, 0, page, pageLoc, keyLen);
+        p_bytePut(pageAddr, pageLoc++, (0x80 | ENTRY_FRAGMENTED) | (keyLen >> 8));
+        p_bytePut(pageAddr, pageLoc++, keyLen);
+        p_copyFromArray(key, 0, pageAddr, pageLoc, keyLen);
         return pageLoc + keyLen;
     }
 
@@ -4616,38 +4455,38 @@ final class Node extends Clutch implements DatabaseAccess {
      * @param vfrag 0 or ENTRY_FRAGMENTED
      */
     private void copyToLeafEntry(byte[] okey, byte[] akey, int vfrag, byte[] value, int entryLoc) {
-        final var page = mPage;
-        int vloc = okey == akey ? encodeNormalKey(akey, page, entryLoc)
-            : encodeFragmentedKey(akey, page, entryLoc);
-        copyToLeafValue(page, vfrag, value, vloc);
+        final long pageAddr = mPageAddr;
+        int vloc = okey == akey ? encodeNormalKey(akey, pageAddr, entryLoc)
+            : encodeFragmentedKey(akey, pageAddr, entryLoc);
+        copyToLeafValue(pageAddr, vfrag, value, vloc);
     }
 
     /**
      * @param vfrag 0 or ENTRY_FRAGMENTED
-     * @return page location for first byte of value (first location after header)
+     * @return pageAddr location for first byte of value (first location after header)
      */
-    private static int copyToLeafValue(/*P*/ byte[] page, int vfrag, byte[] value, int vloc) {
+    private static int copyToLeafValue(long pageAddr, int vfrag, byte[] value, int vloc) {
         final int vlen = value.length;
-        vloc = encodeLeafValueHeader(page, vfrag, vlen, vloc);
-        p_copyFromArray(value, 0, page, vloc, vlen);
+        vloc = encodeLeafValueHeader(pageAddr, vfrag, vlen, vloc);
+        p_copyFromArray(value, 0, pageAddr, vloc, vlen);
         return vloc;
     }
 
     /**
      * @param vfrag 0 or ENTRY_FRAGMENTED
-     * @return page location for first byte of value (first location after header)
+     * @return pageAddr location for first byte of value (first location after header)
      */
-    static int encodeLeafValueHeader(/*P*/ byte[] page, int vfrag, int vlen, int vloc) {
+    static int encodeLeafValueHeader(long pageAddr, int vfrag, int vlen, int vloc) {
         if (vlen > 127 || vfrag != 0) {
             vlen--;
             if (vlen < 8192) {
-                p_bytePut(page, vloc++, 0x80 | vfrag | (vlen >> 8));
+                p_bytePut(pageAddr, vloc++, 0x80 | vfrag | (vlen >> 8));
             } else {
-                p_bytePut(page, vloc++, 0xa0 | vfrag | (vlen >> 16));
-                p_bytePut(page, vloc++, vlen >> 8);
+                p_bytePut(pageAddr, vloc++, 0xa0 | vfrag | (vlen >> 16));
+                p_bytePut(pageAddr, vloc++, vlen >> 8);
             }
         }
-        p_bytePut(page, vloc++, vlen);
+        p_bytePut(pageAddr, vloc++, vlen);
         return vloc;
     }
 
@@ -4662,7 +4501,7 @@ final class Node extends Clutch implements DatabaseAccess {
      * @return location for newly allocated entry, already pointed to by search vector
      */
     private int compactLeaf(int encodedLen, int pos, boolean forInsert) {
-        var page = mPage;
+        long pageAddr = mPageAddr;
 
         int searchVecLoc = searchVecStart();
         // Size of search vector, possibly with new entry.
@@ -4676,7 +4515,7 @@ final class Node extends Clutch implements DatabaseAccess {
         int newSearchVecStart;
         // Capacity available to search vector after compaction.
         int searchVecCap = garbage() + rightSegTail() + 1 - leftSegTail() - encodedLen;
-        newSearchVecStart = pageSize(page) - (((searchVecCap + newSearchVecSize) >> 1) & ~1);
+        newSearchVecStart = pageSize() - (((searchVecCap + newSearchVecSize) >> 1) & ~1);
 
         // Copy into a fresh buffer.
 
@@ -4685,11 +4524,9 @@ final class Node extends Clutch implements DatabaseAccess {
         int newLoc = 0;
         final int searchVecEnd = searchVecEnd();
 
-        var dest = mGroup.acquireSparePage();
+        long destAddr = mGroup.acquireSparePageAddr();
 
-        /*P*/ // [|
-        /*P*/ // p_intPutLE(dest, 0, type() & 0xff); // set type, reserved byte, and garbage
-        /*P*/ // ]
+        p_intPutLE(destAddr, 0, type() & 0xff); // set type, reserved byte, and garbage
 
         for (; searchVecLoc <= searchVecEnd; searchVecLoc += 2, newSearchVecLoc += 2) {
             if (searchVecLoc == pos) {
@@ -4700,36 +4537,29 @@ final class Node extends Clutch implements DatabaseAccess {
                     continue;
                 }
             }
-            p_shortPutLE(dest, newSearchVecLoc, destLoc);
-            int sourceLoc = p_ushortGetLE(page, searchVecLoc);
-            int len = leafEntryLengthAtLoc(page, sourceLoc);
-            p_copy(page, sourceLoc, dest, destLoc, len);
+            p_shortPutLE(destAddr, newSearchVecLoc, destLoc);
+            int sourceLoc = p_ushortGetLE(pageAddr, searchVecLoc);
+            int len = leafEntryLengthAtLoc(pageAddr, sourceLoc);
+            p_copy(pageAddr, sourceLoc, destAddr, destLoc, len);
             destLoc += len;
         }
 
-        /*P*/ // [
-        // Recycle old page buffer and swap in compacted page.
-        mGroup.releaseSparePage(page);
-        mPage = dest;
-        garbage(0);
-        /*P*/ // |
-        /*P*/ // if (getDatabase().mFullyMapped) {
-        /*P*/ //     // Copy compacted entries to original page and recycle spare page buffer.
-        /*P*/ //     p_copy(dest, 0, page, 0, pageSize(page));
-        /*P*/ //     mGroup.releaseSparePage(dest);
-        /*P*/ //     dest = page;
-        /*P*/ // } else {
-        /*P*/ //     // Recycle old page buffer and swap in compacted page.
-        /*P*/ //     mGroup.releaseSparePage(page);
-        /*P*/ //     mPage = dest;
-        /*P*/ // }
-        /*P*/ // ]
+        if (getDatabase().mFullyMapped) {
+            // Copy compacted entries to original page and recycle spare page buffer.
+            p_copy(destAddr, 0, pageAddr, 0, pageSize());
+            mGroup.releaseSparePageAddr(destAddr);
+            destAddr = pageAddr;
+        } else {
+            // Recycle old page buffer and swap in compacted page.
+            mGroup.releaseSparePageAddr(pageAddr);
+            mPageAddr = destAddr;
+        }
 
         // Write pointer to new allocation.
-        p_shortPutLE(dest, newLoc == 0 ? newSearchVecLoc : newLoc, destLoc);
+        p_shortPutLE(destAddr, newLoc == 0 ? newSearchVecLoc : newLoc, destLoc);
 
         leftSegTail(destLoc + encodedLen);
-        rightSegTail(pageSize(dest) - 1);
+        rightSegTail(pageSize() - 1);
         searchVecStart(newSearchVecStart);
         searchVecEnd(newSearchVecStart + newSearchVecSize - 2);
 
@@ -4767,19 +4597,15 @@ final class Node extends Clutch implements DatabaseAccess {
             throw new AssertionError("Node is already split");
         }
 
-        var page = mPage;
-        checkClosedIndexException(page);
+        long pageAddr = mPageAddr;
+        checkClosedIndexException(pageAddr);
 
         Node newNode = tree.mDatabase.allocDirtyNode(NodeGroup.MODE_UNEVICTABLE);
         tree.mDatabase.nodeMapPut(newNode);
 
-        var newPage = newNode.mPage;
+        long newPageAddr = newNode.mPageAddr;
 
-        /*P*/ // [
-        newNode.garbage(0);
-        /*P*/ // |
-        /*P*/ // p_intPutLE(newPage, 0, 0); // set type (fixed later), reserved byte, and garbage
-        /*P*/ // ]
+        p_intPutLE(newPageAddr, 0, 0); // set type (fixed later), reserved byte, and garbage
 
         Split split = null;
         try {
@@ -4795,15 +4621,15 @@ final class Node extends Clutch implements DatabaseAccess {
 
         // Position search vector at extreme right, allowing new entries to be placed in a
         // natural ascending order.
-        newNode.rightSegTail(pageSize(newPage) - 1);
-        int newSearchVecStart = pageSize(newPage) - 2;
+        newNode.rightSegTail(pageSize() - 1);
+        int newSearchVecStart = pageSize() - 2;
         newNode.searchVecStart(newSearchVecStart);
         newNode.searchVecEnd(newSearchVecStart);
 
-        final var spage = snode.mPage;
-        final int sloc = p_ushortGetLE(spage, snode.searchVecStart() + spos);
-        p_copy(spage, sloc, newPage, TN_HEADER_SIZE, encodedLen);
-        p_shortPutLE(newPage, pageSize(newPage) - 2, TN_HEADER_SIZE);
+        final long spageAddr = snode.mPageAddr;
+        final int sloc = p_ushortGetLE(spageAddr, snode.searchVecStart() + spos);
+        p_copy(spageAddr, sloc, newPageAddr, TN_HEADER_SIZE, encodedLen);
+        p_shortPutLE(newPageAddr, pageSize() - 2, TN_HEADER_SIZE);
 
         newNode.leftSegTail(TN_HEADER_SIZE + encodedLen);
         newNode.releaseExclusive();
@@ -4833,19 +4659,15 @@ final class Node extends Clutch implements DatabaseAccess {
         // attempt to properly center the new search vector. Instead, minimize
         // fragmentation to ensure that split is successful.
 
-        var page = mPage;
-        checkClosedIndexException(page);
+        long pageAddr = mPageAddr;
+        checkClosedIndexException(pageAddr);
 
         Node newNode = tree.mDatabase.allocDirtyNode(NodeGroup.MODE_UNEVICTABLE);
         tree.mDatabase.nodeMapPut(newNode);
 
-        var newPage = newNode.mPage;
+        long newPageAddr = newNode.mPageAddr;
 
-        /*P*/ // [
-        newNode.garbage(0);
-        /*P*/ // |
-        /*P*/ // p_intPutLE(newPage, 0, 0); // set type (fixed later), reserved byte, and garbage
-        /*P*/ // ]
+        p_intPutLE(newPageAddr, 0, 0); // set type (fixed later), reserved byte, and garbage
 
         if (forInsert && pos == 0) {
             // Inserting into left edge of node, possibly because inserts are
@@ -4870,9 +4692,9 @@ final class Node extends Clutch implements DatabaseAccess {
             newNode.searchVecStart(TN_HEADER_SIZE);
             newNode.searchVecEnd(TN_HEADER_SIZE);
 
-            int destLoc = pageSize(newPage) - encodedLen;
+            int destLoc = pageSize() - encodedLen;
             newNode.copyToLeafEntry(okey, akey, vfrag, value, destLoc);
-            p_shortPutLE(newPage, TN_HEADER_SIZE, destLoc);
+            p_shortPutLE(newPageAddr, TN_HEADER_SIZE, destLoc);
 
             newNode.rightSegTail(destLoc - 1);
             newNode.releaseExclusive();
@@ -4904,13 +4726,13 @@ final class Node extends Clutch implements DatabaseAccess {
 
             // Position search vector at extreme right, allowing new entries to
             // be placed in a natural ascending order.
-            newNode.rightSegTail(pageSize(newPage) - 1);
-            int newSearchVecStart = pageSize(newPage) - 2;
+            newNode.rightSegTail(pageSize() - 1);
+            int newSearchVecStart = pageSize() - 2;
             newNode.searchVecStart(newSearchVecStart);
             newNode.searchVecEnd(newSearchVecStart);
 
             newNode.copyToLeafEntry(okey, akey, vfrag, value, TN_HEADER_SIZE);
-            p_shortPutLE(newPage, pageSize(newPage) - 2, TN_HEADER_SIZE);
+            p_shortPutLE(newPageAddr, pageSize() - 2, TN_HEADER_SIZE);
 
             newNode.leftSegTail(TN_HEADER_SIZE + encodedLen);
             newNode.releaseExclusive();
@@ -4923,7 +4745,7 @@ final class Node extends Clutch implements DatabaseAccess {
 
         int garbageAccum = 0;
         int newLoc = 0;
-        int newAvail = pageSize(newPage) - TN_HEADER_SIZE;
+        int newAvail = pageSize() - TN_HEADER_SIZE;
 
         // Guess which way to split by examining search position. This doesn't take into
         // consideration the variable size of the entries. If the guess is wrong, the new
@@ -4932,7 +4754,7 @@ final class Node extends Clutch implements DatabaseAccess {
         if ((pos - searchVecStart) < (searchVecEnd - pos)) {
             // Split into new left node.
 
-            int destLoc = pageSize(newPage);
+            int destLoc = pageSize();
             int newSearchVecLoc = TN_HEADER_SIZE;
 
             // Is assigned if value needed to be fragmented. Used by exception handler below.
@@ -4940,8 +4762,8 @@ final class Node extends Clutch implements DatabaseAccess {
 
             int searchVecLoc = searchVecStart;
             for (; newAvail > avail; searchVecLoc += 2, newSearchVecLoc += 2) {
-                int entryLoc = p_ushortGetLE(page, searchVecLoc);
-                int entryLen = leafEntryLengthAtLoc(page, entryLoc);
+                int entryLoc = p_ushortGetLE(pageAddr, searchVecLoc);
+                int entryLen = leafEntryLengthAtLoc(pageAddr, entryLoc);
 
                 if (searchVecLoc == pos) {
                     if ((newAvail -= encodedLen + 2) < 0) {
@@ -5000,8 +4822,8 @@ final class Node extends Clutch implements DatabaseAccess {
 
                 // Copy entry and point to it.
                 destLoc -= entryLen;
-                p_copy(page, entryLoc, newPage, destLoc, entryLen);
-                p_shortPutLE(newPage, newSearchVecLoc, destLoc);
+                p_copy(pageAddr, entryLoc, newPageAddr, destLoc, entryLen);
+                p_shortPutLE(newPageAddr, newSearchVecLoc, destLoc);
 
                 garbageAccum += entryLen;
                 avail += entryLen + 2;
@@ -5030,7 +4852,7 @@ final class Node extends Clutch implements DatabaseAccess {
                     // Create new entry and point to it.
                     destLoc -= encodedLen;
                     newNode.copyToLeafEntry(okey, akey, vfrag, value, destLoc);
-                    p_shortPutLE(newPage, newLoc, destLoc);
+                    p_shortPutLE(newPageAddr, newLoc, destLoc);
                 }
 
                 // Choose an appropriate middle key for suffix compression.
@@ -5050,15 +4872,15 @@ final class Node extends Clutch implements DatabaseAccess {
             // Split into new right node.
 
             int destLoc = TN_HEADER_SIZE;
-            int newSearchVecLoc = pageSize(newPage) - 2;
+            int newSearchVecLoc = pageSize() - 2;
 
             // Is assigned if value needed to be fragmented. Used by exception handler below.
             byte[] fv = null;
 
             int searchVecLoc = searchVecEnd;
             for (; newAvail > avail; searchVecLoc -= 2, newSearchVecLoc -= 2) {
-                int entryLoc = p_ushortGetLE(page, searchVecLoc);
-                int entryLen = leafEntryLengthAtLoc(page, entryLoc);
+                int entryLoc = p_ushortGetLE(pageAddr, searchVecLoc);
+                int entryLen = leafEntryLengthAtLoc(pageAddr, entryLoc);
 
                 if (forInsert) {
                     if (searchVecLoc + 2 == pos) {
@@ -5145,17 +4967,17 @@ final class Node extends Clutch implements DatabaseAccess {
                 }
 
                 // Copy entry and point to it.
-                p_copy(page, entryLoc, newPage, destLoc, entryLen);
-                p_shortPutLE(newPage, newSearchVecLoc, destLoc);
+                p_copy(pageAddr, entryLoc, newPageAddr, destLoc, entryLen);
+                p_shortPutLE(newPageAddr, newSearchVecLoc, destLoc);
                 destLoc += entryLen;
 
                 garbageAccum += entryLen;
                 avail += entryLen + 2;
             }
 
-            newNode.rightSegTail(pageSize(newPage) - 1);
+            newNode.rightSegTail(pageSize() - 1);
             newNode.searchVecStart(newSearchVecLoc + 2);
-            newNode.searchVecEnd(pageSize(newPage) - 2);
+            newNode.searchVecEnd(pageSize() - 2);
 
             // Prune off the right end of this node.
             final int originalEnd = searchVecEnd();
@@ -5175,7 +4997,7 @@ final class Node extends Clutch implements DatabaseAccess {
                 } else {
                     // Create new entry and point to it.
                     newNode.copyToLeafEntry(okey, akey, vfrag, value, destLoc);
-                    p_shortPutLE(newPage, newLoc, destLoc);
+                    p_shortPutLE(newPageAddr, newLoc, destLoc);
                     destLoc += encodedLen;
                 }
 
@@ -5331,15 +5153,11 @@ final class Node extends Clutch implements DatabaseAccess {
 
         db.nodeMapPut(newNode);
 
-        final var newPage = newNode.mPage;
+        final long newPageAddr = newNode.mPageAddr;
 
-        /*P*/ // [
-        newNode.garbage(0);
-        /*P*/ // |
-        /*P*/ // p_intPutLE(newPage, 0, 0); // set type (fixed later), reserved byte, and garbage
-        /*P*/ // ]
+        p_intPutLE(newPageAddr, 0, 0); // set type (fixed later), reserved byte, and garbage
 
-        final var page = mPage;
+        final long pageAddr = mPageAddr;
 
         final int searchVecStart = searchVecStart();
         final int searchVecEnd = searchVecEnd();
@@ -5362,30 +5180,30 @@ final class Node extends Clutch implements DatabaseAccess {
             // Signals that key should not be inserted.
             result.mEntryLoc = -1;
 
-            int leftKeyLoc = p_ushortGetLE(page, searchVecStart);
-            int leftKeyLen = keyLengthAtLoc(page, leftKeyLoc);
+            int leftKeyLoc = p_ushortGetLE(pageAddr, searchVecStart);
+            int leftKeyLen = keyLengthAtLoc(pageAddr, leftKeyLoc);
 
             // Assume a large key will be inserted later, so arrange it with room: entry at far
             // left and search vector at far right.
-            p_copy(page, leftKeyLoc, newPage, TN_HEADER_SIZE, leftKeyLen);
-            int leftSearchVecStart = pageSize(newPage) - (2 + 8 + 8);
-            p_shortPutLE(newPage, leftSearchVecStart, TN_HEADER_SIZE);
+            p_copy(pageAddr, leftKeyLoc, newPageAddr, TN_HEADER_SIZE, leftKeyLen);
+            int leftSearchVecStart = pageSize() - (2 + 8 + 8);
+            p_shortPutLE(newPageAddr, leftSearchVecStart, TN_HEADER_SIZE);
 
             if (newChildPos == 8) {
                 // Caller must store child id into left node.
-                result.mPage = newPage;
+                result.mPageAddr = newPageAddr;
                 result.mNewChildLoc = leftSearchVecStart + (2 + 8);
             } else {
                 if (newChildPos != 16) {
                     throw new AssertionError();
                 }
                 // Caller must store child id into right node.
-                result.mPage = page;
+                result.mPageAddr = pageAddr;
                 result.mNewChildLoc = searchVecEnd + (2 + 8);
             }
 
             // Copy one or two left existing child ids to left node (newChildPos is 8 or 16).
-            p_copy(page, searchVecEnd + 2, newPage, leftSearchVecStart + 2, newChildPos);
+            p_copy(pageAddr, searchVecEnd + 2, newPageAddr, leftSearchVecStart + 2, newChildPos);
 
             newNode.leftSegTail(TN_HEADER_SIZE + leftKeyLen);
             newNode.rightSegTail(leftSearchVecStart + (2 + 8 + 8 - 1));
@@ -5394,7 +5212,7 @@ final class Node extends Clutch implements DatabaseAccess {
             newNode.releaseExclusive();
 
             // Prune off the left end of this node by shifting vector towards child ids.
-            p_copy(page, searchVecEnd, page, searchVecEnd + 8, 2);
+            p_copy(pageAddr, searchVecEnd, pageAddr, searchVecEnd + 8, 2);
             int newSearchVecStart = searchVecEnd + 8;
             searchVecStart(newSearchVecStart);
             searchVecEnd(newSearchVecStart);
@@ -5407,7 +5225,7 @@ final class Node extends Clutch implements DatabaseAccess {
             return;
         }
 
-        result.mPage = newPage;
+        result.mPageAddr = newPageAddr;
         final int keyLoc = keyPos + searchVecStart;
 
         int garbageAccum;
@@ -5433,7 +5251,7 @@ final class Node extends Clutch implements DatabaseAccess {
 
             // Amount of bytes used in unsplit node, including the page header.
             int size = 5 * (searchVecEnd - searchVecStart) + (1 + 8 + 8)
-                + leftSegTail() + pageSize(page) - rightSegTail() - garbage();
+                + leftSegTail() + pageSize() - rightSegTail() - garbage();
 
             int newSize = TN_HEADER_SIZE;
 
@@ -5448,7 +5266,7 @@ final class Node extends Clutch implements DatabaseAccess {
                 // don't attempt to properly center the new search vector. Instead,
                 // minimize fragmentation to ensure that split is successful.
 
-                int destLoc = pageSize(newPage);
+                int destLoc = pageSize();
                 int newSearchVecLoc = TN_HEADER_SIZE;
 
                 int searchVecLoc = searchVecStart;
@@ -5458,7 +5276,7 @@ final class Node extends Clutch implements DatabaseAccess {
                         newSearchVecLoc += 2;
                         // Reserve slot in vector for new entry and account for size increase.
                         newSize += encodedLen + (2 + 8);
-                        if (newSize > pageSize(newPage)) {
+                        if (newSize > pageSize()) {
                             // New entry doesn't fit.
                             if (splitSide == -1) {
                                 // Guessed wrong; do over on left side.
@@ -5470,8 +5288,8 @@ final class Node extends Clutch implements DatabaseAccess {
                         }
                     }
 
-                    int entryLoc = p_ushortGetLE(page, searchVecLoc);
-                    int entryLen = keyLengthAtLoc(page, entryLoc);
+                    int entryLoc = p_ushortGetLE(pageAddr, searchVecLoc);
+                    int entryLen = keyLengthAtLoc(pageAddr, entryLoc);
 
                     // Size change must incorporate child id, although they are copied later.
                     int sizeChange = entryLen + (2 + 8);
@@ -5484,7 +5302,7 @@ final class Node extends Clutch implements DatabaseAccess {
                     // account for this.
                     garbageAccum += entryLen;
 
-                    boolean full = size < TN_HEADER_SIZE | newSize > pageSize(newPage);
+                    boolean full = size < TN_HEADER_SIZE | newSize > pageSize();
 
                     if (full || newSize >= size) {
                         // New node has accumulated enough entries...
@@ -5493,7 +5311,7 @@ final class Node extends Clutch implements DatabaseAccess {
                             // ...and split key has been found.
                             try {
                                 split = newSplitLeft(newNode);
-                                retrieveKeyAtLoc(page, entryLoc, split);
+                                retrieveKeyAtLoc(pageAddr, entryLoc, split);
                             } catch (Throwable e) {
                                 cleanupSplit(e, newNode, split);
                                 throw e;
@@ -5515,8 +5333,8 @@ final class Node extends Clutch implements DatabaseAccess {
 
                     // Copy key entry and point to it.
                     destLoc -= entryLen;
-                    p_copy(page, entryLoc, newPage, destLoc, entryLen);
-                    p_shortPutLE(newPage, newSearchVecLoc, destLoc);
+                    p_copy(pageAddr, entryLoc, newPageAddr, destLoc, entryLen);
+                    p_shortPutLE(newPageAddr, newSearchVecLoc, destLoc);
                     newSearchVecLoc += 2;
                 }
 
@@ -5524,14 +5342,14 @@ final class Node extends Clutch implements DatabaseAccess {
 
                 // Copy existing child ids and insert new child id.
                 {
-                    p_copy(page, searchVecEnd + 2, newPage, newSearchVecLoc, newChildPos);
+                    p_copy(pageAddr, searchVecEnd + 2, newPageAddr, newSearchVecLoc, newChildPos);
 
                     // Leave gap for new child id, to be set by caller.
                     result.mNewChildLoc = newSearchVecLoc + newChildPos;
 
                     int tailChildIdsLen = ((searchVecLoc - searchVecStart) << 2) - newChildPos;
-                    p_copy(page, searchVecEnd + 2 + newChildPos,
-                           newPage, newSearchVecLoc + newChildPos + 8, tailChildIdsLen);
+                    p_copy(pageAddr, searchVecEnd + 2 + newChildPos,
+                           newPageAddr, newSearchVecLoc + newChildPos + 8, tailChildIdsLen);
                 }
 
                 newNode.leftSegTail(TN_HEADER_SIZE);
@@ -5544,7 +5362,7 @@ final class Node extends Clutch implements DatabaseAccess {
                 int shift = (searchVecLoc - searchVecStart) << 2;
                 int len = searchVecEnd - searchVecLoc + 2;
                 int newSearchVecStart = searchVecLoc + shift;
-                p_copy(page, searchVecLoc, page, newSearchVecStart, len);
+                p_copy(pageAddr, searchVecLoc, pageAddr, newSearchVecStart, len);
                 searchVecStart(newSearchVecStart);
                 searchVecEnd(searchVecEnd + shift);
             } else {
@@ -5554,7 +5372,7 @@ final class Node extends Clutch implements DatabaseAccess {
                 // make room for child ids and copy them in place.
 
                 int destLoc = TN_HEADER_SIZE;
-                int newSearchVecLoc = pageSize(newPage);
+                int newSearchVecLoc = pageSize();
 
                 int searchVecLoc = searchVecEnd + 2;
                 moveEntries: while (true) {
@@ -5563,7 +5381,7 @@ final class Node extends Clutch implements DatabaseAccess {
                         newKeyLoc = newSearchVecLoc;
                         // Reserve slot in vector for new entry and account for size increase.
                         newSize += encodedLen + (2 + 8);
-                        if (newSize > pageSize(newPage)) {
+                        if (newSize > pageSize()) {
                             // New entry doesn't fit.
                             if (splitSide == 1) {
                                 // Guessed wrong; do over on left side.
@@ -5577,8 +5395,8 @@ final class Node extends Clutch implements DatabaseAccess {
 
                     searchVecLoc -= 2;
 
-                    int entryLoc = p_ushortGetLE(page, searchVecLoc);
-                    int entryLen = keyLengthAtLoc(page, entryLoc);
+                    int entryLoc = p_ushortGetLE(pageAddr, searchVecLoc);
+                    int entryLen = keyLengthAtLoc(pageAddr, entryLoc);
 
                     // Size change must incorporate child id, although they are copied later.
                     int sizeChange = entryLen + (2 + 8);
@@ -5589,7 +5407,7 @@ final class Node extends Clutch implements DatabaseAccess {
                     // account for this.
                     garbageAccum += entryLen;
 
-                    boolean full = size < TN_HEADER_SIZE | newSize > pageSize(newPage);
+                    boolean full = size < TN_HEADER_SIZE | newSize > pageSize();
 
                     if (full || newSize >= size) {
                         // New node has accumulated enough entries...
@@ -5598,7 +5416,7 @@ final class Node extends Clutch implements DatabaseAccess {
                             // ...and split key has been found.
                             try {
                                 split = newSplitRight(newNode);
-                                retrieveKeyAtLoc(page, entryLoc, split);
+                                retrieveKeyAtLoc(pageAddr, entryLoc, split);
                             } catch (Throwable e) {
                                 cleanupSplit(e, newNode, split);
                                 throw e;
@@ -5619,9 +5437,9 @@ final class Node extends Clutch implements DatabaseAccess {
                     }
 
                     // Copy key entry and point to it.
-                    p_copy(page, entryLoc, newPage, destLoc, entryLen);
+                    p_copy(pageAddr, entryLoc, newPageAddr, destLoc, entryLen);
                     newSearchVecLoc -= 2;
-                    p_shortPutLE(newPage, newSearchVecLoc, destLoc);
+                    p_shortPutLE(newPageAddr, newSearchVecLoc, destLoc);
                     destLoc += entryLen;
                 }
 
@@ -5629,11 +5447,11 @@ final class Node extends Clutch implements DatabaseAccess {
 
                 // Move new search vector to make room for child ids and be centered between
                 // the segments.
-                int newVecLen = pageSize(page) - newSearchVecLoc;
+                int newVecLen = pageSize() - newSearchVecLoc;
                 {
-                    int highestLoc = pageSize(newPage) - (5 * newVecLen) - 8;
+                    int highestLoc = pageSize() - (5 * newVecLen) - 8;
                     int midLoc = ((destLoc + encodedLen + highestLoc + 1) >> 1) & ~1;
-                    p_copy(newPage, newSearchVecLoc, newPage, midLoc, newVecLen);
+                    p_copy(newPageAddr, newSearchVecLoc, newPageAddr, midLoc, newVecLen);
                     newKeyLoc -= newSearchVecLoc - midLoc;
                     newSearchVecLoc = midLoc;
                 }
@@ -5644,8 +5462,8 @@ final class Node extends Clutch implements DatabaseAccess {
                 {
                     int headChildIdsLen = newChildPos - ((searchVecLoc - searchVecStart + 2) << 2);
                     int newDestLoc = newSearchVecEnd + 2;
-                    p_copy(page, searchVecEnd + 2 + newChildPos - headChildIdsLen,
-                           newPage, newDestLoc, headChildIdsLen);
+                    p_copy(pageAddr, searchVecEnd + 2 + newChildPos - headChildIdsLen,
+                           newPageAddr, newDestLoc, headChildIdsLen);
 
                     // Leave gap for new child id, to be set by caller.
                     newDestLoc += headChildIdsLen;
@@ -5653,12 +5471,12 @@ final class Node extends Clutch implements DatabaseAccess {
 
                     int tailChildIdsLen =
                         ((searchVecEnd - searchVecStart) << 2) + 16 - newChildPos;
-                    p_copy(page, searchVecEnd + 2 + newChildPos,
-                           newPage, newDestLoc + 8, tailChildIdsLen);
+                    p_copy(pageAddr, searchVecEnd + 2 + newChildPos,
+                           newPageAddr, newDestLoc + 8, tailChildIdsLen);
                 }
 
                 newNode.leftSegTail(destLoc + encodedLen);
-                newNode.rightSegTail(pageSize(newPage) - 1);
+                newNode.rightSegTail(pageSize() - 1);
                 newNode.searchVecStart(newSearchVecLoc);
                 newNode.searchVecEnd(newSearchVecEnd);
                 newNode.releaseExclusive();
@@ -5666,7 +5484,7 @@ final class Node extends Clutch implements DatabaseAccess {
                 // Prune off the right end of this node by shifting vector towards child ids.
                 int len = searchVecLoc - searchVecStart;
                 int newSearchVecStart = searchVecEnd + 2 - len;
-                p_copy(page, searchVecStart, page, newSearchVecStart, len);
+                p_copy(pageAddr, searchVecStart, pageAddr, newSearchVecStart, len);
                 searchVecStart(newSearchVecStart);
             }
 
@@ -5677,7 +5495,7 @@ final class Node extends Clutch implements DatabaseAccess {
         mSplit = split;
 
         // Write pointer to key entry.
-        p_shortPutLE(newPage, newKeyLoc, result.mEntryLoc);
+        p_shortPutLE(newPageAddr, newKeyLoc, result.mEntryLoc);
     }
 
     /**
@@ -5693,7 +5511,7 @@ final class Node extends Clutch implements DatabaseAccess {
      * MIN_VALUE if updating
      */
     private void compactInternal(InResult result, int encodedLen, int keyPos, int childPos) {
-        var page = mPage;
+        long pageAddr = mPageAddr;
 
         int searchVecLoc = searchVecStart();
         keyPos += searchVecLoc;
@@ -5704,7 +5522,7 @@ final class Node extends Clutch implements DatabaseAccess {
         int newSearchVecStart;
         // Capacity available to search vector after compaction.
         int searchVecCap = garbage() + rightSegTail() + 1 - leftSegTail() - encodedLen;
-        newSearchVecStart = pageSize(page) -
+        newSearchVecStart = pageSize() -
             (((searchVecCap + newSearchVecSize + ((newSearchVecSize + 2) << 2)) >> 1) & ~1);
 
         // Copy into a fresh buffer.
@@ -5714,11 +5532,9 @@ final class Node extends Clutch implements DatabaseAccess {
         int newLoc = 0;
         final int searchVecEnd = searchVecEnd();
 
-        var dest = mGroup.acquireSparePage();
+        long destAddr = mGroup.acquireSparePageAddr();
 
-        /*P*/ // [|
-        /*P*/ // p_intPutLE(dest, 0, type() & 0xff); // set type, reserved byte, and garbage
-        /*P*/ // ]
+        p_intPutLE(destAddr, 0, type() & 0xff); // set type, reserved byte, and garbage
 
         for (; searchVecLoc <= searchVecEnd; searchVecLoc += 2, newSearchVecLoc += 2) {
             if (searchVecLoc == keyPos) {
@@ -5729,10 +5545,10 @@ final class Node extends Clutch implements DatabaseAccess {
                     continue;
                 }
             }
-            p_shortPutLE(dest, newSearchVecLoc, destLoc);
-            int sourceLoc = p_ushortGetLE(page, searchVecLoc);
-            int len = keyLengthAtLoc(page, sourceLoc);
-            p_copy(page, sourceLoc, dest, destLoc, len);
+            p_shortPutLE(destAddr, newSearchVecLoc, destLoc);
+            int sourceLoc = p_ushortGetLE(pageAddr, searchVecLoc);
+            int len = keyLengthAtLoc(pageAddr, sourceLoc);
+            p_copy(pageAddr, sourceLoc, destAddr, destLoc, len);
             destLoc += len;
         }
 
@@ -5743,9 +5559,9 @@ final class Node extends Clutch implements DatabaseAccess {
             }
 
             // Copy child ids, and leave room for inserted child id.
-            p_copy(page, searchVecEnd() + 2, dest, newSearchVecLoc, childPos);
-            p_copy(page, searchVecEnd() + 2 + childPos,
-                   dest, newSearchVecLoc + childPos + 8,
+            p_copy(pageAddr, searchVecEnd() + 2, destAddr, newSearchVecLoc, childPos);
+            p_copy(pageAddr, searchVecEnd() + 2 + childPos,
+                   destAddr, newSearchVecLoc + childPos + 8,
                    (newSearchVecSize << 2) - childPos);
         } else {
             if (newLoc == 0) {
@@ -5753,36 +5569,30 @@ final class Node extends Clutch implements DatabaseAccess {
             }
 
             // Copy child ids.
-            p_copy(page, searchVecEnd() + 2, dest, newSearchVecLoc, (newSearchVecSize << 2) + 8);
+            p_copy(pageAddr, searchVecEnd() + 2, destAddr,
+                   newSearchVecLoc, (newSearchVecSize << 2) + 8);
         }
 
-        /*P*/ // [
-        // Recycle old page buffer and swap in compacted page.
-        mGroup.releaseSparePage(page);
-        mPage = dest;
-        garbage(0);
-        /*P*/ // |
-        /*P*/ // if (getDatabase().mFullyMapped) {
-        /*P*/ //     // Copy compacted entries to original page and recycle spare page buffer.
-        /*P*/ //     p_copy(dest, 0, page, 0, pageSize(page));
-        /*P*/ //     mGroup.releaseSparePage(dest);
-        /*P*/ //     dest = page;
-        /*P*/ // } else {
-        /*P*/ //     // Recycle old page buffer and swap in compacted page.
-        /*P*/ //     mGroup.releaseSparePage(page);
-        /*P*/ //     mPage = dest;
-        /*P*/ // }
-        /*P*/ // ]
+        if (getDatabase().mFullyMapped) {
+            // Copy compacted entries to original page and recycle spare page buffer.
+            p_copy(destAddr, 0, pageAddr, 0, pageSize());
+            mGroup.releaseSparePageAddr(destAddr);
+            destAddr = pageAddr;
+        } else {
+            // Recycle old page buffer and swap in compacted page.
+            mGroup.releaseSparePageAddr(pageAddr);
+            mPageAddr = destAddr;
+        }
 
         // Write pointer to key entry.
-        p_shortPutLE(dest, newLoc, destLoc);
+        p_shortPutLE(destAddr, newLoc, destLoc);
 
         leftSegTail(destLoc + encodedLen);
-        rightSegTail(pageSize(dest) - 1);
+        rightSegTail(pageSize() - 1);
         searchVecStart(newSearchVecStart);
         searchVecEnd(newSearchVecLoc - 2);
 
-        result.mPage = dest;
+        result.mPageAddr = destAddr;
         result.mNewChildLoc = newSearchVecLoc + childPos;
         result.mEntryLoc = destLoc;
     }
@@ -5792,7 +5602,7 @@ final class Node extends Clutch implements DatabaseAccess {
      * split key, and pointer to new child id.
      */
     static final class InResult {
-        /*P*/ byte[] mPage;
+        long mPageAddr;
         int mNewChildLoc; // location of child pointer
         int mEntryLoc;    // location of key entry, referenced by search vector
     }
@@ -5864,16 +5674,16 @@ final class Node extends Clutch implements DatabaseAccess {
 
             try {
                 while (true) {
-                    var page = node.mPage;
+                    long pageAddr = node.mPageAddr;
                     int tail = node.leftSegTail();
 
                     int start;
                     if (tail == TN_HEADER_SIZE) {
                         // Freshly initialized node.
-                        if (isClosedOrDeleted(page)) {
+                        if (isClosedOrDeleted(pageAddr)) {
                             throw new DatabaseException("Closed");
                         }
-                        start = node.pageSize(page) - 2;
+                        start = node.pageSize() - 2;
                         node.searchVecEnd(start);
                     } else {
                         start = node.searchVecStart() - 2;
@@ -5888,7 +5698,7 @@ final class Node extends Clutch implements DatabaseAccess {
                     node.copyToLeafEntry(okey, akey, vfrag, value, tail);
                     node.leftSegTail(tail + encodedLen);
 
-                    p_shortPutLE(page, start, tail);
+                    p_shortPutLE(pageAddr, start, tail);
                     node.searchVecStart(start);
                     return node;
                 }
@@ -5925,18 +5735,18 @@ final class Node extends Clutch implements DatabaseAccess {
 
         // Now finish the sort, reversing the heap order.
 
-        final var page = mPage;
+        final long pageAddr = mPageAddr;
         final int start = searchVecStart();
 
         int lastHighLoc = -1;
         int vecPos = start + len;
         int pos = len - 2;
         do {
-            int highLoc = p_ushortGetLE(page, start);
-            p_shortPutLE(page, start, p_ushortGetLE(page, start + pos));
+            int highLoc = p_ushortGetLE(pageAddr, start);
+            p_shortPutLE(pageAddr, start, p_ushortGetLE(pageAddr, start + pos));
             if (highLoc != lastHighLoc) {
                 // Add a non-duplicated pointer.
-                p_shortPutLE(page, vecPos -= 2, highLoc);
+                p_shortPutLE(pageAddr, vecPos -= 2, highLoc);
                 lastHighLoc = highLoc;
             }
             if (pos > 2) {
@@ -5953,16 +5763,16 @@ final class Node extends Clutch implements DatabaseAccess {
      * @param halfPos {@literal (endPos >>> 1) & ~1}
      */
     private void siftDownLeaf(int pos, int endPos, int halfPos) throws IOException {
-        final var page = mPage;
+        final long pageAddr = mPageAddr;
         final int start = searchVecStart();
-        int loc = p_ushortGetLE(page, start + pos);
+        int loc = p_ushortGetLE(pageAddr, start + pos);
 
         do {
             int childPos = (pos << 1) + 2;
-            int childLoc = p_ushortGetLE(page, start + childPos);
+            int childLoc = p_ushortGetLE(pageAddr, start + childPos);
             int rightPos = childPos + 2;
             if (rightPos < endPos) {
-                int rightLoc = p_ushortGetLE(page, start + rightPos);
+                int rightLoc = p_ushortGetLE(pageAddr, start + rightPos);
                 int compare = compareKeys(this, childLoc, this, rightLoc);
                 if (compare < 0) {
                     childPos = rightPos;
@@ -5970,13 +5780,13 @@ final class Node extends Clutch implements DatabaseAccess {
                 } else if (compare == 0) {
                     // Found a duplicate key. Use a common pointer, favoring the higher one.
                     if (childLoc < rightLoc) {
-                        replaceDuplicateLeafEntry(page, childLoc, rightLoc);
+                        replaceDuplicateLeafEntry(pageAddr, childLoc, rightLoc);
                         if (loc == childLoc) {
                             return;
                         }
                         childLoc = rightLoc;
                     } else if (childLoc > rightLoc) {
-                        replaceDuplicateLeafEntry(page, rightLoc, childLoc);
+                        replaceDuplicateLeafEntry(pageAddr, rightLoc, childLoc);
                         if (loc == rightLoc) {
                             return;
                         }
@@ -5985,44 +5795,44 @@ final class Node extends Clutch implements DatabaseAccess {
             }
             int compare = compareKeys(this, loc, this, childLoc);
             if (compare < 0) {
-                p_shortPutLE(page, start + pos, childLoc);
+                p_shortPutLE(pageAddr, start + pos, childLoc);
                 pos = childPos;
             } else {
                 if (compare == 0) {
                     // Found a duplicate key. Use a common pointer, favoring the higher one.
                     if (loc < childLoc) {
-                        replaceDuplicateLeafEntry(page, loc, childLoc);
+                        replaceDuplicateLeafEntry(pageAddr, loc, childLoc);
                         loc = childLoc;
                     } else if (loc > childLoc) {
-                        replaceDuplicateLeafEntry(page, childLoc, loc);
+                        replaceDuplicateLeafEntry(pageAddr, childLoc, loc);
                     }
                 }
                 break;
             }
         } while (pos < halfPos);
 
-        p_shortPutLE(page, start + pos, loc);
+        p_shortPutLE(pageAddr, start + pos, loc);
     }
 
-    private void replaceDuplicateLeafEntry(/*P*/ byte[] page, int loc, int newLoc)
+    private void replaceDuplicateLeafEntry(long pageAddr, int loc, int newLoc)
         throws IOException
     {
-        int entryLen = doDeleteLeafEntry(page, loc) - loc;
+        int entryLen = doDeleteLeafEntry(pageAddr, loc) - loc;
 
         // Increment garbage by the size of the encoded entry.
         garbage(garbage() + entryLen);
 
         // Encode an empty key and a ghost value, to facilitate cleanup when an exception
         // occurs. This ensures that cleanup won't double-delete fragmented keys or values.
-        p_shortPutLE(page, loc, 0x8000); // encoding for an empty key
-        p_bytePut(page, loc + 2, -1); // encoding for a ghost value
+        p_shortPutLE(pageAddr, loc, 0x8000); // encoding for an empty key
+        p_bytePut(pageAddr, loc + 2, -1); // encoding for a ghost value
 
         // Replace all references to the old location.
         int pos = searchVecStart();
         int endPos = searchVecEnd();
         for (; pos<=endPos; pos+=2) {
-            if (p_ushortGetLE(page, pos) == loc) {
-                p_shortPutLE(page, pos, newLoc);
+            if (p_ushortGetLE(pageAddr, pos) == loc) {
+                p_shortPutLE(pageAddr, pos, newLoc);
             }
         }
     }
@@ -6031,9 +5841,9 @@ final class Node extends Clutch implements DatabaseAccess {
      * Deletes the first entry, and leaves the garbage field alone.
      */
     void deleteFirstSortLeafEntry() throws IOException {
-        var page = mPage;
+        long pageAddr = mPageAddr;
         int start = searchVecStart();
-        doDeleteLeafEntry(page, p_ushortGetLE(page, start));
+        doDeleteLeafEntry(pageAddr, p_ushortGetLE(pageAddr, start));
         searchVecStart(start + 2);
     }
 
@@ -6122,16 +5932,9 @@ final class Node extends Clutch implements DatabaseAccess {
             return "UndoNode{id=" + id() +
                 ", cachedState=" + mCachedState +
                 ", topEntry=" + garbage() +
-                ", lowerNodeId=" + p_longGetLE(mPage, 4) +
+                ", lowerNodeId=" + p_longGetLE(mPageAddr, 4) +
                 ", latchState=" + super.toString() +
                 '}';
-            /*P*/ // [
-        case TYPE_FRAGMENT:
-            return "FragmentNode{id=" + id() +
-                ", cachedState=" + mCachedState +
-                ", latchState=" + super.toString() +
-                '}';
-            /*P*/ // ]
         case TYPE_TN_IN:
         case (TYPE_TN_IN | LOW_EXTREMITY):
         case (TYPE_TN_IN | HIGH_EXTREMITY):
@@ -6209,7 +6012,7 @@ final class Node extends Clutch implements DatabaseAccess {
             return verifyFailed(level, observer, "Not a tree node: " + type);
         }
 
-        final var page = mPage;
+        final long pageAddr = mPageAddr;
 
         if (!fix) {
             if (leftSegTail() < TN_HEADER_SIZE) {
@@ -6224,7 +6027,7 @@ final class Node extends Clutch implements DatabaseAccess {
                 return verifyFailed(level, observer, "Search vector end: " + searchVecEnd());
             }
 
-            if (rightSegTail() < searchVecEnd() || rightSegTail() > (pageSize(page) - 1)) {
+            if (rightSegTail() < searchVecEnd() || rightSegTail() > (pageSize() - 1)) {
                 return verifyFailed(level, observer, "Right segment tail: " + rightSegTail());
             }
         }
@@ -6239,7 +6042,7 @@ final class Node extends Clutch implements DatabaseAccess {
             var childIds = new LHashTable.Int(512);
 
             for (int i = childIdsStart; i < childIdsEnd; i += 8) {
-                long childId = childIdByOffset(page, i);
+                long childId = childIdByOffset(pageAddr, i);
                 if (id() > 1 && childId <= 1) { // stubs don't have a valid child id
                     return verifyFailed(level, observer, "Illegal child id: " + childId);
                 }
@@ -6253,25 +6056,25 @@ final class Node extends Clutch implements DatabaseAccess {
 
         int used = TN_HEADER_SIZE;
         int leftTail = TN_HEADER_SIZE;
-        int rightTail = pageSize(page); // compute as inclusive
+        int rightTail = pageSize(); // compute as inclusive
         int largeKeyCount = 0;
         int largeValueCount = 0;
         int lastKeyLoc = 0;
 
         for (int i = searchVecStart(); i <= searchVecEnd(); i += 2) {
-            final int keyLoc = p_ushortGetLE(page, i);
+            final int keyLoc = p_ushortGetLE(pageAddr, i);
             int loc = keyLoc;
 
-            if (loc < TN_HEADER_SIZE || loc >= pageSize(page) ||
+            if (loc < TN_HEADER_SIZE || loc >= pageSize() ||
                 (!fix && loc >= leftSegTail() && loc <= rightSegTail()))
             {
                 return verifyFailed(level, observer, "Entry location: " + loc);
             }
 
             if (isLeaf()) {
-                used += leafEntryLengthAtLoc(page, loc);
+                used += leafEntryLengthAtLoc(pageAddr, loc);
             } else {
-                used += keyLengthAtLoc(page, loc);
+                used += keyLengthAtLoc(pageAddr, loc);
             }
 
             if (loc > searchVecEnd()) {
@@ -6281,12 +6084,12 @@ final class Node extends Clutch implements DatabaseAccess {
             int keyLen;
             boolean keyFragmented = false;
             try {
-                keyLen = p_byteGet(page, loc++);
+                keyLen = p_byteGet(pageAddr, loc++);
                 if (keyLen >= 0) {
                     keyLen++;
                 } else {
                     keyFragmented = (keyLen & ENTRY_FRAGMENTED) != 0;
-                    keyLen = ((keyLen & 0x3f) << 8) | p_ubyteGet(page, loc++);
+                    keyLen = ((keyLen & 0x3f) << 8) | p_ubyteGet(pageAddr, loc++);
                 }
             } catch (IndexOutOfBoundsException e) {
                 return verifyFailed(level, observer, "Key location out of bounds");
@@ -6294,7 +6097,7 @@ final class Node extends Clutch implements DatabaseAccess {
 
             loc += keyLen;
 
-            if (loc > pageSize(page)) {
+            if (loc > pageSize()) {
                 return verifyFailed(level, observer, "Key end location: " + loc);
             }
 
@@ -6311,7 +6114,7 @@ final class Node extends Clutch implements DatabaseAccess {
                 // verification. If checksums are enabled, then page checksum verification is
                 // performed as a side effect.
                 var stats = new long[2];
-                getDatabase().reconstruct(page, keyLoc + 2, keyLen, stats);
+                getDatabase().reconstruct(pageAddr, keyLoc + 2, keyLen, stats);
             }
 
             lastKeyLoc = keyLoc;
@@ -6319,15 +6122,16 @@ final class Node extends Clutch implements DatabaseAccess {
             if (isLeaf()) value: {
                 int len;
                 try {
-                    int header = p_byteGet(page, loc++);
+                    int header = p_byteGet(pageAddr, loc++);
                     if (header >= 0) {
                         len = header;
                     } else {
                         if ((header & 0x20) == 0) {
-                            len = 1 + (((header & 0x1f) << 8) | p_ubyteGet(page, loc++));
+                            len = 1 + (((header & 0x1f) << 8) | p_ubyteGet(pageAddr, loc++));
                         } else if (header != -1) {
                             len = 1 + (((header & 0x0f) << 16)
-                                       | (p_ubyteGet(page, loc++) << 8) | p_ubyteGet(page, loc++));
+                                       | (p_ubyteGet(pageAddr, loc++) << 8)
+                                       | p_ubyteGet(pageAddr, loc++));
                         } else {
                             // ghost
                             break value;
@@ -6340,7 +6144,7 @@ final class Node extends Clutch implements DatabaseAccess {
                     return verifyFailed(level, observer, "Value location out of bounds");
                 }
                 loc += len;
-                if (loc > pageSize(page)) {
+                if (loc > pageSize()) {
                     return verifyFailed(level, observer, "Value end location: " + loc);
                 }
             }
@@ -6351,13 +6155,13 @@ final class Node extends Clutch implements DatabaseAccess {
         }
 
         if (fix) {
-            int garbage = pageSize(page) - (used + rightTail - leftTail);
+            int garbage = pageSize() - (used + rightTail - leftTail);
             garbage(garbage);
             leftSegTail(leftTail);
             rightSegTail(rightTail - 1); // subtract one to be exclusive
         } else {
             used += rightSegTail() + 1 - leftSegTail();
-            int garbage = pageSize(page) - used;
+            int garbage = pageSize() - used;
             if (garbage() != garbage && id() > 1) { // exclude stubs
                 return verifyFailed(level, observer, "Garbage: " + garbage() + " != " + garbage);
             }

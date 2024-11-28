@@ -20,7 +20,6 @@ package org.cojen.tupl.table.expr;
 import java.math.BigInteger;
 import java.math.MathContext;
 
-import org.cojen.maker.MethodMaker;
 import org.cojen.maker.Variable;
 
 import org.cojen.tupl.table.ConvertUtils;

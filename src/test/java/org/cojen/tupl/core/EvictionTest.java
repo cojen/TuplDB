@@ -86,10 +86,8 @@ public class EvictionTest {
     public void createTempDb() throws Exception {
         mDb = newTempDatabase(getClass(),
                               new DatabaseConfig().pageSize(2048)
-                              .minCacheSize(1_000_000)
-                              .maxCacheSize(1_000_000)    // cacheSize ~ 500 nodes
-                              .durabilityMode(DurabilityMode.NO_FLUSH)
-                              .directPageAccess(false));
+                              .cacheSize(1_000_000) // ~500 nodes
+                              .durabilityMode(DurabilityMode.NO_FLUSH));
     }
 
     @After
@@ -161,7 +159,7 @@ public class EvictionTest {
         assertEquals(0, evictionFilter.mValues.size());
         txn.reset();
         
-        assertTrue(ix.verify(null));
+        assertTrue(ix.verify(null, 1));
     }
 
     private String textOfLength(int prefix, char c, int len) {

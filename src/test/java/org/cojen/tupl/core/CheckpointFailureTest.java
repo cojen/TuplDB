@@ -53,7 +53,6 @@ public class CheckpointFailureTest {
     @Test
     public void checkpointResume() throws Exception {
         var config0 = new DatabaseConfig()
-            .directPageAccess(false)
             .checkpointRate(-1, null)
             .durabilityMode(DurabilityMode.NO_FLUSH)
             .pageSize(4096);
@@ -102,7 +101,7 @@ public class CheckpointFailureTest {
         config.dataPageArray(pa);
         mDb = Database.open(config);
 
-        assertTrue(mDb.verify(null));
+        assertTrue(mDb.verify(null, 1));
 
         Index ix = mDb.openIndex("test");
 
@@ -125,7 +124,6 @@ public class CheckpointFailureTest {
         // the checkpoint fails.
 
         var config = new DatabaseConfig()
-            .directPageAccess(false)
             .checkpointRate(-1, null);
 
         var repl = new NonReplicator();
@@ -242,7 +240,6 @@ public class CheckpointFailureTest {
         // Same as undoCommitRollback, but with more transactions.
 
         var config = new DatabaseConfig()
-            .directPageAccess(false)
             .checkpointRate(-1, null);
 
         var repl = new NonReplicator();

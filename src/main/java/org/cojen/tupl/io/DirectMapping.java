@@ -17,8 +17,8 @@
 
 package org.cojen.tupl.io;
 
-import org.cojen.tupl.unsafe.DirectAccess;
-import org.cojen.tupl.unsafe.UnsafeAccess;
+import java.lang.foreign.MemorySegment;
+import java.lang.foreign.ValueLayout;
 
 /**
  * 
@@ -26,13 +26,14 @@ import org.cojen.tupl.unsafe.UnsafeAccess;
  * @author Brian S O'Neill
  */
 abstract class DirectMapping extends Mapping {
-    protected final DirectAccess mDirectAccess;
-    protected final long mPtr;
+    // References the entire address space.
+    static final MemorySegment ALL = MemorySegment.NULL.reinterpret(Long.MAX_VALUE);
+
+    protected final long mAddr;
     protected final int mSize;
 
     DirectMapping(long addr, int size) {
-        mDirectAccess = new DirectAccess();
-        mPtr = addr;
+        mAddr = addr;
         mSize = size;
     }
 
@@ -43,21 +44,21 @@ abstract class DirectMapping extends Mapping {
 
     @Override
     final void read(int start, byte[] b, int off, int len) {
-        UnsafeAccess.copy(mPtr + start, b, off, len);
+        MemorySegment.copy(ALL, ValueLayout.JAVA_BYTE, mAddr + start, b, off, len);
     }
 
     @Override
-    final void read(int start, long ptr, int len) {
-        UnsafeAccess.copy(mPtr + start, ptr, len);
+    final void read(int start, long addr, int len) {
+        MemorySegment.copy(ALL, mAddr + start, ALL, addr, len);
     }
 
     @Override
     final void write(int start, byte[] b, int off, int len) {
-        UnsafeAccess.copy(b, off, mPtr + start, len);
+        MemorySegment.copy(b, off, ALL, ValueLayout.JAVA_BYTE, mAddr + start, len);
     }
 
     @Override
-    final void write(int start, long ptr, int len) {
-        UnsafeAccess.copy(ptr, mPtr + start, len);
+    final void write(int start, long addr, int len) {
+        MemorySegment.copy(ALL, addr, ALL, mAddr + start, len);
     }
 }

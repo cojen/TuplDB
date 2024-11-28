@@ -26,7 +26,7 @@ import static org.cojen.tupl.TestUtils.*;
  *
  * @author Brian S O'Neill
  */
-public class CrudDirectMappedTest extends CrudDirectTest {
+public class CrudDirectMappedTest extends CrudTest {
     public static void main(String[] args) throws Exception {
         org.junit.runner.JUnitCore.main(CrudDirectMappedTest.class.getName());
     }

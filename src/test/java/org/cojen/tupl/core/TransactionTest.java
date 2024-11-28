@@ -65,6 +65,7 @@ public class TransactionTest {
         } catch (IllegalStateException e) {
         }
         txn.commit();
+        db2.close();
     }
 
     @Test

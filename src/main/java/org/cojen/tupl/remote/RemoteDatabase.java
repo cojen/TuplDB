@@ -110,7 +110,8 @@ public interface RemoteDatabase extends Remote, Disposable {
     /**
      * @param flags bit 1: provide indexNodePassed messages
      */
-    public boolean verify(int flags, RemoteVerificationObserver observer) throws IOException;
+    public boolean verify(int flags, RemoteVerificationObserver observer, int numThreads)
+        throws IOException;
 
     @RemoteFailure(declared=false)
     public boolean isLeader();

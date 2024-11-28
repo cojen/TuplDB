@@ -19,8 +19,6 @@ package org.cojen.tupl.remote;
 
 import java.util.function.Function;
 
-import org.cojen.dirmi.RemoteException;
-
 import org.cojen.tupl.table.WeakCache;
 
 /**

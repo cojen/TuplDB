@@ -21,25 +21,24 @@ import java.io.EOFException;
 import java.io.File;
 import java.io.IOException;
 
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
+import java.lang.foreign.Arena;
+import java.lang.foreign.FunctionDescriptor;
+import java.lang.foreign.Linker;
+import java.lang.foreign.MemorySegment;
+import java.lang.foreign.StructLayout;
+import java.lang.foreign.SymbolLookup;
+import java.lang.foreign.ValueLayout;
+
+import java.lang.invoke.MethodHandle;
+import java.lang.invoke.VarHandle;
 
 import java.nio.channels.ClosedChannelException;
 
-import java.util.Arrays;
 import java.util.EnumSet;
-import java.util.List;
 
-import java.util.function.Supplier;
-
-import com.sun.jna.Native;
-import com.sun.jna.Platform;
-import com.sun.jna.Pointer;
-import com.sun.jna.Structure;
+import org.cojen.tupl.core.SysInfo;
 
 import org.cojen.tupl.WriteFailureException;
-
-import org.cojen.tupl.unsafe.DirectAccess;
 
 import org.cojen.tupl.util.LocalPool;
 
@@ -49,25 +48,181 @@ import org.cojen.tupl.util.LocalPool;
  * @author Brian S O'Neill
  */
 final class PosixFileIO extends AbstractFileIO {
-    static {
-        /*
-          From the JNA documentation: Direct mapping supports the same type mappings as
-          interface mapping, except for arrays of Pointer/Structure/String/WString/NativeMapped
-          as function arguments. In addition, direct mapping does not support NIO Buffers or
-          primitive arrays as types returned by type mappers or NativeMapped.
-          Also: varargs isn't supported
-         */
-        Native.register(Platform.C_LIBRARY_NAME);
-    }
-
     private static final int REOPEN_NON_DURABLE = 1, REOPEN_SYNC_IO = 2, REOPEN_DIRECT_IO = 4;
 
     private static final int MAX_POOL_SIZE = -4; // 4 * number of available processors
 
+    static final int LINUX = 1, OSX = 2;
+    static final int OS_TYPE;
+
+    private static final LocalPool<MemorySegment> errorPool;
+    private static final VarHandle errorHandle;
+
+    private static final MethodHandle strerror_r;
+    private static final MethodHandle open;
+    private static final MethodHandle close;
+    private static final MethodHandle lseek;
+    private static final MethodHandle pread;
+    private static final MethodHandle pwrite;
+    private static final MethodHandle ftruncate;
+    private static final MethodHandle fcntl;
+    private static final MethodHandle fsync;
+    private static final MethodHandle fdatasync;
+    private static final MethodHandle mmap;
+    private static final MethodHandle msync;
+    private static final MethodHandle munmap;
+    private static final MethodHandle posix_madvise;
+
+    static {
+        String osName = System.getProperty("os.name");
+        if (osName.startsWith("Linux")) {
+            OS_TYPE = LINUX;
+        } else if (osName.startsWith("Mac") || osName.startsWith("Darwin")) {
+            OS_TYPE = OSX;
+        } else {
+            OS_TYPE = 0;
+        }
+
+        Linker linker = Linker.nativeLinker();
+        SymbolLookup lookup = linker.defaultLookup();
+
+        Linker.Option captureError = Linker.Option.captureCallState("errno");
+        StructLayout errorLayout = Linker.Option.captureStateLayout();
+        errorPool = new LocalPool<>(() -> Arena.ofAuto().allocate(errorLayout), MAX_POOL_SIZE);
+        errorHandle = errorLayout.varHandle(StructLayout.PathElement.groupElement("errno"));
+
+        strerror_r = linker.downcallHandle
+            (lookup.find("strerror_r").get(),
+             FunctionDescriptor.of
+             (ValueLayout.JAVA_LONG,
+              ValueLayout.JAVA_INT, // errnum
+              ValueLayout.ADDRESS,  // bufAddr
+              ValueLayout.JAVA_INT) // bufLen
+             );
+
+        open = linker.downcallHandle
+            (lookup.find("open").get(),
+             FunctionDescriptor.of
+             (ValueLayout.JAVA_INT,
+              ValueLayout.ADDRESS,   // pathAddr
+              ValueLayout.JAVA_INT), // oflags
+             captureError
+             );
+
+        close = linker.downcallHandle
+            (lookup.find("close").get(),
+             FunctionDescriptor.of(ValueLayout.JAVA_INT, ValueLayout.JAVA_INT),
+             captureError
+             );
+
+        lseek = linker.downcallHandle
+            (lookup.find("lseek").get(),
+             FunctionDescriptor.of
+             (ValueLayout.JAVA_LONG,
+              ValueLayout.JAVA_INT,   // fd
+              ValueLayout.JAVA_LONG,  // offset
+              ValueLayout.JAVA_INT),  // whence
+             captureError
+             );
+
+        pread = linker.downcallHandle
+            (lookup.find("pread").get(),
+             FunctionDescriptor.of
+             (ValueLayout.JAVA_INT,
+              ValueLayout.JAVA_INT,   // fd
+              ValueLayout.JAVA_LONG,  // bufAddr
+              ValueLayout.JAVA_INT,   // count
+              ValueLayout.JAVA_LONG), // offset
+             captureError
+             );
+
+        pwrite = linker.downcallHandle
+            (lookup.find("pwrite").get(),
+             FunctionDescriptor.of
+             (ValueLayout.JAVA_INT,
+              ValueLayout.JAVA_INT,   // fd
+              ValueLayout.JAVA_LONG,  // bufAddr
+              ValueLayout.JAVA_INT,   // count
+              ValueLayout.JAVA_LONG), // offset
+             captureError
+             );
+
+        ftruncate = linker.downcallHandle
+            (lookup.find("ftruncate").get(),
+             FunctionDescriptor.of
+             (ValueLayout.JAVA_INT,
+              ValueLayout.JAVA_INT,   // fd
+              ValueLayout.JAVA_LONG), // length
+             captureError
+             );
+
+        fcntl = linker.downcallHandle
+            (lookup.find("fcntl").get(),
+             FunctionDescriptor.of
+             (ValueLayout.JAVA_INT,
+              ValueLayout.JAVA_INT,  // fd
+              ValueLayout.JAVA_INT), // cmd
+             captureError
+             );
+
+       fsync = linker.downcallHandle
+           (lookup.find("fsync").get(),
+            FunctionDescriptor.of(ValueLayout.JAVA_INT, ValueLayout.JAVA_INT),
+            captureError
+            );
+
+       fdatasync = linker.downcallHandle
+           (lookup.find("fdatasync").get(),
+            FunctionDescriptor.of(ValueLayout.JAVA_INT, ValueLayout.JAVA_INT),
+            captureError
+            );
+
+        mmap = linker.downcallHandle
+            (lookup.find("mmap").get(),
+             FunctionDescriptor.of
+             (ValueLayout.JAVA_LONG,
+              ValueLayout.JAVA_LONG,  // addr
+              ValueLayout.JAVA_LONG,  // length
+              ValueLayout.JAVA_INT,   // prot
+              ValueLayout.JAVA_INT,   // flags
+              ValueLayout.JAVA_INT,   // fd
+              ValueLayout.JAVA_LONG), // offset
+             captureError
+             );
+
+        msync = linker.downcallHandle
+            (lookup.find("msync").get(),
+             FunctionDescriptor.of
+             (ValueLayout.JAVA_INT,
+              ValueLayout.JAVA_LONG,  // addr
+              ValueLayout.JAVA_LONG,  // length
+              ValueLayout.JAVA_INT),  // flags
+             captureError
+             );
+
+        munmap = linker.downcallHandle
+            (lookup.find("munmap").get(),
+             FunctionDescriptor.of
+             (ValueLayout.JAVA_INT,
+              ValueLayout.JAVA_LONG,  // addr
+              ValueLayout.JAVA_LONG), // length
+             captureError
+             );
+
+        posix_madvise = linker.downcallHandle
+            (lookup.find("posix_madvise").get(),
+             FunctionDescriptor.of
+             (ValueLayout.JAVA_INT,
+              ValueLayout.JAVA_LONG, // addr
+              ValueLayout.JAVA_LONG, // length
+              ValueLayout.JAVA_INT)  // advice
+             );
+    }
+
     private final File mFile;
     private final int mReopenOptions;
 
-    private final LocalPool<BufRef> mBufRefPool;
+    private final LocalPool<MsRef> mMsRefPool;
 
     private final boolean mReadahead;
     private final boolean mCloseDontNeed;
@@ -104,7 +259,7 @@ final class PosixFileIO extends AbstractFileIO {
             mAccessLock.releaseExclusive();
         }
 
-        mBufRefPool = new LocalPool<>(null, MAX_POOL_SIZE);
+        mMsRefPool = new LocalPool<>(null, MAX_POOL_SIZE);
 
         if (options.contains(OpenOption.MAPPED)) {
             map();
@@ -121,7 +276,7 @@ final class PosixFileIO extends AbstractFileIO {
     }
 
     @Override
-    protected final File file() {
+    protected File file() {
         return mFile;
     }
 
@@ -137,32 +292,28 @@ final class PosixFileIO extends AbstractFileIO {
 
     @Override
     protected void doRead(long pos, byte[] buf, int offset, int length) throws IOException {
-        LocalPool.Entry<BufRef> e = bufRefEntry(length);
+        LocalPool.Entry<MsRef> e = msRefEntry(length);
         try {
-            BufRef ref = e.get();
-            preadFd(fd(), ref.mPointer, length, pos);
-            ByteBuffer bb = ref.mBuffer;
-            bb.position(0);
-            bb.get(buf, offset, length);
+            MemorySegment ms = e.get().mMemorySegment;
+            preadFd(fd(), ms.address(), length, pos);
+            MemorySegment.copy(ms, ValueLayout.JAVA_BYTE, 0, buf, offset, length);
         } finally {
             e.release();
         }
     }
 
     @Override
-    protected void doRead(long pos, long ptr, int length) throws IOException {
-        preadFd(fd(), ptr, length, pos);
+    protected void doRead(long pos, long addr, int length) throws IOException {
+        preadFd(fd(), addr, length, pos);
     }
 
     @Override
     protected void doWrite(long pos, byte[] buf, int offset, int length) throws IOException {
-        LocalPool.Entry<BufRef> e = bufRefEntry(length);
+        LocalPool.Entry<MsRef> e = msRefEntry(length);
         try {
-            BufRef ref = e.get();
-            ByteBuffer bb = ref.mBuffer;
-            bb.position(0);
-            bb.put(buf, offset, length);
-            pwriteFd(fd(), ref.mPointer, length, pos);
+            MemorySegment ms = e.get().mMemorySegment;
+            MemorySegment.copy(buf, offset, ms, ValueLayout.JAVA_BYTE, 0, length);
+            pwriteFd(fd(), ms.address(), length, pos);
         } catch (IOException ex) {
             writeFailure(ex);
         } finally {
@@ -171,9 +322,9 @@ final class PosixFileIO extends AbstractFileIO {
     }
 
     @Override
-    protected void doWrite(long pos, long ptr, int length) throws IOException {
+    protected void doWrite(long pos, long addr, int length) throws IOException {
         try {
-            pwriteFd(fd(), ptr, length, pos);
+            pwriteFd(fd(), addr, length, pos);
         } catch (IOException ex) {
             writeFailure(ex);
         }
@@ -266,42 +417,26 @@ final class PosixFileIO extends AbstractFileIO {
             throw e;
         }
 
-        clearBufRefPool(mBufRefPool);
+        clearMsRefPool(mMsRefPool);
     }
 
-    private LocalPool.Entry<BufRef> bufRefEntry(int size) {
-        return bufRefEntry(mBufRefPool, size);
+    private LocalPool.Entry<MsRef> msRefEntry(int size) {
+        return msRefEntry(mMsRefPool, size);
     }
 
-    private static LocalPool.Entry<BufRef> bufRefEntry(LocalPool<BufRef> pool, int size) {
-        LocalPool.Entry<BufRef> e = pool.access();
-
+    private static LocalPool.Entry<MsRef> msRefEntry(LocalPool<MsRef> pool, int size) {
+        LocalPool.Entry<MsRef> e = pool.access();
         try {
-            ByteBuffer bb;
-
-            obtain: {
-                ByteBuffer original;
-
-                BufRef ref = e.get();
-                if (ref == null) {
-                    original = null;
-                } else {
-                    if ((bb = ref.mBuffer).capacity() >= size) {
-                        break obtain;
-                    }
-                    original = bb;
-                }
-
-                bb = ByteBuffer.allocateDirect(size);
-                e.replace(new BufRef(bb));
-
-                if (original != null) {
-                    DirectAccess.delete(original);
+            MsRef ref = e.get();
+            if (ref == null) {
+                e.replace(new MsRef(size));
+            } else {
+                MemorySegment ms = ref.mMemorySegment;
+                if (ms.byteSize() < size) {
+                    e.replace(new MsRef(size));
+                    ref.mArena.close();
                 }
             }
-
-            bb.limit(size);
-
             return e;
         } catch (Throwable ex) {
             e.release();
@@ -309,17 +444,17 @@ final class PosixFileIO extends AbstractFileIO {
         }
     }
 
-    private static void clearBufRefPool(LocalPool<BufRef> pool) {
-        pool.clear(ref -> DirectAccess.delete(ref.mBuffer));
+    private static void clearMsRefPool(LocalPool<MsRef> pool) {
+        pool.clear(ref -> ref.mArena.close());
     }
 
-    static class BufRef {
-        final ByteBuffer mBuffer;
-        final long mPointer;
+    static class MsRef {
+        final Arena mArena;
+        final MemorySegment mMemorySegment;
 
-        BufRef(ByteBuffer buffer) {
-            mBuffer = buffer;
-            mPointer = Pointer.nativeValue(Native.getDirectBufferPointer(buffer));
+        MsRef(int size) {
+            mArena = Arena.ofShared();
+            mMemorySegment = mArena.allocate(size, SysInfo.pageSize());
         }
     }
 
@@ -332,6 +467,40 @@ final class PosixFileIO extends AbstractFileIO {
             throw ex;
         }
         return fd;
+    }
+
+    static int errorId(LocalPool.Entry<MemorySegment> ee) {
+        return (int) errorHandle.get(ee.get(), 0L);
+    }
+
+    static String errorMessage(LocalPool.Entry<MemorySegment> ee) {
+        return errorMessage(errorId(ee));
+    }
+
+    static IOException errorException(LocalPool.Entry<MemorySegment> ee) {
+        return new IOException(errorMessage(ee));
+    }
+
+    static IOException errorException(LocalPool.Entry<MemorySegment> ee, long offset) {
+        return new IOException(errorMessage(ee) + ": offset=" + offset);
+    }
+
+    static String errorMessage(int errorId) {
+        try (Arena a = Arena.ofConfined()) {
+            int bufLen = 200;
+            MemorySegment bufAddr = a.allocate(bufLen);
+
+            long result = (long) strerror_r.invokeExact(errorId, bufAddr, bufLen);
+            if (result != -1 && result != 22 && result != 34) { // !EINVAL && !ERANGE
+                MemorySegment resultAddr = result == 0 ? bufAddr
+                    : MemorySegment.ofAddress(result).reinterpret(bufLen);
+                return resultAddr.getString(0);
+            }
+
+            return "Error " + errorId;
+        } catch (Throwable e) {
+            throw Utils.rethrow(e);
+        }
     }
 
     /**
@@ -361,11 +530,18 @@ final class PosixFileIO extends AbstractFileIO {
             if (options.contains(OpenOption.DIRECT_IO)) {
                 flags |= 040000;
             }
-            fd = open(path, flags);
-        }
-
-        if (fd == -1) {
-            throw lastErrorToException();
+            LocalPool.Entry<MemorySegment> ee = errorPool.access();
+            try (Arena a = Arena.ofConfined()) {
+                MemorySegment pathAddr = a.allocateFrom(path);
+                fd = (int) open.invokeExact(ee.get(), pathAddr, flags);
+                if (fd == -1) {
+                    throw errorException(ee);
+                }
+            } catch (Throwable e) {
+                throw Utils.rethrow(e);
+            } finally {
+                ee.release();
+            }
         }
 
         if (options.contains(OpenOption.RANDOM_ACCESS)) {
@@ -384,6 +560,20 @@ final class PosixFileIO extends AbstractFileIO {
         return fd;
     }
 
+    static void closeFd(int fd) throws IOException {
+        LocalPool.Entry<MemorySegment> ee = errorPool.access();
+        try {
+            int result = (int) close.invokeExact(ee.get(), fd);
+            if (result == -1) {
+                throw errorException(ee);
+            }
+        } catch (Throwable e) {
+            throw Utils.rethrow(e);
+        } finally {
+            ee.release();
+        }
+    }
+
     static long lseekSetFd(int fd, long fileOffset) throws IOException {
         return lseekFd(fd, fileOffset, 0); // SEEK_SET
     }
@@ -397,145 +587,179 @@ final class PosixFileIO extends AbstractFileIO {
     }
 
     static long lseekFd(int fd, long fileOffset, int whence) throws IOException {
-        long result = lseek(fd, fileOffset, whence);
-        if (result == -1) {
-            throw lastErrorToException(fileOffset);
+        LocalPool.Entry<MemorySegment> ee = errorPool.access();
+        try {
+            long result = (long) lseek.invokeExact(ee.get(), fd, fileOffset, whence);
+            if (result == -1) {
+                throw errorException(ee, fileOffset);
+            }
+            return result;
+        } catch (Throwable e) {
+            throw Utils.rethrow(e);
+        } finally {
+            ee.release();
         }
-        return result;
     }
 
-    static void preadFd(int fd, long bufPtr, int length, long fileOffset) throws IOException {
-        while (true) {
-            int amt = pread(fd, bufPtr, length, fileOffset);
-            if (amt <= 0) {
+    static void preadFd(int fd, long bufAddr, int length, long fileOffset) throws IOException {
+        LocalPool.Entry<MemorySegment> ee = errorPool.access();
+        try {
+            while (true) {
+                int amt = (int) pread.invokeExact(ee.get(), fd, bufAddr, length, fileOffset);
+                if (amt <= 0) {
+                    if (amt < 0) {
+                        throw errorException(ee, fileOffset);
+                    }
+                    if (length > 0) {
+                        throw new EOFException("Attempt to read past end of file: " + fileOffset);
+                    }
+                    return;
+                }
+                length -= amt;
+                if (length <= 0) {
+                    return;
+                }
+                bufAddr += amt;
+                fileOffset += amt;
+            }
+        } catch (Throwable e) {
+            throw Utils.rethrow(e);
+        } finally {
+            ee.release();
+        }
+    }
+
+    static void pwriteFd(int fd, long bufAddr, int length, long fileOffset) throws IOException {
+        LocalPool.Entry<MemorySegment> ee = errorPool.access();
+        try {
+            while (true) {
+                int amt = (int) pwrite.invokeExact(ee.get(), fd, bufAddr, length, fileOffset);
                 if (amt < 0) {
-                    throw lastErrorToException(fileOffset);
+                    throw errorException(ee, fileOffset);
                 }
-                if (length > 0) {
-                    throw new EOFException("Attempt to read past end of file: " + fileOffset);
+                length -= amt;
+                if (length <= 0) {
+                    return;
                 }
-                return;
+                bufAddr += amt;
+                fileOffset += amt;
             }
-            length -= amt;
-            if (length <= 0) {
-                return;
-            }
-            bufPtr += amt;
-            fileOffset += amt;
-        }
-    }
-
-    static void pwriteFd(int fd, long bufPtr, int length, long fileOffset) throws IOException {
-        while (true) {
-            int amt = pwrite(fd, bufPtr, length, fileOffset);
-            if (amt < 0) {
-                throw lastErrorToException(fileOffset);
-            }
-            length -= amt;
-            if (length <= 0) {
-                return;
-            }
-            bufPtr += amt;
-            fileOffset += amt;
+        } catch (Throwable e) {
+            throw Utils.rethrow(e);
+        } finally {
+            ee.release();
         }
     }
 
     static void ftruncateFd(int fd, long length) throws IOException {
-        if (ftruncate(fd, length) == -1) {
-            throw lastErrorToException();
+        LocalPool.Entry<MemorySegment> ee = errorPool.access();
+        try {
+            if (((int) ftruncate.invokeExact(ee.get(), fd, length)) == -1) {
+                throw errorException(ee);
+            }
+        } catch (Throwable e) {
+            throw Utils.rethrow(e);
+        } finally {
+            ee.release();
         }
     }
 
     static void fsyncFd(int fd) throws IOException {
-        int result;
-        if (Platform.isMac()) {
-            result = fcntl(fd, 51); // F_FULLFSYNC
-        } else {
-            result = fsync(fd);
-        }
-        if (result == -1) {
-            throw lastErrorToException();
+        LocalPool.Entry<MemorySegment> ee = errorPool.access();
+        try {
+            int result;
+            if (OS_TYPE == OSX) {
+                result = (int) fcntl.invokeExact(ee.get(), fd, 51); // F_FULLFSYNC
+            } else {
+                result = (int) fsync.invokeExact(ee.get(), fd);
+            }
+            if (result == -1) {
+                throw errorException(ee);
+            }
+        } catch (Throwable e) {
+            throw Utils.rethrow(e);
+        } finally {
+            ee.release();
         }
     }
 
     static void fdatasyncFd(int fd) throws IOException {
-        int result;
-        if (Platform.isMac()) {
-            result = fcntl(fd, 51); // F_FULLFSYNC
-        } else {
-            result = fdatasync(fd);
-        }
-        if (result == -1) {
-            throw lastErrorToException();
+        LocalPool.Entry<MemorySegment> ee = errorPool.access();
+        try {
+            int result;
+            if (OS_TYPE == OSX) {
+                result = (int) fcntl.invokeExact(ee.get(), fd, 51); // F_FULLFSYNC
+            } else {
+                result = (int) fdatasync.invokeExact(ee.get(), fd);
+            }
+            if (result == -1) {
+                throw errorException(ee);
+            }
+        } catch (Throwable e) {
+            throw Utils.rethrow(e);
+        } finally {
+            ee.release();
         }
     }
 
     static void fadvise(int fd, long offset, long length, int advice) throws IOException {
-        int result = platform().fadvise(fd, offset, length, advice);
-        if (result != 0) {
-            throw new IOException(errorMessage(result));
-        }
-    }
-
-    static void closeFd(int fd) throws IOException {
-        if (close(fd) == -1) {
-            throw lastErrorToException();
-        }
+        platform().fadvise(fd, offset, length, advice);
     }
 
     static long mmapFd(long length, int prot, int flags, int fd, long offset) throws IOException {
-        long ptr = mmap(0, length, prot, flags, fd, offset);
-        if (ptr == -1) {
-            throw lastErrorToException(offset);
-        }
-        return ptr;
-    }
-
-    static void msyncPtr(long ptr, long length) throws IOException {
-        long endPtr = ptr + length;
-        ptr = (ptr / PAGE_SIZE) * PAGE_SIZE;
-        if (msync(ptr, endPtr - ptr, 4) == -1) { // flags = MS_SYNC
-            throw lastErrorToException();
-        }
-    }
-
-    static void munmapPtr(long ptr, long length) throws IOException {
-        if (munmap(ptr, length) == -1) {
-            throw lastErrorToException();
+        LocalPool.Entry<MemorySegment> ee = errorPool.access();
+        try {
+            long addr = (long) mmap.invokeExact(ee.get(), 0L, length, prot, flags, fd, offset);
+            if (addr == -1) {
+                throw errorException(ee, offset);
+            }
+            return addr;
+        } catch (Throwable e) {
+            throw Utils.rethrow(e);
+        } finally {
+            ee.release();
         }
     }
 
-    static void madvisePtr(long ptr, long length, int advice) throws IOException {
-        int result = posix_madvise(ptr, length, advice);
+    static void msyncAddr(long addr, long length) throws IOException {
+        LocalPool.Entry<MemorySegment> ee = errorPool.access();
+        try {
+            long endAddr = addr + length;
+            addr = (addr / SysInfo.pageSize()) * SysInfo.pageSize();
+            int flags = 4; // MS_SYNC
+            if (((int) msync.invokeExact(ee.get(), addr, endAddr - addr, flags)) == -1) {
+                throw errorException(ee);
+            }
+        } catch (Throwable e) {
+            throw Utils.rethrow(e);
+        } finally {
+            ee.release();
+        }
+    }
+
+    static void munmapAddr(long addr, long length) throws IOException {
+        LocalPool.Entry<MemorySegment> ee = errorPool.access();
+        try {
+            if (((int) munmap.invokeExact(ee.get(), addr, length)) == -1) {
+                throw errorException(ee);
+            }
+        } catch (Throwable e) {
+            throw Utils.rethrow(e);
+        } finally {
+            ee.release();
+        }
+    }
+
+    static void madviseAddr(long addr, long length, int advice) throws IOException {
+        int result;
+        try {
+            result = (int) posix_madvise.invokeExact(addr, length, advice);
+        } catch (Throwable e) {
+            throw Utils.rethrow(e);
+        }
         if (result != 0) {
             throw new IOException(errorMessage(result));
         }
-    }
-
-    static IOException lastErrorToException() {
-        return new IOException(errorMessage(Native.getLastError()));
-    }
-
-    static IOException lastErrorToException(long offset) {
-        return new IOException(errorMessage(Native.getLastError()) + ": offset=" + offset);
-    }
-
-    static String errorMessage(int errnum) {
-        final int bufLen = 200;
-        long bufPtr = Native.malloc(bufLen);
-
-        if (bufPtr != 0) {
-            try {
-                long result = strerror_r(errnum, bufPtr, bufLen);
-                if (result != -1 && result != 22 && result != 34) { // !EINVAL && !ERANGE
-                    return new Pointer(result == 0 ? bufPtr : result).getString(0);
-                }
-            } finally {
-                Native.free(bufPtr);
-            }
-        }
-
-        return "Error " + errnum;
     }
 
     @Override
@@ -559,19 +783,14 @@ final class PosixFileIO extends AbstractFileIO {
         // Since linux 2.6.31 fallocate is supported by at least btrfs, ext4, ocfs2, and 
         // xfs filesystems. Ext4 on Linux 4.2.0 takes ~30 microseconds to fallocate 64MB,
         // compared to 27 milliseconds to zero-fill that same amount.
-        //
-        // On OSX, uses fcntl with command F_PREALLOCATE.
-        int result = platform.fallocate(fd(), pos, length);
-        if (result != 0) {
-            // Note: the native call above does not set errno.
-            throw new IOException(errorMessage(result));
-        }
+        platform.fallocate(fd(), pos, length);
     }
 
     /** Platform specific helper. */
     private static abstract class PlatformIO {
-        public abstract int fallocate(int fd, long pos, long length);
-        public abstract int fadvise(int fd, long offset, long length, int advice);
+        abstract void fallocate(int fd, long pos, long length) throws IOException;
+
+        abstract void fadvise(int fd, long offset, long length, int advice) throws IOException;
     }
 
     /** No-op helper. */
@@ -579,114 +798,78 @@ final class PosixFileIO extends AbstractFileIO {
         static final NullIO INSTANCE = new NullIO();
 
         @Override
-        public int fallocate(int fd, long pos, long length) {
-            return 0;
+        void fallocate(int fd, long pos, long length) throws IOException {
         }
 
         @Override
-        public int fadvise(int fd, long offset, long length, int advice) {
-            return 0;
+        void fadvise(int fd, long offset, long length, int advice) throws IOException {
         }
     }
 
     /** Default POSIX I/O calls. */
     private static class DefaultIO extends PlatformIO {
-        static {
-            Native.register(Platform.C_LIBRARY_NAME);
-        }
-
-        @Override
-        public int fallocate(int fd, long pos, long length) {
-            return posix_fallocate(fd, pos, length);
-        }
-
-        @Override
-        public int fadvise(int fd, long offset, long length, int advice) {
-            return posix_fadvise(fd, offset, length, advice);
-        }
-
-        static native int posix_fallocate(int fd, long offset, long len);
-
-        static native int posix_fadvise(int fd, long offset, long length, int advice);
-    }
-
-    /** 
-     * Mac OSX specific I/O calls.
-     *
-     * For fallocate uses fcntl with the F_PREALLOCATE command to force block
-     * allocation on OSX.  On a Core i5 MacBook Pro w/SSD it takes on average
-     * 1.5ms to preallocate a 64MB file.
-     *
-     * Direct maps fcntl again with an explicit fstore_t parameter to avoid the more complex
-     * and slow method of using jna varags through library mapping.
-     *
-     * The fadvise call is a no-op.
-     */
-    private static class MacIO extends PlatformIO {
-        @SuppressWarnings("unused")
-        public static class Fstore extends Structure {
-            public static class ByReference extends Fstore implements Structure.ByReference { }
-
-            public int  fst_flags;
-            public int  fst_posmode;
-            public long fst_offset;
-            public long fst_length;
-            public long fst_bytesalloc;
-
-            @Override
-            protected List<String> getFieldOrder() {
-                return Arrays.asList(FIELDS);
-            }
-
-            private static final String[] FIELDS = new String[] {
-                 "fst_flags"
-                ,"fst_posmode"
-                ,"fst_offset"
-                ,"fst_length"
-                ,"fst_bytesalloc"
-            };
-        }
-        
-        @Override
-        public int fallocate(int fd, long pos, long length) {
-            final var fstore = new Fstore.ByReference();
-            fstore.fst_flags   = 4; // F_ALLOCATEALL - allocate all requested space or none at all.
-            fstore.fst_posmode = 3; // F_PEOFPOSMODE
-            fstore.fst_offset  = 0;
-            fstore.fst_length  = length;
-
-            int cmd = 42; // F_PREALLOCATE command
-            int result = fcntl(fd, cmd, fstore);
-            if (result == -1) {
-                // Return errno to keep same behavior as posix_fallocate.
-                return Native.getLastError();
-            }
-            return 0;
-        }
-
-        @Override
-        public int fadvise(int fd, long offset, long length, int advice) {
-            // Unsupported on OSX. 
-            return 0;
-        }
+        private static final MethodHandle posix_fallocate;
+        private static final MethodHandle posix_fadvise;
 
         static {
-            Native.register(Platform.C_LIBRARY_NAME);
+            Linker linker = Linker.nativeLinker();
+            SymbolLookup lookup = linker.defaultLookup();
+
+            posix_fallocate = linker.downcallHandle
+                (lookup.find("posix_fallocate").get(),
+                 FunctionDescriptor.of
+                 (ValueLayout.JAVA_INT,
+                  ValueLayout.JAVA_INT,  // fd
+                  ValueLayout.JAVA_LONG, // offset
+                  ValueLayout.JAVA_LONG) // len
+                 );
+
+            posix_fadvise = linker.downcallHandle
+                (lookup.find("posix_fadvise").get(),
+                 FunctionDescriptor.of
+                 (ValueLayout.JAVA_INT,
+                  ValueLayout.JAVA_INT,  // fd
+                  ValueLayout.JAVA_LONG, // offset
+                  ValueLayout.JAVA_LONG, // len
+                  ValueLayout.JAVA_INT)  // advice
+                 );
         }
 
-        static native int fcntl(int fd, int cmd, Fstore.ByReference fstore);
-    }
+        @Override
+        void fallocate(int fd, long offset, long len) throws IOException {
+            int result;
+            try {
+                result = (int) posix_fallocate.invokeExact(fd, offset, len);
+            } catch (Throwable e) {
+                throw Utils.rethrow(e);
+            }
+            if (result != 0) {
+                // Note: the system call above does not set errno.
+                throw new IOException(errorMessage(result));
+            }
+        }
 
+        @Override
+        void fadvise(int fd, long offset, long len, int advice) throws IOException {
+            int result;
+            try {
+                result = (int) posix_fadvise.invokeExact(fd, offset, len, advice);
+            } catch (Throwable e) {
+                throw Utils.rethrow(e);
+            }
+            if (result != 0) {
+                throw new IOException(errorMessage(result));
+            }
+        }
+    }
 
     /** Accounts for OSX not supporting some I/O operations. */
     public static class PlatformHolder {
-        public static final PlatformIO INSTANCE;
+        static final PlatformIO INSTANCE;
         static {
             PlatformIO inst;
-            if (Platform.isMac()) {
-                // The optimized fallocate implementation doesn't appear to do anything on M1 Macs.
+            if (OS_TYPE == OSX) {
                 inst = NullIO.INSTANCE;
-                //inst = new MacIO();
             } else {
                 try {
                     inst = new DefaultIO();
@@ -702,39 +885,38 @@ final class PosixFileIO extends AbstractFileIO {
         return PlatformHolder.INSTANCE;
     }
 
-    static native long strerror_r(int errnum, long bufPtr, int buflen);
-
-    static native int open(String path, int oflag);
-
-    static native long lseek(int fd, long fileOffset, int whence);
-
-    static native int pread(int fd, long bufPtr, int length, long fileOffset);
-
-    static native int pwrite(int fd, long bufPtr, int length, long fileOffset);
-
-    static native int ftruncate(int fd, long length);
-
-    static native int fcntl(int fd, int cmd);
-
-    static native int fsync(int fd);
-
-    static native int fdatasync(int fd);
-
-    static native int close(int fd);
-
-    static native long mmap(long addr, long length, int prot, int flags, int fd, long offset);
-
-    static native int msync(long addr, long length, int flags);
-
-    static native int munmap(long addr, long length);
-
-    static native int posix_madvise(long addr, long length, int advice);
-
     static class RT {
+        private static final MethodHandle shm_open;
+
         static {
-            Native.register("rt");
+            Linker linker = Linker.nativeLinker();
+            SymbolLookup lookup = SymbolLookup.libraryLookup("librt.so", Arena.global());
+
+            shm_open = linker.downcallHandle
+                (lookup.find("shm_open").get(),
+                 FunctionDescriptor.of
+                 (ValueLayout.JAVA_INT,
+                  ValueLayout.ADDRESS,   // pathAddr
+                  ValueLayout.JAVA_INT,  // oflags
+                  ValueLayout.JAVA_INT), // mode
+                 Linker.Option.captureCallState("errno")
+                 );
         }
 
-        static native int shm_open(String path, int oflag, int mode);
+        static int shm_open(String path, int oflag, int mode) throws IOException {
+            LocalPool.Entry<MemorySegment> ee = errorPool.access();
+            try (Arena a = Arena.ofConfined()) {
+                MemorySegment pathAddr = a.allocateFrom(path);
+                int fd = (int) shm_open.invokeExact(ee.get(), pathAddr, oflag, mode);
+                if (fd == -1) {
+                    throw errorException(ee);
+                }
+                return fd;
+            } catch (Throwable e) {
+                throw Utils.rethrow(e);
+            } finally {
+                ee.release();
+            }
+        }
     }
 }

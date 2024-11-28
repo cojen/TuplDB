@@ -30,7 +30,6 @@ public class ReplicationOneWorkerTest  extends ReplicationTest {
     }
 
     protected DatabaseConfig decorate(DatabaseConfig config) throws Exception {
-        config.directPageAccess(false);
         config.maxReplicaThreads(1);
         return config;
     }

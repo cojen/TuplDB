@@ -39,11 +39,18 @@ public class ParserTest {
         org.junit.runner.JUnitCore.main(ParserTest.class.getName());
     }
 
+    private Database mDb;
     private Table<TestRow> mTable;
 
     @Before
     public void setup() throws Exception {
-        mTable = Database.open(new DatabaseConfig()).openTable(TestRow.class);
+        mDb = Database.open(new DatabaseConfig());
+        mTable = mDb.openTable(TestRow.class);
+    }
+
+    @After
+    public void teardown() throws Exception {
+        mDb.close();
     }
 
     @Test

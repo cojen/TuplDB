@@ -28,7 +28,6 @@ import org.cojen.tupl.ext.CustomHandler;
  *
  * @author Brian S O'Neill
  */
-/*P*/
 final class CustomWriter extends HandlerWriter<CustomHandler> implements CustomHandler {
     CustomWriter(LocalDatabase db, int handlerId, CustomHandler recoveryHandler) {
         super(db, handlerId, recoveryHandler);

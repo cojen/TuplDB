@@ -32,7 +32,6 @@ import org.cojen.tupl.diag.EventType;
  *
  * @author Brian S O'Neill
  */
-/*P*/
 final class PendingTxn extends Locker implements Runnable {
     final TransactionContext mContext;
     final long mTxnId;

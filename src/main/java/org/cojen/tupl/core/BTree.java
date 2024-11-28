@@ -42,10 +42,12 @@ import org.cojen.tupl.diag.EventListener;
 import org.cojen.tupl.diag.EventType;
 import org.cojen.tupl.diag.IndexStats;
 
+import org.cojen.tupl.util.Runner;
+
 import org.cojen.tupl.views.BoundedView;
 import org.cojen.tupl.views.UnmodifiableView;
 
-import static org.cojen.tupl.core.PageOps.*;
+import static org.cojen.tupl.core.DirectPageOps.*;
 import static org.cojen.tupl.core.Utils.*;
 
 import static java.util.Arrays.compareUnsigned;
@@ -156,7 +158,7 @@ class BTree extends Tree implements View, Index {
         Node root = mRoot;
         root.acquireShared();
         try {
-            checkClosedIndexException(root.mPage);        
+            checkClosedIndexException(root.mPageAddr);
             return root.isLeaf() && !root.hasKeys();
         } finally {
             root.releaseShared();
@@ -256,7 +258,7 @@ class BTree extends Tree implements View, Index {
         int keyHash;
 
         search: try {
-            final var page = node.mPage;
+            final long pageAddr = node.mPageAddr;
             final int keyLen = key.length;
             int lowPos = node.searchVecStart();
             int highPos = node.searchVecEnd();
@@ -270,18 +272,19 @@ class BTree extends Tree implements View, Index {
 
                 int compareLoc, compareLen, i;
                 compare: {
-                    compareLoc = p_ushortGetLE(page, midPos);
-                    compareLen = p_byteGet(page, compareLoc++);
+                    compareLoc = p_ushortGetLE(pageAddr, midPos);
+                    compareLen = p_byteGet(pageAddr, compareLoc++);
                     if (compareLen >= 0) {
                         compareLen++;
                     } else {
                         int header = compareLen;
-                        compareLen = ((compareLen & 0x3f) << 8) | p_ubyteGet(page, compareLoc++);
+                        compareLen = ((compareLen & 0x3f) << 8)
+                            | p_ubyteGet(pageAddr, compareLoc++);
 
                         if ((header & Node.ENTRY_FRAGMENTED) != 0) {
                             // Note: An optimized version wouldn't need to copy the whole key.
                             byte[] compareKey = mDatabase
-                                .reconstructKey(page, compareLoc, compareLen);
+                                .reconstructKey(pageAddr, compareLoc, compareLen);
 
                             int fullCompareLen = compareKey.length;
                             int minLen = Math.min(fullCompareLen, keyLen);
@@ -313,7 +316,7 @@ class BTree extends Tree implements View, Index {
                     i = 0;//Math.min(lowMatch, highMatch);
 
                     for (; i < minLen8; i += 8) {
-                        long cv = p_longGetBE(page, compareLoc + i);
+                        long cv = p_longGetBE(pageAddr, compareLoc + i);
                         long kv = Utils.decodeLongBE(key, i);
                         int cmp = Long.compareUnsigned(cv, kv);
                         if (cmp != 0) {
@@ -329,7 +332,7 @@ class BTree extends Tree implements View, Index {
                     }
 
                     for (; i < minLen; i++) {
-                        byte cb = p_byteGet(page, compareLoc + i);
+                        byte cb = p_byteGet(pageAddr, compareLoc + i);
                         byte kb = key[i];
                         if (cb != kb) {
                             if ((cb & 0xff) < (kb & 0xff)) {
@@ -355,7 +358,7 @@ class BTree extends Tree implements View, Index {
                         mLockManager.isAvailable
                         (local, mId, key, keyHash = LockManager.hash(mId, key)))
                     {
-                        return Node.retrieveLeafValueAtLoc(node, page, compareLoc + compareLen);
+                        return Node.retrieveLeafValueAtLoc(node, pageAddr, compareLoc + compareLen);
                     }
                     // Need to acquire the lock before loading. To prevent deadlock, a cursor
                     // frame must be bound and then the node latch can be released.
@@ -847,15 +850,28 @@ class BTree extends Tree implements View, Index {
     }
 
     @Override
-    final boolean verifyTree(Index view, VerifyObserver observer) throws IOException {
-        BTreeCursor cursor = newCursor(Transaction.BOGUS);
-        try {
-            cursor.mKeyOnly = true;
-            cursor.first(); // must start with loaded key
-            int height = cursor.height();
-            return observer.indexBegin(view, height) && cursor.verify(height, observer);
-        } finally {
-            cursor.reset();
+    final boolean verifyTree(Index view, VerifyObserver observer, int numThreads)
+        throws IOException
+    {
+        if (numThreads <= 0) {
+            int procs = Runtime.getRuntime().availableProcessors();
+            numThreads = numThreads == 0 ? procs : procs * -numThreads;
+        }
+ 
+        if (numThreads <= 1) {
+            BTreeCursor cursor = newCursor(Transaction.BOGUS);
+            try {
+                cursor.mKeyOnly = true;
+                cursor.first(); // must start with loaded key
+                int height = cursor.height();
+                return observer.indexBegin(view, height) && cursor.verify(height, observer);
+            } finally {
+                cursor.reset();
+            }
+        } else {
+            var verifier = new BTreeVerifier(observer, this, Runner.current(), numThreads);
+            verifier.start();
+            return !verifier.await();
         }
     }
 
@@ -907,7 +923,7 @@ class BTree extends Tree implements View, Index {
      * @return root node if forDelete; null if already closed
      */
     private Node close(boolean forDelete, final boolean rootLatched, boolean force,
-                       /*P*/ byte[] closedPage)
+                       long closedPage)
     {
         Node root = mRoot;
 
@@ -916,7 +932,7 @@ class BTree extends Tree implements View, Index {
         }
 
         try {
-            if (isClosedOrDeleted(root.mPage)) {
+            if (isClosedOrDeleted(root.mPageAddr)) {
                 // Already closed.
                 return null;
             }
@@ -934,7 +950,7 @@ class BTree extends Tree implements View, Index {
                 mDatabase.commitLock().acquireExclusive();
                 try {
                     root.acquireExclusive();
-                    if (isClosedOrDeleted(root.mPage)) {
+                    if (isClosedOrDeleted(root.mPageAddr)) {
                         return null;
                     }
                     root.invalidateCursors(closedPage);
@@ -989,7 +1005,7 @@ class BTree extends Tree implements View, Index {
     public final boolean isClosed() {
         Node root = mRoot;
         root.acquireShared();
-        boolean closed = isClosedOrDeleted(root.mPage);
+        boolean closed = isClosedOrDeleted(root.mPageAddr);
         root.releaseShared();
         return closed;
     }
@@ -1028,7 +1044,7 @@ class BTree extends Tree implements View, Index {
 
         try {
             try {
-                checkClosedIndexException(root.mPage);
+                checkClosedIndexException(root.mPageAddr);
 
                 if (mustBeEmpty && (!root.isLeaf() || root.hasKeys())) {
                     // Note that this check also covers the transactional case, because deletes
@@ -1222,9 +1238,9 @@ class BTree extends Tree implements View, Index {
                 } else {
                     // See BTreeCursor.mergeInternal method.
 
-                    var rootPage = rootNode.mPage;
-                    int rootEntryLoc = p_ushortGetLE(rootPage, rootNode.searchVecStart());
-                    int rootEntryLen = Node.keyLengthAtLoc(rootPage, rootEntryLoc);
+                    long rootPageAddr = rootNode.mPageAddr;
+                    int rootEntryLoc = p_ushortGetLE(rootPageAddr, rootNode.searchVecStart());
+                    int rootEntryLen = Node.keyLengthAtLoc(rootPageAddr, rootEntryLoc);
 
                     int leftAvail = leftNode.availableInternalBytes();
                     int rightAvail = rightNode.availableInternalBytes();
@@ -1239,7 +1255,8 @@ class BTree extends Tree implements View, Index {
 
                     try {
                         Node.moveInternalToLeftAndDelete
-                            (survivor, leftNode, rightNode, rootPage, rootEntryLoc, rootEntryLen);
+                            (survivor, leftNode, rightNode, rootPageAddr,
+                             rootEntryLoc, rootEntryLen);
                     } catch (Throwable e) {
                         leftNode.releaseExclusive();
                         rootNode.releaseExclusive();
@@ -1485,7 +1502,7 @@ class BTree extends Tree implements View, Index {
                         // iteration or findNearby operation. Since popping to a stub is
                         // equivalent to popping past the root, the cursor operation is able to
                         // handle this. Iteration will finish normally, and findNearby will
-                        // start over from the root. Also see stub comments in PageOps.
+                        // start over from the root. Also see stub comments in BaseDirectPageOps.
                     } finally {
                         node.releaseExclusive();
                         stub.releaseExclusive();
@@ -1685,9 +1702,6 @@ class BTree extends Tree implements View, Index {
             }
         }
         if (txn != null) {
-            /*P*/ // [|
-            /*P*/ // if (txn == Transaction.BOGUS) return LocalTransaction.BOGUS;
-            /*P*/ // ]
             throw new IllegalStateException("Transaction belongs to a different database");
         }
         return null;

@@ -42,7 +42,6 @@ public class SorterTest {
     @Before
     public void setup() throws Exception {
         var config = new DatabaseConfig()
-            .directPageAccess(false)
             .checkpointSizeThreshold(0)
             .minCacheSize(10_000_000)
             .maxCacheSize(100_000_000)

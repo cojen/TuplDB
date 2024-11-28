@@ -26,7 +26,7 @@ import static org.junit.Assert.*;
 
 import org.cojen.tupl.*;
 
-import org.cojen.tupl.core.CoreDatabase;
+import org.cojen.tupl.core.LocalDatabase;
 
 /**
  * 
@@ -55,7 +55,7 @@ public class RowStoreTest {
 
         final Database db = Database.open(new DatabaseConfig());
         final Index ix = db.openIndex("test");
-        final RowStore rs = new RowStore((CoreDatabase) db, db.openIndex("Schemata"));
+        final RowStore rs = new RowStore((LocalDatabase) db, db.openIndex("Schemata"));
 
         final Map<String, ColumnInfo> keyColumns = randomKeyColumns(0, rnd);
         final boolean withAltKey = rnd.nextBoolean();

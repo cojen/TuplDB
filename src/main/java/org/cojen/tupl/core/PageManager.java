@@ -79,25 +79,25 @@ final class PageManager {
      * Create a new PageManager.
      */
     PageManager(PageArray array) throws IOException {
-        this(null, false, false, array, PageOps.p_null(), 0);
+        this(null, false, false, array, DirectPageOps.p_null(), 0);
     }
 
     /**
      * Create a restored PageManager.
      *
      * @param issues pass true if any problems were encountered when opening the db
-     * @param header source for reading allocator root structure
+     * @param headerAddr source for reading allocator root structure
      * @param offset offset into header
      */
     PageManager(EventListener debugListener, boolean issues,
-                PageArray array, /*P*/ byte[] header, int offset)
+                PageArray array, long headerAddr, int offset)
         throws IOException
     {
-        this(debugListener, issues, true, array, header, offset);
+        this(debugListener, issues, true, array, headerAddr, offset);
     }
 
     private PageManager(EventListener debugListener, boolean issues,
-                        boolean restored, PageArray array, /*P*/ byte[] header, int offset)
+                        boolean restored, PageArray array, long headerAddr, int offset)
         throws IOException
     {
         mPageArray = array;
@@ -117,7 +117,7 @@ final class PageManager {
                 mRegularFreeList.init(2);
                 mRecycleFreeList.init(3);
             } else {
-                mTotalPageCount = readTotalPageCount(header, offset);
+                mTotalPageCount = readTotalPageCount(headerAddr, offset);
 
                 if (debugListener != null) {
                     debugListener.notify(EventType.DEBUG, "TOTAL_PAGE_COUNT: %1$d",
@@ -142,13 +142,13 @@ final class PageManager {
                 PageQueue reserve;
                 fullLock();
                 try {
-                    mRegularFreeList.init(debugListener, header, offset + I_REGULAR_QUEUE);
-                    mRecycleFreeList.init(debugListener, header, offset + I_RECYCLE_QUEUE);
+                    mRegularFreeList.init(debugListener, headerAddr, offset + I_REGULAR_QUEUE);
+                    mRecycleFreeList.init(debugListener, headerAddr, offset + I_RECYCLE_QUEUE);
 
-                    if (PageQueue.exists(header, offset + I_RESERVE_QUEUE)) {
+                    if (PageQueue.exists(headerAddr, offset + I_RESERVE_QUEUE)) {
                         reserve = mRegularFreeList.newReserveFreeList();
                         try {
-                            reserve.init(debugListener, header, offset + I_RESERVE_QUEUE);
+                            reserve.init(debugListener, headerAddr, offset + I_RESERVE_QUEUE);
                         } catch (Throwable e) {
                             reserve.delete();
                             throw e;
@@ -195,8 +195,8 @@ final class PageManager {
         }
     }
 
-    static long readTotalPageCount(/*P*/ byte[] header, int offset) {
-        return PageOps.p_longGetLE(header, offset + I_TOTAL_PAGE_COUNT);
+    static long readTotalPageCount(long headerAddr, int offset) {
+        return DirectPageOps.p_longGetLE(headerAddr, offset + I_TOTAL_PAGE_COUNT);
     }
 
     /**
@@ -622,10 +622,10 @@ final class PageManager {
     /**
      * Initiates the process for making page allocations and deletions permanent.
      *
-     * @param header destination for writing page manager structures
+     * @param headerAddr destination for writing page manager structures
      * @param offset offset into header
      */
-    public void commitStart(/*P*/ byte[] header, int offset) throws IOException {
+    public void commitStart(long headerAddr, int offset) throws IOException {
         fullLock();
         try {
             // Allow commit to exceed the page limit. Without this, database cannot complete a
@@ -657,12 +657,12 @@ final class PageManager {
 
             // Total page count is written after append heaps have been
             // drained, because additional pages might have been allocated.
-            PageOps.p_longPutLE(header, offset + I_TOTAL_PAGE_COUNT, mTotalPageCount);
+            DirectPageOps.p_longPutLE(headerAddr, offset + I_TOTAL_PAGE_COUNT, mTotalPageCount);
 
-            mRegularFreeList.commitStart(header, offset + I_REGULAR_QUEUE);
-            mRecycleFreeList.commitStart(header, offset + I_RECYCLE_QUEUE);
+            mRegularFreeList.commitStart(headerAddr, offset + I_REGULAR_QUEUE);
+            mRecycleFreeList.commitStart(headerAddr, offset + I_RECYCLE_QUEUE);
             if (mReserveList != null) {
-                mReserveList.commitStart(header, offset + I_RESERVE_QUEUE);
+                mReserveList.commitStart(headerAddr, offset + I_RESERVE_QUEUE);
             }
         } finally {
             fullUnlock();
@@ -672,16 +672,16 @@ final class PageManager {
     /**
      * Finishes the commit process. Must pass in header and offset used by commitStart.
      *
-     * @param header contains page manager structures
+     * @param headerAddr contains page manager structures
      * @param offset offset into header
      */
-    public void commitEnd(/*P*/ byte[] header, int offset) throws IOException {
+    public void commitEnd(long headerAddr, int offset) throws IOException {
         mRemoveLock.lock();
         try {
-            mRegularFreeList.commitEnd(header, offset + I_REGULAR_QUEUE);
-            mRecycleFreeList.commitEnd(header, offset + I_RECYCLE_QUEUE);
+            mRegularFreeList.commitEnd(headerAddr, offset + I_REGULAR_QUEUE);
+            mRecycleFreeList.commitEnd(headerAddr, offset + I_RECYCLE_QUEUE);
             if (mReserveList != null) {
-                mReserveList.commitEnd(header, offset + I_RESERVE_QUEUE);
+                mReserveList.commitEnd(headerAddr, offset + I_RESERVE_QUEUE);
             }
         } finally {
             mRemoveLock.unlock();

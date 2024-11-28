@@ -63,7 +63,6 @@ import static org.cojen.tupl.core.Utils.*;
  * @author Brian S O'Neill
  * @see ReplController
  */
-/*P*/
 class ReplEngine implements RedoVisitor, ThreadFactory {
     private static final int MAX_QUEUE_SIZE = 1000;
     private static final int MAX_KEEP_ALIVE_MILLIS = 60_000;
@@ -210,19 +209,20 @@ class ReplEngine implements RedoVisitor, ThreadFactory {
 
     /**
      * @return the ReplDecoder instance or null if failed
+     * @throws IllegalStateException if old decoder is still running
      */
     public ReplDecoder startReceiving(long initialPosition, long initialTxnId) {
-        ReplDecoder decoder;
-
         try {
             mDecodeLatch.acquireExclusive();
             try {
-                decoder = mDecoder;
-                if (decoder == null || decoder.mDeactivated) {
-                    mDecoder = decoder = new ReplDecoder
-                        (mRepl, initialPosition, initialTxnId, mDecodeLatch);
-                    newThread(this::decode).start();
+                ReplDecoder decoder = mDecoder;
+                if (decoder != null && !decoder.mDeactivated) {
+                    throw new IllegalStateException();
                 }
+                mDecoder = decoder = new ReplDecoder
+                    (mRepl, initialPosition, initialTxnId, mDecodeLatch);
+                newThread(this::decode).start();
+                return decoder;
             } finally {
                 mDecodeLatch.releaseExclusive();
             }
@@ -230,8 +230,6 @@ class ReplEngine implements RedoVisitor, ThreadFactory {
             fail(e);
             return null;
         }
-
-        return decoder;
     }
 
     public boolean addRedoListener(RedoListener listener) {
@@ -472,7 +470,7 @@ class ReplEngine implements RedoVisitor, ThreadFactory {
         }
 
         // Call with decode latch held, suspending checkpoints.
-        mRepl.controlMessageReceived(mDecoder.mIn.mPos, message);
+        mRepl.controlMessageReceived(decoder().mIn.mPos, message);
 
         return true;
     }
@@ -1374,7 +1372,7 @@ class ReplEngine implements RedoVisitor, ThreadFactory {
         return decoder().decodePositionOpaque();
     }
 
-    private RedoDecoder decoder() {
+    private ReplDecoder decoder() {
         ReplDecoder decoder = mDecoder;
         if (decoder == null) {
             throw new IllegalStateException("No decoder");
@@ -1396,11 +1394,7 @@ class ReplEngine implements RedoVisitor, ThreadFactory {
      * @throws IllegalStateException if not decoding
      */
     long suspendedDecodeTransactionId() {
-        ReplDecoder decoder = mDecoder;
-        if (decoder != null) {
-            return decoder.mDecodeTransactionId;
-        }
-        throw new IllegalStateException("Not decoding");
+        return decoder().mDecodeTransactionId;
     }
 
     /**
@@ -1826,32 +1820,37 @@ class ReplEngine implements RedoVisitor, ThreadFactory {
     }
 
     private void decode() {
-        final ReplDecoder decoder = mDecoder;
+        final ReplDecoder decoder;
         LHashTable.Obj<LocalTransaction> remaining;
 
         try {
-            while (!decoder.run(this));
+            decoder = decoder();
 
-            // End of stream reached, and so local instance is now the leader.
-
-            mDecodeLatch.acquireExclusive();
             try {
-                // Wait for work to complete.
-                if (mWorkerGroup != null) {
-                    // Can only call mWorkerGroup when mDecodeLatch is held. Otherwise, call
-                    // isn't thread-safe.
-                    mWorkerGroup.join(false);
-                }
+                while (!decoder.run(this));
 
-                remaining = doReset(false);
+                // End of stream reached, and so local instance is now the leader.
+
+                mDecodeLatch.acquireExclusive();
+                try {
+                    // Wait for work to complete.
+                    if (mWorkerGroup != null) {
+                        // Can only call mWorkerGroup when mDecodeLatch is held. Otherwise, call
+                        // isn't thread-safe.
+                        mWorkerGroup.join(false);
+                    }
+
+                    remaining = doReset(false);
+                } finally {
+                    mDecodeLatch.releaseExclusive();
+                }
             } finally {
-                mDecodeLatch.releaseExclusive();
+                decoder.mDeactivated = true;
             }
         } catch (Throwable e) {
             fail(e);
             return;
         } finally {
-            decoder.mDeactivated = true;
             // No need to reference these anymore.
             synchronized (mIndexes) {
                 mIndexes.clear(0);

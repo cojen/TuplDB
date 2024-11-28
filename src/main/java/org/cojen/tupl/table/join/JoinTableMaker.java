@@ -26,7 +26,6 @@ import java.lang.invoke.MethodType;
 
 import java.util.Map;
 import java.util.TreeMap;
-import java.util.Set;
 
 import org.cojen.maker.ClassMaker;
 import org.cojen.maker.Label;

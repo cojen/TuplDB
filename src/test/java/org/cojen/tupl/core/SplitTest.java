@@ -55,8 +55,7 @@ public class SplitTest {
     }
 
     private void rebindAndUnrebind(boolean splitRight, boolean highPos) throws Exception {
-        LocalDatabase db = (LocalDatabase) Database.open
-            (new DatabaseConfig().directPageAccess(false));
+        LocalDatabase db = (LocalDatabase) Database.open(new DatabaseConfig());
         BTree ix = (BTree) db.openIndex("test");
 
         // Fill up a leaf node, just before it has to split, with all possible cursor bindings.
@@ -148,6 +147,9 @@ public class SplitTest {
             assertEquals(~pos, c.mFrame.mNodePos);
             pos += 2;
         }
+
+        sibling.releaseExclusive();
+        db.close();
     }
 
     private static byte[] key(int i) {

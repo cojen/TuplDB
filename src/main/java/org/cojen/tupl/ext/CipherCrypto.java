@@ -22,9 +22,15 @@ import java.io.InputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 
+import java.lang.foreign.Arena;
+import java.lang.foreign.MemorySegment;
+import java.lang.foreign.ValueLayout;
+
 import java.security.GeneralSecurityException;
 
 import java.util.Objects;
+
+import java.util.function.Supplier;
 
 import javax.crypto.Cipher;
 import javax.crypto.CipherInputStream;
@@ -35,10 +41,9 @@ import javax.crypto.ShortBufferException;
 import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 
-import org.cojen.tupl.core.DirectPageOps;
-import org.cojen.tupl.core.Utils;
+import org.cojen.tupl.core.CheckedSupplier;
 
-import org.cojen.tupl.unsafe.DirectAccess;
+import org.cojen.tupl.io.Utils;
 
 /**
  * Crypto implementation which uses {@link Cipher} and defaults to the AES algorithm. An
@@ -63,7 +68,7 @@ public class CipherCrypto implements Crypto {
         if (args.length != 0) {
             keySize = Integer.parseInt(args[0]);
         }
-        System.out.println(toString(new CipherCrypto(keySize).secretKey()));
+        System.out.println(toString(new CipherCrypto(null, keySize).secretKey()));
     }
 
     private final ThreadLocal<Cipher> mHeaderPageCipher = new ThreadLocal<>();
@@ -75,23 +80,12 @@ public class CipherCrypto implements Crypto {
     private volatile SecretKey mDataKey;
 
     /**
-     * Construct with a new key, available from the {@link #secretKey secretKey} method.
-     *
-     * @param keySize key size in bits (with AES: 128, 192, or 256)
-     */
-    public CipherCrypto(int keySize) throws GeneralSecurityException {
-        mKeySize = check(keySize);
-        mRootKey = generateKey(keySize);
-    }
-
-    /**
      * Construct with an existing key, which is wrapped with {@link SecretKeySpec}, although
      * additional keys might need to be generated. The key size must be permitted by the
      * underlying algorithm, which for AES must be 128, 192, or 256 bits (16, 24, or 32 bytes).
      */
-    public CipherCrypto(byte[] encodedKey) throws GeneralSecurityException {
-        mKeySize = check(encodedKey.length * 8) | 0x8000_0000;
-        mRootKey = new SecretKeySpec(encodedKey, algorithm());
+    public static Supplier<Crypto> factory(byte[] encodedKey) {
+        return (CheckedSupplier<Crypto>) () -> new CipherCrypto(null, encodedKey);
     }
 
     /**
@@ -99,7 +93,48 @@ public class CipherCrypto implements Crypto {
      *
      * @param keySize key size in bits for additional keys (with AES: 128, 192, or 256)
      */
-    public CipherCrypto(SecretKey key, int keySize) throws GeneralSecurityException {
+    public static Supplier<Crypto> factory(SecretKey key, int keySize) {
+        return (CheckedSupplier<Crypto>) () -> new CipherCrypto(null, key, keySize);
+    }
+
+    /**
+     * Construct with a new key, available from the {@link #secretKey secretKey} method.
+     *
+     * @param keySize key size in bits (with AES: 128, 192, or 256)
+     */
+    public CipherCrypto(int keySize) throws GeneralSecurityException {
+        this(CheckedSupplier.check(2), keySize);
+    }
+
+    /**
+     * Construct with an existing key, which is wrapped with {@link SecretKeySpec}, although
+     * additional keys might need to be generated. The key size must be permitted by the
+     * underlying algorithm, which for AES must be 128, 192, or 256 bits (16, 24, or 32 bytes).
+     */
+    public CipherCrypto(byte[] encodedKey) {
+        this(CheckedSupplier.check(2), encodedKey);
+    }
+
+    /**
+     * Construct with an existing key, although additional keys might need to be generated.
+     *
+     * @param keySize key size in bits for additional keys (with AES: 128, 192, or 256)
+     */
+    public CipherCrypto(SecretKey key, int keySize) {
+        this(CheckedSupplier.check(2), key, keySize);
+    }
+
+    private CipherCrypto(Object dummy, int keySize) throws GeneralSecurityException {
+        mKeySize = check(keySize);
+        mRootKey = generateKey(keySize);
+    }
+
+    private CipherCrypto(Object dummy, byte[] encodedKey) {
+        mKeySize = check(encodedKey.length * 8) | 0x8000_0000;
+        mRootKey = new SecretKeySpec(encodedKey, algorithm());
+    }
+
+    private CipherCrypto(Object dummy, SecretKey key, int keySize) {
         mKeySize = check(keySize) | 0x8000_0000;
         mRootKey = Objects.requireNonNull(key);
     }
@@ -125,7 +160,7 @@ public class CipherCrypto implements Crypto {
 
     @Override
     public final void encryptPage(long pageIndex, int pageSize,
-                                  byte[] src, int srcOffset, byte[] dst, int dstOffset)
+                                  long srcAddr, int srcOffset, long dstAddr, int dstOffset)
         throws GeneralSecurityException
     {
         byte[] dataIvSalt = mDataIvSalt;
@@ -146,85 +181,37 @@ public class CipherCrypto implements Crypto {
             // least 196 bytes available. Max AES block size is 32 bytes, so required space is
             // 99 bytes. If block size is 64 bytes, required header space is 195 bytes.
 
-            var srcCopy = new byte[pageSize];
-
-            System.arraycopy(src, srcOffset, srcCopy, 0, pageSize);
-            src = srcCopy;
-            srcOffset = 0;
-            int offset = pageSize;
-
-            byte[] headerIv = cipher.getIV();
-            checkBlockLength(headerIv);
-            offset = encodeBlock(src, offset, headerIv);
-            // Don't encrypt the IV.
-            encodeBlock(dst, dstOffset + pageSize, headerIv);
-            pageSize = offset;
-
-            offset = encodeBlock(src, offset, dataIvSalt);
-            offset = encodeBlock(src, offset, dataKey.getEncoded());
-        } else {
-            cipher = dataPageCipher();
-            IvParameterSpec ivSpec = generateDataPageIv(cipher, pageIndex, dataIvSalt, dataKey);
-            initCipher(cipher, Cipher.ENCRYPT_MODE, dataKey, ivSpec);
-        }
-
-        if (cipher.doFinal(src, srcOffset, pageSize, dst, dstOffset) != pageSize) {
-            throw new GeneralSecurityException("Encrypted length does not match");
-        }
-    }
-
-    @Override
-    public final void encryptPage(long pageIndex, int pageSize,
-                                  long srcPtr, int srcOffset, long dstPtr, int dstOffset)
-        throws GeneralSecurityException
-    {
-        // Note: Same as other encryptPage method, except acts on direct memory pointers.
-
-        byte[] dataIvSalt = mDataIvSalt;
-        SecretKey dataKey = mDataKey;
-
-        if (dataIvSalt == null) {
-            createDataKeyIfNecessary();
-            dataIvSalt = mDataIvSalt;
-            dataKey = mDataKey;
-        }
-
-        Cipher cipher;
-        if (pageIndex <= 1) {
-            cipher = headerPageCipher();
-            initCipher(cipher, Cipher.ENCRYPT_MODE, mRootKey);
-
-            long srcCopy = DirectPageOps.p_alloc(pageSize);
-            try {
-                DirectPageOps.p_copy(srcPtr, srcOffset, srcCopy, 0, pageSize);
-                srcPtr = srcCopy;
+            try (Arena a = Arena.ofConfined()) {
+                MemorySegment srcCopy = a.allocate(pageSize);
+                MemorySegment.copy
+                    (MemorySegment.ofAddress(srcAddr + srcOffset).reinterpret(pageSize), 0,
+                     srcCopy, 0, pageSize);
+                srcAddr = srcCopy.address();
                 srcOffset = 0;
                 int offset = pageSize;
 
                 byte[] headerIv = cipher.getIV();
                 checkBlockLength(headerIv);
-                offset = encodeBlock(srcPtr, offset, headerIv);
+                offset = encodeBlock(srcAddr, offset, headerIv);
                 // Don't encrypt the IV.
-                encodeBlock(dstPtr, dstOffset + pageSize, headerIv);
+                encodeBlock(dstAddr, dstOffset + pageSize, headerIv);
                 pageSize = offset;
 
-                offset = encodeBlock(srcPtr, offset, dataIvSalt);
-                offset = encodeBlock(srcPtr, offset, dataKey.getEncoded());
+                offset = encodeBlock(srcAddr, offset, dataIvSalt);
+                offset = encodeBlock(srcAddr, offset, dataKey.getEncoded());
 
-                if (cipherDoFinal(cipher, srcPtr, srcOffset, pageSize, dstPtr, dstOffset)
+                if (cipherDoFinal(cipher, srcAddr, srcOffset, pageSize, dstAddr, dstOffset)
                     != pageSize)
                 {
                     throw new GeneralSecurityException("Encrypted length does not match");
                 }
-            } finally {
-                DirectPageOps.p_delete(srcCopy);
             }
         } else {
             cipher = dataPageCipher();
             IvParameterSpec ivSpec = generateDataPageIv(cipher, pageIndex, dataIvSalt, dataKey);
             initCipher(cipher, Cipher.ENCRYPT_MODE, dataKey, ivSpec);
 
-            if (cipherDoFinal(cipher, srcPtr, srcOffset, pageSize, dstPtr, dstOffset) != pageSize)
+            if (cipherDoFinal(cipher, srcAddr, srcOffset, pageSize, dstAddr, dstOffset) != pageSize)
             {
                 throw new GeneralSecurityException("Encrypted length does not match");
             }
@@ -247,12 +234,12 @@ public class CipherCrypto implements Crypto {
 
     @Override
     public final void decryptPage(long pageIndex, int pageSize,
-                                  byte[] src, int srcOffset, byte[] dst, int dstOffset)
+                                  long srcAddr, int srcOffset, long dstAddr, int dstOffset)
         throws GeneralSecurityException
     {
         Cipher cipher;
         if (pageIndex <= 1) {
-            byte[] headerIv = decodeBlock(src, srcOffset + pageSize);
+            byte[] headerIv = decodeBlock(srcAddr, srcOffset + pageSize);
 
             // Don't decrypt the IV.
             pageSize = pageSize - headerIv.length - 1;
@@ -260,50 +247,7 @@ public class CipherCrypto implements Crypto {
             cipher = headerPageCipher();
             initCipher(cipher, Cipher.DECRYPT_MODE, mRootKey, new IvParameterSpec(headerIv));
 
-            if (cipher.doFinal(src, srcOffset, pageSize, dst, dstOffset) != pageSize) {
-                throw new GeneralSecurityException("Decrypted length does not match");
-            }
-
-            if (mDataIvSalt == null) synchronized (mRootKey) {
-                if (mDataIvSalt == null) {
-                    int offset = dstOffset + pageSize;
-                    byte[] dataIvSalt = decodeBlock(dst, offset);
-                    mDataIvSalt = dataIvSalt;
-                    offset = offset - dataIvSalt.length - 1;
-                    byte[] dataKeyValue = decodeBlock(dst, offset);
-                    mDataKey = new SecretKeySpec(dataKeyValue, algorithm());
-                }
-            }
-        } else {
-            cipher = dataPageCipher();
-            SecretKey dataKey = mDataKey;
-            IvParameterSpec ivSpec = generateDataPageIv(cipher, pageIndex, mDataIvSalt, dataKey);
-            initCipher(cipher, Cipher.DECRYPT_MODE, dataKey, ivSpec);
-
-            if (cipher.doFinal(src, srcOffset, pageSize, dst, dstOffset) != pageSize) {
-                throw new GeneralSecurityException("Decrypted length does not match");
-            }
-        }
-    }
-
-    @Override
-    public final void decryptPage(long pageIndex, int pageSize,
-                                  long srcPtr, int srcOffset, long dstPtr, int dstOffset)
-        throws GeneralSecurityException
-    {
-        // Note: Same as other decryptPage method, except acts on direct memory pointers.
-
-        Cipher cipher;
-        if (pageIndex <= 1) {
-            byte[] headerIv = decodeBlock(srcPtr, srcOffset + pageSize);
-
-            // Don't decrypt the IV.
-            pageSize = pageSize - headerIv.length - 1;
-
-            cipher = headerPageCipher();
-            initCipher(cipher, Cipher.DECRYPT_MODE, mRootKey, new IvParameterSpec(headerIv));
-
-            if (cipherDoFinal(cipher, srcPtr, srcOffset, pageSize, dstPtr, dstOffset) != pageSize)
+            if (cipherDoFinal(cipher, srcAddr, srcOffset, pageSize, dstAddr, dstOffset) != pageSize)
             {
                 throw new GeneralSecurityException("Decrypted length does not match");
             }
@@ -311,10 +255,10 @@ public class CipherCrypto implements Crypto {
             if (mDataIvSalt == null) synchronized (mRootKey) {
                 if (mDataIvSalt == null) {
                     int offset = dstOffset + pageSize;
-                    byte[] dataIvSalt = decodeBlock(dstPtr, offset);
+                    byte[] dataIvSalt = decodeBlock(dstAddr, offset);
                     mDataIvSalt = dataIvSalt;
                     offset = offset - dataIvSalt.length - 1;
-                    byte[] dataKeyValue = decodeBlock(dstPtr, offset);
+                    byte[] dataKeyValue = decodeBlock(dstAddr, offset);
                     mDataKey = new SecretKeySpec(dataKeyValue, algorithm());
                 }
             }
@@ -324,7 +268,7 @@ public class CipherCrypto implements Crypto {
             IvParameterSpec ivSpec = generateDataPageIv(cipher, pageIndex, mDataIvSalt, dataKey);
             initCipher(cipher, Cipher.DECRYPT_MODE, dataKey, ivSpec);
 
-            if (cipherDoFinal(cipher, srcPtr, srcOffset, pageSize, dstPtr, dstOffset) != pageSize)
+            if (cipherDoFinal(cipher, srcAddr, srcOffset, pageSize, dstAddr, dstOffset) != pageSize)
             {
                 throw new GeneralSecurityException("Decrypted length does not match");
             }
@@ -486,27 +430,19 @@ public class CipherCrypto implements Crypto {
         }
     }
 
-    private static int encodeBlock(byte[] dst, int offset, byte[] value) {
-        dst[--offset] = (byte) (value.length - 1);
-        System.arraycopy(value, 0, dst, offset -= value.length, value.length);
+    private static int encodeBlock(long dstAddr, int offset, byte[] value) {
+        MemorySegment dst = MemorySegment.ofAddress(dstAddr).reinterpret(offset);
+        int length = value.length;
+        dst.set(ValueLayout.JAVA_BYTE, --offset, (byte) (length - 1));
+        MemorySegment.copy(value, 0, dst, ValueLayout.JAVA_BYTE, offset -= length, length);
         return offset;
     }
 
-    private static int encodeBlock(long dstPtr, int offset, byte[] value) {
-        DirectPageOps.p_bytePut(dstPtr, --offset, value.length - 1);
-        DirectPageOps.p_copyFromArray(value, 0, dstPtr, offset -= value.length, value.length);
-        return offset;
-    }
-
-    private static byte[] decodeBlock(byte[] src, int offset) {
-        var value = new byte[(src[--offset] & 0xff) + 1];
-        System.arraycopy(src, offset - value.length, value, 0, value.length);
-        return value;
-    }
-
-    private static byte[] decodeBlock(long srcPtr, int offset) {
-        var value = new byte[DirectPageOps.p_ubyteGet(srcPtr, --offset) + 1];
-        DirectPageOps.p_copyToArray(srcPtr, offset - value.length, value, 0, value.length);
+    private static byte[] decodeBlock(long srcAddr, int offset) {
+        MemorySegment src = MemorySegment.ofAddress(srcAddr).reinterpret(offset);
+        int length = (src.get(ValueLayout.JAVA_BYTE, --offset) & 0xff) + 1;
+        var value = new byte[length];
+        MemorySegment.copy(src, ValueLayout.JAVA_BYTE, offset - length, value, 0, length);
         return value;
     }
 
@@ -515,8 +451,9 @@ public class CipherCrypto implements Crypto {
                                      long dstPage, int dstStart)
         throws GeneralSecurityException
     {
-        return cipher.doFinal(DirectAccess.ref(srcPage + srcStart, srcLen),
-                              DirectAccess.ref2(dstPage + dstStart, srcLen));
+        return cipher.doFinal
+            (MemorySegment.ofAddress(srcPage + srcStart).reinterpret(srcLen).asByteBuffer(),
+             MemorySegment.ofAddress(dstPage + dstStart).reinterpret(srcLen).asByteBuffer());
     }
 
     /**

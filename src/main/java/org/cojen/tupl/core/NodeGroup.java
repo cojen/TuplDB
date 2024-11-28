@@ -27,7 +27,7 @@ import org.cojen.tupl.util.Clutch;
 import org.cojen.tupl.util.Latch;
 
 import static org.cojen.tupl.core.Node.*;
-import static org.cojen.tupl.core.PageOps.*;
+import static org.cojen.tupl.core.DirectPageOps.*;
 
 /**
  * Nodes are organized into groups, to reduce contention when updating data structures which
@@ -80,7 +80,7 @@ final class NodeGroup extends Clutch.Pack implements Checkpointer.DirtySet {
     private Node mFlushNext;
 
     private final Latch mSparePageLatch;
-    private /*P*/ byte[] mSparePage;
+    private long mSparePageAddr;
 
     /**
      * @param usedRate must be power of 2 minus 1, and it determines the likelihood that
@@ -108,7 +108,7 @@ final class NodeGroup extends Clutch.Pack implements Checkpointer.DirtySet {
         mSparePageLatch.acquireExclusive();
         try {
             // If directPageSize is negative, then aligned allocation is requested.
-            mSparePage = PageOps.p_callocPage(db.mPageDb.directPageSize());
+            mSparePageAddr = DirectPageOps.p_callocPage(db.mPageDb.directPageSize());
         } finally {
             mSparePageLatch.releaseExclusive();
         }
@@ -249,15 +249,10 @@ final class NodeGroup extends Clutch.Pack implements Checkpointer.DirtySet {
         try {
             mDatabase.checkClosed();
 
-            /*P*/ byte[] page;
-            /*P*/ // [
-            page = p_callocPage(arena, mDatabase.mPageDb.directPageSize());
-            /*P*/ // |
-            /*P*/ // page = mDatabase.mFullyMapped ? p_nonTreePage()
-            /*P*/ //        : p_callocPage(arena, mDatabase.mPageDb.directPageSize());
-            /*P*/ // ]
+            long pageAddr = mDatabase.mFullyMapped ? p_nonTreePage()
+                : p_callocPage(arena, mDatabase.mPageDb.directPageSize());
 
-            var node = new Node(this, page);
+            var node = new Node(this, pageAddr);
             node.acquireExclusive();
             mSize++;
 
@@ -584,7 +579,7 @@ final class NodeGroup extends Clutch.Pack implements Checkpointer.DirtySet {
             }
 
             if (state == Node.CACHED_CLEAN) {
-                // Don't write clean nodes. There's no need to latch and double check the node
+                // Don't write clean nodes. There's no need to latch and double-check the node
                 // state, since the next valid state can only be the new dirty state.
                 continue;
             }
@@ -623,13 +618,13 @@ final class NodeGroup extends Clutch.Pack implements Checkpointer.DirtySet {
         return mDirtyCount;
     }
 
-    /*P*/ byte[] acquireSparePage() {
+    long acquireSparePageAddr() {
         mSparePageLatch.acquireExclusive();
-        return mSparePage;
+        return mSparePageAddr;
     }
 
-    void releaseSparePage(/*P*/ byte[] page) {
-        mSparePage = page;
+    void releaseSparePageAddr(long pageAddr) {
+        mSparePageAddr = pageAddr;
         mSparePageLatch.releaseExclusive();
     }
 
@@ -677,8 +672,8 @@ final class NodeGroup extends Clutch.Pack implements Checkpointer.DirtySet {
 
         mSparePageLatch.acquireExclusive();
         try {
-            PageOps.p_delete(mSparePage);
-            mSparePage = PageOps.p_null();
+            DirectPageOps.p_delete(mSparePageAddr);
+            mSparePageAddr = DirectPageOps.p_null();
         } finally {
             mSparePageLatch.releaseExclusive();
         }

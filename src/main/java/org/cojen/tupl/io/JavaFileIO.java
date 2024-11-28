@@ -23,6 +23,8 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 
+import java.lang.foreign.MemorySegment;
+
 import java.nio.ByteBuffer;
 
 import java.nio.channels.FileChannel;
@@ -35,8 +37,6 @@ import java.util.function.Consumer;
 
 import org.cojen.tupl.WriteFailureException;
 
-import org.cojen.tupl.unsafe.DirectAccess;
-
 import org.cojen.tupl.util.LocalPool;
 
 /**
@@ -45,7 +45,7 @@ import org.cojen.tupl.util.LocalPool;
  *
  * @author Brian S O'Neill
  */
-class JavaFileIO extends AbstractFileIO {
+sealed class JavaFileIO extends AbstractFileIO permits WindowsFileIO {
     protected final File mFile;
     private final String mMode;
 
@@ -153,8 +153,8 @@ class JavaFileIO extends AbstractFileIO {
     }
 
     @Override
-    protected final void doRead(long pos, long ptr, int length) throws IOException {
-        ByteBuffer bb = DirectAccess.ref(ptr, length);
+    protected final void doRead(long pos, long addr, int length) throws IOException {
+        ByteBuffer bb = MemorySegment.ofAddress(addr).reinterpret(length).asByteBuffer();
 
         boolean interrupted = false;
 
@@ -198,8 +198,8 @@ class JavaFileIO extends AbstractFileIO {
     }
 
     @Override
-    protected final void doWrite(long pos, long ptr, int length) throws IOException {
-        ByteBuffer bb = DirectAccess.ref(ptr, length);
+    protected final void doWrite(long pos, long addr, int length) throws IOException {
+        ByteBuffer bb = MemorySegment.ofAddress(addr).reinterpret(length).asByteBuffer();
 
         boolean interrupted = false;
 

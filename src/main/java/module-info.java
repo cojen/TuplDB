@@ -15,9 +15,6 @@ module org.cojen.tupl {
 
     requires jdk.unsupported;
 
-    requires com.sun.jna;
-    requires com.sun.jna.platform;
-
     requires org.cojen.maker;
     requires org.cojen.dirmi;
 

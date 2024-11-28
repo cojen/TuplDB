@@ -94,7 +94,7 @@ public abstract sealed class ColumnFilter extends TermFilter
             default: return this;
             case OP_GE: op1 = OP_GT; break;
             case OP_LE: op1 = OP_LT; break;
-            };
+            }
             return new OrFilter(withOperator(op1), withOperator(OP_EQ));
         }
     }

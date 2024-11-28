@@ -20,7 +20,8 @@ package org.cojen.tupl.core;
 import java.io.IOException;
 import java.io.OutputStream;
 
-import java.util.Arrays;
+import java.lang.foreign.Arena;
+import java.lang.foreign.MemorySegment;
 
 import java.util.function.Supplier;
 
@@ -32,8 +33,6 @@ import org.cojen.tupl.Transaction;
 import org.cojen.tupl.io.PageArray;
 import org.cojen.tupl.io.PageCompressor;
 
-import org.cojen.tupl.unsafe.UnsafeAccess;
-
 import org.cojen.tupl.util.LocalPool;
 
 /**
@@ -42,16 +41,16 @@ import org.cojen.tupl.util.LocalPool;
  * @author Brian S O'Neill
  */
 final class CompressedPageArray extends PageArray implements Supplier<PageCompressor> {
-    private final CoreDatabase mDatabase;
+    private final LocalDatabase mDatabase;
     private final Index mPages;
-    private final Supplier<PageCompressor> mCompressorFactory;
+    private final Supplier<? extends PageCompressor> mCompressorFactory;
     private final LocalPool<PageCompressor> mCompressors;
 
     /**
      * @param fullPageSize full size of pages when uncompressed
      */
-    CompressedPageArray(int fullPageSize, CoreDatabase db, Index pages,
-                        Supplier<PageCompressor> factory)
+    CompressedPageArray(int fullPageSize, LocalDatabase db, Index pages,
+                        Supplier<? extends PageCompressor> factory)
     {
         super(fullPageSize);
         mDatabase = db;
@@ -115,18 +114,18 @@ final class CompressedPageArray extends PageArray implements Supplier<PageCompre
     }
 
     @Override
-    public void readPage(long index, byte[] dst) throws IOException {
-        readPage(index, dst, 0);
+    public void readPage(long index, long dstAddr) throws IOException {
+        readPage(index, dstAddr, 0);
     }
 
-    private void readPage(long index, byte[] dst, int offset) throws IOException {
+    private void readPage(long index, long dstAddr, int offset) throws IOException {
         byte[] value = mPages.load(Transaction.BOGUS, keyFor(index));
         if (value == null) {
-            Arrays.fill(dst, offset, offset + pageSize(), (byte) 0);
+            MemorySegment.ofAddress(dstAddr + offset).reinterpret(pageSize()).fill((byte) 0);
         } else {
             var entry = mCompressors.access();
             try {
-                entry.get().decompress(value, 0, value.length, dst, offset, pageSize());
+                entry.get().decompress(value, 0, value.length, dstAddr, offset, pageSize());
             } finally {
                 entry.release();
             }
@@ -134,73 +133,26 @@ final class CompressedPageArray extends PageArray implements Supplier<PageCompre
     }
 
     @Override
-    public void readPage(long index, byte[] dst, int offset, int length) throws IOException {
+    public void readPage(long index, long dstAddr, int offset, int length) throws IOException {
         int pageSize = pageSize();
         if (length == pageSize) {
-            readPage(index, dst, offset);
+            readPage(index, dstAddr, offset);
         } else {
-            byte[] page = new byte[pageSize];
-            readPage(index, page, 0);
-            System.arraycopy(page, 0, dst, offset, length);
-        }
-    }
-
-    @Override
-    public void readPage(long index, long dstPtr) throws IOException {
-        readPage(index, dstPtr, 0);
-    }
-
-    private void readPage(long index, long dstPtr, int offset) throws IOException {
-        byte[] value = mPages.load(Transaction.BOGUS, keyFor(index));
-        if (value == null) {
-            UnsafeAccess.fill(dstPtr + offset, pageSize(), (byte) 0);
-        } else {
-            var entry = mCompressors.access();
-            try {
-                entry.get().decompress(value, 0, value.length, dstPtr, offset, pageSize());
-            } finally {
-                entry.release();
+            try (Arena a = Arena.ofConfined()) {
+                MemorySegment page = a.allocate(pageSize);
+                readPage(index, page.address(), 0);
+                MemorySegment.copy(page, 0, DirectMemory.ALL, dstAddr + offset, length);
             }
         }
     }
 
     @Override
-    public void readPage(long index, long dstPtr, int offset, int length) throws IOException {
-        int pageSize = pageSize();
-        if (length == pageSize) {
-            readPage(index, dstPtr, offset);
-        } else {
-            long page = UnsafeAccess.alloc(pageSize);
-            try {
-                readPage(index, page, 0);
-                UnsafeAccess.copy(page, dstPtr + offset, length);
-            } finally {
-                UnsafeAccess.free(page);
-            }
-        }
-    }
-
-    @Override
-    public void writePage(long index, byte[] src, int offset) throws IOException {
+    public void writePage(long index, long srcAddr, int offset) throws IOException {
         try (Cursor c = mPages.newAccessor(Transaction.BOGUS, keyFor(index))) {
             var entry = mCompressors.access();
             try {
                 PageCompressor compressor = entry.get();
-                int len = compressor.compress(src, offset, pageSize());
-                c.valueWrite(0, compressor.compressedBytes(), 0, len);
-            } finally {
-                entry.release();
-            }
-        }
-    }
-
-    @Override
-    public void writePage(long index, long srcPtr, int offset) throws IOException {
-        try (Cursor c = mPages.newAccessor(Transaction.BOGUS, keyFor(index))) {
-            var entry = mCompressors.access();
-            try {
-                PageCompressor compressor = entry.get();
-                int len = compressor.compress(srcPtr, offset, pageSize());
+                int len = compressor.compress(srcAddr, offset, pageSize());
                 c.valueWrite(0, compressor.compressedBytes(), 0, len);
             } finally {
                 entry.release();
@@ -258,14 +210,13 @@ final class CompressedPageArray extends PageArray implements Supplier<PageCompre
             launcher.minCacheSize(0);
             launcher.maxCacheSize(100L * snapArray.pageSize());
             launcher.readOnly(true);
-            launcher.directPageAccess(mDatabase.isDirectPageAccess());
             launcher.encrypt(mDatabase.dataCrypto());
             launcher.checksumPages(mDatabase.checksumFactory());
 
             try (var snapDb = launcher.open(false, null)) {
                 snapArray = new CompressedPageArray
                     (pageSize(), snapDb, snapDb.registry(), mCompressorFactory);
-                var snapPageDb = StoredPageDb.open(null, snapArray, null, null, false);
+                var snapPageDb = StoredPageDb.open(null, snapArray, null, null, false, 0);
                 redoPos = snapPageDb.snapshotRedoPos();
             }
         }

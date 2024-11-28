@@ -44,6 +44,6 @@ public class CrudSelfIntersectionTest extends CrudNonDurableTest {
 
     @Override
     protected boolean verify(View view) throws Exception {
-        return mViews.get(view).verify(null);
+        return mViews.get(view).verify(null, 1);
     }
 }

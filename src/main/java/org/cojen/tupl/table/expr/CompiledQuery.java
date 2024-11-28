@@ -21,7 +21,6 @@ import java.io.IOException;
 
 import java.util.stream.Stream;
 
-import org.cojen.tupl.Row;
 import org.cojen.tupl.Scanner;
 import org.cojen.tupl.Table;
 import org.cojen.tupl.Transaction;

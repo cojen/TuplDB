@@ -55,6 +55,23 @@ loadScripts(document, 'script');</script>
 <a href="index-1.html">A</a>&nbsp;<a href="index-2.html">B</a>&nbsp;<a href="index-3.html">C</a>&nbsp;<a href="index-4.html">D</a>&nbsp;<a href="index-5.html">E</a>&nbsp;<a href="index-6.html">F</a>&nbsp;<a href="index-7.html">G</a>&nbsp;<a href="index-8.html">H</a>&nbsp;<a href="index-9.html">I</a>&nbsp;<a href="index-10.html">J</a>&nbsp;<a href="index-11.html">K</a>&nbsp;<a href="index-12.html">L</a>&nbsp;<a href="index-13.html">M</a>&nbsp;<a href="index-14.html">N</a>&nbsp;<a href="index-15.html">O</a>&nbsp;<a href="index-16.html">P</a>&nbsp;<a href="index-17.html">Q</a>&nbsp;<a href="index-18.html">R</a>&nbsp;<a href="index-19.html">S</a>&nbsp;<a href="index-20.html">T</a>&nbsp;<a href="index-21.html">U</a>&nbsp;<a href="index-22.html">V</a>&nbsp;<a href="index-23.html">W</a>&nbsp;<a href="index-24.html">Z</a>&nbsp;<br><a href="../allclasses-index.html">All&nbsp;Classes&nbsp;and&nbsp;Interfaces</a><span class="vertical-separator">|</span><a href="../allpackages-index.html">All&nbsp;Packages</a><span class="vertical-separator">|</span><a href="../constant-values.html">Constant&nbsp;Field&nbsp;Values</a><span class="vertical-separator">|</span><a href="../serialized-form.html">Serialized&nbsp;Form</a>
 <h2 class="title" id="I:F">F</h2>
 <dl class="index">
+<dt><a href="../org.cojen.tupl/org/cojen/tupl/ext/CipherCrypto.html#factory(byte%5B%5D)" class="member-name-link">factory(byte[])</a> - Static method in class org.cojen.tupl.ext.<a href="../org.cojen.tupl/org/cojen/tupl/ext/CipherCrypto.html" title="class in org.cojen.tupl.ext">CipherCrypto</a></dt>
+<dd>
+<div class="block">Construct with an existing key, which is wrapped with <a href="https://docs.oracle.com/en/java/javase/23/docs/api/java.base/javax/crypto/spec/SecretKeySpec.html" title="class or interface in javax.crypto.spec" class="external-link"><code>SecretKeySpec</code></a>, although
+ additional keys might need to be generated.</div>
+</dd>
+<dt><a href="../org.cojen.tupl/org/cojen/tupl/io/MappedPageArray.html#factory(int,long,java.io.File,java.util.EnumSet)" class="member-name-link">factory(int, long, File, EnumSet&lt;OpenOption&gt;)</a> - Static method in class org.cojen.tupl.io.<a href="../org.cojen.tupl/org/cojen/tupl/io/MappedPageArray.html" title="class in org.cojen.tupl.io">MappedPageArray</a></dt>
+<dd>&nbsp;</dd>
+<dt><a href="../org.cojen.tupl/org/cojen/tupl/io/FilePageArray.html#factory(int,java.io.File,java.util.EnumSet)" class="member-name-link">factory(int, File, EnumSet&lt;OpenOption&gt;)</a> - Static method in class org.cojen.tupl.io.<a href="../org.cojen.tupl/org/cojen/tupl/io/FilePageArray.html" title="class in org.cojen.tupl.io">FilePageArray</a></dt>
+<dd>&nbsp;</dd>
+<dt><a href="../org.cojen.tupl/org/cojen/tupl/io/StripedPageArray.html#factory(java.util.function.Supplier...)" class="member-name-link">factory(Supplier&lt;PageArray&gt;...)</a> - Static method in class org.cojen.tupl.io.<a href="../org.cojen.tupl/org/cojen/tupl/io/StripedPageArray.html" title="class in org.cojen.tupl.io">StripedPageArray</a></dt>
+<dd>&nbsp;</dd>
+<dt><a href="../org.cojen.tupl/org/cojen/tupl/io/JoinedPageArray.html#factory(java.util.function.Supplier,long,java.util.function.Supplier)" class="member-name-link">factory(Supplier&lt;PageArray&gt;, long, Supplier&lt;PageArray&gt;)</a> - Static method in class org.cojen.tupl.io.<a href="../org.cojen.tupl/org/cojen/tupl/io/JoinedPageArray.html" title="class in org.cojen.tupl.io">JoinedPageArray</a></dt>
+<dd>&nbsp;</dd>
+<dt><a href="../org.cojen.tupl/org/cojen/tupl/ext/CipherCrypto.html#factory(javax.crypto.SecretKey,int)" class="member-name-link">factory(SecretKey, int)</a> - Static method in class org.cojen.tupl.ext.<a href="../org.cojen.tupl/org/cojen/tupl/ext/CipherCrypto.html" title="class in org.cojen.tupl.ext">CipherCrypto</a></dt>
+<dd>
+<div class="block">Construct with an existing key, although additional keys might need to be generated.</div>
+</dd>
 <dt><a href="../org.cojen.tupl/org/cojen/tupl/Database.html#failover()" class="member-name-link">failover()</a> - Method in interface org.cojen.tupl.<a href="../org.cojen.tupl/org/cojen/tupl/Database.html" title="interface in org.cojen.tupl">Database</a></dt>
 <dd>
 <div class="block">If the database instance is currently acting as a leader, attempt to give up leadership
@@ -76,8 +93,6 @@ loadScripts(document, 'script');</script>
 <dd>
 <div class="block">Basic <a href="../org.cojen.tupl/org/cojen/tupl/io/PageArray.html" title="class in org.cojen.tupl.io"><code>PageArray</code></a> implementation which accesses a file.</div>
 </dd>
-<dt><a href="../org.cojen.tupl/org/cojen/tupl/io/FilePageArray.html#%3Cinit%3E(int,java.io.File,java.util.EnumSet)" class="member-name-link">FilePageArray(int, File, EnumSet&lt;OpenOption&gt;)</a> - Constructor for class org.cojen.tupl.io.<a href="../org.cojen.tupl/org/cojen/tupl/io/FilePageArray.html" title="class in org.cojen.tupl.io">FilePageArray</a></dt>
-<dd>&nbsp;</dd>
 <dt><a href="../org.cojen.tupl/org/cojen/tupl/io/FilePageArray.html#%3Cinit%3E(int,org.cojen.tupl.io.FileIO)" class="member-name-link">FilePageArray(int, FileIO)</a> - Constructor for class org.cojen.tupl.io.<a href="../org.cojen.tupl/org/cojen/tupl/io/FilePageArray.html" title="class in org.cojen.tupl.io">FilePageArray</a></dt>
 <dd>&nbsp;</dd>
 <dt><a href="../org.cojen.tupl/org/cojen/tupl/diag/QueryPlan.LoadOne.html#filter" class="member-name-link">filter</a> - Variable in class org.cojen.tupl.diag.<a href="../org.cojen.tupl/org/cojen/tupl/diag/QueryPlan.LoadOne.html" title="class in org.cojen.tupl.diag">QueryPlan.LoadOne</a></dt>

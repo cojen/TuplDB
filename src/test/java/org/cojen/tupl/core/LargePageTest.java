@@ -43,7 +43,7 @@ public class LargePageTest {
     }
 
     private static DatabaseConfig newConfig() {
-        return new DatabaseConfig().directPageAccess(false).pageSize(65536);
+        return new DatabaseConfig().pageSize(65536);
     }
 
     @Test
@@ -96,7 +96,7 @@ public class LargePageTest {
 
         db.checkpoint();
         db = reopenTempDatabase(getClass(), db, config);
-        assertTrue(db.verify(null));
+        assertTrue(db.verify(null, 1));
     }
 
     @Test
@@ -122,6 +122,8 @@ public class LargePageTest {
         fastAssertArrayEquals(v1, ix.load(null, k1));
         fastAssertArrayEquals(v2, ix.load(null, k2));
         fastAssertArrayEquals(v3, ix.load(null, k3));
+
+        db.close();
     }
 
     @Test

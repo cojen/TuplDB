@@ -372,7 +372,7 @@ public class Registration {
                 }
             };
 
-            if (db.verify(observer)) {
+            if (db.verify(observer, 0)) {
                 return "passed";
             } else {
                 String message = observer.failed;

@@ -17,6 +17,8 @@
 
 package org.cojen.tupl.io;
 
+import java.lang.foreign.ValueLayout;
+
 import java.io.File;
 import java.io.IOException;
 
@@ -27,54 +29,46 @@ import java.nio.channels.FileChannel;
 import java.nio.file.FileSystemException;
 import java.nio.file.StandardOpenOption;
 
-import com.sun.jna.Native;
-
-import org.cojen.tupl.unsafe.DirectAccess;
+import org.cojen.tupl.core.CheckedSupplier;
 
 /**
  * Lowest I/O interface to a file or device.
  *
  * @author Brian S O'Neill
  */
-public abstract class FileIO implements CauseCloseable {
-    private static final String USE_JNA = FileIO.class.getName() + ".useJNA";
+public abstract sealed class FileIO implements CauseCloseable permits AbstractFileIO {
     private static final int IO_TYPE; // 0: platform independent, 1: POSIX, 2: Windows
-    private static final boolean NEEDS_DIR_SYNC;
 
     static {
         boolean isWindows = System.getProperty("os.name").startsWith("Windows");
-
-        int type = 0;
-
-        String jnaProp = System.getProperty(USE_JNA, null);
-        if ((jnaProp == null || Boolean.parseBoolean(jnaProp)) && Native.SIZE_T_SIZE >= 8) {
-            type = isWindows ? 2 : 1;
-        }
-
-        IO_TYPE = type;
-
-        NEEDS_DIR_SYNC = !isWindows;
+        IO_TYPE = ValueLayout.ADDRESS.byteSize() < 8 ? 0 : (isWindows ? 2 : 1);
     }
 
     public static FileIO open(File file, EnumSet<OpenOption> options)
         throws IOException
     {
-        return open(file, options, -4); // 4 * number of available processors
+        CheckedSupplier.check(2);
+        return doOpen(file, options, -4); // 4 * number of available processors
     }
 
     public static FileIO open(File file, EnumSet<OpenOption> options, int openFileCount)
         throws IOException
     {
+        CheckedSupplier.check(2);
+        return doOpen(file, options, openFileCount);
+    }
+
+    private static FileIO doOpen(File file, EnumSet<OpenOption> options, int openFileCount)
+        throws IOException
+    {
         if (options == null) {
             options = EnumSet.noneOf(OpenOption.class);
         }
-        if (!options.contains(OpenOption.MAPPED) || DirectAccess.isSupported()) {
-            switch (IO_TYPE) {
-            case 1: return new PosixFileIO(file, options);
-            case 2: return new WindowsFileIO(file, options, openFileCount);
-            }
-        }
-        return new JavaFileIO(file, options, openFileCount);
+        return switch (IO_TYPE) {
+            default -> new JavaFileIO(file, options, openFileCount);
+            case 1 -> new PosixFileIO(file, options);
+            case 2 -> new WindowsFileIO(file, options, openFileCount);
+        };
     }
 
     FileIO() {
@@ -115,7 +109,7 @@ public abstract class FileIO implements CauseCloseable {
      */
     public abstract void read(long pos, byte[] buf, int offset, int length) throws IOException;
 
-    public void read(long pos, long ptr, int offset, int length) throws IOException {
+    public void read(long pos, long addr, int offset, int length) throws IOException {
         throw new UnsupportedOperationException();
     }
 
@@ -128,7 +122,7 @@ public abstract class FileIO implements CauseCloseable {
      */
     public abstract void write(long pos, byte[] buf, int offset, int length) throws IOException;
 
-    public void write(long pos, long ptr, int offset, int length) throws IOException {
+    public void write(long pos, long addr, int offset, int length) throws IOException {
         throw new UnsupportedOperationException();
     }
 
@@ -166,7 +160,7 @@ public abstract class FileIO implements CauseCloseable {
      * the parent directory is flushed.
      */
     public static void dirSync(File file) throws IOException {
-        if (!NEEDS_DIR_SYNC) {
+        if (IO_TYPE == 2) { // Windows
             return;
         }
 

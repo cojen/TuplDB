@@ -51,7 +51,7 @@ public class EvolutionTest {
     public void defaults() throws Exception {
         // When adding new columns, columns for old rows should be null, 0, "", etc.
 
-        Database db = Database.open(new DatabaseConfig().directPageAccess(false));
+        Database db = Database.open(new DatabaseConfig());
 
         // First insert a row with no value columns.
         {
@@ -102,6 +102,8 @@ public class EvolutionTest {
                 assertEquals(0, BigDecimal.ZERO.compareTo(new BigDecimal(String.valueOf(value))));
             }
         }
+
+        db.close();
     }
 
     private static Object[] specToAdd() {
@@ -148,7 +150,7 @@ public class EvolutionTest {
         // When adding new columns, columns for old rows should be null, 0, "", etc. When
         // loading new rows with old schema, new columns should be dropped.
 
-        Database db = Database.open(new DatabaseConfig().directPageAccess(false));
+        Database db = Database.open(new DatabaseConfig());
 
         Object[] toAdd = specToAdd();
 
@@ -203,6 +205,8 @@ public class EvolutionTest {
                 }
             }
         }
+
+        db.close();
     }
 
     private static void compare(TreeMap<String, Object> aCols, TreeMap<String, Object> bCols) {
@@ -282,7 +286,7 @@ public class EvolutionTest {
             BigDecimal.class, "e?",
         };
 
-        Database db = Database.open(new DatabaseConfig().directPageAccess(false));
+        Database db = Database.open(new DatabaseConfig());
 
         {
             Class rowType = RowTestUtils.newRowType("test.evolve.MyStuff", initSpec);
@@ -329,6 +333,8 @@ public class EvolutionTest {
 
         // Convert BigDecimal to String.
         assertEquals("123.987", rowType.getMethod("e").invoke(row));
+
+        db.close();
     }
 
     @Test
@@ -344,7 +350,7 @@ public class EvolutionTest {
             BigDecimal.class, "e?",
         };
 
-        Database db = Database.open(new DatabaseConfig().directPageAccess(false));
+        Database db = Database.open(new DatabaseConfig());
 
         {
             Class rowType = RowTestUtils.newRowType("test.evolve.MyStuff", initSpec);
@@ -566,6 +572,8 @@ public class EvolutionTest {
         }
 
         assertEquals(2, count);
+
+        db.close();
     }
 
     @Test
@@ -581,7 +589,7 @@ public class EvolutionTest {
             BigDecimal.class, "e",
         };
 
-        Database db = Database.open(new DatabaseConfig().directPageAccess(false));
+        Database db = Database.open(new DatabaseConfig());
 
         {
             Class rowType = RowTestUtils.newRowType("test.evolve.MyStuff", initSpec);
@@ -814,6 +822,8 @@ public class EvolutionTest {
         }
 
         assertEquals(1, count);
+
+        db.close();
     }
 
     @Test
@@ -829,7 +839,7 @@ public class EvolutionTest {
             BigDecimal.class, "e?",
         };
 
-        Database db = Database.open(new DatabaseConfig().directPageAccess(false));
+        Database db = Database.open(new DatabaseConfig());
 
         {
             Class rowType = RowTestUtils.newRowType("test.evolve.MyStuff", initSpec);
@@ -1069,6 +1079,8 @@ public class EvolutionTest {
         }
 
         assertEquals(3, count);
+
+        db.close();
     }
 
     @Test
@@ -1084,7 +1096,7 @@ public class EvolutionTest {
             BigDecimal.class, "e",
         };
 
-        Database db = Database.open(new DatabaseConfig().directPageAccess(false));
+        Database db = Database.open(new DatabaseConfig());
 
         {
             Class rowType = RowTestUtils.newRowType("test.evolve.MyStuff", initSpec);
@@ -1288,6 +1300,8 @@ public class EvolutionTest {
         }
 
         assertEquals(1, count);
+
+        db.close();
     }
 
     @Test
@@ -1303,7 +1317,7 @@ public class EvolutionTest {
             BigDecimal.class, "e",
         };
 
-        Database db = Database.open(new DatabaseConfig().directPageAccess(false));
+        Database db = Database.open(new DatabaseConfig());
 
         {
             Class rowType = RowTestUtils.newRowType("test.evolve.MyStuff", initSpec);
@@ -1532,6 +1546,8 @@ public class EvolutionTest {
         }
 
         assertEquals(1, count);
+
+        db.close();
     }
 
     @Test
@@ -1547,7 +1563,7 @@ public class EvolutionTest {
             int.class, "e",
         };
 
-        Database db = Database.open(new DatabaseConfig().directPageAccess(false));
+        Database db = Database.open(new DatabaseConfig());
 
         {
             Class rowType = RowTestUtils.newRowType("test.evolve.MyStuff", initSpec);
@@ -1780,6 +1796,8 @@ public class EvolutionTest {
         }
 
         assertEquals(2, count);
+
+        db.close();
     }
 
     @Test
@@ -1790,7 +1808,7 @@ public class EvolutionTest {
             int.class, "+key",
         };
 
-        Database db = Database.open(new DatabaseConfig().directPageAccess(false));
+        Database db = Database.open(new DatabaseConfig());
 
         {
             Class rowType = RowTestUtils.newRowType("test.evolve.MyStuff", initSpec);
@@ -1908,5 +1926,7 @@ public class EvolutionTest {
         }
 
         assertEquals(2, count);
+
+        db.close();
     }
 }

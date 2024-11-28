@@ -43,7 +43,7 @@ public class FloatColumnTest {
         // because the the number of trailing zeros is unbounded, and this range cannot be
         // specified manually.
 
-        Database db = Database.open(new DatabaseConfig().directPageAccess(false));
+        Database db = Database.open(new DatabaseConfig());
 
         Table<Rec1> table1 = db.openTable(Rec1.class);
         Table<Rec2> table2 = db.openTable(Rec2.class);
@@ -86,6 +86,8 @@ public class FloatColumnTest {
 
         assertEquals(0, count(table1, "value >= ? && value <= ?", NaN2, NaN1));
         assertEquals(0, count(table2, "value >= ? && value <= ?", NaN2, NaN1));
+
+        db.close();
     }
 
     private static long count(Table<?> table, String filter, Object... args) throws Exception {

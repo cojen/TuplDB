@@ -5,7 +5,7 @@
   <artifactId>tupl</artifactId>
   <packaging>jar</packaging>
   <name>TuplDB</name>
- <version>1.9.0</version>
+  <version>1.9.0</version>
   <description>
     TuplDB is a high-performance, concurrent, transactional, scalable, low-level embedded database.
   </description>
@@ -73,11 +73,6 @@
       <groupId>org.cojen</groupId>
       <artifactId>cojen-dirmi</artifactId>
       <version>[2.4,)</version>
-    </dependency>
-    <dependency>
-      <groupId>net.java.dev.jna</groupId>
-      <artifactId>jna-platform</artifactId>
-      <version>[5.15,)</version>
     </dependency>
     <dependency>
       <groupId>org.lz4</groupId>
@@ -168,38 +163,12 @@
       -->
 
       <plugin>
-        <groupId>org.codehaus.mojo</groupId>
-        <artifactId>exec-maven-plugin</artifactId>
-        <version>3.2.0</version>
-        <executions>
-          <execution>
-            <id>page-access-transformer</id>
-            <phase>generate-sources</phase>
-            <goals>
-              <goal>exec</goal>
-            </goals>
-          </execution>
-        </executions>
-        <configuration>
-          <executable>java</executable>
-          <arguments>
-            <argument>-cp</argument>
-            <argument>;</argument>
-            <argument>src/test/java/org/cojen/tupl/tools/PageAccessTransformer.java</argument>
-            <argument>src/main/java/org/cojen/tupl/core</argument>
-            <argument>src/main/java/org/cojen/tupl/core</argument>
-            <argument>clean</argument>
-          </arguments>
-        </configuration>
-      </plugin>
-
-      <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-compiler-plugin</artifactId>
         <version>3.8.1</version>
           <configuration>
-            <source>21</source>
-            <target>21</target>
+            <source>22</source>
+            <target>22</target>
           </configuration>
       </plugin>
 
@@ -231,7 +200,7 @@
           <splitindex>true</splitindex>
           <reportOutputDirectory>${basedir}/docs</reportOutputDirectory>
           <destDir>javadoc</destDir>
-          <excludePackageNames>org.cojen.tupl.unsafe:org.cojen.tupl.core:org.cojen.tupl.ev:org.cojen.tupl.jmx:org.cojen.tupl.views:org.cojen.tupl.table:org.cojen.tupl.table.codec:org.cojen.tupl.table.filter:org.cojen.tupl.table.join:org.cojen.tupl.remote:org.cojen.tupl.jdbc:org.cojen.tupl.model:org.cojen.tupl.sql</excludePackageNames>
+          <excludePackageNames>org.cojen.tupl.core:org.cojen.tupl.ev:org.cojen.tupl.jmx:org.cojen.tupl.views:org.cojen.tupl.table:org.cojen.tupl.table.codec:org.cojen.tupl.table.filter:org.cojen.tupl.table.join:org.cojen.tupl.remote:org.cojen.tupl.jdbc:org.cojen.tupl.model:org.cojen.tupl.sql</excludePackageNames>
           <quiet>true</quiet>
           <additionalOptions>-Xdoclint:accessibility</additionalOptions>
           <additionalOptions>-Xdoclint:html</additionalOptions>
@@ -260,8 +229,8 @@
           <parallel>classes</parallel>
           <perCoreThreadCount>false</perCoreThreadCount>
           <threadCount>6</threadCount>
-          <argLine>-Xmx5g</argLine>
-          <!--argLine>${argLine} -Xmx5g</argLine>-->
+          <argLine>--enable-native-access=ALL-UNNAMED -Xmx5g</argLine>
+          <!--argLine>${argLine} - -enable-native-access=ALL-UNNAMED -Xmx5g</argLine>-->
         </configuration>
       </plugin>
 

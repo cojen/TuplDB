@@ -45,7 +45,6 @@ public class CompactTest {
     }
 
     protected DatabaseConfig decorate(DatabaseConfig config) throws Exception {
-        config.directPageAccess(false);
         return config;
     }
 
@@ -115,7 +114,7 @@ public class CompactTest {
             assertTrue(stats2.totalPages < stats1.totalPages);
         }
 
-        assertTrue(mDb.verify(null));
+        assertTrue(mDb.verify(null, 1));
 
         rnd = new Random(seed);
         for (int i=0; i<count; i++) {
@@ -137,7 +136,7 @@ public class CompactTest {
         assertTrue(stats3.freePages < stats2.freePages);
         assertTrue(stats3.totalPages < stats2.totalPages);
 
-        assertTrue(mDb.verify(null));
+        assertTrue(mDb.verify(null, 0));
 
         rnd = new Random(seed);
         for (int i=0; i<count; i++) {
@@ -273,7 +272,7 @@ public class CompactTest {
             assertTrue(stats2.totalPages < stats1.totalPages);
         }
 
-        assertTrue(mDb.verify(null));
+        assertTrue(mDb.verify(null, 1));
 
         rnd1 = new Random(seed);
         rnd2 = new Random(seed);
@@ -306,7 +305,7 @@ public class CompactTest {
         assertTrue(stats3.freePages < stats2.freePages);
         assertTrue(stats3.totalPages < stats2.totalPages);
 
-        assertTrue(mDb.verify(null));
+        assertTrue(mDb.verify(null, 0));
 
         rnd1 = new Random(seed);
         rnd2 = new Random(seed);
@@ -361,7 +360,7 @@ public class CompactTest {
             ix.store(Transaction.BOGUS, key, value);
         }
 
-        mDb.verify(null);
+        mDb.verify(null, 1);
 
         rnd1 = new Random(seed);
         for (int i=0; i<count; i++) {
@@ -389,7 +388,7 @@ public class CompactTest {
             assertTrue(stats2.totalPages < stats1.totalPages);
         }
 
-        assertTrue(mDb.verify(null));
+        assertTrue(mDb.verify(null, 1));
     }
 
     @Test
@@ -433,7 +432,7 @@ public class CompactTest {
         DatabaseStats stats2 = mDb.stats();
         assertEqualStats(stats1, stats2);
 
-        assertTrue(mDb.verify(null));
+        assertTrue(mDb.verify(null, 1));
     }
 
     @Test
@@ -517,7 +516,7 @@ public class CompactTest {
 
         assertEquals(Boolean.FALSE, comp.result);
 
-        assertTrue(mDb.verify(null));
+        assertTrue(mDb.verify(null, 1));
 
         rnd = new Random(seed);
         for (int i=0; i<count; i++) {
@@ -715,7 +714,7 @@ public class CompactTest {
     @Test
     public void randomInserts() throws Exception {
         // Random inserts with a small cache size tends to create a lot of extra unused space
-        // in the file. Verify compaction can reclaim the space.
+        // in the file. Verify that compaction can reclaim the space.
 
         mDb = newTempDatabase(getClass(),
                               decorate(new DatabaseConfig()
@@ -751,7 +750,7 @@ public class CompactTest {
 
         // Verify no data loss.
 
-        mDb.verify(null);
+        mDb.verify(null, 1);
 
         rnd = new Random(seed);
 
@@ -808,7 +807,7 @@ public class CompactTest {
 
         mDb = Database.restoreFromSnapshot(config, bin);
 
-        assertTrue(mDb.verify(null));
+        assertTrue(mDb.verify(null, 1));
 
         mDb.close();
 

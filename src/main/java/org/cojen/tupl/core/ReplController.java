@@ -43,7 +43,6 @@ import org.cojen.tupl.util.Runner;
  * @author Brian S O'Neill
  * @see ReplEngine
  */
-/*P*/
 final class ReplController extends ReplWriter {
     private static final VarHandle cCheckpointPosHandle, cSwitchingHandle;
 
@@ -107,7 +106,7 @@ final class ReplController extends ReplWriter {
             return null;
         }
 
-        CoreDatabase db = mEngine.mDatabase;
+        LocalDatabase db = mEngine.mDatabase;
 
         // Can now send control messages.
         mRepl.controlMessageAcceptor(message -> {
@@ -512,8 +511,7 @@ final class ReplController extends ReplWriter {
             return;
         }
 
-        // Start receiving if not, but does nothing if already receiving. A reset op is
-        // expected, and so the initial transaction id can be zero.
+        // The first op to receive is a reset, and so the initial transaction id can be zero.
         mEngine.startReceiving(pos, 0);
 
         // Use this ReplController instance for replica mode. Can only be assigned after engine

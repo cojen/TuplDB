@@ -44,15 +44,13 @@ import org.cojen.tupl.util.Latch;
  * @author Brian S O'Neill
  */
 final class Checkpointer extends Latch implements Runnable {
-    private static final int STATE_INIT = 0, STATE_RUNNING = 1, STATE_CLOSED = 2;
-
-    private final ReferenceQueue<CoreDatabase> mRefQueue;
-    private final WeakReference<CoreDatabase> mDatabaseRef;
+    private final ReferenceQueue<LocalDatabase> mRefQueue;
+    private final WeakReference<LocalDatabase> mDatabaseRef;
     private final long mRateNanos;
     private final long mSizeThreshold;
     private final long mDelayThresholdNanos;
     private volatile Thread mThread;
-    private volatile int mState;
+    private volatile boolean mClosed;
     private Thread mShutdownHook;
     private List<ShutdownHook> mToShutdown;
 
@@ -64,7 +62,7 @@ final class Checkpointer extends Latch implements Runnable {
     /**
      * @param extraLimit maximum number of extra checkpoint threads to use
      */
-    Checkpointer(CoreDatabase db, Launcher launcher, int extraLimit) {
+    Checkpointer(LocalDatabase db, Launcher launcher, int extraLimit) {
         mRateNanos = launcher.mCheckpointRateNanos;
         mSizeThreshold = launcher.mCheckpointSizeThreshold;
         mDelayThresholdNanos = launcher.mCheckpointDelayThresholdNanos;
@@ -110,13 +108,7 @@ final class Checkpointer extends Latch implements Runnable {
         mExtraExecutor = extraExecutor;
     }
 
-    /**
-     * @param initialCheckpoint true to perform an initial checkpoint in the new thread
-     */
-    void start(boolean initialCheckpoint) {
-        if (!initialCheckpoint) {
-            mState = STATE_RUNNING;
-        }
+    void start() {
         Thread t = newThread(this);
         t.start();
         mThread = t;
@@ -136,15 +128,6 @@ final class Checkpointer extends Latch implements Runnable {
     @Override
     public void run() {
         try {
-            if (mState == STATE_INIT) {
-                // Start with an initial forced checkpoint.
-                CoreDatabase db = mDatabaseRef.get();
-                if (db != null) {
-                    db.checkpoint();
-                }
-                mState = STATE_RUNNING;
-            }
-
             if (mRefQueue != null) {
                 // When the checkpoint rate is negative (infinite delay), this thread is
                 // suspended until the database isn't referenced anymore, or until the database
@@ -162,7 +145,7 @@ final class Checkpointer extends Latch implements Runnable {
                     Thread.sleep(delayMillis); 
                 }
 
-                CoreDatabase db = mDatabaseRef.get();
+                LocalDatabase db = mDatabaseRef.get();
                 if (db == null) {
                     close(null);
                     return;
@@ -189,8 +172,8 @@ final class Checkpointer extends Latch implements Runnable {
                 }
             }
         } catch (Throwable e) {
-            if (mState != STATE_CLOSED) {
-                CoreDatabase db = mDatabaseRef.get();
+            if (!mClosed) {
+                LocalDatabase db = mDatabaseRef.get();
                 if (db != null) {
                     Utils.closeQuietly(db, e);
                 }
@@ -200,9 +183,9 @@ final class Checkpointer extends Latch implements Runnable {
     }
 
     /**
-     * Register to close the given object on shutdown or when the CoreDatabase is no longer
+     * Register to close the given object on shutdown or when the LocalDatabase is no longer
      * referenced. The Shutdown object must not maintain a strong reference to the
-     * CoreDatabase.
+     * LocalDatabase.
      *
      * @param obj ignored if null
      * @return false if immediately shutdown
@@ -212,9 +195,9 @@ final class Checkpointer extends Latch implements Runnable {
             return false;
         }
 
-        doRegister: if (mState != STATE_CLOSED) {
+        doRegister: if (!mClosed) {
             synchronized (this) {
-                if (mState == STATE_CLOSED) {
+                if (mClosed) {
                     break doRegister;
                 }
 
@@ -333,7 +316,7 @@ final class Checkpointer extends Latch implements Runnable {
     }
 
     void close(Throwable cause) {
-        mState = STATE_CLOSED;
+        mClosed = true;
         mDatabaseRef.enqueue();
         mDatabaseRef.clear();
 

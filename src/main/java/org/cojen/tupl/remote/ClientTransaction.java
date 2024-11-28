@@ -336,7 +336,7 @@ final class ClientTransaction implements Transaction {
     }
 
     /**
-     * Ensures that the RemoteTransaction is active, resurrecting if if necessary.
+     * Ensures that the RemoteTransaction is active, resurrecting it if necessary.
      */
     RemoteTransaction remote() {
         RemoteTransaction remote = mRemote;

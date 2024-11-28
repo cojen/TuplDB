@@ -73,7 +73,7 @@ abstract class PageDb implements CauseCloseable {
     /**
      * @return null if doesn't have checksums
      */
-    abstract Supplier<Checksum> checksumFactory();
+    abstract Supplier<? extends Checksum> checksumFactory();
 
     /**
      * @return true if no storage layer is used anywhere
@@ -146,9 +146,9 @@ abstract class PageDb implements CauseCloseable {
      * is not read during or after a commit.
      *
      * @param id page id to read
-     * @param page receives read data
+     * @param pageAddr receives read data
      */
-    public abstract void readPage(long id, /*P*/ byte[] page) throws IOException;
+    public abstract void readPage(long id, long pageAddr) throws IOException;
 
     /**
      * Allocates a page to be written to.
@@ -163,9 +163,9 @@ abstract class PageDb implements CauseCloseable {
      * deleted, but it remains readable until after a commit.
      *
      * @param id previously allocated page id
-     * @param page data to write
+     * @param pageAddr data to write
      */
-    public abstract void writePage(long id, /*P*/ byte[] page) throws IOException;
+    public abstract void writePage(long id, long pageAddr) throws IOException;
 
     /**
      * Same as writePage, except that the given buffer might be altered and a replacement might
@@ -173,10 +173,10 @@ abstract class PageDb implements CauseCloseable {
      * and the contents of the replacement are undefined.
      *
      * @param id previously allocated page id
-     * @param page data to write; implementation might alter the contents
+     * @param pageAddr data to write; implementation might alter the contents
      * @return replacement buffer, or same instance if replacement was not performed
      */
-    public abstract /*P*/ byte[] evictPage(long id, /*P*/ byte[] page) throws IOException;
+    public abstract long evictPage(long id, long pageAddr) throws IOException;
 
     /**
      * Deletes a page, but doesn't commit it. Deleted pages are not used for
@@ -200,7 +200,7 @@ abstract class PageDb implements CauseCloseable {
      */
     public abstract long allocatePages(long pageCount) throws IOException;
 
-    public long directPagePointer(long id) throws IOException {
+    public long directPageAddress(long id) throws IOException {
         throw new UnsupportedOperationException();
     }
 
@@ -288,11 +288,11 @@ abstract class PageDb implements CauseCloseable {
      * lock.
      *
      * @param resume true if resuming an aborted commit
-     * @param header must be page size
+     * @param headerAddr must be page size
      * @param callback optional callback to run during commit, which can release the exclusive
      * lock at any time
      */
-    public abstract void commit(boolean resume, /*P*/ byte[] header, CommitCallback callback)
+    public abstract void commit(boolean resume, long headerAddr, CommitCallback callback)
         throws IOException;
 
     @FunctionalInterface
@@ -302,9 +302,9 @@ abstract class PageDb implements CauseCloseable {
          * stored in the PageDb header.
          *
          * @param resume true if resuming an aborted commit
-         * @param header header to write extra data into, up to 256 bytes
+         * @param headerAddr header to write extra data into, up to 256 bytes
          */
-        public void prepare(boolean resume, /*P*/ byte[] header) throws IOException;
+        public void prepare(boolean resume, long headerAddr) throws IOException;
     }
 
     /**

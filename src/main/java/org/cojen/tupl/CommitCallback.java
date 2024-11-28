@@ -53,7 +53,7 @@ public interface CommitCallback {
     void finished(long txnId, Object status);
 
     /**
-     * Called when a transaction is moving to the pending state. By default this method does
+     * Called when a transaction is moving to the pending state. By default, this method does
      * nothing, but it can be overridden to verify that pending transactions are being created.
      */
     default void pending(long txnId) { }

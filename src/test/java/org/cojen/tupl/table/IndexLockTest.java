@@ -45,7 +45,6 @@ public class IndexLockTest {
     @Before
     public void begin() throws Exception {
         mDatabase = Database.open(new DatabaseConfig()
-                                  .directPageAccess(false)
                                   .lockTimeout(100, TimeUnit.MILLISECONDS));
     }
     
@@ -601,7 +600,7 @@ public class IndexLockTest {
         var replicaRepl = new SocketReplicator(null, 0);
         var leaderRepl = new SocketReplicator("localhost", replicaRepl.getPort());
 
-        var config = new DatabaseConfig().directPageAccess(false).replicate(leaderRepl);
+        var config = new DatabaseConfig().replicate(leaderRepl);
         //config.eventListener(EventListener.printTo(System.out));
 
         var leaderDb = newTempDatabase(getClass(), config);
@@ -753,7 +752,7 @@ public class IndexLockTest {
         var replicaRepl = new SocketReplicator(null, 0);
         var leaderRepl = new SocketReplicator("localhost", replicaRepl.getPort());
 
-        var config = new DatabaseConfig().directPageAccess(false).replicate(leaderRepl);
+        var config = new DatabaseConfig().replicate(leaderRepl);
         //config.eventListener(EventListener.printTo(System.out));
 
         var leaderDb = newTempDatabase(getClass(), config);
@@ -820,7 +819,7 @@ public class IndexLockTest {
         var replicaRepl = new SocketReplicator(null, 0);
         var leaderRepl = new SocketReplicator("localhost", replicaRepl.getPort());
 
-        var config = new DatabaseConfig().directPageAccess(false).replicate(leaderRepl);
+        var config = new DatabaseConfig().replicate(leaderRepl);
         //config.eventListener(EventListener.printTo(System.out));
 
         var leaderDb = newTempDatabase(getClass(), config);
@@ -1133,7 +1132,6 @@ public class IndexLockTest {
 
         teardown();
         mDatabase = Database.open(new DatabaseConfig()
-                                  .directPageAccess(false)
                                   .lockTimeout(5, TimeUnit.SECONDS));
 
         Index tableSource = mDatabase.openIndex("test");

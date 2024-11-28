@@ -85,12 +85,15 @@ public interface Index extends View, Closeable {
     public IndexStats analyze(byte[] lowKey, byte[] highKey) throws IOException;
 
     /**
-     * Verifies the integrity of the index.
+     * Verifies the integrity of the index. Using multiple threads speeds up verification,
+     * even though some nodes might be visited multiple times.
      *
      * @param observer optional observer; pass null for default
+     * @param numThreads pass 0 for default, or if negative, the actual number will be {@code
+     * (-numThreads * availableProcessors)}.
      * @return true if verification passed
      */
-    public boolean verify(VerificationObserver observer) throws IOException;
+    public boolean verify(VerificationObserver observer, int numThreads) throws IOException;
 
     /**
      * Closes this index reference. The underlying index is still valid and can be re-opened,
