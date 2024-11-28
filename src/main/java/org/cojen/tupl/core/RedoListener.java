@@ -24,7 +24,7 @@ import org.cojen.tupl.Transaction;
  * A listener of incoming replication operations
  *
  * @author Brian S O'Neill
- * @see CoreDatabase#addRedoListener
+ * @see LocalDatabase#addRedoListener
  */
 public interface RedoListener {
     /**

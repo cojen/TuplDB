@@ -354,7 +354,7 @@ abstract class BTreeSeparator extends LongAdder {
                             if (tcursor == null) {
                                 LocalDatabase db = mDatabase;
                                 if (db != null) {
-                                    mTarget = db.newTemporaryIndex();
+                                    mTarget = db.newTemporaryTree();
                                     tcursor = mTarget.newCursor(Transaction.BOGUS);
                                     tcursor.mKeyOnly = true;
                                     tcursor.firstLeaf();

@@ -106,7 +106,7 @@ final class ReplController extends ReplWriter {
             return null;
         }
 
-        CoreDatabase db = mEngine.mDatabase;
+        LocalDatabase db = mEngine.mDatabase;
 
         // Can now send control messages.
         mRepl.controlMessageAcceptor(message -> {

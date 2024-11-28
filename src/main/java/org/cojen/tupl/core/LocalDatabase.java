@@ -72,6 +72,7 @@ import org.cojen.tupl.CacheExhaustedException;
 import org.cojen.tupl.ConfirmationInterruptedException;
 import org.cojen.tupl.CorruptDatabaseException;
 import org.cojen.tupl.Cursor;
+import org.cojen.tupl.Database;
 import org.cojen.tupl.DatabaseException;
 import org.cojen.tupl.DatabaseFullException;
 import org.cojen.tupl.DurabilityMode;
@@ -123,7 +124,7 @@ import static org.cojen.tupl.core.Utils.*;
  *
  * @author Brian S O'Neill
  */
-final class LocalDatabase extends CoreDatabase {
+public final class LocalDatabase implements Database {
     private static final int DEFAULT_CACHE_NODES = 1000;
     // +2 for registry and key map root nodes, +1 for one user index, and +2 for at least one
     // usage list to function correctly.
@@ -1046,7 +1047,6 @@ final class LocalDatabase extends CoreDatabase {
     /**
      * Called by ReplController.
      */
-    @Override
     long writeControlMessage(byte[] message) throws IOException {
         // Commit lock must be held to prevent a checkpoint from starting. If the control
         // message fails to be applied, panic the database. If the database is kept open after
@@ -1329,7 +1329,6 @@ final class LocalDatabase extends CoreDatabase {
     /**
      * Allows access to internal indexes which can use the redo log.
      */
-    @Override
     Index anyIndexById(long id) throws IOException {
         return anyIndexById(null, id);
     }
@@ -1877,7 +1876,11 @@ final class LocalDatabase extends CoreDatabase {
     }
 
     @Override
-    public BTree newTemporaryIndex() throws IOException {
+    public Index newTemporaryIndex() throws IOException {
+        return newTemporaryTree();
+    }
+
+    BTree newTemporaryTree() throws IOException {
         CommitLock.Shared shared = mCommitLock.acquireShared();
         try {
             return newTemporaryTree(false);
@@ -2358,7 +2361,12 @@ final class LocalDatabase extends CoreDatabase {
         return new ParallelSorter(this, Runner.current());
     }
 
-    @Override
+    /**
+     * Copies all entries from a source index into a new temporary index, which can be null if
+     * empty. No threads should be active in the source index.
+     *
+     * @param workerCount maximum parallelism; must be at least 1
+     */
     Tree parallelCopy(Index source, int workerCount) throws IOException {
         var copier = new BTreeCopier(this, (BTree) source, Runner.current(), workerCount);
         copier.start();
@@ -2394,7 +2402,7 @@ final class LocalDatabase extends CoreDatabase {
      *
      * @param in snapshot source; does not require extra buffering; auto-closed
      */
-    static CoreDatabase restoreFromSnapshot(Launcher launcher, InputStream in) throws IOException {
+    static LocalDatabase restoreFromSnapshot(Launcher launcher, InputStream in) throws IOException {
         if (launcher.mReadOnly) {
             throw new IllegalArgumentException("Cannot restore into a read-only database");
         }
@@ -2704,12 +2712,18 @@ final class LocalDatabase extends CoreDatabase {
         checkpoint(0, 0, 0);
     }
 
-    @Override
+    /**
+     * Performs a checkpoint if automatic checkpoints are currently enabled.
+     *
+     * @return false if no checkpoint was performed
+     */
     public boolean checkpointIfEnabled() throws IOException {
         return mCheckpointer != null && mCheckpointer.isEnabled() && checkpoint(0, 0, 0);
     }
 
-    @Override
+    /**
+     * Called by Checkpointer task.
+     */
     boolean checkpoint(long sizeThreshold, long delayThresholdNanos) throws IOException {
         return checkpoint(0, sizeThreshold, delayThresholdNanos);
     }
@@ -2983,7 +2997,6 @@ final class LocalDatabase extends CoreDatabase {
     /**
      * @return false if stopped
      */
-    @Override
     boolean scanAllIndexes(ScanVisitor visitor) throws IOException {
         if (!scan(visitor, mRegistry) || !scan(visitor, mRegistryKeyMap)
             || !scan(visitor, openFragmentedTrash(false))
@@ -3396,7 +3409,6 @@ final class LocalDatabase extends CoreDatabase {
         return true;
     }
 
-    @Override
     public boolean isInTrash(Transaction txn, long treeId) throws IOException {
         return mRegistryKeyMap.exists(txn, newKey(RK_TRASH_ID, treeId));
     }
@@ -3560,7 +3572,6 @@ final class LocalDatabase extends CoreDatabase {
     /**
      * @return a non-null RowStore instance
      */
-    @Override
     public RowStore rowStore() throws IOException {
         return rowStore(true);
     }
@@ -4143,17 +4154,28 @@ final class LocalDatabase extends CoreDatabase {
         }
     }
 
-    @Override
+    /**
+     * @param owner the upgradable owner of the lock
+     */
     public DetachedLock newDetachedLock(Transaction owner) {
         return mLockManager.newDetachedLock((LocalTransaction) owner);
     }
 
-    @Override
     public <R> RowPredicateLock<R> newRowPredicateLock(long indexId) {
         return new RowPredicateLockImpl<R>(mLockManager, indexId);
     }
 
-    @Override
+    /**
+     * Defines anonymous secondary indexes and invokes a callback which should transactionally
+     * store references to them. Next, a redo op is written which notifies replicas that the
+     * set of secondaries has changed. Finally, the transaction is committed.
+     *
+     * @param txn is committed as a side effect; will be switched to SYNC mode if replicated
+     * @param primaryIndexId index id in the notification op; pass 0 to disable notification
+     * @param ids each array slot is filled in with a new identifier
+     * @param callback invoked after the ids are filled in, with the commit lock held
+     * @throws NullPointerException if any parameter is null
+     */
     public void createSecondaryIndexes(Transaction txn, long primaryIndexId,
                                        long[] ids, Runnable callback)
         throws IOException
@@ -4234,7 +4256,11 @@ final class LocalDatabase extends CoreDatabase {
         return name.length == 0 && !mRegistryKeyMap.exists(txn, newKey(RK_INDEX_NAME, name));
     }
 
-    @Override
+    /**
+     * Add a listener which observes incoming replication operations.
+     *
+     * @return false if replication isn't enabled or if the listener was already added
+     */
     public boolean addRedoListener(RedoListener listener) {
         if (mRedoWriter instanceof ReplWriter rw) {
             return rw.mEngine.addRedoListener(listener);
@@ -4242,7 +4268,11 @@ final class LocalDatabase extends CoreDatabase {
         return false;
     }
 
-    @Override
+    /**
+     * Remove a listener which was added earlier.
+     *
+     * @return false if the listener wasn't found
+     */
     public boolean removeRedoListener(RedoListener listener) {
         if (mRedoWriter instanceof ReplWriter rw) {
             return rw.mEngine.removeRedoListener(listener);
@@ -4250,7 +4280,10 @@ final class LocalDatabase extends CoreDatabase {
         return false;
     }
 
-    @Override
+    /**
+     * Invoke the given callback with the redo lock held, which ensures that no incoming
+     * replication operations are being processed.
+     */
     public void withRedoLock(Runnable callback) {
         if (mRedoWriter instanceof ReplWriter rw) {
             rw.mEngine.withRedoLock(callback);
@@ -6143,42 +6176,44 @@ final class LocalDatabase extends CoreDatabase {
         }
     }
 
-    @Override
+    /**
+     * Atomically swaps the root nodes of two trees.
+     */
+    public void rootSwap(Index a, Index b) throws IOException {
+        ((Tree) a).rootSwap((Tree) b);
+    }
+
     long databaseId() {
         return mPageDb.databaseId();
     }
 
-    @Override
     boolean isCacheOnly() {
         return mPageDb.isCacheOnly();
     }
 
-    @Override
     boolean isReadOnly() {
         return mReadOnly;
     }
 
-    @Override
     Crypto dataCrypto() {
         return mPageDb.dataCrypto();
     }
 
-    @Override
     Supplier<? extends Checksum> checksumFactory() {
         return mPageDb.checksumFactory();
     }
 
-    @Override
     Tree registry() {
         return mRegistry;
     }
 
-    @Override
     Tree registryKeyMap() {
         return mRegistryKeyMap;
     }
 
-    @Override
+    /**
+     * @return null if none
+     */
     public EventListener eventListener() {
         return mEventListener;
     }

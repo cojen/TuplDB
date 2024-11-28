@@ -32,7 +32,7 @@ import org.cojen.maker.ClassMaker;
 
 import org.cojen.tupl.*;
 
-import org.cojen.tupl.core.CoreDatabase;
+import org.cojen.tupl.core.LocalDatabase;
 
 import static org.cojen.tupl.TestUtils.*;
 
@@ -696,7 +696,7 @@ public class IndexingTest {
         waitToBecomeLeader(leaderDb, 10);
 
         config.replicate(replicaRepl);
-        var replicaDb = (CoreDatabase) newTempDatabase(getClass(), config);
+        var replicaDb = (LocalDatabase) newTempDatabase(getClass(), config);
 
         final String typeName = newRowTypeName();
 

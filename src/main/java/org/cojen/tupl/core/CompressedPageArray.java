@@ -41,7 +41,7 @@ import org.cojen.tupl.util.LocalPool;
  * @author Brian S O'Neill
  */
 final class CompressedPageArray extends PageArray implements Supplier<PageCompressor> {
-    private final CoreDatabase mDatabase;
+    private final LocalDatabase mDatabase;
     private final Index mPages;
     private final Supplier<? extends PageCompressor> mCompressorFactory;
     private final LocalPool<PageCompressor> mCompressors;
@@ -49,7 +49,7 @@ final class CompressedPageArray extends PageArray implements Supplier<PageCompre
     /**
      * @param fullPageSize full size of pages when uncompressed
      */
-    CompressedPageArray(int fullPageSize, CoreDatabase db, Index pages,
+    CompressedPageArray(int fullPageSize, LocalDatabase db, Index pages,
                         Supplier<? extends PageCompressor> factory)
     {
         super(fullPageSize);

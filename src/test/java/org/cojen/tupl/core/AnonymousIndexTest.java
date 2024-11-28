@@ -39,7 +39,7 @@ public class AnonymousIndexTest {
         mConfig = new DatabaseConfig()
             .checkpointRate(-1, null)
             .durabilityMode(DurabilityMode.NO_FLUSH);
-        mDb = (CoreDatabase) newTempDatabase(getClass(), mConfig);
+        mDb = (LocalDatabase) newTempDatabase(getClass(), mConfig);
     }
 
     @After
@@ -50,7 +50,7 @@ public class AnonymousIndexTest {
     }
 
     protected DatabaseConfig mConfig;
-    protected CoreDatabase mDb;
+    protected LocalDatabase mDb;
 
     @Test
     public void openClose() throws Exception {
@@ -111,7 +111,7 @@ public class AnonymousIndexTest {
         Index anon = mDb.indexById(ids[0]);
         anon.store(null, "hello".getBytes(), "world".getBytes());
 
-        mDb = (CoreDatabase) reopenTempDatabase(getClass(), mDb, mConfig);
+        mDb = (LocalDatabase) reopenTempDatabase(getClass(), mDb, mConfig);
 
         Index dir2 = mDb.openIndex("directory");
 

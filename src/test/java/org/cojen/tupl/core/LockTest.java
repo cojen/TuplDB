@@ -2511,7 +2511,7 @@ public class LockTest {
 
     @Test
     public void detachedLock() throws Exception {
-        var db = (CoreDatabase) Database.open(new DatabaseConfig());
+        var db = (LocalDatabase) Database.open(new DatabaseConfig());
 
         Transaction owner = db.newTransaction();
         DetachedLock lock = db.newDetachedLock(owner);

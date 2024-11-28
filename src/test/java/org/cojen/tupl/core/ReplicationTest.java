@@ -1438,7 +1438,7 @@ public class ReplicationTest {
 
         Transaction txn = mLeader.newTransaction();
         var ids = new long[1];
-        ((CoreDatabase) mLeader).createSecondaryIndexes(txn, 0, ids, () -> {});
+        ((LocalDatabase) mLeader).createSecondaryIndexes(txn, 0, ids, () -> {});
         fence();
 
         Index leaderIx = mLeader.indexById(ids[0]);
@@ -1481,8 +1481,8 @@ public class ReplicationTest {
 
         var listener1 = new Listener();
 
-        assertTrue(((CoreDatabase) mReplica).addRedoListener(listener1));
-        assertFalse(((CoreDatabase) mReplica).addRedoListener(listener1));
+        assertTrue(((LocalDatabase) mReplica).addRedoListener(listener1));
+        assertFalse(((LocalDatabase) mReplica).addRedoListener(listener1));
 
         leaderIx.store(null, "hello".getBytes(), "world".getBytes());
 
@@ -1506,7 +1506,7 @@ public class ReplicationTest {
 
         var listener2 = new Listener();
 
-        assertTrue(((CoreDatabase) mReplica).addRedoListener(listener2));
+        assertTrue(((LocalDatabase) mReplica).addRedoListener(listener2));
 
         leaderIx.store(null, "hello3".getBytes(), "world3".getBytes());
 
@@ -1518,8 +1518,8 @@ public class ReplicationTest {
             fastAssertArrayEquals("world3".getBytes(), l.value);
         }
 
-        assertTrue(((CoreDatabase) mReplica).removeRedoListener(listener1));
-        assertFalse(((CoreDatabase) mReplica).removeRedoListener(listener1));
+        assertTrue(((LocalDatabase) mReplica).removeRedoListener(listener1));
+        assertFalse(((LocalDatabase) mReplica).removeRedoListener(listener1));
 
         leaderIx.store(null, "hello4".getBytes(), "world4".getBytes());
         listener2.waitForIt();
@@ -1527,14 +1527,14 @@ public class ReplicationTest {
         fastAssertArrayEquals("world4".getBytes(), listener2.value);
         assertFalse(listener1.gotIt);
 
-        assertTrue(((CoreDatabase) mReplica).removeRedoListener(listener2));
+        assertTrue(((LocalDatabase) mReplica).removeRedoListener(listener2));
 
         leaderIx.store(null, "hello5".getBytes(), "world5".getBytes());
         fence();
         assertFalse(listener1.gotIt);
         assertFalse(listener2.gotIt);
 
-        assertTrue(((CoreDatabase) mReplica).addRedoListener(listener1));
+        assertTrue(((LocalDatabase) mReplica).addRedoListener(listener1));
         leaderIx.store(null, "hello6".getBytes(), "world6".getBytes());
         listener1.waitForIt();
         fastAssertArrayEquals("hello6".getBytes(), listener1.key);

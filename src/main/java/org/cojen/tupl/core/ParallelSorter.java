@@ -401,7 +401,7 @@ final class ParallelSorter implements Sorter, Node.Supplier {
 
             if (size == 0) {
                 if (numLevelTrees == 0) {
-                    return mDatabase.newTemporaryIndex();
+                    return mDatabase.newTemporaryTree();
                 }
                 if (numLevelTrees == 1) {
                     return levels[0].mTrees[0];
@@ -421,7 +421,7 @@ final class ParallelSorter implements Sorter, Node.Supplier {
                     node.sortLeaf();
                     node.releaseExclusive();
                 } else {
-                    tree = mDatabase.newTemporaryIndex();
+                    tree = mDatabase.newTemporaryTree();
                     doMergeSortTrees(null, sortTrees, size, tree);
                 }
 
@@ -773,7 +773,7 @@ final class ParallelSorter implements Sorter, Node.Supplier {
     private void mergeSortTrees() throws IOException {
         // Merge the sort tree nodes into a new temporary index.
 
-        final BTree dest = mDatabase.newTemporaryIndex();
+        final BTree dest = mDatabase.newTemporaryTree();
 
         final BTree[] sortTrees = mSortTrees;
         final int size = mSortTreesSize;

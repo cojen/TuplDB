@@ -35,19 +35,19 @@ final class Servers implements Closeable {
 
     private boolean mClosed;
 
-    CoreServer newServer(CoreDatabase db) throws IOException {
+    CoreServer newServer(LocalDatabase db) throws IOException {
         return new CoreServer(db, this);
     }
 
     /**
      * Returns a server used for sockets accepted by the replication layer.
      */
-    CoreServer replServer(CoreDatabase db) throws IOException {
+    CoreServer replServer(LocalDatabase db) throws IOException {
         CoreServer server = mReplServer;
         return server != null ? server : openReplServer(db);
     }
 
-    private synchronized CoreServer openReplServer(CoreDatabase db) throws IOException {
+    private synchronized CoreServer openReplServer(LocalDatabase db) throws IOException {
         CoreServer server = mReplServer;
         if (server == null) {
             mReplServer = server = new CoreServer(db, this);

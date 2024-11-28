@@ -33,7 +33,7 @@ import org.cojen.tupl.LockMode;
 import org.cojen.tupl.Sorter;
 import org.cojen.tupl.Transaction;
 
-import org.cojen.tupl.core.CoreDatabase;
+import org.cojen.tupl.core.LocalDatabase;
 import org.cojen.tupl.core.RedoListener;
 
 import org.cojen.tupl.diag.EventListener;
@@ -416,7 +416,7 @@ public abstract class IndexBackfill<R> extends Worker.Task implements RedoListen
             return;
         }
 
-        CoreDatabase db = mRowStore.mDatabase;
+        LocalDatabase db = mRowStore.mDatabase;
 
         db.removeRedoListener(this);
 

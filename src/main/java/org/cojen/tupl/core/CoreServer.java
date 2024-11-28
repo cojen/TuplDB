@@ -40,13 +40,13 @@ final class CoreServer implements Server {
     private final Environment mEnv;
     private final Servers mServers;
 
-    CoreServer(CoreDatabase db, Servers servers) throws IOException {
+    CoreServer(LocalDatabase db, Servers servers) throws IOException {
         mEnv = export(db);
         mServers = servers;
         servers.add(this);
     }
 
-    private static Environment export(CoreDatabase db) throws IOException {
+    private static Environment export(LocalDatabase db) throws IOException {
         ServerDatabase server = ServerDatabase.from(db);
         Environment env = RemoteUtils.createEnvironment();
         env.export(Database.class.getName(), server);

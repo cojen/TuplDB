@@ -21,7 +21,7 @@ import org.junit.*;
 import static org.junit.Assert.*;
 
 import org.cojen.tupl.*;
-import org.cojen.tupl.core.CoreDatabase;
+import org.cojen.tupl.core.LocalDatabase;
 
 import static org.cojen.tupl.TestUtils.*;
 
@@ -66,7 +66,7 @@ public class TableTest {
 
         var config = new DatabaseConfig();
         //config.eventListener(EventListener.printTo(System.out));
-        var db = (CoreDatabase) newTempDatabase(getClass(), config);
+        var db = (LocalDatabase) newTempDatabase(getClass(), config);
 
         RowStore rs = db.rowStore();
         if (stall) {
@@ -104,7 +104,7 @@ public class TableTest {
                 db.checkpoint();
             }
 
-            db = (CoreDatabase) reopenTempDatabase(getClass(), db, config);
+            db = (LocalDatabase) reopenTempDatabase(getClass(), db, config);
             rs = db.rowStore();
             schemata = rs.schemata();
         }
@@ -176,7 +176,7 @@ public class TableTest {
     @Test
     public void predicate() throws Exception {
         var config = new DatabaseConfig();
-        var db = (CoreDatabase) newTempDatabase(getClass(), config);
+        var db = (LocalDatabase) newTempDatabase(getClass(), config);
 
         var table = db.openTable(TestRow.class);
 

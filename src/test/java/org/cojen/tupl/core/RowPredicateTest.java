@@ -39,13 +39,13 @@ public class RowPredicateTest {
         org.junit.runner.JUnitCore.main(RowPredicateTest.class.getName());
     }
 
-    private CoreDatabase mDb;
+    private LocalDatabase mDb;
     private RowPredicateLock<TestRow> mLock;
 
     @Before
     public void setup() throws Exception {
-        mDb = (CoreDatabase) Database.open(new DatabaseConfig()
-                                           .lockTimeout(100, TimeUnit.MILLISECONDS));
+        mDb = (LocalDatabase) Database.open(new DatabaseConfig()
+                                            .lockTimeout(100, TimeUnit.MILLISECONDS));
         mLock = mDb.newRowPredicateLock(1234);
     }
 

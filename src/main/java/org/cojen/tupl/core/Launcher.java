@@ -417,7 +417,7 @@ public final class Launcher implements Cloneable {
         return true;
     }
 
-    public CoreDatabase open(boolean destroy, InputStream restore) throws IOException {
+    public LocalDatabase open(boolean destroy, InputStream restore) throws IOException {
         Launcher launcher = clone();
         boolean openedReplicator = launcher.openReplicator();
 
@@ -435,7 +435,7 @@ public final class Launcher implements Cloneable {
         }
     }
 
-    private CoreDatabase doOpen(boolean destroy, InputStream restore) throws IOException {
+    private LocalDatabase doOpen(boolean destroy, InputStream restore) throws IOException {
         if (restore == null && mRepl != null) shouldRestore: {
             if (!destroy) {
                 // If no data files exist, attempt to restore from a peer.
@@ -481,7 +481,7 @@ public final class Launcher implements Cloneable {
             subLauncher.customHandlers(null);
             subLauncher.prepareHandlers(null);
 
-            CoreDatabase sub = subLauncher.doOpen(destroy, restore);
+            LocalDatabase sub = subLauncher.doOpen(destroy, restore);
             restore = null;
 
             var compressed = new CompressedPageArray
