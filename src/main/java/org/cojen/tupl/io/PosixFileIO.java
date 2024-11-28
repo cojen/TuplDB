@@ -52,6 +52,13 @@ import org.cojen.tupl.util.LocalPool;
  * @author Brian S O'Neill
  */
 final class PosixFileIO extends AbstractFileIO {
+    private static final int REOPEN_NON_DURABLE = 1, REOPEN_SYNC_IO = 2, REOPEN_DIRECT_IO = 4;
+
+    private static final int MAX_POOL_SIZE = -4; // 4 * number of available processors
+
+    static final int LINUX = 1, OSX = 2;
+    static final int OS_TYPE;
+
     private static final LocalPool<MemorySegment> errorPool;
     private static final VarHandle errorHandle;
 
@@ -71,12 +78,21 @@ final class PosixFileIO extends AbstractFileIO {
     private static final MethodHandle posix_madvise;
 
     static {
+        String osName = System.getProperty("os.name");
+        if (osName.startsWith("Linux")) {
+            OS_TYPE = LINUX;
+        } else if (osName.startsWith("Mac") || osName.startsWith("Darwin")) {
+            OS_TYPE = OSX;
+        } else {
+            OS_TYPE = 0;
+        }
+
         Linker linker = Linker.nativeLinker();
         SymbolLookup lookup = linker.defaultLookup();
 
         Linker.Option captureError = Linker.Option.captureCallState("errno");
         StructLayout errorLayout = Linker.Option.captureStateLayout();
-        errorPool = new LocalPool<>(() -> Arena.ofAuto().allocate(errorLayout));
+        errorPool = new LocalPool<>(() -> Arena.ofAuto().allocate(errorLayout), MAX_POOL_SIZE);
         errorHandle = errorLayout.varHandle(StructLayout.PathElement.groupElement("errno"));
 
         strerror_r = linker.downcallHandle
@@ -205,24 +221,6 @@ final class PosixFileIO extends AbstractFileIO {
               ValueLayout.JAVA_LONG, // length
               ValueLayout.JAVA_INT)  // advice
              );
-    }
-
-    private static final int REOPEN_NON_DURABLE = 1, REOPEN_SYNC_IO = 2, REOPEN_DIRECT_IO = 4;
-
-    private static final int MAX_POOL_SIZE = -4; // 4 * number of available processors
-
-    static final int LINUX = 1, OSX = 2;
-    static final int OS_TYPE;
-
-    static {
-        String osName = System.getProperty("os.name");
-        if (osName.startsWith("Linux")) {
-            OS_TYPE = LINUX;
-        } else if (osName.startsWith("Mac") || osName.startsWith("Darwin")) {
-            OS_TYPE = OSX;
-        } else {
-            OS_TYPE = 0;
-        }
     }
 
     private final File mFile;

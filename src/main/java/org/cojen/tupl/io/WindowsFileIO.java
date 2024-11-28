@@ -48,6 +48,8 @@ import org.cojen.tupl.util.LocalPool;
 final class WindowsFileIO extends JavaFileIO {
     static final int INVALID_HANDLE_VALUE = -1;
 
+    private static final int MAX_POOL_SIZE = -4; // 4 * number of available processors
+
     private static final LocalPool<MemorySegment> errorPool;
     private static final VarHandle errorHandle;
 
@@ -70,7 +72,7 @@ final class WindowsFileIO extends JavaFileIO {
 
         Linker.Option captureError = Linker.Option.captureCallState("GetLastError");
         StructLayout errorLayout = Linker.Option.captureStateLayout();
-        errorPool = new LocalPool<>(() -> Arena.ofAuto().allocate(errorLayout));
+        errorPool = new LocalPool<>(() -> Arena.ofAuto().allocate(errorLayout), MAX_POOL_SIZE);
         errorHandle = errorLayout.varHandle(StructLayout.PathElement.groupElement("GetLastError"));
 
         FormatMessageW = linker.downcallHandle
