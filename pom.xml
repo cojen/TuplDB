@@ -224,8 +224,8 @@
           <parallel>classes</parallel>
           <perCoreThreadCount>false</perCoreThreadCount>
           <threadCount>6</threadCount>
-          <argLine>-Xmx5g</argLine>
-          <!--argLine>${argLine} -Xmx5g</argLine>-->
+          <argLine>--enable-native-access=ALL-UNNAMED -Xmx5g</argLine>
+          <!--argLine>${argLine} - -enable-native-access=ALL-UNNAMED -Xmx5g</argLine>-->
         </configuration>
       </plugin>
 
