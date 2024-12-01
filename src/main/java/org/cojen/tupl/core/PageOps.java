@@ -42,9 +42,8 @@ import static org.cojen.tupl.core.Node.*;
  * memory.
  *
  * @author Brian S. O'Neill
- * @see DirectPageOps
  */
-class BaseDirectPageOps {
+final class PageOps extends DirectPageOps {
     /*
      * Approximate byte overhead per Node, assuming 32-bit pointers. Overhead is determined by
      * examining all the fields in the Node class, including inherited ones. In addition, each
@@ -77,15 +76,15 @@ class BaseDirectPageOps {
     private static long newEmptyTreePage(int pageSize, int type) {
         long empty = p_callocPage(pageSize);
 
-        DirectPageOps.p_bytePut(empty, 0, type);
+        p_bytePut(empty, 0, type);
 
         // Set fields such that binary search returns ~0 and availableBytes returns 0.
 
         // Note: Same as Node.clearEntries.
-        DirectPageOps.p_shortPutLE(empty, 4,  TN_HEADER_SIZE);     // leftSegTail
-        DirectPageOps.p_shortPutLE(empty, 6,  pageSize - 1);       // rightSegTail
-        DirectPageOps.p_shortPutLE(empty, 8,  TN_HEADER_SIZE);     // searchVecStart
-        DirectPageOps.p_shortPutLE(empty, 10, TN_HEADER_SIZE - 2); // searchVecEnd
+        p_shortPutLE(empty, 4,  TN_HEADER_SIZE);     // leftSegTail
+        p_shortPutLE(empty, 6,  pageSize - 1);       // rightSegTail
+        p_shortPutLE(empty, 8,  TN_HEADER_SIZE);     // searchVecStart
+        p_shortPutLE(empty, 10, TN_HEADER_SIZE - 2); // searchVecEnd
 
         return empty;
     }
@@ -217,7 +216,7 @@ class BaseDirectPageOps {
 
         private static void preTouch(long startAddr, long endAddr, int pageSize, Latch notify) {
             for (long addr = startAddr; addr < endAddr; addr += pageSize) {
-                DirectPageOps.p_bytePut(addr, 0, 0);
+                p_bytePut(addr, 0, 0);
             }
             notify.releaseShared();
         }
@@ -383,7 +382,7 @@ class BaseDirectPageOps {
     static long p_clonePage(long pageAddr, int pageSize) {
         long dst = p_allocPage(pageSize);
         pageSize = Math.abs(pageSize);
-        DirectPageOps.p_copy(pageAddr, 0, dst, 0, pageSize);
+        p_copy(pageAddr, 0, dst, 0, pageSize);
         return dst;
     }
 
@@ -395,7 +394,7 @@ class BaseDirectPageOps {
     static long p_transfer(byte[] array) {
         int length = array.length;
         final long pageAddr = p_alloc(length);
-        DirectPageOps.p_copyFromArray(array, 0, pageAddr, 0, length);
+        p_copyFromArray(array, 0, pageAddr, 0, length);
         return pageAddr;
     }
 
@@ -404,7 +403,7 @@ class BaseDirectPageOps {
      */
     static long p_transferPage(byte[] array, int pageSize) {
         final long pageAddr = p_allocPage(pageSize);
-        DirectPageOps.p_copyFromArray(array, 0, pageAddr, 0, Math.abs(pageSize));
+        p_copyFromArray(array, 0, pageAddr, 0, Math.abs(pageSize));
         return pageAddr;
     }
 
@@ -414,7 +413,7 @@ class BaseDirectPageOps {
      * @return page with copied data
      */
     static long p_transferArrayToPage(byte[] array, long pageAddr) {
-        DirectPageOps.p_copyFromArray(array, 0, pageAddr, 0, array.length);
+        p_copyFromArray(array, 0, pageAddr, 0, array.length);
         return pageAddr;
     }
 
@@ -422,22 +421,22 @@ class BaseDirectPageOps {
      * Copies from a page to an array.
      */
     static void p_transferPageToArray(long pageAddr, byte[] array) {
-        DirectPageOps.p_copyToArray(pageAddr, 0, array, 0, array.length);
+        p_copyToArray(pageAddr, 0, array, 0, array.length);
     }
 
     static int p_ubyteGet(final long pageAddr, int index) {
-        return DirectPageOps.p_byteGet(pageAddr, index) & 0xff;
+        return p_byteGet(pageAddr, index) & 0xff;
     }
 
     static void p_bytePut(final long pageAddr, int index, int v) {
-        DirectPageOps.p_bytePut(pageAddr, index, (byte) v);
+        p_bytePut(pageAddr, index, (byte) v);
     }
 
     /**
      * Value is in the lower word, and updated index is in the upper word.
      */
     static long p_uintGetVar(final long pageAddr, int index) {
-        int v = DirectPageOps.p_byteGet(pageAddr, index++);
+        int v = p_byteGet(pageAddr, index++);
         if (v < 0) {
             switch ((v >> 4) & 0x07) {
             case 0x00: case 0x01: case 0x02: case 0x03:
@@ -460,7 +459,7 @@ class BaseDirectPageOps {
                 break;
             default:
                 v = ((1 << 28) + (1 << 21) + (1 << 14) + (1 << 7))
-                    + ((DirectPageOps.p_byteGet(pageAddr, index++) << 24)
+                    + ((p_byteGet(pageAddr, index++) << 24)
                        | (p_ubyteGet(pageAddr, index++) << 16)
                        | (p_ubyteGet(pageAddr, index++) << 8)
                        | p_ubyteGet(pageAddr, index++));
@@ -474,50 +473,50 @@ class BaseDirectPageOps {
         if (v < (1 << 7)) {
             if (v < 0) {
                 v -= (1 << 28) + (1 << 21) + (1 << 14) + (1 << 7);
-                DirectPageOps.p_bytePut(pageAddr, index++, 0xff);
-                DirectPageOps.p_bytePut(pageAddr, index++, v >> 24);
-                DirectPageOps.p_bytePut(pageAddr, index++, v >> 16);
-                DirectPageOps.p_bytePut(pageAddr, index++, v >> 8);
+                p_bytePut(pageAddr, index++, 0xff);
+                p_bytePut(pageAddr, index++, v >> 24);
+                p_bytePut(pageAddr, index++, v >> 16);
+                p_bytePut(pageAddr, index++, v >> 8);
             }
         } else {
             v -= (1 << 7);
             if (v < (1 << 14)) {
-                DirectPageOps.p_bytePut(pageAddr, index++, 0x80 | (v >> 8));
+                p_bytePut(pageAddr, index++, 0x80 | (v >> 8));
             } else {
                 v -= (1 << 14);
                 if (v < (1 << 21)) {
-                    DirectPageOps.p_bytePut(pageAddr, index++, 0xc0 | (v >> 16));
+                    p_bytePut(pageAddr, index++, 0xc0 | (v >> 16));
                 } else {
                     v -= (1 << 21);
                     if (v < (1 << 28)) {
-                        DirectPageOps.p_bytePut(pageAddr, index++, 0xe0 | (v >> 24));
+                        p_bytePut(pageAddr, index++, 0xe0 | (v >> 24));
                     } else {
                         v -= (1 << 28);
-                        DirectPageOps.p_bytePut(pageAddr, index++, 0xf0);
-                        DirectPageOps.p_bytePut(pageAddr, index++, v >> 24);
+                        p_bytePut(pageAddr, index++, 0xf0);
+                        p_bytePut(pageAddr, index++, v >> 24);
                     }
-                    DirectPageOps.p_bytePut(pageAddr, index++, v >> 16);
+                    p_bytePut(pageAddr, index++, v >> 16);
                 }
-                DirectPageOps.p_bytePut(pageAddr, index++, v >> 8);
+                p_bytePut(pageAddr, index++, v >> 8);
             }
         }
-        DirectPageOps.p_bytePut(pageAddr, index++, v);
+        p_bytePut(pageAddr, index++, v);
         return index;
     }
 
     static long p_uint48GetLE(final long pageAddr, int index) {
-        return DirectPageOps.p_intGetLE(pageAddr, index) & 0xffff_ffffL
-            | (((long) DirectPageOps.p_ushortGetLE(pageAddr, index + 4)) << 32);
+        return p_intGetLE(pageAddr, index) & 0xffff_ffffL
+            | (((long) p_ushortGetLE(pageAddr, index + 4)) << 32);
     }
 
     static void p_int48PutLE(final long pageAddr, int index, long v) {
-        DirectPageOps.p_intPutLE(pageAddr, index, (int) v);
-        DirectPageOps.p_shortPutLE(pageAddr, index + 4, (short) (v >> 32));
+        p_intPutLE(pageAddr, index, (int) v);
+        p_shortPutLE(pageAddr, index + 4, (short) (v >> 32));
     }
 
     static long p_ulongGetVar(final long pageAddr, IntegerRef ref) {
         int offset = ref.get();
-        int val = DirectPageOps.p_byteGet(pageAddr, offset++);
+        int val = p_byteGet(pageAddr, offset++);
         if (val >= 0) {
             ref.set(offset);
             return val;
@@ -609,64 +608,62 @@ class BaseDirectPageOps {
             if (v < 0) {
                 v -= (1L << 56) + (1L << 49) + (1L << 42) + (1L << 35)
                     + (1L << 28) + (1L << 21) + (1L << 14) + (1L << 7);
-                DirectPageOps.p_bytePut(pageAddr, index++, 0xff);
-                DirectPageOps.p_bytePut(pageAddr, index++, (byte) (v >> 56));
-                DirectPageOps.p_bytePut(pageAddr, index++, (byte) (v >> 48));
-                DirectPageOps.p_bytePut(pageAddr, index++, (byte) (v >> 40));
-                DirectPageOps.p_bytePut(pageAddr, index++, (byte) (v >> 32));
-                DirectPageOps.p_bytePut(pageAddr, index++, (byte) (v >> 24));
-                DirectPageOps.p_bytePut(pageAddr, index++, (byte) (v >> 16));
-                DirectPageOps.p_bytePut(pageAddr, index++, (byte) (v >> 8));
+                p_bytePut(pageAddr, index++, 0xff);
+                p_bytePut(pageAddr, index++, (byte) (v >> 56));
+                p_bytePut(pageAddr, index++, (byte) (v >> 48));
+                p_bytePut(pageAddr, index++, (byte) (v >> 40));
+                p_bytePut(pageAddr, index++, (byte) (v >> 32));
+                p_bytePut(pageAddr, index++, (byte) (v >> 24));
+                p_bytePut(pageAddr, index++, (byte) (v >> 16));
+                p_bytePut(pageAddr, index++, (byte) (v >> 8));
             }
         } else {
             v -= (1L << 7);
             if (v < (1L << 14)) {
-                DirectPageOps.p_bytePut(pageAddr, index++, 0x80 | (int) (v >> 8));
+                p_bytePut(pageAddr, index++, 0x80 | (int) (v >> 8));
             } else {
                 v -= (1L << 14);
                 if (v < (1L << 21)) {
-                    DirectPageOps.p_bytePut(pageAddr, index++, 0xc0 | (int) (v >> 16));
+                    p_bytePut(pageAddr, index++, 0xc0 | (int) (v >> 16));
                 } else {
                     v -= (1L << 21);
                     if (v < (1L << 28)) {
-                        DirectPageOps.p_bytePut(pageAddr, index++, 0xe0 | (int) (v >> 24));
+                        p_bytePut(pageAddr, index++, 0xe0 | (int) (v >> 24));
                     } else {
                         v -= (1L << 28);
                         if (v < (1L << 35)) {
-                            DirectPageOps.p_bytePut(pageAddr, index++, 0xf0 | (int) (v >> 32));
+                            p_bytePut(pageAddr, index++, 0xf0 | (int) (v >> 32));
                         } else {
                             v -= (1L << 35);
                             if (v < (1L << 42)) {
-                                DirectPageOps.p_bytePut(pageAddr, index++, 0xf8 | (int) (v >> 40));
+                                p_bytePut(pageAddr, index++, 0xf8 | (int) (v >> 40));
                             } else {
                                 v -= (1L << 42);
                                 if (v < (1L << 49)) {
-                                    DirectPageOps.p_bytePut
-                                        (pageAddr, index++, 0xfc | (int) (v >> 48));
+                                    p_bytePut(pageAddr, index++, 0xfc | (int) (v >> 48));
                                 } else {
                                     v -= (1L << 49);
                                     if (v < (1L << 56)) {
-                                        DirectPageOps.p_bytePut(pageAddr, index++, 0xfe);
+                                        p_bytePut(pageAddr, index++, 0xfe);
                                     } else {
                                         v -= (1L << 56);
-                                        DirectPageOps.p_bytePut(pageAddr, index++, 0xff);
-                                        DirectPageOps.p_bytePut
-                                            (pageAddr, index++, (byte) (v >> 56));
+                                        p_bytePut(pageAddr, index++, 0xff);
+                                        p_bytePut(pageAddr, index++, (byte) (v >> 56));
                                     }
-                                    DirectPageOps.p_bytePut(pageAddr, index++, (byte) (v >> 48));
+                                    p_bytePut(pageAddr, index++, (byte) (v >> 48));
                                 }
-                                DirectPageOps.p_bytePut(pageAddr, index++, (byte) (v >> 40));
+                                p_bytePut(pageAddr, index++, (byte) (v >> 40));
                             }
-                            DirectPageOps.p_bytePut(pageAddr, index++, (byte) (v >> 32));
+                            p_bytePut(pageAddr, index++, (byte) (v >> 32));
                         }
-                        DirectPageOps.p_bytePut(pageAddr, index++, (byte) (v >> 24));
+                        p_bytePut(pageAddr, index++, (byte) (v >> 24));
                     }
-                    DirectPageOps.p_bytePut(pageAddr, index++, (byte) (v >> 16));
+                    p_bytePut(pageAddr, index++, (byte) (v >> 16));
                 }
-                DirectPageOps.p_bytePut(pageAddr, index++, (byte) (v >> 8));
+                p_bytePut(pageAddr, index++, (byte) (v >> 8));
             }
         }
-        DirectPageOps.p_bytePut(pageAddr, index++, (byte) v);
+        p_bytePut(pageAddr, index++, (byte) v);
         return index;
     }
 
@@ -678,7 +675,7 @@ class BaseDirectPageOps {
      * Returns page if it's an array, else copies to given array and returns that.
      */
     static byte[] p_copyIfNotArray(final long pageAddr, byte[] dstArray) {
-        DirectPageOps.p_copyToArray(pageAddr, 0, dstArray, 0, dstArray.length);
+        p_copyToArray(pageAddr, 0, dstArray, 0, dstArray.length);
         return dstArray;
     }
 
@@ -691,11 +688,11 @@ class BaseDirectPageOps {
                          int start2, int dest2, int length2)
     {
         if (dest1 < start1) {
-            DirectPageOps.p_copy(pageAddr, start1, pageAddr, dest1, length1);
-            DirectPageOps.p_copy(pageAddr, start2, pageAddr, dest2, length2);
+            p_copy(pageAddr, start1, pageAddr, dest1, length1);
+            p_copy(pageAddr, start2, pageAddr, dest2, length2);
         } else {
-            DirectPageOps.p_copy(pageAddr, start2, pageAddr, dest2, length2);
-            DirectPageOps.p_copy(pageAddr, start1, pageAddr, dest1, length1);
+            p_copy(pageAddr, start2, pageAddr, dest2, length2);
+            p_copy(pageAddr, start1, pageAddr, dest1, length1);
         }
     }
 
@@ -709,11 +706,11 @@ class BaseDirectPageOps {
                          int start3, int dest3, int length3)
     {
         if (dest1 < start1) {
-            DirectPageOps.p_copy(pageAddr, start1, pageAddr, dest1, length1);
+            p_copy(pageAddr, start1, pageAddr, dest1, length1);
             p_copies(pageAddr, start2, dest2, length2, start3, dest3, length3);
         } else {
             p_copies(pageAddr, start2, dest2, length2, start3, dest3, length3);
-            DirectPageOps.p_copy(pageAddr, start1, pageAddr, dest1, length1);
+            p_copy(pageAddr, start1, pageAddr, dest1, length1);
         }
     }
 
@@ -722,7 +719,7 @@ class BaseDirectPageOps {
     {
         int minLen = Math.min(alen, blen);
         for (int i=0; i<minLen; i++) {
-            byte ab = DirectPageOps.p_byteGet(apageAddr, aoff++);
+            byte ab = p_byteGet(apageAddr, aoff++);
             byte bb = b[boff + i];
             if (ab != bb) {
                 return (ab & 0xff) - (bb & 0xff);
@@ -736,8 +733,8 @@ class BaseDirectPageOps {
     {
         int minLen = Math.min(alen, blen);
         for (int i=0; i<minLen; i++) {
-            byte ab = DirectPageOps.p_byteGet(apageAddr, aoff++);
-            byte bb = DirectPageOps.p_byteGet(bpageAddr, boff++);
+            byte ab = p_byteGet(apageAddr, aoff++);
+            byte bb = p_byteGet(bpageAddr, boff++);
             if (ab != bb) {
                 return (ab & 0xff) - (bb & 0xff);
             }
@@ -749,11 +746,11 @@ class BaseDirectPageOps {
                                   byte[] high, int highOff)
     {
         for (int i=0; i<lowLen; i++) {
-            byte lo = DirectPageOps.p_byteGet(lowPageAddr, lowOff + i);
+            byte lo = p_byteGet(lowPageAddr, lowOff + i);
             byte hi = high[highOff + i];
             if (lo != hi) {
                 var mid = new byte[i + 1];
-                DirectPageOps.p_copyToArray(lowPageAddr, lowOff, mid, 0, i);
+                p_copyToArray(lowPageAddr, lowOff, mid, 0, i);
                 mid[i] = (byte) (((lo & 0xff) + (hi & 0xff) + 1) >> 1);
                 return mid;
             }
@@ -768,7 +765,7 @@ class BaseDirectPageOps {
     {
         for (int i=0; i<lowLen; i++) {
             byte lo = low[lowOff + i];
-            byte hi = DirectPageOps.p_byteGet(highPageAddr, highOff + i);
+            byte hi = p_byteGet(highPageAddr, highOff + i);
             if (lo != hi) {
                 var mid = new byte[i + 1];
                 System.arraycopy(low, lowOff, mid, 0, i);
@@ -777,7 +774,7 @@ class BaseDirectPageOps {
             }
         }
         var mid = new byte[lowLen + 1];
-        DirectPageOps.p_copyToArray(highPageAddr, highOff, mid, 0, mid.length);
+        p_copyToArray(highPageAddr, highOff, mid, 0, mid.length);
         return mid;
     }
 
@@ -785,17 +782,17 @@ class BaseDirectPageOps {
                                       final long highPageAddr, int highOff)
     {
         for (int i=0; i<lowLen; i++) {
-            byte lo = DirectPageOps.p_byteGet(lowPageAddr, lowOff + i);
-            byte hi = DirectPageOps.p_byteGet(highPageAddr, highOff + i);
+            byte lo = p_byteGet(lowPageAddr, lowOff + i);
+            byte hi = p_byteGet(highPageAddr, highOff + i);
             if (lo != hi) {
                 var mid = new byte[i + 1];
-                DirectPageOps.p_copyToArray(lowPageAddr, lowOff, mid, 0, i);
+                p_copyToArray(lowPageAddr, lowOff, mid, 0, i);
                 mid[i] = (byte) (((lo & 0xff) + (hi & 0xff) + 1) >> 1);
                 return mid;
             }
         }
         var mid = new byte[lowLen + 1];
-        DirectPageOps.p_copyToArray(highPageAddr, highOff, mid, 0, mid.length);
+        p_copyToArray(highPageAddr, highOff, mid, 0, mid.length);
         return mid;
     }
 

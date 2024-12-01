@@ -28,9 +28,9 @@ import org.cojen.tupl.io.MappedPageArray;
  *
  * @author Brian S O'Neill
  */
-public class DirectPageOpsTest {
+public class PageOpsTest {
     public static void main(String[] args) throws Exception {
-        org.junit.runner.JUnitCore.main(DirectPageOpsTest.class.getName());
+        org.junit.runner.JUnitCore.main(PageOpsTest.class.getName());
     }
 
     @Test
@@ -38,10 +38,10 @@ public class DirectPageOpsTest {
         assumeTrue(MappedPageArray.isSupported());
 
         final int count = 10;
-        Object arena = DirectPageOps.p_arenaAlloc(4096, count, null);
+        Object arena = PageOps.p_arenaAlloc(4096, count, null);
 
         try {
-            long ptr = DirectPageOps.p_callocPage(arena, 100);
+            long ptr = PageOps.p_callocPage(arena, 100);
             fail();
         } catch (IllegalArgumentException e) {
             // Wrong size.
@@ -49,8 +49,8 @@ public class DirectPageOpsTest {
 
         long last = 0;
         for (int i=0; i<count; i++) {
-            long ptr = DirectPageOps.p_callocPage(arena, 4096);
-            assertTrue(DirectPageOps.inArena(ptr));
+            long ptr = PageOps.p_callocPage(arena, 4096);
+            assertTrue(PageOps.inArena(ptr));
             if (i != 0) {
                 assertEquals(4096, ptr - last);
             }
@@ -58,13 +58,13 @@ public class DirectPageOpsTest {
         }
 
         // Arena is depleted, and so the next allocation is outside the arena.
-        long ptr = DirectPageOps.p_callocPage(arena, 4096);
-        assertFalse(DirectPageOps.inArena(ptr));
+        long ptr = PageOps.p_callocPage(arena, 4096);
+        assertFalse(PageOps.inArena(ptr));
 
-        DirectPageOps.p_delete(ptr);
-        DirectPageOps.p_arenaDelete(arena);
+        PageOps.p_delete(ptr);
+        PageOps.p_arenaDelete(arena);
 
-        assertFalse(DirectPageOps.inArena(last));
+        assertFalse(PageOps.inArena(last));
     }
 
     @Test
@@ -72,48 +72,48 @@ public class DirectPageOpsTest {
         assumeTrue(MappedPageArray.isSupported());
 
         var p1 = new long[10];
-        Object a1 = DirectPageOps.p_arenaAlloc(4096, p1.length, null);
+        Object a1 = PageOps.p_arenaAlloc(4096, p1.length, null);
         allocAll(a1, p1, 4096);
 
         var p2 = new long[20];
-        Object a2 = DirectPageOps.p_arenaAlloc(4096, p2.length, null);
+        Object a2 = PageOps.p_arenaAlloc(4096, p2.length, null);
         allocAll(a2, p2, 4096);
 
         var p3 = new long[30];
-        Object a3 = DirectPageOps.p_arenaAlloc(4096, p3.length, null);
+        Object a3 = PageOps.p_arenaAlloc(4096, p3.length, null);
         allocAll(a3, p3, 4096);
 
-        for (long p : p1) assertTrue(DirectPageOps.inArena(p));
-        for (long p : p2) assertTrue(DirectPageOps.inArena(p));
-        for (long p : p3) assertTrue(DirectPageOps.inArena(p));
+        for (long p : p1) assertTrue(PageOps.inArena(p));
+        for (long p : p2) assertTrue(PageOps.inArena(p));
+        for (long p : p3) assertTrue(PageOps.inArena(p));
 
-        DirectPageOps.p_arenaDelete(a2);
+        PageOps.p_arenaDelete(a2);
 
-        for (long p : p1) assertTrue(DirectPageOps.inArena(p));
-        for (long p : p2) assertFalse(DirectPageOps.inArena(p));
-        for (long p : p3) assertTrue(DirectPageOps.inArena(p));
+        for (long p : p1) assertTrue(PageOps.inArena(p));
+        for (long p : p2) assertFalse(PageOps.inArena(p));
+        for (long p : p3) assertTrue(PageOps.inArena(p));
 
-        DirectPageOps.p_arenaDelete(a1);
+        PageOps.p_arenaDelete(a1);
 
-        for (long p : p1) assertFalse(DirectPageOps.inArena(p));
-        for (long p : p2) assertFalse(DirectPageOps.inArena(p));
-        for (long p : p3) assertTrue(DirectPageOps.inArena(p));
+        for (long p : p1) assertFalse(PageOps.inArena(p));
+        for (long p : p2) assertFalse(PageOps.inArena(p));
+        for (long p : p3) assertTrue(PageOps.inArena(p));
 
-        DirectPageOps.p_arenaDelete(a3);
+        PageOps.p_arenaDelete(a3);
 
-        for (long p : p1) assertFalse(DirectPageOps.inArena(p));
-        for (long p : p2) assertFalse(DirectPageOps.inArena(p));
-        for (long p : p3) assertFalse(DirectPageOps.inArena(p));
+        for (long p : p1) assertFalse(PageOps.inArena(p));
+        for (long p : p2) assertFalse(PageOps.inArena(p));
+        for (long p : p3) assertFalse(PageOps.inArena(p));
 
         // Harmless double delete.
-        DirectPageOps.p_arenaDelete(a3);
+        PageOps.p_arenaDelete(a3);
 
         // Ignored.
-        DirectPageOps.p_arenaDelete(null);
+        PageOps.p_arenaDelete(null);
 
         // Error.
         try {
-            DirectPageOps.p_arenaDelete("hello");
+            PageOps.p_arenaDelete("hello");
             fail();
         } catch (IllegalArgumentException e) {
         }
@@ -121,13 +121,13 @@ public class DirectPageOpsTest {
 
     private void allocAll(Object arena, long[] pages, int size) {
         for (int i=0; i<pages.length; i++) {
-            pages[i] = DirectPageOps.p_callocPage(arena, size);
+            pages[i] = PageOps.p_callocPage(arena, size);
         }
     }
 
     @Test
     public void varInt() throws Exception {
-        long page = DirectPageOps.p_alloc(100);
+        long page = PageOps.p_alloc(100);
 
         // Pairs of value to encode and expected length.
         int[] values = {
@@ -145,18 +145,18 @@ public class DirectPageOpsTest {
         for (int i=0; i<values.length; i+=2) {
             int val = values[i];
             int len = values[i + 1];
-            assertEquals(len, DirectPageOps.p_uintPutVar(page, 1, val) - 1);
-            long decoded = DirectPageOps.p_uintGetVar(page, 1);
+            assertEquals(len, PageOps.p_uintPutVar(page, 1, val) - 1);
+            long decoded = PageOps.p_uintGetVar(page, 1);
             assertEquals(val, (int) decoded);
             assertEquals(1 + len, (int) (decoded >> 32));
         }
 
-        DirectPageOps.p_delete(page);
+        PageOps.p_delete(page);
     }
 
     @Test
     public void varLong() throws Exception {
-        long page = DirectPageOps.p_alloc(100);
+        long page = PageOps.p_alloc(100);
 
         // Pairs of value to encode and expected length.
         long[] values = {
@@ -180,12 +180,12 @@ public class DirectPageOpsTest {
         for (int i=0; i<values.length; i+=2) {
             long val = values[i];
             int len = (int) values[i + 1];
-            assertEquals(len, DirectPageOps.p_ulongPutVar(page, 1, val) - 1);
+            assertEquals(len, PageOps.p_ulongPutVar(page, 1, val) - 1);
             ref.set(1);
-            assertEquals(val, DirectPageOps.p_ulongGetVar(page, ref));
+            assertEquals(val, PageOps.p_ulongGetVar(page, ref));
             assertEquals(len, ref.get() - 1);
         }
 
-        DirectPageOps.p_delete(page);
+        PageOps.p_delete(page);
     }
 }

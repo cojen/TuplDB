@@ -38,8 +38,6 @@ final class DirectPageOpsSelector {
      * if the sun unsafe class is used.
      */
     static int kind() {
-        // Force the base class to be loaded first due to a dependency cycle.
-        BaseDirectPageOps.p_null();
         return DirectPageOps.kind();
     }
 
@@ -131,8 +129,7 @@ final class DirectPageOpsSelector {
         }
 
         ClassMaker cm = ClassMaker.beginExplicit
-            ("org.cojen.tupl.core.DirectPageOps", MethodHandles.lookup())
-            .extend(BaseDirectPageOps.class).final_();
+            ("org.cojen.tupl.core.DirectPageOps", MethodHandles.lookup());
 
         cm.addField(unsafe.getClass(), "U").private_().static_().final_();
         cm.addField(long.class, "O").private_().static_().final_();

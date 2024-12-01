@@ -32,7 +32,7 @@ import org.cojen.tupl.WriteFailureException;
 
 import org.cojen.tupl.util.Clutch;
 
-import static org.cojen.tupl.core.DirectPageOps.*;
+import static org.cojen.tupl.core.PageOps.*;
 
 import static org.cojen.tupl.core.Utils.EMPTY_BYTES;
 import static org.cojen.tupl.core.Utils.rethrow;

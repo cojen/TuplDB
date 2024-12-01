@@ -47,7 +47,7 @@ import org.cojen.tupl.util.Runner;
 import org.cojen.tupl.views.BoundedView;
 import org.cojen.tupl.views.UnmodifiableView;
 
-import static org.cojen.tupl.core.DirectPageOps.*;
+import static org.cojen.tupl.core.PageOps.*;
 import static org.cojen.tupl.core.Utils.*;
 
 import static java.util.Arrays.compareUnsigned;
@@ -1502,7 +1502,7 @@ class BTree extends Tree implements View, Index {
                         // iteration or findNearby operation. Since popping to a stub is
                         // equivalent to popping past the root, the cursor operation is able to
                         // handle this. Iteration will finish normally, and findNearby will
-                        // start over from the root. Also see stub comments in BaseDirectPageOps.
+                        // start over from the root. Also see stub comments in PageOps.
                     } finally {
                         node.releaseExclusive();
                         stub.releaseExclusive();

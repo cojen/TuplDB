@@ -39,7 +39,7 @@ import org.cojen.tupl.Transaction;
 import org.cojen.tupl.diag.EventListener;
 import org.cojen.tupl.diag.EventType;
 
-import static org.cojen.tupl.core.DirectPageOps.*;
+import static org.cojen.tupl.core.PageOps.*;
 import static org.cojen.tupl.core.Utils.*;
 
 /**
@@ -372,7 +372,7 @@ final class UndoLog implements DatabaseAccess {
         setActiveIndexId(indexId);
     
         byte[] payload;
-        if ((DirectPageOps.p_byteGet(payloadAddr, off) & 0xc0) == 0xc0) {
+        if ((p_byteGet(payloadAddr, off) & 0xc0) == 0xc0) {
             // Key is fragmented and cannot be stored as-is, so expand it fully and
             // switch to using the "LK" op variant.
             payload = Node.expandKeyAtLoc
@@ -380,7 +380,7 @@ final class UndoLog implements DatabaseAccess {
             op += LK_ADJUST;
         } else {
             payload = new byte[len];
-            DirectPageOps.p_copyToArray(payloadAddr, off, payload, 0, len);
+            p_copyToArray(payloadAddr, off, payload, 0, len);
         }
     
         doPush(op, payload);
@@ -514,7 +514,7 @@ final class UndoLog implements DatabaseAccess {
         throws IOException
     {
         var b = new byte[len];
-        DirectPageOps.p_copyToArray(addr, off, b, 0, len);
+        p_copyToArray(addr, off, b, 0, len);
         pushUnwrite(indexId, key, pos, b, 0, len);
     }
 

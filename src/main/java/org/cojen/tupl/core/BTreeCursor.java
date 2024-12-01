@@ -41,7 +41,7 @@ import org.cojen.tupl.diag.IndexStats;
 
 import org.cojen.tupl.views.ViewUtils;
 
-import static org.cojen.tupl.core.DirectPageOps.*;
+import static org.cojen.tupl.core.PageOps.*;
 import static org.cojen.tupl.core.Utils.*;
 
 import static java.util.Arrays.compareUnsigned;

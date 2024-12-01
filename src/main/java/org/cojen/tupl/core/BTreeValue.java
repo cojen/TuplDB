@@ -26,7 +26,7 @@ import java.util.Arrays;
 import org.cojen.tupl.LargeKeyException;
 import org.cojen.tupl.LargeValueException;
 
-import static org.cojen.tupl.core.DirectPageOps.*;
+import static org.cojen.tupl.core.PageOps.*;
 import static org.cojen.tupl.core.Utils.*;
 
 /**

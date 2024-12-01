@@ -35,7 +35,7 @@ import static org.cojen.tupl.core.DirectMemory.ALL;
  * @author Brian S O'Neill
  * @see DirectPageOpsSelector
  */
-final class DirectPageOps extends BaseDirectPageOps {
+class DirectPageOps {
     private static final MethodHandle OF_ADDRESS_UNSAFE;
 
     private static final VarHandle BYTE_H, CHAR_LE_H, INT_LE_H, LONG_LE_H, LONG_BE_H;

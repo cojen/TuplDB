@@ -100,12 +100,12 @@ final class CryptoPageArray extends TransformedPageArray {
             return;
         }
 
-        long page = DirectPageOps.p_allocPage(mSource.directPageSize());
+        long page = PageOps.p_allocPage(mSource.directPageSize());
         try {
             readPage(index, page);
-            DirectPageOps.p_copy(page, 0, dstAddr, offset, length);
+            PageOps.p_copy(page, 0, dstAddr, offset, length);
         } finally {
-            DirectPageOps.p_delete(page);
+            PageOps.p_delete(page);
         }
     }
 
@@ -114,12 +114,12 @@ final class CryptoPageArray extends TransformedPageArray {
         try {
             int pageSize = pageSize();
             // Unknown if source contents can be destroyed, so create a new one.
-            long encrypted = DirectPageOps.p_allocPage(mSource.directPageSize());
+            long encrypted = PageOps.p_allocPage(mSource.directPageSize());
             try {
                 mCrypto.encryptPage(index, pageSize, srcAddr, offset, encrypted, 0);
                 mSource.writePage(index, encrypted, 0);
             } finally {
-                DirectPageOps.p_delete(encrypted);
+                PageOps.p_delete(encrypted);
             }
         } catch (GeneralSecurityException e) {
             throw new CorruptDatabaseException(e);

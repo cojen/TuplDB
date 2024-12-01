@@ -59,7 +59,7 @@ import org.cojen.tupl.util.Latch;
 
 import static java.lang.System.arraycopy;
 
-import static org.cojen.tupl.core.DirectPageOps.*;
+import static org.cojen.tupl.core.PageOps.*;
 import static org.cojen.tupl.core.Utils.*;
 
 /**

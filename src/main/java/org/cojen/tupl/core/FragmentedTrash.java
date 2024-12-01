@@ -25,7 +25,7 @@ import org.cojen.tupl.Cursor;
 import org.cojen.tupl.View;
 import org.cojen.tupl.Transaction;
 
-import static org.cojen.tupl.core.DirectPageOps.*;
+import static org.cojen.tupl.core.PageOps.*;
 import static org.cojen.tupl.core.Utils.*;
 
 import static java.util.Arrays.compareUnsigned;

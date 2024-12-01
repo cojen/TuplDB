@@ -114,7 +114,7 @@ import org.cojen.tupl.util.Latch;
 import org.cojen.tupl.util.Runner;
 
 import static org.cojen.tupl.core.Node.*;
-import static org.cojen.tupl.core.DirectPageOps.*;
+import static org.cojen.tupl.core.PageOps.*;
 import static org.cojen.tupl.core.Utils.*;
 
 /**
