@@ -49,9 +49,9 @@ public class JoinedPageArray extends PageArray {
      * @throws IllegalStateException if the highest index of the first source is higher than the
      * join index
      */
-    public static Supplier<PageArray> factory(Supplier<PageArray> first,
+    public static Supplier<PageArray> factory(Supplier<? extends PageArray> first,
                                               long joinIndex,
-                                              Supplier<PageArray> second)
+                                              Supplier<? extends PageArray> second)
     {
         return (CheckedSupplier<PageArray>) () -> {
             return join(first.get(), joinIndex, second.get());

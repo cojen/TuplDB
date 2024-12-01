@@ -40,7 +40,8 @@ public class StripedPageArray extends PageArray {
     private final Syncer[] mSyncers;
 
     @SafeVarargs
-    public static Supplier<PageArray> factory(Supplier<PageArray>... factories) {
+    public static Supplier<? extends PageArray> factory(Supplier<? extends PageArray>... factories)
+    {
         if (factories.length <= 1) {
             return factories[0];
         }

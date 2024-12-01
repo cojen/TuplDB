@@ -1,5 +1,5 @@
 /*
- *  Copyright 2020 Cojen.org
+ *  Copyright (C) 2024 Cojen.org
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU Affero General Public License as
@@ -12,7 +12,7 @@
  *  GNU Affero General Public License for more details.
  *
  *  You should have received a copy of the GNU Affero General Public License
- *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 package org.cojen.tupl.core;
@@ -27,34 +27,39 @@ import org.junit.*;
 
 import org.cojen.tupl.DatabaseConfig;
 
-import org.cojen.tupl.io.FilePageArray;
-import org.cojen.tupl.io.JoinedPageArray;
+import org.cojen.tupl.io.MappedPageArray;
 import org.cojen.tupl.io.OpenOption;
-import org.cojen.tupl.io.PageArray;
+import org.cojen.tupl.io.StripedPageArray;
 
 import static org.cojen.tupl.TestUtils.*;
 
 /**
  * 
  *
- * @author Brian S O'Neill
+ * @author Brian S. O'Neill
  */
-public class CrudJoinedFileTest extends CrudTest {
+public class CrudStripedMappedFileTest extends CrudTest {
     public static void main(String[] args) throws Exception {
-        org.junit.runner.JUnitCore.main(CrudJoinedFileTest.class.getName());
+        org.junit.runner.JUnitCore.main(CrudStripedMappedFileTest.class.getName());
     }
 
     @Before
     @Override
     public void createTempDb() throws Exception {
-        Supplier<PageArray> factory = JoinedPageArray
-            .factory(newPageArrayFactory(), 10, newPageArrayFactory());
-        var config = new DatabaseConfig().dataPageArray(factory);
-        mDb = newTempDatabase(getClass(), config);
-    }
+        int pageSize = 4096;
 
-    private Supplier<PageArray> newPageArrayFactory() throws Exception {
-        var file = new File(newTempBaseFile(getClass()).getPath() + ".db");
-        return FilePageArray.factory(4096, file, EnumSet.of(OpenOption.CREATE));
+        var stripes = new Supplier[4];
+        for (int i=0; i<stripes.length; i++) {
+            var file = new File(newTempBaseFile(getClass()).getPath() + ".db");
+            stripes[i] = MappedPageArray.factory
+                (pageSize, 20000, file, EnumSet.of(OpenOption.CREATE, OpenOption.RANDOM_ACCESS));
+        }
+
+        @SuppressWarnings("unchecked")
+        var config = new DatabaseConfig()
+            .pageSize(pageSize)
+            .dataPageArray(StripedPageArray.factory(stripes));
+        
+        mDb = newTempDatabase(getClass(), config);
     }
 }
