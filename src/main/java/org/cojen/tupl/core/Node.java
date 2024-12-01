@@ -2591,8 +2591,8 @@ final class Node extends Clutch implements DatabaseAccess {
             // applying De Morgan's law. Because the chosen parent node is not strictly the
             // lowest from the right, a comparison must be made to the actual new parent node.
             byte[] frameKey;
-            if (newPos < 0 |
-                ((newPos == 0 & mask != 0) &&
+            if (newPos < 0 ||
+                ((newPos == 0 && mask != 0) &&
                  ((frameKey = frame.mNotFoundKey) != null &&
                   compareUnsigned(frameKey, newKey) < 0)))
             {
@@ -2790,8 +2790,8 @@ final class Node extends Clutch implements DatabaseAccess {
             // Because the chosen parent node is not strictly the lowest from the right, a
             // comparison must be made to the actual new parent node.
             byte[] frameKey;
-            if (newPos >= 0 &
-                ((newPos != 0 | mask == 0) ||
+            if (newPos >= 0 &&
+                ((newPos != 0 || mask == 0) ||
                  ((frameKey = frame.mNotFoundKey) != null &&
                   compareUnsigned(frameKey, newKey) >= 0)))
             {
@@ -5302,7 +5302,7 @@ final class Node extends Clutch implements DatabaseAccess {
                     // account for this.
                     garbageAccum += entryLen;
 
-                    boolean full = size < TN_HEADER_SIZE | newSize > pageSize();
+                    boolean full = size < TN_HEADER_SIZE || newSize > pageSize();
 
                     if (full || newSize >= size) {
                         // New node has accumulated enough entries...
@@ -5407,7 +5407,7 @@ final class Node extends Clutch implements DatabaseAccess {
                     // account for this.
                     garbageAccum += entryLen;
 
-                    boolean full = size < TN_HEADER_SIZE | newSize > pageSize();
+                    boolean full = size < TN_HEADER_SIZE || newSize > pageSize();
 
                     if (full || newSize >= size) {
                         // New node has accumulated enough entries...

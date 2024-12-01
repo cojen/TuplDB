@@ -1335,7 +1335,7 @@ final class BTreeValue {
                                 if (txn == null) {
                                     // Obtain node from cache, or read it only for partial write.
                                     childNode = db.nodeMapLoadFragmentExclusive
-                                        (childNodeId, ppos > 0 | len < pageSize);
+                                        (childNodeId, ppos > 0 || len < pageSize);
                                 } else {
                                     // Obtain node from cache, fully reading it for the undo log.
                                     childNode = db.nodeMapLoadFragmentExclusive(childNodeId, true);
