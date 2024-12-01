@@ -19,11 +19,7 @@ package org.cojen.tupl.core;
 
 import java.io.IOException;
 
-import java.lang.foreign.MemorySegment;
-
 import java.util.Arrays;
-
-import java.util.zip.CRC32;
 
 import org.cojen.tupl.ClosedIndexException;
 import org.cojen.tupl.DeletedIndexException;
@@ -54,7 +50,7 @@ final class PageOps extends DirectPageOps {
      * Clutch class: 1 field
      * Latch class: 3 fields
      * Object class: Minimum 8 byte overhead
-     * Total: (23 * 4 + 8) = 76
+     * Total: (17 * 4 + 8) = 76
      */
     static final int NODE_OVERHEAD = 76;
 
@@ -794,11 +790,5 @@ final class PageOps extends DirectPageOps {
         var mid = new byte[lowLen + 1];
         p_copyToArray(highPageAddr, highOff, mid, 0, mid.length);
         return mid;
-    }
-
-    static int p_crc32(long srcPageAddr, int srcStart, int len) {
-        var crc = new CRC32();
-        crc.update(MemorySegment.ofAddress(srcPageAddr + srcStart).reinterpret(len).asByteBuffer());
-        return (int) crc.getValue();
     }
 }
