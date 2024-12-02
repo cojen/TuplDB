@@ -52,16 +52,14 @@ final class DirectPageOpsSelector {
         }
     }
 
-    static final Throwable failure;
+    static volatile Object result;
 
     static {
-        Throwable ex = null;
         try {
             select();
         } catch (Throwable e) {
-            ex = e;
+            result = e;
         }
-        failure = ex;
     }
 
     private static void select() throws Throwable {
@@ -128,6 +126,8 @@ final class DirectPageOpsSelector {
             return;
         }
 
+        result = unsafe;
+
         ClassMaker cm = ClassMaker.beginExplicit
             ("org.cojen.tupl.core.DirectPageOps", MethodHandles.lookup());
 
@@ -135,7 +135,9 @@ final class DirectPageOpsSelector {
         cm.addField(long.class, "O").private_().static_().final_();
 
         MethodMaker mm = cm.addClinit();
-        mm.field("U").setExact(unsafe);
+        var unsafeVar = mm.var(DirectPageOpsSelector.class)
+            .condy("U").invoke(Object.class, "U").cast(unsafe.getClass());
+        mm.field("U").set(unsafeVar);
         mm.field("O").set(mm.field("U").invoke("arrayBaseOffset", byte[].class));
 
         mm = cm.addMethod(int.class, "kind").static_();
@@ -222,5 +224,12 @@ final class DirectPageOpsSelector {
         }
         existing.addSuppressed(additional);
         return existing;
+    }
+
+    // Condy method which is called by the generated code.
+    static Object U(MethodHandles.Lookup caller, String name, Class type) {
+        Object unsafe = result;
+        result = null;
+        return unsafe;
     }
 }
