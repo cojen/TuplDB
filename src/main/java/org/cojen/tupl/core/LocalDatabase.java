@@ -2671,7 +2671,7 @@ public final class LocalDatabase implements Database {
             context.redoTimestamp(redo, op);
             context.flush();
 
-            redo.force(true, TimeUnit.SECONDS.toNanos(5));
+            redo.sync(true, TimeUnit.SECONDS.toNanos(5));
         } catch (IOException e) {
             // Ignore.
         }
@@ -2702,7 +2702,7 @@ public final class LocalDatabase implements Database {
         if (!isClosed() && mRedoWriter != null) {
             mRedoWriter.flush();
             if (level > 0) {
-                mRedoWriter.force(level > 1, -1); // infinite timeout
+                mRedoWriter.sync(level > 1, -1); // infinite timeout
             }
         }
     }
@@ -3198,7 +3198,11 @@ public final class LocalDatabase implements Database {
                     try {
                         doCheckpoint(-1, 0, 0); // force even if closed
                     } catch (Throwable e) {
-                        shutdown = false;
+                        if (shutdown) {
+                            // Cannot safely delete the redo log files, and so the shutdown
+                            // cannot truly complete.
+                            throw e;
+                        }
                     } finally {
                         mCheckpointLock.unlock();
                     }

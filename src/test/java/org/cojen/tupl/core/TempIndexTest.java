@@ -171,18 +171,6 @@ public class TempIndexTest {
     public void forReplica() throws Exception {
         mDb.shutdown();
         mConfig.replicate(new NonReplicator());
-        /* FIXME: How did this happen?
-org.cojen.tupl.DatabaseException: Database is currently configured without a replicator. Conversion isn't possible when redo log files exist. A clean shutdown is required.
-        at org.cojen.tupl.core.LocalDatabase.loadRegistryRoot(LocalDatabase.java:3724)
-        at org.cojen.tupl.core.LocalDatabase.<init>(LocalDatabase.java:655)
-        at org.cojen.tupl.core.LocalDatabase.open(LocalDatabase.java:330)
-        at org.cojen.tupl.core.Launcher.doOpen(Launcher.java:501)
-        at org.cojen.tupl.core.Launcher.open(Launcher.java:425)
-        at org.cojen.tupl.Database.open(Database.java:98)
-        at org.cojen.tupl.TestUtils$TempFiles.reopenTempDatabase(TestUtils.java:645)
-        at org.cojen.tupl.TestUtils$TempFiles.reopenTempDatabase(TestUtils.java:617)
-        at org.cojen.tupl.TestUtils.reopenTempDatabase(TestUtils.java:127)
-        */
         mDb = reopenTempDatabase(getClass(), mDb, mConfig);
 
         try {
