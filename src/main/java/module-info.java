@@ -11,7 +11,7 @@ module org.cojen.tupl {
     exports org.cojen.tupl.tools;
     exports org.cojen.tupl.util;
 
-    requires jdk.unsupported;
+    requires static jdk.unsupported;
 
     requires org.cojen.maker;
     requires org.cojen.dirmi;

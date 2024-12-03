@@ -126,6 +126,8 @@ final class DirectPageOpsSelector {
             return;
         }
 
+        DirectPageOpsSelector.class.getModule().addReads(unsafe.getClass().getModule());
+
         result = unsafe;
 
         ClassMaker cm = ClassMaker.beginExplicit
@@ -138,7 +140,7 @@ final class DirectPageOpsSelector {
         var unsafeVar = mm.var(DirectPageOpsSelector.class)
             .condy("U").invoke(Object.class, "U").cast(unsafe.getClass());
         mm.field("U").set(unsafeVar);
-        mm.field("O").set(mm.field("U").invoke("arrayBaseOffset", byte[].class));
+        mm.field("O").set(unsafeVar.invoke("arrayBaseOffset", byte[].class));
 
         mm = cm.addMethod(int.class, "kind").static_();
         mm.return_(kind);
