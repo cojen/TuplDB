@@ -55,7 +55,7 @@ public class CrudJoinedMappedFileTest extends CrudTest {
         var first = MappedPageArray.factory(pageSize, joinIndex, firstFile, options);
 
         var secondFile = new File(newTempBaseFile(getClass()).getPath() + ".db");
-        var second = MappedPageArray.factory(pageSize, 80000, secondFile, options);
+        var second = MappedPageArray.factory(pageSize, 100000, secondFile, options);
 
         Supplier<PageArray> factory = JoinedPageArray.factory(first, joinIndex, second);
         var config = new DatabaseConfig().dataPageArray(factory);
