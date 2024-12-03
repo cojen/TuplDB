@@ -172,16 +172,16 @@ public class TempIndexTest {
         mDb.shutdown();
         mConfig.replicate(new NonReplicator());
         /* FIXME: How did this happen?
-org.cojen.tupl.DatabaseException: Database was created initially without a replicator. Conversion isn't possible when redo log files exist. A clean shutdown is required.
-	 at org.cojen.tupl.core.LocalDatabase.loadRegistryRoot(LocalDatabase.java:3641)
-	 at org.cojen.tupl.core.LocalDatabase.<init>(LocalDatabase.java:654)
-	 at org.cojen.tupl.core.LocalDatabase.open(LocalDatabase.java:319)
-	 at org.cojen.tupl.core.Launcher.doOpen(Launcher.java:525)
-	 at org.cojen.tupl.core.Launcher.open(Launcher.java:424)
-	 at org.cojen.tupl.Database.open(Database.java:96)
-	 at org.cojen.tupl.TestUtils$TempFiles.reopenTempDatabase(TestUtils.java:630)
-	 at org.cojen.tupl.TestUtils.reopenTempDatabase(TestUtils.java:127)
-	 at org.cojen.tupl.core.TempIndexTest.forReplica(TempIndexTest.java:175)
+org.cojen.tupl.DatabaseException: Database is currently configured without a replicator. Conversion isn't possible when redo log files exist. A clean shutdown is required.
+        at org.cojen.tupl.core.LocalDatabase.loadRegistryRoot(LocalDatabase.java:3724)
+        at org.cojen.tupl.core.LocalDatabase.<init>(LocalDatabase.java:655)
+        at org.cojen.tupl.core.LocalDatabase.open(LocalDatabase.java:330)
+        at org.cojen.tupl.core.Launcher.doOpen(Launcher.java:501)
+        at org.cojen.tupl.core.Launcher.open(Launcher.java:425)
+        at org.cojen.tupl.Database.open(Database.java:98)
+        at org.cojen.tupl.TestUtils$TempFiles.reopenTempDatabase(TestUtils.java:645)
+        at org.cojen.tupl.TestUtils$TempFiles.reopenTempDatabase(TestUtils.java:617)
+        at org.cojen.tupl.TestUtils.reopenTempDatabase(TestUtils.java:127)
         */
         mDb = reopenTempDatabase(getClass(), mDb, mConfig);
 
