@@ -316,10 +316,6 @@ abstract sealed class AbstractFileIO extends FileIO permits JavaFileIO, PosixFil
 
     @Override
     public final void sync(boolean metadata) throws IOException {
-        if (mReadOnly) {
-            return;
-        }
-
         // Set the start time if there's not already an ongoing sync. Ignore
         // cas fails; first writer wins.
         boolean shouldReset = mSyncStartNanos == 0 && 
