@@ -29,6 +29,7 @@ import java.nio.ByteBuffer;
 
 import java.nio.channels.FileChannel;
 import java.nio.channels.ClosedByInterruptException;
+import java.nio.channels.ClosedChannelException;
 import java.nio.channels.NonWritableChannelException;
 
 import java.util.EnumSet;
@@ -302,10 +303,18 @@ sealed class JavaFileIO extends AbstractFileIO permits WindowsFileIO {
         }
     }
 
+    @Override
+    public final boolean isClosed() {
+        mAccessLock.acquireShared();
+        boolean closed = mFilePool == null;
+        mAccessLock.releaseShared();
+        return closed;
+    }
+
     private LocalPool.Entry<FileAccess> accessFile() throws IOException {
         LocalPool<FileAccess> pool = mFilePool;
         if (pool == null) {
-            throw new IOException("Closed");
+            throw new ClosedChannelException();
         }
         return pool.access();
     }

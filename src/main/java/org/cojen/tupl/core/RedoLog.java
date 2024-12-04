@@ -26,6 +26,8 @@ import java.io.InputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 
+import java.nio.channels.ClosedChannelException;
+
 import java.util.EnumSet;
 import java.util.TreeMap;
 
@@ -43,6 +45,9 @@ import org.cojen.tupl.ext.Crypto;
 import org.cojen.tupl.io.FileIO;
 import org.cojen.tupl.io.OpenOption;
 
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.VarHandle;
+
 import static org.cojen.tupl.core.LocalDatabase.REDO_FILE_SUFFIX;
 import static org.cojen.tupl.core.Utils.*;
 
@@ -58,6 +63,17 @@ import static org.cojen.tupl.core.Utils.*;
 final class RedoLog extends RedoWriter {
     private static final long MAGIC_NUMBER = 431399725605778814L;
     private static final int ENCODING_VERSION = 20130106;
+
+    private static final VarHandle cOldFileIOHandle;
+
+    static {
+        try {
+            var lookup = MethodHandles.lookup();
+            cOldFileIOHandle = lookup.findVarHandle(RedoLog.class, "mOldFileIO", FileIO.class);
+        } catch (Throwable e) {
+            throw Utils.rethrow(e);
+        }
+    }
 
     private final Crypto mCrypto;
     private final File mBaseFile;
@@ -267,18 +283,20 @@ final class RedoLog extends RedoWriter {
     }
 
     private void applyNextFile(TransactionContext... contexts) throws IOException {
-        final OutputStream oldOut;
-        final FileIO oldFileIO;
-
         TransactionContext context = contexts[0];
         for (int i = contexts.length; --i >= 1; ) {
             contexts[i].flush();
         }
 
+        final OutputStream oldOut;
+        final FileIO oldFileIO;
+
         context.fullAcquireRedoLatch(this);
         try {
+            // Keep the old FileIO around in case the sync method is called.
+            oldFileIO = (FileIO) cOldFileIOHandle.getAndSet(this, mFileIO);
+
             oldOut = mOut;
-            oldFileIO = mFileIO;
 
             if (oldOut != null) {
                 context.doRedoTimestamp(this, RedoOps.OP_END_FILE, DurabilityMode.NO_FLUSH);
@@ -308,12 +326,7 @@ final class RedoLog extends RedoWriter {
         }
 
         closeQuietly(oldOut);
-
-        // Close old FileIO if previous checkpoint aborted.
-        closeQuietly(mOldFileIO);
-
-        // Keep it around in case the sync method is called.
-        mOldFileIO = oldFileIO;
+        closeOldFileIO(oldFileIO);
     }
 
     /**
@@ -411,8 +424,7 @@ final class RedoLog extends RedoWriter {
 
     @Override
     void checkpointFinished() throws IOException {
-        closeQuietly(mOldFileIO);
-        mOldFileIO = null;
+        closeOldFileIO();
 
         for (long id = mNextLogId; --id >= mDeleteLogId; ) {
             // Typically deletes one file, but more will accumulate if checkpoints abort.
@@ -530,9 +542,17 @@ final class RedoLog extends RedoWriter {
         FileIO oldFileIO = mOldFileIO;
         if (oldFileIO != null) {
             // Ensure the old file is sync'd before current file. Proper ordering is critical.
-            oldFileIO.sync(true);
-            closeQuietly(oldFileIO);
-            mOldFileIO = null;
+            try {
+                oldFileIO.sync(true);
+                closeOldFileIO(oldFileIO);
+            } catch (ClosedChannelException e) {
+                // Assume sync was already called.
+            } catch (IOException e) {
+                if (!oldFileIO.isClosed()) {
+                    throw e;
+                }
+                // Assume sync was already called.
+            }
         }
 
         FileIO fileIO = mFileIO;
@@ -545,12 +565,21 @@ final class RedoLog extends RedoWriter {
     public void close() {
         close(mNextOut, mNextFileIO);
         close(mOut, mFileIO);
-        closeQuietly(mOldFileIO);
+        closeOldFileIO();
     }
 
     private static void close(OutputStream out, FileIO fileIO) {
         closeQuietly(out);
         closeQuietly(fileIO);
+    }
+
+    private void closeOldFileIO() {
+        closeOldFileIO(mOldFileIO);
+    }
+
+    private void closeOldFileIO(FileIO oldFileIO) {
+        cOldFileIOHandle.compareAndSet(this, oldFileIO, null);
+        closeQuietly(oldFileIO);
     }
 
     @Override

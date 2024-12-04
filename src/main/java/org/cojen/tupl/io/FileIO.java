@@ -155,6 +155,8 @@ public abstract sealed class FileIO implements CauseCloseable permits AbstractFi
         close(null);
     }
 
+    public abstract boolean isClosed();
+
     /**
      * Durably flushes the given directory, if required. If the given file is not a directory,
      * the parent directory is flushed.
