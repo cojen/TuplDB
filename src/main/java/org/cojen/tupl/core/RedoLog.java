@@ -28,7 +28,6 @@ import java.io.OutputStream;
 
 import java.nio.channels.ClosedChannelException;
 
-import java.util.EnumSet;
 import java.util.TreeMap;
 
 import java.security.GeneralSecurityException;
@@ -43,7 +42,6 @@ import org.cojen.tupl.diag.EventType;
 import org.cojen.tupl.ext.Crypto;
 
 import org.cojen.tupl.io.FileIO;
-import org.cojen.tupl.io.OpenOption;
 
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
@@ -242,7 +240,7 @@ final class RedoLog extends RedoWriter {
             // isn't a good option because an interrupt during a channel operation closes both
             // the channel and the stream. The FileIO object handles interrupts properly,
             // keeping the object open and functional.
-            nextFileIO = FileIO.open(file, EnumSet.of(OpenOption.READ_ONLY), 1);
+            nextFileIO = FileIO.open(file, null, 1);
 
             if (mCrypto == null) {
                 nextOut = fout;
