@@ -390,7 +390,7 @@ final class PageOps extends DirectPageOps {
     static long p_transfer(byte[] array) {
         int length = array.length;
         final long pageAddr = p_alloc(length);
-        p_copyFromArray(array, 0, pageAddr, 0, length);
+        p_copy(array, 0, pageAddr, 0, length);
         return pageAddr;
     }
 
@@ -399,7 +399,7 @@ final class PageOps extends DirectPageOps {
      */
     static long p_transferPage(byte[] array, int pageSize) {
         final long pageAddr = p_allocPage(pageSize);
-        p_copyFromArray(array, 0, pageAddr, 0, Math.abs(pageSize));
+        p_copy(array, 0, pageAddr, 0, Math.abs(pageSize));
         return pageAddr;
     }
 
@@ -409,7 +409,7 @@ final class PageOps extends DirectPageOps {
      * @return page with copied data
      */
     static long p_transferArrayToPage(byte[] array, long pageAddr) {
-        p_copyFromArray(array, 0, pageAddr, 0, array.length);
+        p_copy(array, 0, pageAddr, 0, array.length);
         return pageAddr;
     }
 
@@ -417,7 +417,7 @@ final class PageOps extends DirectPageOps {
      * Copies from a page to an array.
      */
     static void p_transferPageToArray(long pageAddr, byte[] array) {
-        p_copyToArray(pageAddr, 0, array, 0, array.length);
+        p_copy(pageAddr, 0, array, 0, array.length);
     }
 
     static int p_ubyteGet(final long pageAddr, int index) {
@@ -671,7 +671,7 @@ final class PageOps extends DirectPageOps {
      * Returns page if it's an array, else copies to given array and returns that.
      */
     static byte[] p_copyIfNotArray(final long pageAddr, byte[] dstArray) {
-        p_copyToArray(pageAddr, 0, dstArray, 0, dstArray.length);
+        p_copy(pageAddr, 0, dstArray, 0, dstArray.length);
         return dstArray;
     }
 
@@ -746,7 +746,7 @@ final class PageOps extends DirectPageOps {
             byte hi = high[highOff + i];
             if (lo != hi) {
                 var mid = new byte[i + 1];
-                p_copyToArray(lowPageAddr, lowOff, mid, 0, i);
+                p_copy(lowPageAddr, lowOff, mid, 0, i);
                 mid[i] = (byte) (((lo & 0xff) + (hi & 0xff) + 1) >> 1);
                 return mid;
             }
@@ -770,7 +770,7 @@ final class PageOps extends DirectPageOps {
             }
         }
         var mid = new byte[lowLen + 1];
-        p_copyToArray(highPageAddr, highOff, mid, 0, mid.length);
+        p_copy(highPageAddr, highOff, mid, 0, mid.length);
         return mid;
     }
 
@@ -782,13 +782,13 @@ final class PageOps extends DirectPageOps {
             byte hi = p_byteGet(highPageAddr, highOff + i);
             if (lo != hi) {
                 var mid = new byte[i + 1];
-                p_copyToArray(lowPageAddr, lowOff, mid, 0, i);
+                p_copy(lowPageAddr, lowOff, mid, 0, i);
                 mid[i] = (byte) (((lo & 0xff) + (hi & 0xff) + 1) >> 1);
                 return mid;
             }
         }
         var mid = new byte[lowLen + 1];
-        p_copyToArray(highPageAddr, highOff, mid, 0, mid.length);
+        p_copy(highPageAddr, highOff, mid, 0, mid.length);
         return mid;
     }
 }

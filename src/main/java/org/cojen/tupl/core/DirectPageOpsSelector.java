@@ -188,18 +188,18 @@ final class DirectPageOpsSelector {
         mm.field("U").invoke("setMemory", pageVar.add(fromIndexVar), lenVar, (byte) 0);
         done.here();
 
-        mm = cm.addMethod(void.class, "p_copyFromArray",
-                          byte[].class, int.class, long.class, int.class, int.class).static_();
+        mm = cm.addMethod(void.class, "p_copy",
+                          byte[].class, int.class, long.class, long.class, int.class).static_();
         mm.field("U").invoke("copyMemory", mm.param(0), mm.field("O").add(mm.param(1)),
                              null, mm.param(2).add(mm.param(3)), mm.param(4));
                       
-        mm = cm.addMethod(void.class, "p_copyToArray",
-                          long.class, int.class, byte[].class, int.class, int.class).static_();
+        mm = cm.addMethod(void.class, "p_copy",
+                          long.class, long.class, byte[].class, int.class, int.class).static_();
         mm.field("U").invoke("copyMemory", null, mm.param(0).add(mm.param(1)),
                              mm.param(2), mm.field("O").add(mm.param(3)), mm.param(4));
 
         mm = cm.addMethod(void.class, "p_copy",
-                          long.class, int.class, long.class, int.class, int.class).static_();
+                          long.class, int.class, long.class, long.class, long.class).static_();
         mm.field("U").invoke("copyMemory", mm.param(0).add(mm.param(1)),
                              mm.param(2).add(mm.param(3)), mm.param(4));
 

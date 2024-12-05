@@ -1169,7 +1169,7 @@ final class StoredPageDb extends PageDb {
 
         try {
             mPageArray.readPage(index, pageAddr, 0, readLen);
-            p_copyToArray(pageAddr, start, buf, offset, length);
+            p_copy(pageAddr, start, buf, offset, length);
         } finally {
             p_delete(pageAddr);
         }

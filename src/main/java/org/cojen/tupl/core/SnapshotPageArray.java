@@ -443,7 +443,7 @@ final class SnapshotPageArray extends PageArray {
                 byte[] page = mPageCopyIndex.load(txn, key);
 
                 if (page != null) {
-                    p_copyFromArray(page, 0, dstAddr, offset, length);
+                    p_copy(page, 0, dstAddr, offset, length);
                 } else {
                     // TODO: Check the cache first as an optimization?
                     mRawPageArray.readPage(index, dstAddr, offset, length);

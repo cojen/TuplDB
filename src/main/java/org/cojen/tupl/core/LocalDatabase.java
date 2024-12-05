@@ -5489,7 +5489,7 @@ public final class LocalDatabase implements Database {
                             Node node = allocDirtyFragmentNode();
                             try {
                                 encodeInt48LE(newValue, poffset, node.id());
-                                p_copyFromArray(value, voffset, node.mPageAddr, 0, pageSize);
+                                p_copy(value, voffset, node.mPageAddr, 0, pageSize);
                                 if (pageCount == 1) {
                                     break;
                                 }
@@ -5564,9 +5564,9 @@ public final class LocalDatabase implements Database {
                                     encodeInt48LE(newValue, poffset, node.id());
                                     long pageAddr = node.mPageAddr;
                                     if (pageCount > 1) {
-                                        p_copyFromArray(value, voffset, pageAddr, 0, pageSize);
+                                        p_copy(value, voffset, pageAddr, 0, pageSize);
                                     } else {
-                                        p_copyFromArray(value, voffset, pageAddr, 0, remainder);
+                                        p_copy(value, voffset, pageAddr, 0, remainder);
                                         // Zero fill the rest, making it easier to extend later.
                                         p_clear(pageAddr, remainder, pageSize());
                                         break;
@@ -5695,7 +5695,7 @@ public final class LocalDatabase implements Database {
                 int len = (int) Math.min(levelCap, vlength);
                 if (level <= 0) {
                     long childPageAddr = childNode.mPageAddr;
-                    p_copyFromArray(value, voffset, childPageAddr, 0, len);
+                    p_copy(value, voffset, childPageAddr, 0, len);
                     // Zero fill the rest, making it easier to extend later.
                     p_clear(childPageAddr, len, pageSize());
                     childNode.releaseExclusive();
@@ -5817,7 +5817,7 @@ public final class LocalDatabase implements Database {
             off += 2;
             len -= 2;
             if (value != null) {
-                p_copyToArray(fragmentedAddr, off, value, vOff, inLen);
+                p_copy(fragmentedAddr, off, value, vOff, inLen);
             }
             off += inLen;
             len -= inLen;
@@ -5844,7 +5844,7 @@ public final class LocalDatabase implements Database {
                         long pageAddr = node.mPageAddr;
                         pLen = Math.min((int) vLen, pageSize());
                         if (value != null) {
-                            p_copyToArray(pageAddr, 0, value, vOff, pLen);
+                            p_copy(pageAddr, 0, value, vOff, pLen);
                         }
                     } finally {
                         node.releaseShared();
@@ -5900,7 +5900,7 @@ public final class LocalDatabase implements Database {
                     pagesRead++;
                     if (level <= 0) {
                         if (value != null) {
-                            p_copyToArray(childNode.mPageAddr, 0, value, voffset, len);
+                            p_copy(childNode.mPageAddr, 0, value, voffset, len);
                         }
                         childNode.releaseShared();
                     } else {

@@ -55,7 +55,7 @@ final class FragmentedTrash {
         throws IOException
     {
         var payload = new byte[valueLen];
-        p_copyToArray(entryAddr, valueStart, payload, 0, valueLen);
+        p_copy(entryAddr, valueStart, payload, 0, valueLen);
 
         BTreeCursor cursor = prepareEntry(trash, txn.txnId());
         byte[] key = cursor.key();
@@ -87,7 +87,7 @@ final class FragmentedTrash {
             // Cannot re-use existing temporary array.
             payload = new byte[payloadLen];
         }
-        p_copyToArray(entryAddr, keyStart, payload, 0, keyLen);
+        p_copy(entryAddr, keyStart, payload, 0, keyLen);
         arraycopy(key, 8, payload, keyLen, tidLen);
 
         txn.pushUndeleteFragmented(indexId, payload, 0, payloadLen);
@@ -149,7 +149,7 @@ final class FragmentedTrash {
             int tidLen = undoEntry.length - tidLoc;
             trashKey = new byte[8 + tidLen];
             encodeLongBE(trashKey, 0, txnId);
-            p_copyToArray(undo, tidLoc, trashKey, 8, tidLen);
+            p_copy(undo, tidLoc, trashKey, 8, tidLen);
         } finally {
             p_delete(undo);
         }

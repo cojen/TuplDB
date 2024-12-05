@@ -407,7 +407,7 @@ final class BTreeValue {
                         bLen = 0;
                     } else {
                         bLen = Math.min(vLen - pos, bLen);
-                        p_copyToArray(pageAddr, (int) (loc + pos), b, bOff, (int) bLen);
+                        p_copy(pageAddr, (int) (loc + pos), b, bOff, (int) bLen);
                     }
                     return bLen;
 
@@ -487,7 +487,7 @@ final class BTreeValue {
                             } catch (Throwable e) {
                                 throw releaseExclusive(node, e);
                             }
-                            p_copyFromArray(b, bOff, pageAddr, iLoc, iLen);
+                            p_copy(b, bOff, pageAddr, iLoc, iLen);
                             return 0;
                         } else if (pos == 0 && bOff == 0 && bLen == b.length) {
                             // Writing over the entire value and extending.
@@ -518,7 +518,7 @@ final class BTreeValue {
                             } catch (Throwable e) {
                                 throw releaseExclusive(node, e);
                             }
-                            p_copyFromArray(b, bOff, pageAddr, iLoc, iLen);
+                            p_copy(b, bOff, pageAddr, iLoc, iLen);
                             pos = vLen;
                             bOff += iLen;
                             bLen -= iLen;
@@ -542,7 +542,7 @@ final class BTreeValue {
                     }
 
                     oldValue = new byte[vLen];
-                    p_copyToArray(pageAddr, loc, oldValue, 0, oldValue.length);
+                    p_copy(pageAddr, loc, oldValue, 0, oldValue.length);
 
                     node.deleteLeafEntry(nodePos);
                 } catch (Throwable e) {
@@ -615,10 +615,10 @@ final class BTreeValue {
                         // Not reading any inline content.
                         pos -= fInlineLen;
                     } else if (bLen <= amt) {
-                        p_copyToArray(pageAddr, (int) (loc + pos), b, bOff, (int) bLen);
+                        p_copy(pageAddr, (int) (loc + pos), b, bOff, (int) bLen);
                         return bLen;
                     } else {
-                        p_copyToArray(pageAddr, (int) (loc + pos), b, bOff, amt);
+                        p_copy(pageAddr, (int) (loc + pos), b, bOff, amt);
                         bLen -= amt;
                         bOff += amt;
                         pos = 0;
@@ -642,7 +642,7 @@ final class BTreeValue {
                             Arrays.fill(b, bOff, bOff + amt, (byte) 0);
                         } else {
                             final Node fNode = db.nodeMapLoadFragment(fNodeId);
-                            p_copyToArray(fNode.mPageAddr, fNodeOff, b, bOff, amt);
+                            p_copy(fNode.mPageAddr, fNodeOff, b, bOff, amt);
                             fNode.releaseShared();
                         }
                         bLen -= amt;
@@ -924,7 +924,7 @@ final class BTreeValue {
                                 txn.pushUnwrite(cursor.mTree.mId, cursor.mKey, pos,
                                                 pageAddr, iLoc, iLen);
                             }
-                            p_copyFromArray(b, bOff, pageAddr, iLoc, iLen);
+                            p_copy(b, bOff, pageAddr, iLoc, iLen);
                             return 0;
                         }
                         // Write just the inline region, and then never touch it again if
@@ -936,7 +936,7 @@ final class BTreeValue {
                         } catch (Throwable e) {
                             throw releaseExclusive(node, e);
                         }
-                        p_copyFromArray(b, bOff, pageAddr, iLoc, iLen);
+                        p_copy(b, bOff, pageAddr, iLoc, iLen);
                         bLen -= amt;
                         bOff += amt;
                         pos = fInlineLen;
@@ -1127,7 +1127,7 @@ final class BTreeValue {
                                 // Now write to the new page, zero-filling the gaps.
                                 var fNodePageAddr = fNode.mPageAddr;
                                 p_clear(fNodePageAddr, 0, fNodeOff);
-                                p_copyFromArray(b, bOff, fNodePageAddr, fNodeOff, amt);
+                                p_copy(b, bOff, fNodePageAddr, fNodeOff, amt);
                                 p_clear(fNodePageAddr, fNodeOff + amt, pageSize);
                             } finally {
                                 fNode.releaseExclusive();
@@ -1152,7 +1152,7 @@ final class BTreeValue {
                                 if (db.markFragmentDirty(fNode)) {
                                     p_int48PutLE(pageAddr, loc, fNode.id());
                                 }
-                                p_copyFromArray(b, bOff, fNode.mPageAddr, fNodeOff, amt);
+                                p_copy(b, bOff, fNode.mPageAddr, fNodeOff, amt);
                             } finally {
                                 fNode.releaseExclusive();
                             }
@@ -1219,7 +1219,7 @@ final class BTreeValue {
                         throw e;
                     }
                     if (level <= 0) {
-                        p_copyToArray(childNode.mPageAddr, (int) ppos, b, bOff, len);
+                        p_copy(childNode.mPageAddr, (int) ppos, b, bOff, len);
                         childNode.releaseShared();
                         if (bLen <= 0) {
                             inode.releaseShared();
@@ -1359,7 +1359,7 @@ final class BTreeValue {
                         p_int48PutLE(pageAddr, poffset, childNode.id());
                     }
 
-                    p_copyFromArray(b, bOff, childNode.mPageAddr, (int) ppos, len);
+                    p_copy(b, bOff, childNode.mPageAddr, (int) ppos, len);
                     childNode.releaseExclusive();
 
                     if (bLen <= 0) {
@@ -1668,12 +1668,12 @@ final class BTreeValue {
             // Copy the length field.
             int srcLoc = fHeaderLoc + 1;
             int fieldLen = skipFragmentedLengthField(0, fHeader);
-            p_copyToArray(pageAddr, srcLoc, newValue, 1, fieldLen);
+            p_copy(pageAddr, srcLoc, newValue, 1, fieldLen);
 
             // Copy the rest.
             srcLoc += fieldLen;
             int dstLoc = 1 + fieldLen + igrowth;
-            p_copyToArray(pageAddr, srcLoc, newValue, dstLoc, newValue.length - dstLoc);
+            p_copy(pageAddr, srcLoc, newValue, dstLoc, newValue.length - dstLoc);
 
             // Clear the fragmented bit so that the update method doesn't delete the pages.
             p_bytePut(pageAddr, vHeaderLoc,
@@ -1749,7 +1749,7 @@ final class BTreeValue {
         try {
             final var newValue = new byte[newValueLen];
             final long pageAddr = node.mPageAddr;
-            p_copyToArray(pageAddr, fHeaderLoc, newValue, 0, vLen);
+            p_copy(pageAddr, fHeaderLoc, newValue, 0, vLen);
 
             // Clear the fragmented bit so that the update method doesn't delete the pages.
             p_bytePut(pageAddr, vHeaderLoc,

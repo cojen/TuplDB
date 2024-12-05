@@ -1524,7 +1524,7 @@ final class Node extends Clutch implements DatabaseAccess {
             }
         }
         var key = new byte[keyLen];
-        p_copyToArray(pageAddr, loc, key, 0, keyLen);
+        p_copy(pageAddr, loc, key, 0, keyLen);
         return key;
     }
 
@@ -1540,13 +1540,13 @@ final class Node extends Clutch implements DatabaseAccess {
         if (keyLen >= 0) {
             keyLen++;
             actualKey = new byte[keyLen];
-            p_copyToArray(pageAddr, loc, actualKey, 0, keyLen);
+            p_copy(pageAddr, loc, actualKey, 0, keyLen);
             fullKey = actualKey;
         } else {
             int header = keyLen;
             keyLen = ((keyLen & 0x3f) << 8) | p_ubyteGet(pageAddr, loc++);
             actualKey = new byte[keyLen];
-            p_copyToArray(pageAddr, loc, actualKey, 0, keyLen);
+            p_copy(pageAddr, loc, actualKey, 0, keyLen);
             fullKey = actualKey;
             if ((header & ENTRY_FRAGMENTED) != 0) {
                 fullKey = getDatabase().reconstructKey(pageAddr, loc, keyLen);
@@ -1575,7 +1575,7 @@ final class Node extends Clutch implements DatabaseAccess {
             result = (header & ENTRY_FRAGMENTED) == 0;
         }
         var akey = new byte[keyLen];
-        p_copyToArray(pageAddr, loc, akey, 0, keyLen);
+        p_copy(pageAddr, loc, akey, 0, keyLen);
         akeyRef[0] = akey;
 
         return result;
@@ -1615,7 +1615,7 @@ final class Node extends Clutch implements DatabaseAccess {
             return limitKey;
         } else if ((cmp ^ limitMode) < 0) {
             var key = new byte[keyLen];
-            p_copyToArray(pageAddr, loc, key, 0, keyLen);
+            p_copy(pageAddr, loc, key, 0, keyLen);
             return key;
         } else {
             return null;
@@ -1646,7 +1646,7 @@ final class Node extends Clutch implements DatabaseAccess {
                 }
             }
             key = new byte[keyLen];
-            p_copyToArray(pageAddr, loc, key, 0, keyLen);
+            p_copy(pageAddr, loc, key, 0, keyLen);
         }
 
         return new byte[][] {key, retrieveLeafValueAtLoc(null, pageAddr, loc + keyLen)};
@@ -1692,7 +1692,7 @@ final class Node extends Clutch implements DatabaseAccess {
         int offset = Utils.encodeUnsignedVarInt(expanded, 0, key.length);
         System.arraycopy(key, 0, expanded, offset, key.length);
         offset += key.length;
-        p_copyToArray(pageAddr, valueLoc, expanded, offset, valueLen);
+        p_copy(pageAddr, valueLoc, expanded, offset, valueLen);
 
         return expanded;
     }
@@ -1845,7 +1845,7 @@ final class Node extends Clutch implements DatabaseAccess {
         }
 
         var value = new byte[len];
-        p_copyToArray(pageAddr, loc, value, 0, len);
+        p_copy(pageAddr, loc, value, 0, len);
         return value;
     }
 
@@ -1874,7 +1874,7 @@ final class Node extends Clutch implements DatabaseAccess {
                 }
             }
             key = new byte[keyLen];
-            p_copyToArray(pageAddr, loc, key, 0, keyLen);
+            p_copy(pageAddr, loc, key, 0, keyLen);
         }
 
         loc += keyLen;
@@ -3595,7 +3595,7 @@ final class Node extends Clutch implements DatabaseAccess {
                     // Ensure ghost is replaced.
                     p_bytePut(pageAddr, valueHeaderLoc, 0);
                 } else {
-                    p_copyFromArray(value, 0, pageAddr, loc, valueLen);
+                    p_copy(value, 0, pageAddr, loc, valueLen);
                     if (vfrag != 0) {
                         p_bytePut(pageAddr, valueHeaderLoc,
                                   p_byteGet(pageAddr, valueHeaderLoc) | vfrag);
@@ -4334,9 +4334,9 @@ final class Node extends Clutch implements DatabaseAccess {
     void rootSwap(Node other) {
         int pageSize = pageSize();
         var tempPage = new byte[pageSize];
-        p_copyToArray(mPageAddr, 0, tempPage, 0, pageSize);
+        p_copy(mPageAddr, 0, tempPage, 0, pageSize);
         p_copy(other.mPageAddr, 0, mPageAddr, 0, pageSize);
-        p_copyFromArray(tempPage, 0, other.mPageAddr, 0, pageSize);
+        p_copy(tempPage, 0, other.mPageAddr, 0, pageSize);
     }
 
     private static final int SMALL_KEY_LIMIT = 128;
@@ -4411,7 +4411,7 @@ final class Node extends Clutch implements DatabaseAccess {
             p_bytePut(pageAddr, pageLoc++, 0x80 | (keyLen >> 8));
             p_bytePut(pageAddr, pageLoc++, keyLen);
         }
-        p_copyFromArray(key, 0, pageAddr, pageLoc, keyLen);
+        p_copy(key, 0, pageAddr, pageLoc, keyLen);
 
         return pageLoc + keyLen;
     }
@@ -4425,7 +4425,7 @@ final class Node extends Clutch implements DatabaseAccess {
         final int keyLen = key.length;
         p_bytePut(pageAddr, pageLoc++, (0x80 | ENTRY_FRAGMENTED) | (keyLen >> 8));
         p_bytePut(pageAddr, pageLoc++, keyLen);
-        p_copyFromArray(key, 0, pageAddr, pageLoc, keyLen);
+        p_copy(key, 0, pageAddr, pageLoc, keyLen);
         return pageLoc + keyLen;
     }
 
@@ -4468,7 +4468,7 @@ final class Node extends Clutch implements DatabaseAccess {
     private static int copyToLeafValue(long pageAddr, int vfrag, byte[] value, int vloc) {
         final int vlen = value.length;
         vloc = encodeLeafValueHeader(pageAddr, vfrag, vlen, vloc);
-        p_copyFromArray(value, 0, pageAddr, vloc, vlen);
+        p_copy(value, 0, pageAddr, vloc, vlen);
         return vloc;
     }
 
