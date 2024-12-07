@@ -208,14 +208,14 @@ final class DirectPageOpsSelector {
 
     private static Variable le(Variable v, ByteOrder bo) {
         if (bo != ByteOrder.LITTLE_ENDIAN) {
-            v = v.methodMaker().var(v.boxedType()).invoke("reverseBytes", v);
+            v = v.invoke("reverseBytes", v);
         }
         return v;
     }
 
     private static Variable be(Variable v, ByteOrder bo) {
         if (bo == ByteOrder.LITTLE_ENDIAN) {
-            v = v.methodMaker().var(v.boxedType()).invoke("reverseBytes", v);
+            v = v.invoke("reverseBytes", v);
         }
         return v;
     }
