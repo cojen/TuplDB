@@ -65,8 +65,8 @@ public interface ValueAccessor extends Closeable {
      * @param buf buffer to read into
      * @param off buffer start offset
      * @param len requested amount to read
-     * @return actual amount read, which is less than requested only if the end was reached, or
-     * -1 if the value doesn't exist
+     * @return the actual amount read, which is less than the requested amount only if the end
+     * was reached, or -1 if the value doesn't exist
      * @throws IllegalArgumentException if the position is negative
      * @throws IndexOutOfBoundsException
      * @throws IllegalStateException if closed
