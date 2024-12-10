@@ -34,6 +34,6 @@ public class CursorDirectMappedTest extends CursorTest {
     @Before
     @Override
     public void createTempDb() throws Exception {
-        mDb = newTempDatabase(getClass(), 50_000_000L, OpenMode.DIRECT_MAPPED);
+        mDb = newTempDatabase(getClass(), 50_000_000L, OpenMode.MAPPED);
     }
 }

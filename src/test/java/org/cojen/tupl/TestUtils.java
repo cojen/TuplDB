@@ -78,7 +78,7 @@ public class TestUtils {
         Assert.assertTrue(latch.tryAcquireExclusiveNanos(seconds * 1_000_000_000L));
     }
 
-    public static enum OpenMode {NORMAL, DIRECT, DIRECT_MAPPED}
+    public static enum OpenMode {NORMAL, MAPPED}
 
     public static Database newTempDatabase(Class context) throws IOException {
         return newTempDatabase(context, -1, OpenMode.NORMAL);
@@ -542,7 +542,7 @@ public class TestUtils {
                 config.checkpointRate(checkpointRateMillis, TimeUnit.MILLISECONDS);
             }
 
-            if (mode == OpenMode.DIRECT_MAPPED) {
+            if (mode == OpenMode.MAPPED) {
                 org.junit.Assume.assumeTrue(MappedPageArray.isSupported());
                 int pageSize = 4096;
                 if (cacheSize < 0) {
