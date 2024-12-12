@@ -27,10 +27,10 @@ import org.junit.*;
 
 import org.cojen.tupl.DatabaseConfig;
 
-import org.cojen.tupl.io.JoinedPageArray;
 import org.cojen.tupl.io.MappedPageArray;
 import org.cojen.tupl.io.OpenOption;
 import org.cojen.tupl.io.PageArray;
+import org.cojen.tupl.io.SpilloverPageArray;
 
 import static org.cojen.tupl.TestUtils.*;
 
@@ -39,9 +39,9 @@ import static org.cojen.tupl.TestUtils.*;
  *
  * @author Brian S. O'Neill
  */
-public class CrudJoinedMappedFileTest extends CrudTest {
+public class CrudSpilloverMappedFileTest extends CrudTest {
     public static void main(String[] args) throws Exception {
-        org.junit.runner.JUnitCore.main(CrudJoinedMappedFileTest.class.getName());
+        org.junit.runner.JUnitCore.main(CrudSpilloverMappedFileTest.class.getName());
     }
 
     @Before
@@ -57,7 +57,7 @@ public class CrudJoinedMappedFileTest extends CrudTest {
         var secondFile = new File(newTempBaseFile(getClass()).getPath() + ".db");
         var second = MappedPageArray.factory(pageSize, 100000, secondFile, options);
 
-        Supplier<PageArray> factory = JoinedPageArray.factory(first, joinIndex, second);
+        Supplier<PageArray> factory = SpilloverPageArray.factory(first, joinIndex, second);
         var config = new DatabaseConfig().dataPageArray(factory);
         mDb = newTempDatabase(getClass(), config);
     }
