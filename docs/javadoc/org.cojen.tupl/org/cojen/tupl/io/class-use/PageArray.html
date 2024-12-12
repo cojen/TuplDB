@@ -114,14 +114,14 @@ loadScripts(document, 'script');</script>
 <div class="block">Basic <a href="../PageArray.html" title="class in org.cojen.tupl.io"><code>PageArray</code></a> implementation which accesses a file.</div>
 </div>
 <div class="col-first odd-row-color"><code>class&nbsp;</code></div>
-<div class="col-second odd-row-color"><code><a href="../JoinedPageArray.html" class="type-name-link" title="class in org.cojen.tupl.io">JoinedPageArray</a></code></div>
+<div class="col-second odd-row-color"><code><a href="../MappedPageArray.html" class="type-name-link" title="class in org.cojen.tupl.io">MappedPageArray</a></code></div>
 <div class="col-last odd-row-color">
-<div class="block">Joins <a href="../PageArray.html" title="class in org.cojen.tupl.io"><code>PageArrays</code></a> together in a sequential fashion.</div>
+<div class="block"><a href="../PageArray.html" title="class in org.cojen.tupl.io"><code>PageArray</code></a> implementation which accesses a fixed sized file, fully mapped to memory.</div>
 </div>
 <div class="col-first even-row-color"><code>class&nbsp;</code></div>
-<div class="col-second even-row-color"><code><a href="../MappedPageArray.html" class="type-name-link" title="class in org.cojen.tupl.io">MappedPageArray</a></code></div>
+<div class="col-second even-row-color"><code><a href="../SpilloverPageArray.html" class="type-name-link" title="class in org.cojen.tupl.io">SpilloverPageArray</a></code></div>
 <div class="col-last even-row-color">
-<div class="block"><a href="../PageArray.html" title="class in org.cojen.tupl.io"><code>PageArray</code></a> implementation which accesses a fixed sized file, fully mapped to memory.</div>
+<div class="block">Combines <a href="../PageArray.html" title="class in org.cojen.tupl.io"><code>PageArrays</code></a> together in a sequential fashion.</div>
 </div>
 <div class="col-first odd-row-color"><code>class&nbsp;</code></div>
 <div class="col-second odd-row-color"><code><a href="../StripedPageArray.html" class="type-name-link" title="class in org.cojen.tupl.io">StripedPageArray</a></code></div>
@@ -135,8 +135,8 @@ loadScripts(document, 'script');</script>
 <div class="table-header col-second">Method</div>
 <div class="table-header col-last">Description</div>
 <div class="col-first even-row-color"><code>static <a href="../PageArray.html" title="class in org.cojen.tupl.io">PageArray</a></code></div>
-<div class="col-second even-row-color"><span class="type-name-label">JoinedPageArray.</span><code><a href="../JoinedPageArray.html#join(org.cojen.tupl.io.PageArray,long,org.cojen.tupl.io.PageArray)" class="member-name-link">join</a><wbr>(<a href="../PageArray.html" title="class in org.cojen.tupl.io">PageArray</a>&nbsp;first,
- long&nbsp;joinIndex,
+<div class="col-second even-row-color"><span class="type-name-label">SpilloverPageArray.</span><code><a href="../SpilloverPageArray.html#make(org.cojen.tupl.io.PageArray,long,org.cojen.tupl.io.PageArray)" class="member-name-link">make</a><wbr>(<a href="../PageArray.html" title="class in org.cojen.tupl.io">PageArray</a>&nbsp;first,
+ long&nbsp;spilloverIndex,
  <a href="../PageArray.html" title="class in org.cojen.tupl.io">PageArray</a>&nbsp;second)</code></div>
 <div class="col-last even-row-color">&nbsp;</div>
 </div>
@@ -151,8 +151,8 @@ loadScripts(document, 'script');</script>
  <a href="https://docs.oracle.com/en/java/javase/23/docs/api/java.base/java/util/EnumSet.html" title="class or interface in java.util" class="external-link">EnumSet</a>&lt;<a href="../OpenOption.html" title="enum class in org.cojen.tupl.io">OpenOption</a>&gt;&nbsp;options)</code></div>
 <div class="col-last even-row-color">&nbsp;</div>
 <div class="col-first odd-row-color"><code>static <a href="https://docs.oracle.com/en/java/javase/23/docs/api/java.base/java/util/function/Supplier.html" title="class or interface in java.util.function" class="external-link">Supplier</a><wbr>&lt;<a href="../PageArray.html" title="class in org.cojen.tupl.io">PageArray</a>&gt;</code></div>
-<div class="col-second odd-row-color"><span class="type-name-label">JoinedPageArray.</span><code><a href="../JoinedPageArray.html#factory(java.util.function.Supplier,long,java.util.function.Supplier)" class="member-name-link">factory</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/23/docs/api/java.base/java/util/function/Supplier.html" title="class or interface in java.util.function" class="external-link">Supplier</a>&lt;? extends <a href="../PageArray.html" title="class in org.cojen.tupl.io">PageArray</a>&gt;&nbsp;first,
- long&nbsp;joinIndex,
+<div class="col-second odd-row-color"><span class="type-name-label">SpilloverPageArray.</span><code><a href="../SpilloverPageArray.html#factory(java.util.function.Supplier,long,java.util.function.Supplier)" class="member-name-link">factory</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/23/docs/api/java.base/java/util/function/Supplier.html" title="class or interface in java.util.function" class="external-link">Supplier</a>&lt;? extends <a href="../PageArray.html" title="class in org.cojen.tupl.io">PageArray</a>&gt;&nbsp;first,
+ long&nbsp;spilloverIndex,
  <a href="https://docs.oracle.com/en/java/javase/23/docs/api/java.base/java/util/function/Supplier.html" title="class or interface in java.util.function" class="external-link">Supplier</a>&lt;? extends <a href="../PageArray.html" title="class in org.cojen.tupl.io">PageArray</a>&gt;&nbsp;second)</code></div>
 <div class="col-last odd-row-color">&nbsp;</div>
 <div class="col-first even-row-color"><code>static <a href="https://docs.oracle.com/en/java/javase/23/docs/api/java.base/java/util/function/Supplier.html" title="class or interface in java.util.function" class="external-link">Supplier</a><wbr>&lt;? extends <a href="../PageArray.html" title="class in org.cojen.tupl.io">PageArray</a>&gt;</code></div>
@@ -165,8 +165,8 @@ loadScripts(document, 'script');</script>
 <div class="table-header col-second">Method</div>
 <div class="table-header col-last">Description</div>
 <div class="col-first even-row-color"><code>static <a href="../PageArray.html" title="class in org.cojen.tupl.io">PageArray</a></code></div>
-<div class="col-second even-row-color"><span class="type-name-label">JoinedPageArray.</span><code><a href="../JoinedPageArray.html#join(org.cojen.tupl.io.PageArray,long,org.cojen.tupl.io.PageArray)" class="member-name-link">join</a><wbr>(<a href="../PageArray.html" title="class in org.cojen.tupl.io">PageArray</a>&nbsp;first,
- long&nbsp;joinIndex,
+<div class="col-second even-row-color"><span class="type-name-label">SpilloverPageArray.</span><code><a href="../SpilloverPageArray.html#make(org.cojen.tupl.io.PageArray,long,org.cojen.tupl.io.PageArray)" class="member-name-link">make</a><wbr>(<a href="../PageArray.html" title="class in org.cojen.tupl.io">PageArray</a>&nbsp;first,
+ long&nbsp;spilloverIndex,
  <a href="../PageArray.html" title="class in org.cojen.tupl.io">PageArray</a>&nbsp;second)</code></div>
 <div class="col-last even-row-color">&nbsp;</div>
 </div>
@@ -176,8 +176,8 @@ loadScripts(document, 'script');</script>
 <div class="table-header col-second">Method</div>
 <div class="table-header col-last">Description</div>
 <div class="col-first even-row-color"><code>static <a href="https://docs.oracle.com/en/java/javase/23/docs/api/java.base/java/util/function/Supplier.html" title="class or interface in java.util.function" class="external-link">Supplier</a><wbr>&lt;<a href="../PageArray.html" title="class in org.cojen.tupl.io">PageArray</a>&gt;</code></div>
-<div class="col-second even-row-color"><span class="type-name-label">JoinedPageArray.</span><code><a href="../JoinedPageArray.html#factory(java.util.function.Supplier,long,java.util.function.Supplier)" class="member-name-link">factory</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/23/docs/api/java.base/java/util/function/Supplier.html" title="class or interface in java.util.function" class="external-link">Supplier</a>&lt;? extends <a href="../PageArray.html" title="class in org.cojen.tupl.io">PageArray</a>&gt;&nbsp;first,
- long&nbsp;joinIndex,
+<div class="col-second even-row-color"><span class="type-name-label">SpilloverPageArray.</span><code><a href="../SpilloverPageArray.html#factory(java.util.function.Supplier,long,java.util.function.Supplier)" class="member-name-link">factory</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/23/docs/api/java.base/java/util/function/Supplier.html" title="class or interface in java.util.function" class="external-link">Supplier</a>&lt;? extends <a href="../PageArray.html" title="class in org.cojen.tupl.io">PageArray</a>&gt;&nbsp;first,
+ long&nbsp;spilloverIndex,
  <a href="https://docs.oracle.com/en/java/javase/23/docs/api/java.base/java/util/function/Supplier.html" title="class or interface in java.util.function" class="external-link">Supplier</a>&lt;? extends <a href="../PageArray.html" title="class in org.cojen.tupl.io">PageArray</a>&gt;&nbsp;second)</code></div>
 <div class="col-last even-row-color">&nbsp;</div>
 </div>
