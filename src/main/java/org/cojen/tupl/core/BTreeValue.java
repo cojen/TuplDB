@@ -36,7 +36,8 @@ import static org.cojen.tupl.core.Utils.*;
  */
 final class BTreeValue {
     // Op ordinals are relevant.
-    static final int OP_LENGTH = 0, OP_READ = 1, OP_CLEAR = 2, OP_SET_LENGTH = 3, OP_WRITE = 4;
+    static final int OP_LENGTH = 0, OP_READ = 1, OP_READ_TO_GAP = 2, OP_SKIP_GAP = 3,
+        OP_CLEAR = 4, OP_SET_LENGTH = 5, OP_WRITE = 6;
 
     private BTreeValue() {}
 
@@ -307,8 +308,8 @@ final class BTreeValue {
      * @param cursor never used by read op (OP_LENGTH and OP_READ)
      * @param frame latched shared for read op, exclusive for write op; released only if an
      * exception is thrown
-     * @param b ignored by OP_LENGTH; OP_SET_LENGTH must pass EMPTY_BYTES
-     * @return applicable only to OP_LENGTH and OP_READ
+     * @param b ignored by OP_LENGTH and OP_SKIP_GAP; OP_SET_LENGTH must pass EMPTY_BYTES
+     * @return applicable to OP_LENGTH, OP_READ, OP_READ_TO_GAP, and OP_SKIP_GAP
      */
     @SuppressWarnings("fallthrough")
     static long action(LocalTransaction txn, BTreeCursor cursor, CursorFrame frame,
@@ -323,7 +324,7 @@ final class BTreeValue {
                 // Value doesn't exist.
 
                 if (op <= OP_CLEAR) {
-                    // Handle OP_LENGTH, OP_READ, and OP_CLEAR.
+                    // Handle OP_LENGTH, OP_READ, OP_READ_TO_GAP, OP_SKIP_GAP, and OP_CLEAR.
                     return -1;
                 }
 
@@ -380,7 +381,7 @@ final class BTreeValue {
                     } else {
                         // ghost
                         if (op <= OP_CLEAR) {
-                            // Handle OP_LENGTH, OP_READ, and OP_CLEAR.
+                            // Handle OP_LENGTH, OP_READ, OP_READ_TO_GAP, and OP_CLEAR.
                             return -1;
                         }
 
@@ -402,7 +403,7 @@ final class BTreeValue {
                 case OP_LENGTH: default:
                     return vLen;
 
-                case OP_READ:
+                case OP_READ: case OP_READ_TO_GAP:
                     if (bLen <= 0 || pos >= vLen) {
                         bLen = 0;
                     } else {
@@ -410,6 +411,9 @@ final class BTreeValue {
                         p_copy(pageAddr, (int) (loc + pos), b, bOff, (int) bLen);
                     }
                     return bLen;
+
+                case OP_SKIP_GAP:
+                    return 0;
 
                 case OP_CLEAR:
                     if (pos < vLen) {
@@ -586,7 +590,7 @@ final class BTreeValue {
                 case 3 -> {
                     fLen = p_longGetLE(pageAddr, loc);
                     if (fLen < 0) {
-                        node.release(op > OP_READ);
+                        node.release(op >= OP_CLEAR);
                         throw new LargeValueException(fLen);
                     }
                 }
@@ -598,13 +602,13 @@ final class BTreeValue {
             case OP_LENGTH: default:
                 return fLen;
 
-            case OP_READ: try {
+            case OP_READ: case OP_READ_TO_GAP: try {
                 if (bLen <= 0 || pos >= fLen) {
                     return 0;
                 }
 
                 bLen = Math.min(fLen - pos, bLen);
-                final int total = (int) bLen;
+                int total = (int) bLen;
 
                 if ((fHeader & 0x02) != 0) {
                     // Inline content.
@@ -626,11 +630,10 @@ final class BTreeValue {
                     loc += fInlineLen;
                 }
 
-                final LocalDatabase db = node.getDatabase();
-
                 if ((fHeader & 0x01) == 0) {
                     // Direct pointers.
                     final int ipos = (int) pos;
+                    final LocalDatabase db = node.getDatabase();
                     final int pageSize = db.pageSize();
                     loc += (ipos / pageSize) * 6;
                     int fNodeOff = ipos % pageSize;
@@ -639,7 +642,12 @@ final class BTreeValue {
                         final long fNodeId = p_uint48GetLE(pageAddr, loc);
                         if (fNodeId == 0) {
                             // Reading a sparse value.
-                            Arrays.fill(b, bOff, bOff + amt, (byte) 0);
+                            if (op == OP_READ) {
+                                Arrays.fill(b, bOff, bOff + amt, (byte) 0);
+                            } else {
+                                // OP_READ_TO_GAP
+                                return total - bLen;
+                            }
                         } else {
                             final Node fNode = db.nodeMapLoadFragment(fNodeId);
                             p_copy(fNode.mPageAddr, fNodeOff, b, bOff, amt);
@@ -660,17 +668,71 @@ final class BTreeValue {
                 final long inodeId = p_uint48GetLE(pageAddr, loc);
                 if (inodeId == 0) {
                     // Reading a sparse value.
-                    Arrays.fill(b, bOff, bOff + (int) bLen, (byte) 0);
+                    if (op == OP_READ) {
+                        Arrays.fill(b, bOff, bOff + (int) bLen, (byte) 0);
+                    } else {
+                        // OP_READ_TO_GAP
+                        return total - bLen;
+                    }
                 } else {
-                    final int levels = db.calculateInodeLevels(fLen);
-                    final Node inode = db.nodeMapLoadFragment(inodeId);
-                    readMultilevelFragments(pos, levels, inode, b, bOff, (int) bLen);
+                    LocalDatabase db = node.getDatabase();
+                    int levels = db.calculateInodeLevels(fLen);
+                    Node inode = db.nodeMapLoadFragment(inodeId);
+                    total -= readMultilevelFragments(op, pos, levels, inode, b, bOff, (int) bLen);
                 }
 
                 return total;
             } catch (Throwable e) {
                 node.releaseShared();
                 throw e;
+            }
+
+            case OP_SKIP_GAP: {
+                long max = fLen - pos;
+
+                if (max <= 0) {
+                    return 0;
+                }
+
+                if ((fHeader & 0x02) != 0) {
+                    // Inline content.
+                    final int fInlineLen = p_ushortGetLE(pageAddr, loc);
+                    if ((pos -= fInlineLen) < 0) {
+                        // Positioned within the inline content area, so no gap.
+                        return 0;
+                    }
+                    loc = loc + 2 + fInlineLen;
+                }
+
+                if ((fHeader & 0x01) == 0) {
+                    // Direct pointers.
+                    final int pageSize = node.getDatabase().pageSize();
+                    loc += (((int) pos) / pageSize) * 6;
+                    long total = 0;
+                    while (p_uint48GetLE(pageAddr, loc) == 0) {
+                        // Skipping a sparse value gap.
+                        loc += 6;
+                        total += pageSize;
+                        if (total >= max) {
+                            return max;
+                        }
+                    }
+                    return total;
+                }
+
+                // Indirect pointers.
+
+                final long inodeId = p_uint48GetLE(pageAddr, loc);
+                if (inodeId == 0) {
+                    // Skipping a sparse value gap (the whole thing).
+                    return max;
+                } else {
+                    LocalDatabase db = node.getDatabase();
+                    int levels = db.calculateInodeLevels(fLen);
+                    Node inode = db.nodeMapLoadFragment(inodeId);
+                    long remaining = skipMultilevelFragmentGap(pos, levels, inode, max);
+                    return max - (remaining & ~(1L << 63));
+                }
             }
 
             case OP_CLEAR: case OP_SET_LENGTH: clearOrTruncate: {
@@ -1180,9 +1242,10 @@ final class BTreeValue {
      * @param inode shared latched parent inode; always released by this method
      * @param b slice of complete value being reconstructed
      * @param bLen must be more than zero
+     * @return remaining length (is always zero for OP_READ, can be non-zero for OP_READ_TO_GAP)
      */
-    private static void readMultilevelFragments(long pos, int level, Node inode,
-                                                final byte[] b, int bOff, int bLen)
+    private static int readMultilevelFragments(int op, long pos, int level, Node inode,
+                                               final byte[] b, int bOff, int bLen)
         throws IOException
     {
         LocalDatabase db = inode.getDatabase();
@@ -1205,10 +1268,16 @@ final class BTreeValue {
 
                 if (childNodeId == 0) {
                     // Reading a sparse value.
-                    Arrays.fill(b, bOff, bOff + len, (byte) 0);
-                    if (bLen <= 0) {
+                    if (op == OP_READ) {
+                        Arrays.fill(b, bOff, bOff + len, (byte) 0);
+                        if (bLen <= 0) {
+                            inode.releaseShared();
+                            return 0;
+                        }
+                    } else {
+                        // OP_READ_TO_GAP
                         inode.releaseShared();
-                        return;
+                        return bLen + len;
                     }
                 } else {
                     Node childNode;
@@ -1223,7 +1292,7 @@ final class BTreeValue {
                         childNode.releaseShared();
                         if (bLen <= 0) {
                             inode.releaseShared();
-                            return;
+                            return 0;
                         }
                     } else {
                         if (bLen <= 0) {
@@ -1234,11 +1303,16 @@ final class BTreeValue {
                             bLen = len;
                             continue start;
                         }
+                        int amt;
                         try {
-                            readMultilevelFragments(ppos, level, childNode, b, bOff, len);
+                            amt = readMultilevelFragments(op, ppos, level, childNode, b, bOff, len);
                         } catch (Throwable e) {
                             inode.releaseShared();
                             throw e;
+                        }
+                        if (amt != 0) {
+                            inode.releaseShared();
+                            return bLen + amt;
                         }
                     }
                 }
@@ -1249,6 +1323,81 @@ final class BTreeValue {
                 // Remaining reads begin at the start of the page.
                 ppos = 0;
             }
+        }
+    }
+
+    /**
+     * @param pos value position being read
+     * @param level inode level; at least 1
+     * @param inode shared latched parent inode; always released by this method
+     * @param max max possible length
+     * @return remaining length; bit 63 is set if a non-gap was found
+     */
+    private static long skipMultilevelFragmentGap(long pos, int level, Node inode, long max)
+        throws IOException
+    {
+        LocalDatabase db = inode.getDatabase();
+
+        long pageAddr = inode.mPageAddr;
+        level--;
+        long levelCap = db.levelCap(level);
+
+        int poffset = ((int) (pos / levelCap)) * 6;
+
+        // Handle a possible partial read from the first page.
+        long ppos = pos % levelCap;
+        long levelMax = levelCap - ppos;
+
+        while (true) {
+            long childNodeId = p_uint48GetLE(pageAddr, poffset);
+
+            if (childNodeId == 0) {
+                // Skipping a sparse value gap.
+                max -= levelMax;
+                if (max <= 0) {
+                    inode.releaseShared();
+                    return 0;
+                }
+            } else {
+                if (level <= 0) {
+                    inode.releaseShared();
+                    return max | (1L << 63);
+                }
+
+                Node childNode;
+                try {
+                    childNode = db.nodeMapLoadFragment(childNodeId);
+                } catch (Throwable e) {
+                    inode.releaseShared();
+                    throw e;
+                }
+
+                long levelRemaining;
+                try {
+                    levelRemaining = skipMultilevelFragmentGap(ppos, level, childNode, levelMax);
+                } catch (Throwable e) {
+                    inode.releaseShared();
+                    throw e;
+                }
+
+                max -= (levelMax - (levelRemaining & ~(1L << 63)));
+
+                if (max <= 0) {
+                    inode.releaseShared();
+                    return levelRemaining & (1L << 63);
+                }
+
+                if (levelRemaining < 0) {
+                    inode.releaseShared();
+                    return max | (1L << 63);
+                }
+            }
+
+            poffset += 6;
+
+            // Remaining reads begin at the start of the page.
+            ppos = 0;
+            levelMax = levelCap;
         }
     }
 

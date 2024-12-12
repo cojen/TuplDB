@@ -4387,6 +4387,39 @@ public class BTreeCursor extends CoreValueAccessor implements Cursor {
     }
 
     @Override
+    protected final int doValueReadToGap(long pos, byte[] buf, int off, int len)
+        throws IOException
+    {
+        CursorFrame frame;
+        try {
+            frame = frameSharedNotSplit();
+        } catch (IllegalStateException e) {
+            valueCheckOpen();
+            throw e;
+        }
+
+        long result = BTreeValue.action
+            (null, this, frame, BTreeValue.OP_READ_TO_GAP, pos, buf, off, len);
+        frame.mNode.releaseShared();
+        return (int) result;
+    }
+
+    @Override
+    protected final long doValueSkipGap(long pos) throws IOException {
+        CursorFrame frame;
+        try {
+            frame = frameSharedNotSplit();
+        } catch (IllegalStateException e) {
+            valueCheckOpen();
+            throw e;
+        }
+
+        long result = BTreeValue.action(null, this, frame, BTreeValue.OP_SKIP_GAP, pos, null, 0, 0);
+        frame.mNode.releaseShared();
+        return result;
+    }
+
+    @Override
     protected final void doValueWrite(long pos, byte[] buf, int off, int len) throws IOException {
         try {
             doValueModify(BTreeValue.OP_WRITE, pos, buf, off, len);

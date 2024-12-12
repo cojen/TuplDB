@@ -38,6 +38,24 @@ public abstract class CoreValueAccessor implements ValueAccessor {
         return doValueRead(pos, buf, off, len);
     }
 
+    public final int valueReadToGap(long pos, byte[] buf, int off, int len) throws IOException {
+        if (pos < 0) {
+            throw new IllegalArgumentException();
+        }
+        boundsCheck(buf, off, len);
+        return doValueReadToGap(pos, buf, off, len);
+    }
+
+    /**
+     * @return amount skipped
+     */
+    public final long valueSkipGap(long pos) throws IOException {
+        if (pos < 0) {
+            throw new IllegalArgumentException();
+        }
+        return doValueSkipGap(pos);
+    }
+
     @Override
     public final void valueWrite(long pos, byte[] buf, int off, int len) throws IOException {
         if (pos < 0) {
@@ -84,6 +102,11 @@ public abstract class CoreValueAccessor implements ValueAccessor {
     }
 
     protected abstract int doValueRead(long pos, byte[] buf, int off, int len) throws IOException;
+
+    protected abstract int doValueReadToGap(long pos, byte[] buf, int off, int len)
+        throws IOException;
+
+    protected abstract long doValueSkipGap(long pos) throws IOException;
 
     protected abstract void doValueWrite(long pos, byte[] buf, int off, int len) throws IOException;
 
