@@ -5298,25 +5298,23 @@ public class BTreeCursor extends CoreValueAccessor implements Cursor {
         // If checksums are enabled, then page checksum verification is performed as a side
         // effect. For simplicity, all values are accessed, even those which aren't fragmented.
 
-        // TODO: If the fragmented value is very large and sparse, then scanning over the value
-        // in this fashion is very slow. Need to somehow skip over the gaps.
-
         int pageSize = pageSize();
         var buf = new byte[1];
 
         while (true) {
-            for (long pos = 0, end = valueLength() - 1;;) {
-                if (doValueRead(pos, buf, 0, 1) <= 0) {
-                    break;
-                }
-                if (pos == end) {
-                    break;
-                }
-                pos += pageSize;
-                if (pos > end) {
-                    // Make sure the last page is accessed if the value has inline content,
-                    // although the access might be redundant.
-                    pos = end;
+            for (long pos = 0;;) {
+                int amt = doValueReadToGap(pos, buf, 0, 1);
+                if (amt > 0) {
+                    pos += pageSize;
+                } else {
+                    if (amt < 0) {
+                        break;
+                    }
+                    long skipped = doValueSkipGap(pos);
+                    if (skipped <= 0) {
+                        break;
+                    }
+                    pos += skipped;
                 }
             }
 

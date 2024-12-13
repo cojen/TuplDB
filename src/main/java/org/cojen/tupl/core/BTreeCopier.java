@@ -175,8 +175,7 @@ final class BTreeCopier extends BTreeSeparator implements Supplier<byte[]> {
             try {
                 while (true) {
                     int amount = (int) Math.min(buf.length, (end - start));
-                    // FIXME: Sparse values become dense! Need to skip gaps. Also see
-                    // BTreeCursor.verifyLargeValues, which needs to do this too.
+                    // FIXME: Sparse values become dense! Need to skip gaps.
                     int actual = source.valueRead(start, buf, 0, amount);
                     if (actual < amount) {
                         throw new IOException("Value isn't fully copied");
