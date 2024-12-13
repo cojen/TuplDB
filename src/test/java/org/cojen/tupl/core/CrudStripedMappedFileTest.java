@@ -52,7 +52,7 @@ public class CrudStripedMappedFileTest extends CrudTest {
         for (int i=0; i<stripes.length; i++) {
             var file = new File(newTempBaseFile(getClass()).getPath() + ".db");
             stripes[i] = MappedPageArray.factory
-                (pageSize, 20000, file, EnumSet.of(OpenOption.CREATE, OpenOption.RANDOM_ACCESS));
+                (pageSize, 40000, file, EnumSet.of(OpenOption.CREATE, OpenOption.RANDOM_ACCESS));
         }
 
         @SuppressWarnings("unchecked")
