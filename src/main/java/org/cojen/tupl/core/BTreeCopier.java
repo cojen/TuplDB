@@ -174,16 +174,23 @@ final class BTreeCopier extends BTreeSeparator implements Supplier<byte[]> {
 
             try {
                 while (true) {
-                    int amount = (int) Math.min(buf.length, (end - start));
-                    // FIXME: Sparse values become dense! Need to skip gaps.
-                    int actual = source.valueRead(start, buf, 0, amount);
-                    if (actual < amount) {
-                        throw new IOException("Value isn't fully copied");
-                    }
-                    target.valueWrite(start, buf, 0, actual);
-                    start += actual;
+                    int length = (int) Math.min(buf.length, (end - start));
+                    int amt = source.valueReadToGap(start, buf, 0, length);
+                    target.valueWrite(start, buf, 0, amt);
+                    start += amt;
                     if (start >= end) {
                         break;
+                    }
+                    if (amt < length) {
+                        // Skipped amount can be past the target end, but this is harmless.
+                        long skipped = source.valueSkipGap(start);
+                        if (skipped <= 0) {
+                            throw new IOException("Value isn't fully copied");
+                        }
+                        start += skipped;
+                        if (start >= end) {
+                            break;
+                        }
                     }
 
                     int spawnCount = (int) cSpawnCountHandle.getOpaque(this);

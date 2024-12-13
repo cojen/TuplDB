@@ -706,12 +706,18 @@ final class BTreeValue {
 
                 if ((fHeader & 0x01) == 0) {
                     // Direct pointers.
+                    final int ipos = (int) pos;
                     final int pageSize = node.getDatabase().pageSize();
-                    loc += (((int) pos) / pageSize) * 6;
+                    loc += (ipos / pageSize) * 6;
                     long total = 0;
                     while (p_uint48GetLE(pageAddr, loc) == 0) {
                         // Skipping a sparse value gap.
                         loc += 6;
+                        if (total == 0) {
+                            // First position might not be at the start of the page, so apply a
+                            // correction.
+                            total -= ipos % pageSize;
+                        }
                         total += pageSize;
                         if (total >= max) {
                             return max;

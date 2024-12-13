@@ -126,8 +126,8 @@ public class ValueReadToGapTest {
             assertTrue(Arrays.equals("hello".getBytes(), 0, 5, buf, 1, 6));
 
             assertEquals(0, c.valueSkipGap(0));
-            assertEquals(((25000/ 4096) - 1) * 4096, c.valueSkipGap(1000));
-            assertEquals(((25000/ 4096) - 2) * 4096, c.valueSkipGap(5000));
+            assertEquals(20328, c.valueSkipGap(1000));
+            assertEquals(20328 - 4000, c.valueSkipGap(5000));
             assertEquals(0, c.valueSkipGap(25000));
             assertEquals(20000, c.valueSkipGap(30000));
         }
