@@ -19,7 +19,11 @@ package org.cojen.tupl.core;
 
 import java.io.IOException;
 
+import java.nio.channels.ClosedChannelException;
+
 import java.security.GeneralSecurityException;
+
+import java.util.function.Supplier;
 
 import org.cojen.tupl.CorruptDatabaseException;
 
@@ -28,18 +32,31 @@ import org.cojen.tupl.ext.Crypto;
 import org.cojen.tupl.io.PageArray;
 import org.cojen.tupl.io.Utils;
 
+import org.cojen.tupl.util.LocalPool;
+
 /**
  * Wraps a PageArray to apply encryption operations on all pages. Is constructed by {@link
  * StoredPageDb} when encryption is enabled via {@link DatabaseConfig#encrypt}.
  *
  * @author Brian S O'Neill
  */
-final class CryptoPageArray extends TransformedPageArray {
+final class CryptoPageArray extends TransformedPageArray implements Supplier<Long> {
     private final Crypto mCrypto;
+    private final LocalPool<Long> mPagePool;
 
     CryptoPageArray(PageArray source, Crypto crypto) {
         super(source);
         mCrypto = crypto;
+        mPagePool = new LocalPool<>(this, -4);
+    }
+
+    // Required by Supplier.
+    @Override
+    public Long get() {
+        if (isClosed()) {
+            throw Utils.rethrow(new ClosedChannelException());
+        }
+        return PageOps.p_allocPage(mSource.directPageSize());
     }
 
     @Override
@@ -94,32 +111,32 @@ final class CryptoPageArray extends TransformedPageArray {
 
     @Override
     public void readPage(long index, long dstAddr, int offset, int length) throws IOException {
-        int pageSize = pageSize();
-        if (offset == 0 && length == pageSize) {
+        if (offset == 0 && length == pageSize()) {
             readPage(index, dstAddr);
             return;
         }
 
-        long page = PageOps.p_allocPage(mSource.directPageSize());
+        var entry = mPagePool.access();
         try {
-            readPage(index, page);
-            PageOps.p_copy(page, 0, dstAddr, offset, length);
+            long pageAddr = entry.get();
+            readPage(index, pageAddr);
+            PageOps.p_copy(pageAddr, 0, dstAddr, offset, length);
         } finally {
-            PageOps.p_delete(page);
+            entry.release();
         }
     }
 
     @Override
     public void writePage(long index, long srcAddr, int offset) throws IOException {
         try {
-            int pageSize = pageSize();
-            // Unknown if source contents can be destroyed, so create a new one.
-            long encrypted = PageOps.p_allocPage(mSource.directPageSize());
+            // It's unknown if the source contents can be destroyed, so copy it.
+            var entry = mPagePool.access();
             try {
-                mCrypto.encryptPage(index, pageSize, srcAddr, offset, encrypted, 0);
-                mSource.writePage(index, encrypted, 0);
+                long encryptedAddr = entry.get();
+                mCrypto.encryptPage(index, pageSize(), srcAddr, offset, encryptedAddr, 0);
+                mSource.writePage(index, encryptedAddr, 0);
             } finally {
-                PageOps.p_delete(encrypted);
+                entry.release();
             }
         } catch (GeneralSecurityException e) {
             throw new CorruptDatabaseException(e);
@@ -161,6 +178,10 @@ final class CryptoPageArray extends TransformedPageArray {
 
     @Override
     public void close(Throwable cause) throws IOException {
-        mSource.close(cause);
+        try {
+            mSource.close(cause);
+        } finally {
+            mPagePool.clear(PageOps::p_delete);
+        }
     }
 }
