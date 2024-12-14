@@ -186,6 +186,11 @@ final class SnapshotPageArray extends PageArray {
         mSource.close(cause);
     }
 
+    @Override
+    public boolean isClosed() {
+        return mSource.isClosed();
+    }
+
     /**
      * Supports writing a snapshot of the array, while still permitting
      * concurrent access. Snapshot data is not a valid array file. It must be

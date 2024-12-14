@@ -260,6 +260,16 @@ public class StripedPageArray extends PageArray {
         }
     }
 
+    @Override
+    public boolean isClosed() {
+        for (PageArray pa : mSources) {
+            if (pa.isClosed()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     private static class Syncer implements Runnable {
         private final PageArray mArray;
 

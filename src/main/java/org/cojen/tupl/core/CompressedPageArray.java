@@ -23,6 +23,8 @@ import java.io.OutputStream;
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
 
+import java.nio.channels.ClosedChannelException;
+
 import java.util.function.Supplier;
 
 import org.cojen.tupl.Cursor;
@@ -62,8 +64,8 @@ final class CompressedPageArray extends PageArray implements Supplier<PageCompre
     // Required by Supplier.
     @Override
     public PageCompressor get() {
-        if (mDatabase.isClosed()) {
-            throw new IllegalStateException();
+        if (isClosed()) {
+            throw Utils.rethrow(new ClosedChannelException());
         }
         return mCompressorFactory.get();
     }
@@ -177,8 +179,16 @@ final class CompressedPageArray extends PageArray implements Supplier<PageCompre
 
     @Override
     public void close(Throwable cause) throws IOException {
-        mDatabase.close(cause);
-        mCompressors.clear(PageCompressor::close);
+        try {
+            mDatabase.close(cause);
+        } finally {
+            mCompressors.clear(PageCompressor::close);
+        }
+    }
+
+    @Override
+    public boolean isClosed() {
+        return mDatabase.isClosed();
     }
 
     Snapshot beginSnapshot() throws IOException {

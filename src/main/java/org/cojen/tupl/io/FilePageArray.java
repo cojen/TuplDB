@@ -129,4 +129,9 @@ public final class FilePageArray extends PageArray {
     public void close(Throwable cause) throws IOException {
         Utils.close(mFio, cause);
     }
+
+    @Override
+    public boolean isClosed() {
+        return mFio.isClosed();
+    }
 }

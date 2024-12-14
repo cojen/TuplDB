@@ -136,6 +136,11 @@ class DatabasePageArray extends PageArray {
         mDb.close(cause);
     }
 
+    @Override
+    public boolean isClosed() {
+        return mDb.isClosed();
+    }
+
     private static byte[] keyFor(long index) {
         var key = new byte[6];
         Utils.encodeInt48BE(key, 0, index);

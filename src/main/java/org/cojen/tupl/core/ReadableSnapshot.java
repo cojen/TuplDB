@@ -90,6 +90,11 @@ interface ReadableSnapshot extends Snapshot {
             public void close(Throwable cause) {
                 // Ignore.
             }
+
+            @Override
+            public boolean isClosed() {
+                return false;
+            }
         };
     }
 }

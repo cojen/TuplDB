@@ -288,6 +288,11 @@ public class SpilloverPageArray extends PageArray {
         }
     }
 
+    @Override
+    public boolean isClosed() {
+        return mFirst.isClosed() || mSecond.isClosed();
+    }
+
     private static interface Task {
         public void perform(PageArray pa, long index) throws IOException;
     }
