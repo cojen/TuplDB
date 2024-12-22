@@ -589,7 +589,7 @@ final class WindowsFileIO extends JavaFileIO {
             try (Arena a = Arena.ofConfined()) {
                 long process = (long) GetCurrentProcess.invokeExact();
                 int access = 0x0020; // TOKEN_ADJUST_PRIVILEGES
-                MemorySegment tokenRef = a.allocate(ValueLayout.JAVA_INT);
+                MemorySegment tokenRef = a.allocate(ValueLayout.JAVA_LONG);
 
                 if (!((boolean) OpenProcessToken.invokeExact(process, access, tokenRef))) {
                     return false;
