@@ -38,8 +38,6 @@ final class DirectPageOpsSelector {
      * if the sun unsafe class is used.
      */
     static int kind() {
-        // Force the base class to be loaded first due to a dependency cycle.
-        BaseDirectPageOps.p_null();
         return DirectPageOps.kind();
     }
 
@@ -54,16 +52,14 @@ final class DirectPageOpsSelector {
         }
     }
 
-    static final Throwable failure;
+    static volatile Object result;
 
     static {
-        Throwable ex = null;
         try {
             select();
         } catch (Throwable e) {
-            ex = e;
+            result = e;
         }
-        failure = ex;
     }
 
     private static void select() throws Throwable {
@@ -130,16 +126,21 @@ final class DirectPageOpsSelector {
             return;
         }
 
+        DirectPageOpsSelector.class.getModule().addReads(unsafe.getClass().getModule());
+
+        result = unsafe;
+
         ClassMaker cm = ClassMaker.beginExplicit
-            ("org.cojen.tupl.core.DirectPageOps", MethodHandles.lookup())
-            .extend(BaseDirectPageOps.class).final_();
+            ("org.cojen.tupl.core.DirectPageOps", MethodHandles.lookup());
 
         cm.addField(unsafe.getClass(), "U").private_().static_().final_();
         cm.addField(long.class, "O").private_().static_().final_();
 
         MethodMaker mm = cm.addClinit();
-        mm.field("U").setExact(unsafe);
-        mm.field("O").set(mm.field("U").invoke("arrayBaseOffset", byte[].class));
+        var unsafeVar = mm.var(DirectPageOpsSelector.class)
+            .condy("U").invoke(Object.class, "U").cast(unsafe.getClass());
+        mm.field("U").set(unsafeVar);
+        mm.field("O").set(unsafeVar.invoke("arrayBaseOffset", byte[].class));
 
         mm = cm.addMethod(int.class, "kind").static_();
         mm.return_(kind);
@@ -187,18 +188,18 @@ final class DirectPageOpsSelector {
         mm.field("U").invoke("setMemory", pageVar.add(fromIndexVar), lenVar, (byte) 0);
         done.here();
 
-        mm = cm.addMethod(void.class, "p_copyFromArray",
-                          byte[].class, int.class, long.class, int.class, int.class).static_();
+        mm = cm.addMethod(void.class, "p_copy",
+                          byte[].class, int.class, long.class, long.class, int.class).static_();
         mm.field("U").invoke("copyMemory", mm.param(0), mm.field("O").add(mm.param(1)),
                              null, mm.param(2).add(mm.param(3)), mm.param(4));
                       
-        mm = cm.addMethod(void.class, "p_copyToArray",
-                          long.class, int.class, byte[].class, int.class, int.class).static_();
+        mm = cm.addMethod(void.class, "p_copy",
+                          long.class, long.class, byte[].class, int.class, int.class).static_();
         mm.field("U").invoke("copyMemory", null, mm.param(0).add(mm.param(1)),
                              mm.param(2), mm.field("O").add(mm.param(3)), mm.param(4));
 
         mm = cm.addMethod(void.class, "p_copy",
-                          long.class, int.class, long.class, int.class, int.class).static_();
+                          long.class, int.class, long.class, long.class, long.class).static_();
         mm.field("U").invoke("copyMemory", mm.param(0).add(mm.param(1)),
                              mm.param(2).add(mm.param(3)), mm.param(4));
 
@@ -207,14 +208,14 @@ final class DirectPageOpsSelector {
 
     private static Variable le(Variable v, ByteOrder bo) {
         if (bo != ByteOrder.LITTLE_ENDIAN) {
-            v = v.methodMaker().var(v.boxedType()).invoke("reverseBytes", v);
+            v = v.invoke("reverseBytes", v);
         }
         return v;
     }
 
     private static Variable be(Variable v, ByteOrder bo) {
         if (bo == ByteOrder.LITTLE_ENDIAN) {
-            v = v.methodMaker().var(v.boxedType()).invoke("reverseBytes", v);
+            v = v.invoke("reverseBytes", v);
         }
         return v;
     }
@@ -225,5 +226,12 @@ final class DirectPageOpsSelector {
         }
         existing.addSuppressed(additional);
         return existing;
+    }
+
+    // Condy method which is called by the generated code.
+    static Object U(MethodHandles.Lookup caller, String name, Class type) {
+        Object unsafe = result;
+        result = null;
+        return unsafe;
     }
 }

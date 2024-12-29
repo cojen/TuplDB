@@ -27,7 +27,7 @@ import org.cojen.tupl.util.Clutch;
 import org.cojen.tupl.util.Latch;
 
 import static org.cojen.tupl.core.Node.*;
-import static org.cojen.tupl.core.DirectPageOps.*;
+import static org.cojen.tupl.core.PageOps.*;
 
 /**
  * Nodes are organized into groups, to reduce contention when updating data structures which
@@ -108,7 +108,7 @@ final class NodeGroup extends Clutch.Pack implements Checkpointer.DirtySet {
         mSparePageLatch.acquireExclusive();
         try {
             // If directPageSize is negative, then aligned allocation is requested.
-            mSparePageAddr = DirectPageOps.p_callocPage(db.mPageDb.directPageSize());
+            mSparePageAddr = p_callocPage(db.mPageDb.directPageSize());
         } finally {
             mSparePageLatch.releaseExclusive();
         }
@@ -672,8 +672,8 @@ final class NodeGroup extends Clutch.Pack implements Checkpointer.DirtySet {
 
         mSparePageLatch.acquireExclusive();
         try {
-            DirectPageOps.p_delete(mSparePageAddr);
-            mSparePageAddr = DirectPageOps.p_null();
+            p_delete(mSparePageAddr);
+            mSparePageAddr = p_null();
         } finally {
             mSparePageLatch.releaseExclusive();
         }

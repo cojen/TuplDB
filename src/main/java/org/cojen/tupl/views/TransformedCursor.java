@@ -590,6 +590,16 @@ public final class TransformedCursor extends CoreValueAccessor implements Cursor
     }
 
     @Override
+    protected int doValueReadToGap(long pos, byte[] buf, int off, int len) throws IOException {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    protected long doValueSkipGap(long pos) throws IOException {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
     protected void doValueWrite(long pos, byte[] buf, int off, int len) throws IOException {
         throw new UnsupportedOperationException();
     }

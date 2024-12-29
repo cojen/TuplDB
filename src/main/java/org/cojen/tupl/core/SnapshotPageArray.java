@@ -41,7 +41,7 @@ import org.cojen.tupl.io.PageArray;
 import org.cojen.tupl.util.Latch;
 import org.cojen.tupl.util.Runner;
 
-import static org.cojen.tupl.core.DirectPageOps.*;
+import static org.cojen.tupl.core.PageOps.*;
 import static org.cojen.tupl.core.Utils.*;
 
 /**
@@ -184,6 +184,11 @@ final class SnapshotPageArray extends PageArray {
     @Override
     public void close(Throwable cause) throws IOException {
         mSource.close(cause);
+    }
+
+    @Override
+    public boolean isClosed() {
+        return mSource.isClosed();
     }
 
     /**
@@ -443,7 +448,7 @@ final class SnapshotPageArray extends PageArray {
                 byte[] page = mPageCopyIndex.load(txn, key);
 
                 if (page != null) {
-                    DirectPageOps.p_copyFromArray(page, 0, dstAddr, offset, length);
+                    p_copy(page, 0, dstAddr, offset, length);
                 } else {
                     // TODO: Check the cache first as an optimization?
                     mRawPageArray.readPage(index, dstAddr, offset, length);

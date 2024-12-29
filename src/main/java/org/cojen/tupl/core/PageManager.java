@@ -79,7 +79,7 @@ final class PageManager {
      * Create a new PageManager.
      */
     PageManager(PageArray array) throws IOException {
-        this(null, false, false, array, DirectPageOps.p_null(), 0);
+        this(null, false, false, array, PageOps.p_null(), 0);
     }
 
     /**
@@ -196,7 +196,7 @@ final class PageManager {
     }
 
     static long readTotalPageCount(long headerAddr, int offset) {
-        return DirectPageOps.p_longGetLE(headerAddr, offset + I_TOTAL_PAGE_COUNT);
+        return PageOps.p_longGetLE(headerAddr, offset + I_TOTAL_PAGE_COUNT);
     }
 
     /**
@@ -657,7 +657,7 @@ final class PageManager {
 
             // Total page count is written after append heaps have been
             // drained, because additional pages might have been allocated.
-            DirectPageOps.p_longPutLE(headerAddr, offset + I_TOTAL_PAGE_COUNT, mTotalPageCount);
+            PageOps.p_longPutLE(headerAddr, offset + I_TOTAL_PAGE_COUNT, mTotalPageCount);
 
             mRegularFreeList.commitStart(headerAddr, offset + I_REGULAR_QUEUE);
             mRecycleFreeList.commitStart(headerAddr, offset + I_RECYCLE_QUEUE);

@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2011-2017 Cojen.org
+ *  Copyright 2020 Cojen.org
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU Affero General Public License as
@@ -17,7 +17,20 @@
 
 package org.cojen.tupl.core;
 
+import java.io.File;
+
+import java.util.EnumSet;
+
+import java.util.function.Supplier;
+
 import org.junit.*;
+
+import org.cojen.tupl.DatabaseConfig;
+
+import org.cojen.tupl.io.FilePageArray;
+import org.cojen.tupl.io.OpenOption;
+import org.cojen.tupl.io.PageArray;
+import org.cojen.tupl.io.SpilloverPageArray;
 
 import static org.cojen.tupl.TestUtils.*;
 
@@ -26,14 +39,22 @@ import static org.cojen.tupl.TestUtils.*;
  *
  * @author Brian S O'Neill
  */
-public class CursorDirectMappedTest extends CursorTest {
+public class CrudSpilloverFileTest extends CrudTest {
     public static void main(String[] args) throws Exception {
-        org.junit.runner.JUnitCore.main(CursorDirectMappedTest.class.getName());
+        org.junit.runner.JUnitCore.main(CrudSpilloverFileTest.class.getName());
     }
 
     @Before
     @Override
     public void createTempDb() throws Exception {
-        mDb = newTempDatabase(getClass(), 50_000_000L, OpenMode.MAPPED);
+        Supplier<PageArray> factory = SpilloverPageArray
+            .factory(newPageArrayFactory(), 10, newPageArrayFactory());
+        var config = new DatabaseConfig().dataPageArray(factory);
+        mDb = newTempDatabase(getClass(), config);
+    }
+
+    private Supplier<PageArray> newPageArrayFactory() throws Exception {
+        var file = new File(newTempBaseFile(getClass()).getPath() + ".db");
+        return FilePageArray.factory(4096, file, EnumSet.of(OpenOption.CREATE));
     }
 }

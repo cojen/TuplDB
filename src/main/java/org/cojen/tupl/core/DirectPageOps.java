@@ -35,7 +35,7 @@ import static org.cojen.tupl.core.DirectMemory.ALL;
  * @author Brian S O'Neill
  * @see DirectPageOpsSelector
  */
-final class DirectPageOps extends BaseDirectPageOps {
+class DirectPageOps {
     private static final MethodHandle OF_ADDRESS_UNSAFE;
 
     private static final VarHandle BYTE_H, CHAR_LE_H, INT_LE_H, LONG_LE_H, LONG_BE_H;
@@ -175,7 +175,7 @@ final class DirectPageOps extends BaseDirectPageOps {
         }
     }
 
-    static void p_copyFromArray(byte[] src, int srcStart, long dstPageAddr, int dstStart, int len) {
+    static void p_copy(byte[] src, int srcStart, long dstPageAddr, long dstStart, int len) {
         if (CHECK_BOUNDS) {
             if (len < 0) {
                 throw new IndexOutOfBoundsException("len: " + len);
@@ -190,7 +190,7 @@ final class DirectPageOps extends BaseDirectPageOps {
         MemorySegment.copy(src, srcStart, ALL, ValueLayout.JAVA_BYTE, dstPageAddr + dstStart, len);
     }
 
-    static void p_copyToArray(long srcPageAddr, int srcStart, byte[] dst, int dstStart, int len) {
+    static void p_copy(long srcPageAddr, long srcStart, byte[] dst, int dstStart, int len) {
         if (CHECK_BOUNDS) {
             if (len < 0) {
                 throw new IndexOutOfBoundsException("len: " + len);
@@ -205,7 +205,7 @@ final class DirectPageOps extends BaseDirectPageOps {
         MemorySegment.copy(ALL, ValueLayout.JAVA_BYTE, srcPageAddr + srcStart, dst, dstStart, len);
     }
 
-    static void p_copy(long srcPageAddr, int srcStart, long dstPageAddr, int dstStart, int len) {
+    static void p_copy(long srcPageAddr, int srcStart, long dstPageAddr, long dstStart, long len) {
         if (CHECK_BOUNDS) {
             if (len < 0) {
                 throw new IndexOutOfBoundsException("len: " + len);

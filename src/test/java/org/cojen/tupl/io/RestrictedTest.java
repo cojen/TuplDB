@@ -92,9 +92,9 @@ public class RestrictedTest {
                     mm.var(FilePageArray.class).invoke("factory", 4096, fileVar, null))
             .invoke("get");
 
-        mm = cm.addMethod(null, "JoinedPageArray").public_().static_();
+        mm = cm.addMethod(null, "SpilloverPageArray").public_().static_();
         fileVar = mm.new_(File.class, "x");
-        mm.var(JoinedPageArray.class)
+        mm.var(SpilloverPageArray.class)
             .invoke("factory",
                     mm.var(FilePageArray.class).invoke("factory", 4096, fileVar, null),
                     4096,
@@ -118,7 +118,7 @@ public class RestrictedTest {
         invokeAndVerify(clazz, "MappedPageArray_1");
         invokeAndVerify(clazz, "MappedPageArray_2");
         invokeAndVerify(clazz, "StripedPageArray");
-        invokeAndVerify(clazz, "JoinedPageArray");
+        invokeAndVerify(clazz, "SpilloverPageArray");
         invokeAndVerify(clazz, "zlib_1");
         invokeAndVerify(clazz, "zlib_2");
         invokeAndVerify(clazz, "lz4");

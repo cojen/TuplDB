@@ -33,7 +33,7 @@ import org.cojen.tupl.Scanner;
 import org.cojen.tupl.Sorter;
 import org.cojen.tupl.Transaction;
 
-import static org.cojen.tupl.core.DirectPageOps.*;
+import static org.cojen.tupl.core.PageOps.*;
 
 /**
  * Sorter which performs a multi-level parallel merge sort.

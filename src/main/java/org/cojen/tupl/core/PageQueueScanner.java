@@ -25,7 +25,7 @@ import org.cojen.tupl.CorruptDatabaseException;
 
 import org.cojen.tupl.io.PageArray;
 
-import static org.cojen.tupl.core.DirectPageOps.*;
+import static org.cojen.tupl.core.PageOps.*;
 import static org.cojen.tupl.core.PageQueue.*;
 
 /**

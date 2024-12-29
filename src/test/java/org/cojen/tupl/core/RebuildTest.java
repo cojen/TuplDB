@@ -19,6 +19,7 @@ package org.cojen.tupl.core;
 
 import java.io.File;
 
+import java.util.HashSet;
 import java.util.Random;
 
 import java.util.zip.CRC32C;
@@ -85,6 +86,25 @@ public class RebuildTest {
             table.insert(null, row);
         }
 
+        for (int i=0; i<1000; i++) {
+            rnd.nextBytes(key);
+            var buf = new byte[1];
+            long length = rnd.nextLong(10_000_000);
+            try (Cursor c = ix.newCursor(null)) {
+                c.find(key);
+                c.valueLength(length);
+                var positions = new HashSet<Long>();
+                for (int j=0; j<100; j++) {
+                    long pos;
+                    do {
+                        pos = rnd.nextLong(length);
+                    } while (!positions.add(pos));
+                    rnd.nextBytes(buf);
+                    c.valueWrite(pos, buf, 0, 1);
+                }
+            }
+        }
+
         db.close();
 
         try {
@@ -137,6 +157,27 @@ public class RebuildTest {
 
                 try (Scanner<TestRow> s = query.newScanner(null, expect)) {
                     assertEquals(row, s.row());
+                }
+            }
+
+            for (int i=0; i<1000; i++) {
+                rnd.nextBytes(key);
+                var buf1 = new byte[1];
+                var buf2 = new byte[1];
+                long length = rnd.nextLong(10_000_000);
+                try (Cursor c = ix.newCursor(null)) {
+                    c.find(key);
+                    assertEquals(length, c.valueLength());
+                    var positions = new HashSet<Long>();
+                    for (int j=0; j<100; j++) {
+                        long pos;
+                        do {
+                            pos = rnd.nextLong(length);
+                        } while (!positions.add(pos));
+                        rnd.nextBytes(buf1);
+                        c.valueRead(pos, buf2, 0, buf2.length);
+                        assertArrayEquals(buf1, buf2);
+                    }
                 }
             }
 

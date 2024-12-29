@@ -216,7 +216,7 @@ public abstract class Parker {
             }
         }
 
-        private static final long MAX_CHECK_NANOS = 1_000_000; // 1 ms
+        private static final long MAX_CHECK_NANOS = 10_000; // 10μs
 
         private static final int NONE = 0, PARKED = 1, UNPARKED = 2;
 

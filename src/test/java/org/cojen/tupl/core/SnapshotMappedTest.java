@@ -53,7 +53,7 @@ public class SnapshotMappedTest extends SnapshotTest {
 
     @Test
     public void fullyMapped() throws Exception {
-        Database db = newTempDatabase(getClass(), 50_000_000, TestUtils.OpenMode.DIRECT_MAPPED, 0);
+        Database db = newTempDatabase(getClass(), 50_000_000, TestUtils.OpenMode.MAPPED, 0);
 
         Index ix = db.openIndex("test");
         

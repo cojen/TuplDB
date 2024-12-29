@@ -238,6 +238,11 @@ public abstract sealed class MappedPageArray extends PageArray
         }
     }
 
+    @Override
+    public final boolean isClosed() {
+        return mMappingAddr == 0;
+    }
+
     void setMappingAddr(long addr) throws IOException {
         while (!cMappingAddrHandle.compareAndSet(this, 0, addr)) {
             if (mMappingAddr != 0) {

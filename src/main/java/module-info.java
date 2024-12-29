@@ -13,8 +13,6 @@ module org.cojen.tupl {
 
     requires net.sf.jsqlparser;
 
-    requires jdk.unsupported;
-
     requires org.cojen.maker;
     requires org.cojen.dirmi;
 

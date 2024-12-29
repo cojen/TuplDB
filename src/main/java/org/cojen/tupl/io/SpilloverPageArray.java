@@ -29,68 +29,66 @@ import org.cojen.tupl.core.CheckedSupplier;
 import org.cojen.tupl.util.Runner;
 
 /**
- * Joins {@link PageArray PageArrays} together in a sequential fashion. This is useful for
+ * Combines {@link PageArray PageArrays} together in a sequential fashion. This is useful for
  * supporting overflow capacity when the first array fills up. In an emergency when all drives
- * are full, a joined page array can be defined such that the second array is a remote file, or
- * a {@link OpenOption#NON_DURABLE non-durable} file, or an anonymous {@link MappedPageArray}.
- * With this configuration in place, delete non-essential entries and then {@link
- * org.cojen.tupl.Database#compactFile compact} the database. After verifying that space is
- * available again, the original page array configuration can be swapped back in.
+ * are full, a spillover page array can be defined such that the second array is a remote file,
+ * or a {@link OpenOption#NON_DURABLE non-durable} file, or an anonymous {@link
+ * MappedPageArray}. With this configuration in place, delete non-essential entries and then
+ * {@link org.cojen.tupl.Database#compactFile compact} the database. After verifying that space
+ * is available again, the original page array configuration can be swapped back in.
  *
  * @author Brian S O'Neill
  */
-public class JoinedPageArray extends PageArray {
+public class SpilloverPageArray extends PageArray {
     /**
-     * @param first source for all pages lower than the join index
-     * @param joinIndex join index which separates the two page sources
-     * @param second source for all pages at or higher than the join index
-     * @throws IllegalArgumentException if page sizes don't match or if join index isn't
+     * @param first source for all pages lower than the spillover index
+     * @param spilloverIndex index which separates the two sources
+     * @param second source for all pages at or higher than the spillover index
+     * @throws IllegalArgumentException if page sizes don't match or if spillover index isn't
      * greater than 0
-     * @throws IllegalStateException if the highest index of the first source is higher than the
-     * join index
+     * @throws IllegalStateException if the highest index of the first source is higher than
+     * the spillover index
      */
-    public static Supplier<PageArray> factory(Supplier<PageArray> first,
-                                              long joinIndex,
-                                              Supplier<PageArray> second)
+    public static Supplier<PageArray> factory(Supplier<? extends PageArray> first,
+                                              long spilloverIndex,
+                                              Supplier<? extends PageArray> second)
     {
-        return (CheckedSupplier<PageArray>) () -> {
-            return join(first.get(), joinIndex, second.get());
-        };
+        return (CheckedSupplier<PageArray>) () -> make(first.get(), spilloverIndex, second.get());
     }
 
     /**
-     * @param first source for all pages lower than the join index
-     * @param joinIndex join index which separates the two page sources
-     * @param second source for all pages at or higher than the join index
-     * @throws IllegalArgumentException if page sizes don't match or if join index isn't
+     * @param first source for all pages lower than the spillover index
+     * @param spilloverIndex index which separates the two sources
+     * @param second source for all pages at or higher than the spillover index
+     * @throws IllegalArgumentException if page sizes don't match or if spillover index isn't
      * greater than 0
-     * @throws IllegalStateException if the highest index of the first source is higher than the
-     * join index
+     * @throws IllegalStateException if the highest index of the first source is higher than
+     * the spillover index
      */
-    public static PageArray join(PageArray first, long joinIndex, PageArray second)
+    public static PageArray make(PageArray first, long spilloverIndex, PageArray second)
         throws IOException
     {
-        if (first.pageSize() != second.pageSize() || joinIndex <= 0) {
+        if (first.pageSize() != second.pageSize() || spilloverIndex <= 0) {
             throw new IllegalArgumentException();
         }
         long pageCount = first.pageCount();
-        if (pageCount > joinIndex) {
+        if (pageCount > spilloverIndex) {
             throw new IllegalStateException
-                ("First page array is too large: " + pageCount + " > " + joinIndex);
+                ("First page array is too large: " + pageCount + " > " + spilloverIndex);
         }
-        return new JoinedPageArray(first, joinIndex, second);
+        return new SpilloverPageArray(first, spilloverIndex, second);
     }
 
     private final PageArray mFirst, mSecond;
-    private final long mJoinIndex;
+    private final long mSpilloverIndex;
     private final int mDirectPageSize;
     private final boolean mReadOnly;
 
-    private JoinedPageArray(PageArray first, long joinIndex, PageArray second) {
+    private SpilloverPageArray(PageArray first, long spilloverIndex, PageArray second) {
         super(first.pageSize());
         mFirst = first;
         mSecond = second;
-        mJoinIndex = joinIndex;
+        mSpilloverIndex = spilloverIndex;
 
         int directPageSize = first.directPageSize();
         if (second.directPageSize() != directPageSize) {
@@ -124,12 +122,12 @@ public class JoinedPageArray extends PageArray {
 
     @Override
     public long pageCount() throws IOException {
-        return mJoinIndex + mSecond.pageCount();
+        return mSpilloverIndex + mSecond.pageCount();
     }
 
     @Override
     public void truncatePageCount(long count) throws IOException {
-        long diff = count - mJoinIndex;
+        long diff = count - mSpilloverIndex;
         if (diff > 0) {
             mSecond.truncatePageCount(diff);
         } else {
@@ -140,7 +138,7 @@ public class JoinedPageArray extends PageArray {
 
     @Override
     public void expandPageCount(long count) throws IOException {
-        long diff = count - mJoinIndex;
+        long diff = count - mSpilloverIndex;
         if (diff > 0) {
             mSecond.expandPageCount(diff);
         } else {
@@ -151,10 +149,10 @@ public class JoinedPageArray extends PageArray {
     @Override
     public long pageCountLimit() throws IOException {
         long limit = mFirst.pageCountLimit();
-        if (limit < 0 || limit >= mJoinIndex) {
+        if (limit < 0 || limit >= mSpilloverIndex) {
             limit = mSecond.pageCountLimit();
             if (limit >= 0) {
-                limit += mJoinIndex;
+                limit += mSpilloverIndex;
             }
         }
         return limit;
@@ -173,11 +171,11 @@ public class JoinedPageArray extends PageArray {
     @Override
     public long evictPage(long index, long bufAddr) throws IOException {
         PageArray pa;
-        if (index < mJoinIndex) {
+        if (index < mSpilloverIndex) {
             pa = mFirst;
         } else {
             pa = mSecond;
-            index -= mJoinIndex;
+            index -= mSpilloverIndex;
         }
         return pa.evictPage(index, bufAddr);
     }
@@ -185,11 +183,11 @@ public class JoinedPageArray extends PageArray {
     @Override
     public long directPageAddress(long index) throws IOException {
         PageArray pa;
-        if (index < mJoinIndex) {
+        if (index < mSpilloverIndex) {
             pa = mFirst;
         } else {
             pa = mSecond;
-            index -= mJoinIndex;
+            index -= mSpilloverIndex;
         }
         return pa.directPageAddress(index);
     }
@@ -197,19 +195,19 @@ public class JoinedPageArray extends PageArray {
     @Override
     public long copyPage(long srcIndex, long dstIndex) throws IOException {
         PageArray src;
-        if (srcIndex < mJoinIndex) {
+        if (srcIndex < mSpilloverIndex) {
             src = mFirst;
         } else {
             src = mSecond;
-            srcIndex -= mJoinIndex;
+            srcIndex -= mSpilloverIndex;
         }
 
         PageArray dst;
-        if (dstIndex < mJoinIndex) {
+        if (dstIndex < mSpilloverIndex) {
             dst = mFirst;
         } else {
             dst = mSecond;
-            dstIndex -= mJoinIndex;
+            dstIndex -= mSpilloverIndex;
         }
 
         if (src == dst) {
@@ -222,11 +220,11 @@ public class JoinedPageArray extends PageArray {
     @Override
     public long copyPageFromAddress(long srcAddr, long dstIndex) throws IOException {
         PageArray pa;
-        if (dstIndex < mJoinIndex) {
+        if (dstIndex < mSpilloverIndex) {
             pa = mFirst;
         } else {
             pa = mSecond;
-            dstIndex -= mJoinIndex;
+            dstIndex -= mSpilloverIndex;
         }
         return pa.copyPageFromAddress(srcAddr, dstIndex);
     }
@@ -272,11 +270,11 @@ public class JoinedPageArray extends PageArray {
     @Override
     public void syncPage(long index) throws IOException {
         PageArray pa;
-        if (index < mJoinIndex) {
+        if (index < mSpilloverIndex) {
             pa = mFirst;
         } else {
             pa = mSecond;
-            index -= mJoinIndex;
+            index -= mSpilloverIndex;
         }
         pa.syncPage(index);
     }
@@ -290,17 +288,22 @@ public class JoinedPageArray extends PageArray {
         }
     }
 
+    @Override
+    public boolean isClosed() {
+        return mFirst.isClosed() || mSecond.isClosed();
+    }
+
     private static interface Task {
         public void perform(PageArray pa, long index) throws IOException;
     }
 
     private void action(long index, Task task) throws IOException {
         PageArray pa;
-        if (index < mJoinIndex) {
+        if (index < mSpilloverIndex) {
             pa = mFirst;
         } else {
             pa = mSecond;
-            index -= mJoinIndex;
+            index -= mSpilloverIndex;
         }
         task.perform(pa, index);
     }

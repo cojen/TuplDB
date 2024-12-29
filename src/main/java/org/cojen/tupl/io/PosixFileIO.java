@@ -420,6 +420,14 @@ final class PosixFileIO extends AbstractFileIO {
         clearMsRefPool(mMsRefPool);
     }
 
+    @Override
+    public final boolean isClosed() {
+        mAccessLock.acquireShared();
+        boolean closed = mFileDescriptor == 0;
+        mAccessLock.releaseShared();
+        return closed;
+    }
+
     private LocalPool.Entry<MsRef> msRefEntry(int size) {
         return msRefEntry(mMsRefPool, size);
     }

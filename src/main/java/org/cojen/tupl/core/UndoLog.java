@@ -39,7 +39,7 @@ import org.cojen.tupl.Transaction;
 import org.cojen.tupl.diag.EventListener;
 import org.cojen.tupl.diag.EventType;
 
-import static org.cojen.tupl.core.DirectPageOps.*;
+import static org.cojen.tupl.core.PageOps.*;
 import static org.cojen.tupl.core.Utils.*;
 
 /**
@@ -250,7 +250,7 @@ final class UndoLog implements DatabaseAccess {
             mNode = node = allocUnevictableNode(0);
             long pageAddr = node.mPageAddr;
             int newPos = pageSize() - size;
-            p_copyFromArray(buffer, pos, pageAddr, newPos, size);
+            p_copy(buffer, pos, pageAddr, newPos, size);
             // Set pointer to top entry.
             mNodeTopPos = newPos;
             mBuffer = null;
@@ -372,7 +372,7 @@ final class UndoLog implements DatabaseAccess {
         setActiveIndexId(indexId);
     
         byte[] payload;
-        if ((DirectPageOps.p_byteGet(payloadAddr, off) & 0xc0) == 0xc0) {
+        if ((p_byteGet(payloadAddr, off) & 0xc0) == 0xc0) {
             // Key is fragmented and cannot be stored as-is, so expand it fully and
             // switch to using the "LK" op variant.
             payload = Node.expandKeyAtLoc
@@ -380,7 +380,7 @@ final class UndoLog implements DatabaseAccess {
             op += LK_ADJUST;
         } else {
             payload = new byte[len];
-            DirectPageOps.p_copyToArray(payloadAddr, off, payload, 0, len);
+            p_copy(payloadAddr, off, payload, 0, len);
         }
     
         doPush(op, payload);
@@ -514,7 +514,7 @@ final class UndoLog implements DatabaseAccess {
         throws IOException
     {
         var b = new byte[len];
-        DirectPageOps.p_copyToArray(addr, off, b, 0, len);
+        p_copy(addr, off, b, 0, len);
         pushUnwrite(indexId, key, pos, b, 0, len);
     }
 
@@ -682,7 +682,7 @@ final class UndoLog implements DatabaseAccess {
                         mNode = node = allocUnevictableNode(0);
                         long pageAddr = node.mPageAddr;
                         int newPos = pageSize() - size;
-                        p_copyFromArray(buffer, pos, pageAddr, newPos, size);
+                        p_copy(buffer, pos, pageAddr, newPos, size);
                         // Set pointer to top entry.
                         mNodeTopPos = newPos;
                         mBuffer = null;
@@ -711,7 +711,7 @@ final class UndoLog implements DatabaseAccess {
             p_bytePut(pageAddr, pos, op);
             if (op >= PAYLOAD_OP) {
                 int payloadPos = p_uintPutVar(pageAddr, pos + 1, pLen + len) + pLen;
-                p_copyFromArray(payload, off, pageAddr, payloadPos, len);
+                p_copy(payload, off, pageAddr, payloadPos, len);
             }
             node.releaseExclusive();
             mNodeTopPos = pos;
@@ -728,7 +728,7 @@ final class UndoLog implements DatabaseAccess {
             available -= amt;
             remaining -= amt;
             long pageAddr = node.mPageAddr;
-            p_copyFromArray(payload, off + remaining, pageAddr, pos, amt);
+            p_copy(payload, off + remaining, pageAddr, pos, amt);
 
             if (remaining <= 0 && available >= (encodedLen - len)) {
                 if (varIntLen > 0) {
@@ -1332,7 +1332,7 @@ final class UndoLog implements DatabaseAccess {
 
         while (true) {
             int avail = Math.min(payloadLen, pageSize() - nodeTopPos);
-            p_copyToArray(pageAddr, nodeTopPos, entry, entryPos, avail);
+            p_copy(pageAddr, nodeTopPos, entry, entryPos, avail);
             payloadLen -= avail;
             nodeTopPos += avail;
             entryPos += avail;
@@ -1509,7 +1509,7 @@ final class UndoLog implements DatabaseAccess {
 
                 if (entry != null) {
                     int amt = Math.min(avail, entry.length - entryPos);
-                    p_copyToArray(pageAddr, nodeTopPos, entry, entryPos, amt);
+                    p_copy(pageAddr, nodeTopPos, entry, entryPos, amt);
                     entryPos += avail;
                     if (entryPos >= entry.length) {
                         try {

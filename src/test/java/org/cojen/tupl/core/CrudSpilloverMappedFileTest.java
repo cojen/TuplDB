@@ -1,5 +1,5 @@
 /*
- *  Copyright 2020 Cojen.org
+ *  Copyright (C) 2024 Cojen.org
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU Affero General Public License as
@@ -12,7 +12,7 @@
  *  GNU Affero General Public License for more details.
  *
  *  You should have received a copy of the GNU Affero General Public License
- *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 package org.cojen.tupl.core;
@@ -27,38 +27,38 @@ import org.junit.*;
 
 import org.cojen.tupl.DatabaseConfig;
 
-import org.cojen.tupl.io.FilePageArray;
-import org.cojen.tupl.io.JoinedPageArray;
+import org.cojen.tupl.io.MappedPageArray;
 import org.cojen.tupl.io.OpenOption;
 import org.cojen.tupl.io.PageArray;
+import org.cojen.tupl.io.SpilloverPageArray;
 
 import static org.cojen.tupl.TestUtils.*;
 
 /**
  * 
  *
- * @author Brian S O'Neill
+ * @author Brian S. O'Neill
  */
-public class CrudJoinedFileTest extends CrudTest {
+public class CrudSpilloverMappedFileTest extends CrudTest {
     public static void main(String[] args) throws Exception {
-        org.junit.runner.JUnitCore.main(CrudJoinedFileTest.class.getName());
+        org.junit.runner.JUnitCore.main(CrudSpilloverMappedFileTest.class.getName());
     }
 
     @Before
     @Override
     public void createTempDb() throws Exception {
-        Supplier<PageArray> factory = JoinedPageArray
-            .factory(newPageArrayFactory(), 10, newPageArrayFactory());
+        int pageSize = 4096;
+        int joinIndex = 10;
+        var options = EnumSet.of(OpenOption.CREATE, OpenOption.RANDOM_ACCESS);
+
+        var firstFile = new File(newTempBaseFile(getClass()).getPath() + ".db");
+        var first = MappedPageArray.factory(pageSize, joinIndex, firstFile, options);
+
+        var secondFile = new File(newTempBaseFile(getClass()).getPath() + ".db");
+        var second = MappedPageArray.factory(pageSize, 100000, secondFile, options);
+
+        Supplier<PageArray> factory = SpilloverPageArray.factory(first, joinIndex, second);
         var config = new DatabaseConfig().dataPageArray(factory);
-        decorate(config);
         mDb = newTempDatabase(getClass(), config);
-    }
-
-    void decorate(DatabaseConfig config) {
-    }
-
-    private Supplier<PageArray> newPageArrayFactory() throws Exception {
-        var file = new File(newTempBaseFile(getClass()).getPath() + ".db");
-        return FilePageArray.factory(4096, file, EnumSet.of(OpenOption.CREATE));
     }
 }

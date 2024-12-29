@@ -638,8 +638,7 @@ public class Utils {
      * not. Use as follows: {@code throw rethrow(e)}
      */
     public static RuntimeException rethrow(Throwable e) {
-        Utils.<RuntimeException>castAndThrow(e);
-        return null;
+        throw Utils.<RuntimeException>castAndThrow(e);
     }
 
     /**
@@ -656,12 +655,11 @@ public class Utils {
             } catch (Exception e2) {
             } 
         }
-        Utils.<RuntimeException>castAndThrow(e);
-        return null;
+        throw Utils.<RuntimeException>castAndThrow(e);
     }
 
     @SuppressWarnings("unchecked")
-    private static <T extends Throwable> void castAndThrow(Throwable e) throws T {
+    private static <T extends Throwable> RuntimeException castAndThrow(Throwable e) throws T {
         throw (T) e;
     }
 }

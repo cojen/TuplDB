@@ -208,4 +208,6 @@ public abstract class PageArray implements CauseCloseable {
      */
     @Override
     public abstract void close(Throwable cause) throws IOException;
+
+    public abstract boolean isClosed();
 }

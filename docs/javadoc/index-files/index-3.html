@@ -286,6 +286,11 @@ loadScripts(document, 'script');</script>
 </dd>
 <dt><a href="../org.cojen.tupl/org/cojen/tupl/Table.html#close()" class="member-name-link">close()</a> - Method in interface org.cojen.tupl.<a href="../org.cojen.tupl/org/cojen/tupl/Table.html" title="interface in org.cojen.tupl">Table</a></dt>
 <dd>&nbsp;</dd>
+<dt><a href="../org.cojen.tupl/org/cojen/tupl/Transaction.html#close()" class="member-name-link">close()</a> - Method in interface org.cojen.tupl.<a href="../org.cojen.tupl/org/cojen/tupl/Transaction.html" title="interface in org.cojen.tupl">Transaction</a></dt>
+<dd>
+<div class="block">Equivalent to calling <a href="../org.cojen.tupl/org/cojen/tupl/Transaction.html#exit()"><code>exit</code></a>: Exits the current transaction scope, rolling
+ back all uncommitted modifications made within.</div>
+</dd>
 <dt><a href="../org.cojen.tupl/org/cojen/tupl/ValueAccessor.html#close()" class="member-name-link">close()</a> - Method in interface org.cojen.tupl.<a href="../org.cojen.tupl/org/cojen/tupl/ValueAccessor.html" title="interface in org.cojen.tupl">ValueAccessor</a></dt>
 <dd>
 <div class="block">Closes the accessor, but doesn't flush any OutputStream instances.</div>
@@ -302,11 +307,11 @@ loadScripts(document, 'script');</script>
 <dd>&nbsp;</dd>
 <dt><a href="../org.cojen.tupl/org/cojen/tupl/io/FilePageArray.html#close(java.lang.Throwable)" class="member-name-link">close(Throwable)</a> - Method in class org.cojen.tupl.io.<a href="../org.cojen.tupl/org/cojen/tupl/io/FilePageArray.html" title="class in org.cojen.tupl.io">FilePageArray</a></dt>
 <dd>&nbsp;</dd>
-<dt><a href="../org.cojen.tupl/org/cojen/tupl/io/JoinedPageArray.html#close(java.lang.Throwable)" class="member-name-link">close(Throwable)</a> - Method in class org.cojen.tupl.io.<a href="../org.cojen.tupl/org/cojen/tupl/io/JoinedPageArray.html" title="class in org.cojen.tupl.io">JoinedPageArray</a></dt>
-<dd>&nbsp;</dd>
 <dt><a href="../org.cojen.tupl/org/cojen/tupl/io/MappedPageArray.html#close(java.lang.Throwable)" class="member-name-link">close(Throwable)</a> - Method in class org.cojen.tupl.io.<a href="../org.cojen.tupl/org/cojen/tupl/io/MappedPageArray.html" title="class in org.cojen.tupl.io">MappedPageArray</a></dt>
 <dd>&nbsp;</dd>
 <dt><a href="../org.cojen.tupl/org/cojen/tupl/io/PageArray.html#close(java.lang.Throwable)" class="member-name-link">close(Throwable)</a> - Method in class org.cojen.tupl.io.<a href="../org.cojen.tupl/org/cojen/tupl/io/PageArray.html" title="class in org.cojen.tupl.io">PageArray</a></dt>
+<dd>&nbsp;</dd>
+<dt><a href="../org.cojen.tupl/org/cojen/tupl/io/SpilloverPageArray.html#close(java.lang.Throwable)" class="member-name-link">close(Throwable)</a> - Method in class org.cojen.tupl.io.<a href="../org.cojen.tupl/org/cojen/tupl/io/SpilloverPageArray.html" title="class in org.cojen.tupl.io">SpilloverPageArray</a></dt>
 <dd>&nbsp;</dd>
 <dt><a href="../org.cojen.tupl/org/cojen/tupl/io/StripedPageArray.html#close(java.lang.Throwable)" class="member-name-link">close(Throwable)</a> - Method in class org.cojen.tupl.io.<a href="../org.cojen.tupl/org/cojen/tupl/io/StripedPageArray.html" title="class in org.cojen.tupl.io">StripedPageArray</a></dt>
 <dd>&nbsp;</dd>
@@ -525,19 +530,19 @@ loadScripts(document, 'script');</script>
 <div class="block">Returns a new independent Cursor, positioned where this one is, and
  linked to the same transaction.</div>
 </dd>
-<dt><a href="../org.cojen.tupl/org/cojen/tupl/io/JoinedPageArray.html#copyPage(long,long)" class="member-name-link">copyPage(long, long)</a> - Method in class org.cojen.tupl.io.<a href="../org.cojen.tupl/org/cojen/tupl/io/JoinedPageArray.html" title="class in org.cojen.tupl.io">JoinedPageArray</a></dt>
-<dd>&nbsp;</dd>
 <dt><a href="../org.cojen.tupl/org/cojen/tupl/io/MappedPageArray.html#copyPage(long,long)" class="member-name-link">copyPage(long, long)</a> - Method in class org.cojen.tupl.io.<a href="../org.cojen.tupl/org/cojen/tupl/io/MappedPageArray.html" title="class in org.cojen.tupl.io">MappedPageArray</a></dt>
 <dd>&nbsp;</dd>
 <dt><a href="../org.cojen.tupl/org/cojen/tupl/io/PageArray.html#copyPage(long,long)" class="member-name-link">copyPage(long, long)</a> - Method in class org.cojen.tupl.io.<a href="../org.cojen.tupl/org/cojen/tupl/io/PageArray.html" title="class in org.cojen.tupl.io">PageArray</a></dt>
 <dd>&nbsp;</dd>
-<dt><a href="../org.cojen.tupl/org/cojen/tupl/io/StripedPageArray.html#copyPage(long,long)" class="member-name-link">copyPage(long, long)</a> - Method in class org.cojen.tupl.io.<a href="../org.cojen.tupl/org/cojen/tupl/io/StripedPageArray.html" title="class in org.cojen.tupl.io">StripedPageArray</a></dt>
+<dt><a href="../org.cojen.tupl/org/cojen/tupl/io/SpilloverPageArray.html#copyPage(long,long)" class="member-name-link">copyPage(long, long)</a> - Method in class org.cojen.tupl.io.<a href="../org.cojen.tupl/org/cojen/tupl/io/SpilloverPageArray.html" title="class in org.cojen.tupl.io">SpilloverPageArray</a></dt>
 <dd>&nbsp;</dd>
-<dt><a href="../org.cojen.tupl/org/cojen/tupl/io/JoinedPageArray.html#copyPageFromAddress(long,long)" class="member-name-link">copyPageFromAddress(long, long)</a> - Method in class org.cojen.tupl.io.<a href="../org.cojen.tupl/org/cojen/tupl/io/JoinedPageArray.html" title="class in org.cojen.tupl.io">JoinedPageArray</a></dt>
+<dt><a href="../org.cojen.tupl/org/cojen/tupl/io/StripedPageArray.html#copyPage(long,long)" class="member-name-link">copyPage(long, long)</a> - Method in class org.cojen.tupl.io.<a href="../org.cojen.tupl/org/cojen/tupl/io/StripedPageArray.html" title="class in org.cojen.tupl.io">StripedPageArray</a></dt>
 <dd>&nbsp;</dd>
 <dt><a href="../org.cojen.tupl/org/cojen/tupl/io/MappedPageArray.html#copyPageFromAddress(long,long)" class="member-name-link">copyPageFromAddress(long, long)</a> - Method in class org.cojen.tupl.io.<a href="../org.cojen.tupl/org/cojen/tupl/io/MappedPageArray.html" title="class in org.cojen.tupl.io">MappedPageArray</a></dt>
 <dd>&nbsp;</dd>
 <dt><a href="../org.cojen.tupl/org/cojen/tupl/io/PageArray.html#copyPageFromAddress(long,long)" class="member-name-link">copyPageFromAddress(long, long)</a> - Method in class org.cojen.tupl.io.<a href="../org.cojen.tupl/org/cojen/tupl/io/PageArray.html" title="class in org.cojen.tupl.io">PageArray</a></dt>
+<dd>&nbsp;</dd>
+<dt><a href="../org.cojen.tupl/org/cojen/tupl/io/SpilloverPageArray.html#copyPageFromAddress(long,long)" class="member-name-link">copyPageFromAddress(long, long)</a> - Method in class org.cojen.tupl.io.<a href="../org.cojen.tupl/org/cojen/tupl/io/SpilloverPageArray.html" title="class in org.cojen.tupl.io">SpilloverPageArray</a></dt>
 <dd>&nbsp;</dd>
 <dt><a href="../org.cojen.tupl/org/cojen/tupl/io/StripedPageArray.html#copyPageFromAddress(long,long)" class="member-name-link">copyPageFromAddress(long, long)</a> - Method in class org.cojen.tupl.io.<a href="../org.cojen.tupl/org/cojen/tupl/io/StripedPageArray.html" title="class in org.cojen.tupl.io">StripedPageArray</a></dt>
 <dd>&nbsp;</dd>

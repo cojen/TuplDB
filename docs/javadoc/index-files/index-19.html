@@ -329,6 +329,10 @@ loadScripts(document, 'script');</script>
 </dd>
 <dt><a href="../org.cojen.tupl/org/cojen/tupl/diag/QueryPlan.Set.html#sources" class="member-name-link">sources</a> - Variable in class org.cojen.tupl.diag.<a href="../org.cojen.tupl/org/cojen/tupl/diag/QueryPlan.Set.html" title="class in org.cojen.tupl.diag">QueryPlan.Set</a></dt>
 <dd>&nbsp;</dd>
+<dt><a href="../org.cojen.tupl/org/cojen/tupl/io/SpilloverPageArray.html" class="type-name-link" title="class in org.cojen.tupl.io">SpilloverPageArray</a> - Class in <a href="../org.cojen.tupl/org/cojen/tupl/io/package-summary.html">org.cojen.tupl.io</a></dt>
+<dd>
+<div class="block">Combines <a href="../org.cojen.tupl/org/cojen/tupl/io/PageArray.html" title="class in org.cojen.tupl.io"><code>PageArrays</code></a> together in a sequential fashion.</div>
+</dd>
 <dt><a href="../org.cojen.tupl/org/cojen/tupl/repl/Role.html#STANDBY" class="member-name-link">STANDBY</a> - Enum constant in enum class org.cojen.tupl.repl.<a href="../org.cojen.tupl/org/cojen/tupl/repl/Role.html" title="enum class in org.cojen.tupl.repl">Role</a></dt>
 <dd>
 <div class="block">Standby members receive replicated data, they can <a href="../org.cojen.tupl/org/cojen/tupl/repl/ReplicatorConfig.html#proxyWrites(boolean)">proxy writes</a>, and they provide consensus.</div>
@@ -429,14 +433,14 @@ loadScripts(document, 'script');</script>
 </dd>
 <dt><a href="../org.cojen.tupl/org/cojen/tupl/io/FilePageArray.html#sync(boolean)" class="member-name-link">sync(boolean)</a> - Method in class org.cojen.tupl.io.<a href="../org.cojen.tupl/org/cojen/tupl/io/FilePageArray.html" title="class in org.cojen.tupl.io">FilePageArray</a></dt>
 <dd>&nbsp;</dd>
-<dt><a href="../org.cojen.tupl/org/cojen/tupl/io/JoinedPageArray.html#sync(boolean)" class="member-name-link">sync(boolean)</a> - Method in class org.cojen.tupl.io.<a href="../org.cojen.tupl/org/cojen/tupl/io/JoinedPageArray.html" title="class in org.cojen.tupl.io">JoinedPageArray</a></dt>
-<dd>&nbsp;</dd>
 <dt><a href="../org.cojen.tupl/org/cojen/tupl/io/MappedPageArray.html#sync(boolean)" class="member-name-link">sync(boolean)</a> - Method in class org.cojen.tupl.io.<a href="../org.cojen.tupl/org/cojen/tupl/io/MappedPageArray.html" title="class in org.cojen.tupl.io">MappedPageArray</a></dt>
 <dd>&nbsp;</dd>
 <dt><a href="../org.cojen.tupl/org/cojen/tupl/io/PageArray.html#sync(boolean)" class="member-name-link">sync(boolean)</a> - Method in class org.cojen.tupl.io.<a href="../org.cojen.tupl/org/cojen/tupl/io/PageArray.html" title="class in org.cojen.tupl.io">PageArray</a></dt>
 <dd>
 <div class="block">Durably flushes all writes to the underlying device.</div>
 </dd>
+<dt><a href="../org.cojen.tupl/org/cojen/tupl/io/SpilloverPageArray.html#sync(boolean)" class="member-name-link">sync(boolean)</a> - Method in class org.cojen.tupl.io.<a href="../org.cojen.tupl/org/cojen/tupl/io/SpilloverPageArray.html" title="class in org.cojen.tupl.io">SpilloverPageArray</a></dt>
+<dd>&nbsp;</dd>
 <dt><a href="../org.cojen.tupl/org/cojen/tupl/io/StripedPageArray.html#sync(boolean)" class="member-name-link">sync(boolean)</a> - Method in class org.cojen.tupl.io.<a href="../org.cojen.tupl/org/cojen/tupl/io/StripedPageArray.html" title="class in org.cojen.tupl.io">StripedPageArray</a></dt>
 <dd>&nbsp;</dd>
 <dt><a href="../org.cojen.tupl/org/cojen/tupl/DurabilityMode.html#SYNC" class="member-name-link">SYNC</a> - Enum constant in enum class org.cojen.tupl.<a href="../org.cojen.tupl/org/cojen/tupl/DurabilityMode.html" title="enum class in org.cojen.tupl">DurabilityMode</a></dt>
@@ -453,14 +457,14 @@ loadScripts(document, 'script');</script>
 <div class="block">Returns immediately if all data up to the given committed position is durable, or else
  durably persists all data up to the highest position.</div>
 </dd>
-<dt><a href="../org.cojen.tupl/org/cojen/tupl/io/JoinedPageArray.html#syncPage(long)" class="member-name-link">syncPage(long)</a> - Method in class org.cojen.tupl.io.<a href="../org.cojen.tupl/org/cojen/tupl/io/JoinedPageArray.html" title="class in org.cojen.tupl.io">JoinedPageArray</a></dt>
-<dd>&nbsp;</dd>
 <dt><a href="../org.cojen.tupl/org/cojen/tupl/io/MappedPageArray.html#syncPage(long)" class="member-name-link">syncPage(long)</a> - Method in class org.cojen.tupl.io.<a href="../org.cojen.tupl/org/cojen/tupl/io/MappedPageArray.html" title="class in org.cojen.tupl.io">MappedPageArray</a></dt>
 <dd>&nbsp;</dd>
 <dt><a href="../org.cojen.tupl/org/cojen/tupl/io/PageArray.html#syncPage(long)" class="member-name-link">syncPage(long)</a> - Method in class org.cojen.tupl.io.<a href="../org.cojen.tupl/org/cojen/tupl/io/PageArray.html" title="class in org.cojen.tupl.io">PageArray</a></dt>
 <dd>
 <div class="block">Durably flushes the page at the given index, but implementation might flush more pages.</div>
 </dd>
+<dt><a href="../org.cojen.tupl/org/cojen/tupl/io/SpilloverPageArray.html#syncPage(long)" class="member-name-link">syncPage(long)</a> - Method in class org.cojen.tupl.io.<a href="../org.cojen.tupl/org/cojen/tupl/io/SpilloverPageArray.html" title="class in org.cojen.tupl.io">SpilloverPageArray</a></dt>
+<dd>&nbsp;</dd>
 <dt><a href="../org.cojen.tupl/org/cojen/tupl/io/StripedPageArray.html#syncPage(long)" class="member-name-link">syncPage(long)</a> - Method in class org.cojen.tupl.io.<a href="../org.cojen.tupl/org/cojen/tupl/io/StripedPageArray.html" title="class in org.cojen.tupl.io">StripedPageArray</a></dt>
 <dd>&nbsp;</dd>
 <dt><a href="../org.cojen.tupl/org/cojen/tupl/DatabaseConfig.html#syncWrites(boolean)" class="member-name-link">syncWrites(boolean)</a> - Method in class org.cojen.tupl.<a href="../org.cojen.tupl/org/cojen/tupl/DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></dt>

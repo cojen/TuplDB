@@ -41,6 +41,11 @@ abstract class TransformedPageArray extends PageArray {
         mSource = source;
     }
 
+    @Override
+    public boolean isClosed() {
+        return mSource.isClosed();
+    }
+
     static PageArray rawSource(PageArray array) {
         while (array instanceof TransformedPageArray tpa) {
             array = tpa.mSource;

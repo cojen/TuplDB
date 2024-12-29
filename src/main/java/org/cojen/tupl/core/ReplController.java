@@ -301,7 +301,7 @@ final class ReplController extends ReplWriter {
     }
 
     @Override
-    void force(boolean metadata, long nanosTimeout) throws IOException {
+    void sync(boolean metadata, long nanosTimeout) throws IOException {
         // Interpret metadata option as a durability confirmation request.
 
         if (metadata) {
@@ -334,7 +334,7 @@ final class ReplController extends ReplWriter {
             }
         }
 
-        super.force(metadata, nanosTimeout);
+        super.sync(metadata, nanosTimeout);
     }
 
     @Override

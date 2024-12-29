@@ -17,7 +17,7 @@
 
 package org.cojen.tupl.core;
 
-import static org.cojen.tupl.core.DirectPageOps.p_callocPage;
+import static org.cojen.tupl.core.PageOps.p_callocPage;
 
 import org.junit.*;
 import static org.junit.Assert.*;

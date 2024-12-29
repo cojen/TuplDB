@@ -394,7 +394,7 @@ class ReplWriter extends RedoWriter {
     }
 
     @Override
-    void force(boolean metadata, long nanosTimeout) throws IOException {
+    void sync(boolean metadata, long nanosTimeout) throws IOException {
         long commitPos = drain(false);
 
         if (commitPos > 0) {

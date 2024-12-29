@@ -38,6 +38,7 @@ import java.util.function.LongConsumer;
 import java.util.function.Supplier;
 
 import java.util.zip.Checksum;
+import java.util.zip.CRC32;
 
 import org.cojen.tupl.ChecksumException;
 import org.cojen.tupl.CorruptDatabaseException;
@@ -59,7 +60,7 @@ import org.cojen.tupl.util.Latch;
 
 import static java.lang.System.arraycopy;
 
-import static org.cojen.tupl.core.DirectPageOps.*;
+import static org.cojen.tupl.core.PageOps.*;
 import static org.cojen.tupl.core.Utils.*;
 
 /**
@@ -1073,9 +1074,12 @@ final class StoredPageDb extends PageDb {
     }
 
     private static int setHeaderChecksum(long headerAddr) {
-        // Clear checksum field before computing.
+        // Clear the checksum field before computing a new one.
         p_intPutLE(headerAddr, I_CHECKSUM, 0);
-        int checksum = p_crc32(headerAddr, 0, MINIMUM_PAGE_SIZE);
+        var crc = new CRC32();
+        crc.update(MemorySegment.ofAddress(headerAddr)
+                   .reinterpret(MINIMUM_PAGE_SIZE).asByteBuffer());
+        int checksum = (int) crc.getValue();
         p_intPutLE(headerAddr, I_CHECKSUM, checksum);
         return checksum;
     }
@@ -1165,7 +1169,7 @@ final class StoredPageDb extends PageDb {
 
         try {
             mPageArray.readPage(index, pageAddr, 0, readLen);
-            p_copyToArray(pageAddr, start, buf, offset, length);
+            p_copy(pageAddr, start, buf, offset, length);
         } finally {
             p_delete(pageAddr);
         }

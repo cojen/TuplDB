@@ -17,6 +17,7 @@
 
 package org.cojen.tupl;
 
+import java.io.Closeable;
 import java.io.Flushable;
 import java.io.IOException;
 
@@ -57,7 +58,7 @@ import org.cojen.tupl.core.LocalTransaction;
  * @author Brian S O'Neill
  * @see Database#newTransaction Database.newTransaction
  */
-public interface Transaction extends Flushable {
+public interface Transaction extends Flushable, Closeable {
     /**
      * Transaction instance which isn't a transaction at all. It always operates in an
      * {@linkplain LockMode#UNSAFE unsafe} lock mode and a {@linkplain DurabilityMode#NO_REDO
@@ -153,6 +154,16 @@ public interface Transaction extends Flushable {
      * method is called, unless an exception is thrown.
      */
     void exit() throws IOException;
+
+    /**
+     * Equivalent to calling {@link #exit exit}: Exits the current transaction scope, rolling
+     * back all uncommitted modifications made within. The transaction is still valid after
+     * this method is called, unless an exception is thrown.
+     */
+    @Override
+    default void close() throws IOException {
+        exit();
+    }
 
     /**
      * Exits all transaction scopes, rolling back all uncommitted modifications. Equivalent to:

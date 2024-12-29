@@ -196,7 +196,7 @@ abstract class RedoWriter extends Latch implements Closeable, Flushable {
      *
      * @param metadata true to durably write applicable file system metadata too
      */
-    abstract void force(boolean metadata, long nanosTimeout) throws IOException;
+    abstract void sync(boolean metadata, long nanosTimeout) throws IOException;
 
     /**
      * Stash a prepared transaction which needs to be passed to a recovery handler.

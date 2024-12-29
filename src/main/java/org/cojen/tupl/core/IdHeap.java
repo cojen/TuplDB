@@ -160,12 +160,12 @@ final class IdHeap {
         while (mSize > 0 && offset < end) {
             if (offset > (end - 9)) {
                 long id = mIds[0];
-                if (offset + DirectPageOps.p_ulongVarSize(id - prevId) > end) {
+                if (offset + PageOps.p_ulongVarSize(id - prevId) > end) {
                     break;
                 }
             }
             long id = remove();
-            offset = DirectPageOps.p_ulongPutVar(bufAddr, offset, id - prevId);
+            offset = PageOps.p_ulongPutVar(bufAddr, offset, id - prevId);
             prevId = id;
         }
         return offset;
@@ -180,7 +180,7 @@ final class IdHeap {
         var offsetRef = new IntegerRef.Value();
         offsetRef.set(offset);
         while (offsetRef.get() < endOffset) {
-            id += DirectPageOps.p_ulongGetVar(bufAddr, offsetRef);
+            id += PageOps.p_ulongGetVar(bufAddr, offsetRef);
             add(id);
         }
     }

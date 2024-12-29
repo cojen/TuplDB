@@ -27,7 +27,7 @@ import org.cojen.tupl.WriteFailureException;
 import org.cojen.tupl.diag.EventListener;
 import org.cojen.tupl.diag.EventType;
 
-import static org.cojen.tupl.core.DirectPageOps.*;
+import static org.cojen.tupl.core.PageOps.*;
 import static org.cojen.tupl.core.Utils.scramble;
 
 /**

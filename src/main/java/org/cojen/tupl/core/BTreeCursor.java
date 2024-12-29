@@ -41,7 +41,7 @@ import org.cojen.tupl.diag.IndexStats;
 
 import org.cojen.tupl.views.ViewUtils;
 
-import static org.cojen.tupl.core.DirectPageOps.*;
+import static org.cojen.tupl.core.PageOps.*;
 import static org.cojen.tupl.core.Utils.*;
 
 import static java.util.Arrays.compareUnsigned;
@@ -4387,6 +4387,39 @@ public class BTreeCursor extends CoreValueAccessor implements Cursor {
     }
 
     @Override
+    protected final int doValueReadToGap(long pos, byte[] buf, int off, int len)
+        throws IOException
+    {
+        CursorFrame frame;
+        try {
+            frame = frameSharedNotSplit();
+        } catch (IllegalStateException e) {
+            valueCheckOpen();
+            throw e;
+        }
+
+        long result = BTreeValue.action
+            (null, this, frame, BTreeValue.OP_READ_TO_GAP, pos, buf, off, len);
+        frame.mNode.releaseShared();
+        return (int) result;
+    }
+
+    @Override
+    protected final long doValueSkipGap(long pos) throws IOException {
+        CursorFrame frame;
+        try {
+            frame = frameSharedNotSplit();
+        } catch (IllegalStateException e) {
+            valueCheckOpen();
+            throw e;
+        }
+
+        long result = BTreeValue.action(null, this, frame, BTreeValue.OP_SKIP_GAP, pos, null, 0, 0);
+        frame.mNode.releaseShared();
+        return result;
+    }
+
+    @Override
     protected final void doValueWrite(long pos, byte[] buf, int off, int len) throws IOException {
         try {
             doValueModify(BTreeValue.OP_WRITE, pos, buf, off, len);
@@ -5265,25 +5298,23 @@ public class BTreeCursor extends CoreValueAccessor implements Cursor {
         // If checksums are enabled, then page checksum verification is performed as a side
         // effect. For simplicity, all values are accessed, even those which aren't fragmented.
 
-        // TODO: If the fragmented value is very large and sparse, then scanning over the value
-        // in this fashion is very slow. Need to somehow skip over the gaps.
-
         int pageSize = pageSize();
         var buf = new byte[1];
 
         while (true) {
-            for (long pos = 0, end = valueLength() - 1;;) {
-                if (doValueRead(pos, buf, 0, 1) <= 0) {
-                    break;
-                }
-                if (pos == end) {
-                    break;
-                }
-                pos += pageSize;
-                if (pos > end) {
-                    // Make sure the last page is accessed if the value has inline content,
-                    // although the access might be redundant.
-                    pos = end;
+            for (long pos = 0;;) {
+                int amt = doValueReadToGap(pos, buf, 0, 1);
+                if (amt > 0) {
+                    pos += pageSize;
+                } else {
+                    if (amt < 0) {
+                        break;
+                    }
+                    long skipped = doValueSkipGap(pos);
+                    if (skipped <= 0) {
+                        break;
+                    }
+                    pos += skipped;
                 }
             }
 

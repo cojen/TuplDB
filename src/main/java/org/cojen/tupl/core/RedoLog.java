@@ -26,10 +26,9 @@ import java.io.InputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 
-import java.util.TreeMap;
-
 import java.nio.channels.ClosedChannelException;
-import java.nio.channels.FileChannel;
+
+import java.util.TreeMap;
 
 import java.security.GeneralSecurityException;
 
@@ -43,6 +42,9 @@ import org.cojen.tupl.diag.EventType;
 import org.cojen.tupl.ext.Crypto;
 
 import org.cojen.tupl.io.FileIO;
+
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.VarHandle;
 
 import static org.cojen.tupl.core.LocalDatabase.REDO_FILE_SUFFIX;
 import static org.cojen.tupl.core.Utils.*;
@@ -60,6 +62,17 @@ final class RedoLog extends RedoWriter {
     private static final long MAGIC_NUMBER = 431399725605778814L;
     private static final int ENCODING_VERSION = 20130106;
 
+    private static final VarHandle cOldFileIOHandle;
+
+    static {
+        try {
+            var lookup = MethodHandles.lookup();
+            cOldFileIOHandle = lookup.findVarHandle(RedoLog.class, "mOldFileIO", FileIO.class);
+        } catch (Throwable e) {
+            throw Utils.rethrow(e);
+        }
+    }
+
     private final Crypto mCrypto;
     private final File mBaseFile;
 
@@ -73,15 +86,14 @@ final class RedoLog extends RedoWriter {
     private long mLogId;
     private long mPosition;
     private OutputStream mOut;
-    private volatile FileChannel mChannel;
+    private volatile FileIO mFileIO;
 
     private long mNextLogId;
     private long mNextPosition;
     private OutputStream mNextOut;
-    private FileChannel mNextChannel;
+    private FileIO mNextFileIO;
 
-    private volatile OutputStream mOldOut;
-    private volatile FileChannel mOldChannel;
+    private volatile FileIO mOldFileIO;
 
     private long mDeleteLogId;
 
@@ -218,11 +230,17 @@ final class RedoLog extends RedoWriter {
 
         FileOutputStream fout = null;
         OutputStream nextOut;
-        FileChannel nextChannel;
+        FileIO nextFileIO = null;
 
         try {
             fout = new FileOutputStream(file);
-            nextChannel = fout.getChannel();
+
+            // The FileIO object is mainly used for sync'ng data with more control than what
+            // the FileDescriptor class offers. Using the FileChannel of the FileOutputStream
+            // isn't a good option because an interrupt during a channel operation closes both
+            // the channel and the stream. The FileIO object handles interrupts properly,
+            // keeping the object open and functional.
+            nextFileIO = FileIO.open(file, null, 1);
 
             if (mCrypto == null) {
                 nextOut = fout;
@@ -248,7 +266,7 @@ final class RedoLog extends RedoWriter {
             // Make sure that parent directory durably records the new log file.
             FileIO.dirSync(file);
         } catch (IOException e) {
-            closeQuietly(fout);
+            close(fout, nextFileIO);
             try {
                 Utils.delete(file);
             } catch (IOException e2) {
@@ -259,22 +277,24 @@ final class RedoLog extends RedoWriter {
 
         mNextLogId = logId;
         mNextOut = nextOut;
-        mNextChannel = nextChannel;
+        mNextFileIO = nextFileIO;
     }
 
     private void applyNextFile(TransactionContext... contexts) throws IOException {
-        final OutputStream oldOut;
-        final FileChannel oldChannel;
-
         TransactionContext context = contexts[0];
         for (int i = contexts.length; --i >= 1; ) {
             contexts[i].flush();
         }
 
+        final OutputStream oldOut;
+        final FileIO oldFileIO;
+
         context.fullAcquireRedoLatch(this);
         try {
+            // Keep the old FileIO around in case the sync method is called.
+            oldFileIO = (FileIO) cOldFileIOHandle.getAndSet(this, mFileIO);
+
             oldOut = mOut;
-            oldChannel = mChannel;
 
             if (oldOut != null) {
                 context.doRedoTimestamp(this, RedoOps.OP_END_FILE, DurabilityMode.NO_FLUSH);
@@ -285,11 +305,11 @@ final class RedoLog extends RedoWriter {
             mNextPosition = mPosition;
 
             mOut = mNextOut;
-            mChannel = mNextChannel;
+            mFileIO = mNextFileIO;
             mLogId = mNextLogId;
 
             mNextOut = null;
-            mNextChannel = null;
+            mNextFileIO = null;
 
             // Reset the transaction id early in order for terminators to be encoded correctly.
             // RedoLogDecoder always starts with an initial transaction id of 0.
@@ -303,11 +323,8 @@ final class RedoLog extends RedoWriter {
             context.releaseRedoLatch();
         }
 
-        // Close old file if previous checkpoint aborted.
-        closeQuietly(mOldOut);
-
-        mOldOut = oldOut;
-        mOldChannel = oldChannel;
+        closeQuietly(oldOut);
+        closeOldFileIO(oldFileIO);
     }
 
     /**
@@ -320,7 +337,7 @@ final class RedoLog extends RedoWriter {
     @Override
     void txnCommitSync(long commitPos) throws IOException {
         try {
-            force(false, -1);
+            sync(false, -1);
         } catch (IOException e) {
             throw rethrow(e, mCloseCause);
         }
@@ -339,8 +356,8 @@ final class RedoLog extends RedoWriter {
     @Override
     boolean shouldCheckpoint(long size) {
         try {
-            FileChannel channel = mChannel;
-            return channel != null && channel.size() >= size;
+            FileIO fileIO = mFileIO;
+            return fileIO != null && fileIO.length() >= size;
         } catch (IOException e) {
             return false;
         }
@@ -382,30 +399,19 @@ final class RedoLog extends RedoWriter {
 
     @Override
     void checkpointAborted() {
-        if (mNextOut != null) {
-            closeQuietly(mNextOut);
+        if (mNextOut != null || mNextFileIO != null) {
+            close(mNextOut, mNextFileIO);
             mNextOut = null;
+            mNextFileIO = null;
         }
     }
 
     @Override
     void checkpointStarted() throws IOException {
-        /* Forcing the old redo log increases I/O and slows down the checkpoint. If the
+        /* Sync'ng the old redo log increases I/O and slows down the checkpoint. If the
            checkpoint completes, then durable persistence of the old redo log file was
            unnecessary. Applications which require stronger durability can select an
            appropriate mode or call sync periodically.
-
-        FileChannel oldChannel = mOldChannel;
-
-        if (oldChannel != null) {
-            // Make sure any exception thrown by this call is not caught here,
-            // because a checkpoint cannot complete successfully if the redo
-            // log has not been durably written.
-            oldChannel.force(true);
-            mOldChannel = null;
-        }
-
-        closeQuietly(mOldOut);
         */
     }
 
@@ -416,8 +422,7 @@ final class RedoLog extends RedoWriter {
 
     @Override
     void checkpointFinished() throws IOException {
-        mOldChannel = null;
-        closeQuietly(mOldOut);
+        closeOldFileIO();
 
         for (long id = mNextLogId; --id >= mDeleteLogId; ) {
             // Typically deletes one file, but more will accumulate if checkpoints abort.
@@ -531,45 +536,48 @@ final class RedoLog extends RedoWriter {
     }
 
     @Override
-    void force(boolean metadata, long nanosTimeout) throws IOException {
-        FileChannel oldChannel = mOldChannel;
-        if (oldChannel != null) {
-            // Ensure old file is forced before current file. Proper ordering is critical.
+    void sync(boolean metadata, long nanosTimeout) throws IOException {
+        FileIO oldFileIO = mOldFileIO;
+        if (oldFileIO != null) {
+            // Ensure the old file is sync'd before current file. Proper ordering is critical.
             try {
-                oldChannel.force(true);
+                oldFileIO.sync(true);
+                closeOldFileIO(oldFileIO);
             } catch (ClosedChannelException e) {
-                // Ignore.
+                // Assume sync was already called.
+            } catch (IOException e) {
+                if (!oldFileIO.isClosed()) {
+                    throw e;
+                }
+                // Assume sync was already called.
             }
-            mOldChannel = null;
         }
 
-        FileChannel channel = mChannel;
-        if (channel != null) {
-            try {
-                channel.force(metadata);
-            } catch (ClosedChannelException e) {
-                // Ignore.
-            }
+        FileIO fileIO = mFileIO;
+        if (fileIO != null) {
+            fileIO.sync(metadata);
         }
     }
 
     @Override
-    public void close() throws IOException {
-        close(mNextOut, mNextChannel);
-        close(mOut, mChannel);
-        close(mOldOut, mOldChannel);
+    public void close() {
+        close(mNextOut, mNextFileIO);
+        close(mOut, mFileIO);
+        closeOldFileIO();
     }
 
-    private static void close(OutputStream out, FileChannel channel) throws IOException {
-        if (channel != null) {
-            try {
-                channel.close();
-            } catch (ClosedChannelException e) {
-                // Ignore.
-            }
-        }
-
+    private static void close(OutputStream out, FileIO fileIO) {
         closeQuietly(out);
+        closeQuietly(fileIO);
+    }
+
+    private void closeOldFileIO() {
+        closeOldFileIO(mOldFileIO);
+    }
+
+    private void closeOldFileIO(FileIO oldFileIO) {
+        cOldFileIOHandle.compareAndSet(this, oldFileIO, null);
+        closeQuietly(oldFileIO);
     }
 
     @Override
