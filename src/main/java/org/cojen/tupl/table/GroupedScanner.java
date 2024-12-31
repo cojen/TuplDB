@@ -157,11 +157,7 @@ public class GroupedScanner<S, T> implements Scanner<T> {
         mGrouper = null;
         mTargetRow = null;
 
-        try {
-            grouper.close();
-        } catch (Throwable e) {
-            throw e;
-        }
+        grouper.close();
 
         return null;
     }

@@ -63,7 +63,6 @@ public class RowReader<R> implements Scanner<R> {
     private final int mCharacteristics;
 
     private Decoder<R> mDecoder;
-    private int mDecoderId;
     private R mRow;
 
     private byte[] mRowData;
@@ -157,26 +156,23 @@ public class RowReader<R> implements Scanner<R> {
             case 2:
                 var key = new CacheKey(mRowType, RowHeader.readFrom(in));
                 var decoder = (Decoder<R>) cDecoders.obtain(key, null);
-                int decoderId;
 
-                if (mDecoder == null) {
-                    decoderId = 0;
-                } else if (mDecoders == null) {
-                    decoderId = 1;
-                    mDecoders = new Decoder[] {mDecoder, decoder};
-                    mNumDecoders = 2;
-                } else {
-                    decoderId = mNumDecoders;
-                    if (decoderId >= mDecoders.length) {
-                        int newLen = Math.min(mDecoders.length << 1, Integer.MAX_VALUE);
-                        mDecoders = Arrays.copyOf(mDecoders, newLen);
+                if (mDecoder != null) {
+                    if (mDecoders == null) {
+                        mDecoders = new Decoder[] {mDecoder, decoder};
+                        mNumDecoders = 2;
+                    } else {
+                        int decoderId = mNumDecoders;
+                        if (decoderId >= mDecoders.length) {
+                            int newLen = Math.min(mDecoders.length << 1, Integer.MAX_VALUE);
+                            mDecoders = Arrays.copyOf(mDecoders, newLen);
+                        }
+                        mDecoders[decoderId] = decoder;
+                        mNumDecoders = decoderId + 1;
                     }
-                    mDecoders[decoderId] = decoder;
-                    mNumDecoders = decoderId + 1;
                 }
 
                 mDecoder = decoder;
-                mDecoderId = decoderId;
                 break;
             case 3:
                 var e = (Throwable) in.readThrowable();
@@ -187,7 +183,7 @@ public class RowReader<R> implements Scanner<R> {
                 }
                 throw RowUtils.rethrow(e);
             default:
-                decoderId = prefix < 255 ? (prefix - 5) : in.readInt();
+                int decoderId = prefix < 255 ? (prefix - 5) : in.readInt();
                 if (mDecoders != null) {
                     mDecoder = mDecoders[decoderId];
                 } else if (decoderId != 0) {

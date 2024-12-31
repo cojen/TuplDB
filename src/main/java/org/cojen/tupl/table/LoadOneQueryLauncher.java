@@ -25,7 +25,7 @@ import org.cojen.tupl.Transaction;
 import org.cojen.tupl.diag.QueryPlan;
 
 /**
- * Optimized QueryLauncher for loading at most one row. Update isn't optimmized.
+ * Optimized QueryLauncher for loading at most one row. Update isn't optimized.
  *
  * @author Brian S O'Neill
  */

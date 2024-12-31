@@ -156,7 +156,7 @@ public class RowGen {
             parentLoader = rowType.getClassLoader();
 
             if (rowType.isSynthetic()) {
-                // Assume it was generated using beginClassMakerForRowType, so choose it's
+                // Assume it was generated using beginClassMakerForRowType, so choose its
                 // parent loader in order for the new class to be generated into the same
                 // loader. This isn't strictly required -- it just reduces the number of
                 // ClassLoader instances.

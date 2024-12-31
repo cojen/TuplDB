@@ -230,7 +230,6 @@ public class WeakCache<K, V, H> extends RefCache<K, V, H> {
         return mSize == 0;
     }
 
-    @SuppressWarnings({"unchecked"})
     synchronized K[] copyKeys(IntFunction<K[]> generator) {
         Object ref = poll();
         if (ref != null) {

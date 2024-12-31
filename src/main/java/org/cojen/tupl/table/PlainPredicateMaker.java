@@ -30,7 +30,7 @@ import org.cojen.tupl.table.filter.TrueFilter;
 /**
  * Generates plain Predicate instances which check that columns are set.
  *
- * @see Table#predicate
+ * @see org.cojen.tupl.Table#predicate
  * @see RowPredicateMaker
  * @author Brian S O'Neill
  */

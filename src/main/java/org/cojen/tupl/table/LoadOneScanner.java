@@ -67,7 +67,7 @@ final class LoadOneScanner<R> implements Scanner<R>, UnsupportedCursor {
             mValue = value;
             RowEvaluator<R> evaluator = controller.evaluator();
             consumer.beginBatch(this, evaluator);
-            mRow = (R) evaluator.evalRow(this, LockResult.UNOWNED, (R) consumer);
+            mRow = evaluator.evalRow(this, LockResult.UNOWNED, (R) consumer);
         }
         mController = controller;
     }
@@ -78,28 +78,28 @@ final class LoadOneScanner<R> implements Scanner<R>, UnsupportedCursor {
     }
 
     @Override
-    public final long estimateSize() {
+    public long estimateSize() {
         return 1;
     }
 
     @Override
-    public final int characteristics() {
+    public int characteristics() {
         return NONNULL | ORDERED | CONCURRENT | DISTINCT | SIZED;
     }
 
     @Override
-    public final R row() {
+    public R row() {
         return mRow;
     }
 
     @Override
-    public final R step(R row) {
+    public R step(R row) {
         mRow = null;
         return null;
     }
 
     @Override
-    public final void close() {
+    public void close() {
         mRow = null;
     }
 

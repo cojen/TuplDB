@@ -262,7 +262,8 @@ public class JoinedTableMaker extends TableMaker {
             joinedPkVar = mm.var(byte[].class);
             Label cont = mm.label();
             Label repeatable = mm.label();
-            mm.var(RowUtils.class).invoke("isRepeatable", txnVar).ifTrue(repeatable);
+            repeatableVar = mm.var(RowUtils.class).invoke("isRepeatable", txnVar);
+            repeatableVar.ifTrue(repeatable);
             joinedPkVar.set(mm.invoke("toPrimaryKey", rowVar));
             mm.goto_(cont);
             repeatable.here();
@@ -398,7 +399,6 @@ public class JoinedTableMaker extends TableMaker {
         throws Throwable
     {
         RowInfo rowInfo = RowInfo.find(rowType);
-        RowGen rowGen = rowInfo.rowGen();
         RowGen codecGen = RowStore.secondaryRowInfo(rowInfo, secondaryDesc).rowGen();
 
         ClassMaker cm = RowGen.beginClassMaker

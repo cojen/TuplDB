@@ -922,7 +922,7 @@ public class RowInfo extends ColumnSet {
 
     /**
      * Returns a variant of this RowInfo in which all key columns are treated as value columns,
-     * and it does't have any alternate keys or secondary indexes.
+     * and it doesn't have any alternate keys or secondary indexes.
      */
     public RowInfo plain() {
         if (keyColumns.isEmpty() && alternateKeys.isEmpty() && secondaryIndexes.isEmpty()) {
@@ -980,7 +980,7 @@ public class RowInfo extends ColumnSet {
 
         if (!alternateKeys.isEmpty()) {
             if (alternateKeys.size() == 1) {
-                ColumnSet alt = alternateKeys.iterator().next();
+                ColumnSet alt = alternateKeys.getFirst();
                 cm.addAnnotation(AlternateKey.class, true).
                     put("value", makeKeyAnnotationValues(alt, false));
             } else {
@@ -998,7 +998,7 @@ public class RowInfo extends ColumnSet {
 
         if (!secondaryIndexes.isEmpty()) {
             if (secondaryIndexes.size() == 1) {
-                ColumnSet secondary = secondaryIndexes.iterator().next();
+                ColumnSet secondary = secondaryIndexes.getFirst();
                 cm.addAnnotation(SecondaryIndex.class, true)
                     .put("value", makeKeyAnnotationValues(secondary, true));
             } else {

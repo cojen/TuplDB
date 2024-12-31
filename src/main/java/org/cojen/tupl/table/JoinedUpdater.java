@@ -50,7 +50,7 @@ final class JoinedUpdater<R> extends BasicScanner<R> implements Updater<R> {
         // transaction, and so the composition approach is safer.
         mAccessor = new TriggerIndexAccessor() {
             @Override
-            public void stored(Index ix, byte[] key, byte[] value) throws IOException {
+            public void stored(Index ix, byte[] key, byte[] value) {
                 triggerStored(ix, key, value);
             }
 
@@ -112,7 +112,7 @@ final class JoinedUpdater<R> extends BasicScanner<R> implements Updater<R> {
     }
 
     @Override
-    public final R update(R row) throws IOException {
+    public R update(R row) throws IOException {
         updateCurrent();
         return doStep(row);
     }
@@ -129,7 +129,7 @@ final class JoinedUpdater<R> extends BasicScanner<R> implements Updater<R> {
     }
 
     @Override
-    public final R delete(R row) throws IOException {
+    public R delete(R row) throws IOException {
         deleteCurrent();
         return doStep(row);
     }
@@ -155,7 +155,7 @@ final class JoinedUpdater<R> extends BasicScanner<R> implements Updater<R> {
         return old;
     }
 
-    private void triggerStored(Index ix, byte[] key, byte[] value) throws IOException {
+    private void triggerStored(Index ix, byte[] key, byte[] value) {
         if (mTable.mSource == ix) {
             if (mController.predicate().testP(mRow, key, value)) {
                 // The secondary key changed, and it's still in bounds.

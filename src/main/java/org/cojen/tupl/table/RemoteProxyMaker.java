@@ -578,7 +578,7 @@ public final class RemoteProxyMaker {
             ColumnInfo info = codec.info;
             int num = columnNumbers.get(info.name);
 
-            int sfNum = rowGen.stateFieldNum(num);
+            int sfNum = RowGen.stateFieldNum(num);
             if (sfNum != stateFieldNum) {
                 stateFieldNum = sfNum;
                 stateField = mm.field("state$" + sfNum).get();
@@ -621,7 +621,7 @@ public final class RemoteProxyMaker {
                 columnLenVar = endVar.sub(offsetVars[i]);
             }
 
-            int sfNum = rowGen.stateFieldNum(num);
+            int sfNum = RowGen.stateFieldNum(num);
             if (sfNum != stateFieldNum) {
                 stateFieldNum = sfNum;
                 stateField = mm.field("state$" + sfNum).get();
@@ -1189,7 +1189,6 @@ public final class RemoteProxyMaker {
     /**
      * Called by generated code.
      */
-    @SuppressWarnings("unchecked")
     public static void tryDelete(StoredTable table, Transaction txn, byte[] key, Pipe pipe)
         throws IOException
     {
@@ -1386,7 +1385,7 @@ public final class RemoteProxyMaker {
         if (variant != "tryReplace" && mAutoColumn != null) {
             // Check if the automatic column is unset -- the isAutoVar value will be zero.
             int columnNum = mRowGen.info.keyColumns.size() - 1;
-            int mask = mRowGen.stateFieldMask(columnNum);
+            int mask = RowGen.stateFieldMask(columnNum);
             isAutoVar = rowVar.field(mRowGen.stateField(columnNum)).and(mask);
         }
 

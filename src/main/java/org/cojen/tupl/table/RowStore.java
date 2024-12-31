@@ -362,7 +362,7 @@ public final class RowStore {
     /**
      * Called by TableManager via asTable.
      *
-     * @param doubleCheck invoked with schema lock held, to double check before making the table
+     * @param doubleCheck invoked with schema lock held, to double-check before making the table
      * @param consumer called with lock held, to accept the newly made table
      */
     @SuppressWarnings("unchecked")
@@ -776,7 +776,7 @@ public final class RowStore {
      * When called by ReplEngine, all incoming redo message processing is suspended until this
      * method returns.
      */
-    public void notifySchema(long indexId) throws IOException {
+    public void notifySchema(long indexId) {
         try {
             byte[] taskKey = newTaskKey(TASK_NOTIFY_SCHEMA, indexId);
             Transaction txn = beginWorkflowTask(taskKey);
@@ -2021,7 +2021,7 @@ public final class RowStore {
         WeakCache<TranscoderKey, Transcoder, SecondaryInfo> cache = mSortTranscoderCache;
 
         if (cache == null) {
-            cache = new WeakCache<TranscoderKey, Transcoder, SecondaryInfo>() {
+            cache = new WeakCache<>() {
                 @Override
                 protected Transcoder newValue(TranscoderKey key, SecondaryInfo sortedInfo) {
                     Class<?> rowType = key.mRowType;

@@ -40,7 +40,7 @@ import org.cojen.tupl.core.TupleKey;
  */
 public final class ComparatorMaker<R> {
     public static Comparator zero() {
-        return (Comparator) (a, b) -> 0;
+        return (_, _) -> 0;
     }
 
     private static final WeakCache<TupleKey, Comparator<?>, OrderBy> cCache;
@@ -119,7 +119,7 @@ public final class ComparatorMaker<R> {
             return zero();
         }
 
-        Class rowClass = RowMaker.find(mRowType);
+        Class<?> rowClass = RowMaker.find(mRowType);
         ClassMaker cm = mRowInfo.rowGen().anotherClassMaker
             (ComparatorMaker.class, rowClass, "comparator").implement(Comparator.class).final_();
 

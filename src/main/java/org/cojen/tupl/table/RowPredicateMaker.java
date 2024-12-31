@@ -471,7 +471,7 @@ public class RowPredicateMaker {
     }
 
     private void addPartialRowTestMethod() {
-        /* TODO: Override the default impementation.
+        /* TODO: Override the default implementation.
 
            MethodMaker mm = mClassMaker.addMethod
                (boolean.class, "testP", Object.class, byte[].class, byte[].class).public_();

@@ -263,7 +263,7 @@ public class WriteRowMaker {
             if (gap) {
                 ranges.add(new Range(start, length));
             } else {
-                ranges.get(ranges.size() - 1).length.inc(length);
+                ranges.getLast().length.inc(length);
             }
 
             numColumns--;

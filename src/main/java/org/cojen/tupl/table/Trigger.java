@@ -42,7 +42,7 @@ public class Trigger<R> extends WideLatch {
      * Called after a row has been locked, but before the row has been marked clean. By
      * default, this method always throws an exception.
      *
-     * @param txn never null, although can be BOGUS
+     * @param txn never null, although it can be BOGUS
      * @param row never null, all columns are set
      * @param key never null
      * @param oldValue never null
@@ -62,7 +62,7 @@ public class Trigger<R> extends WideLatch {
      * when all columns are dirty, the regular trigger store method is called with a fully
      * populated row. By default, this method always throws an exception.
      *
-     * @param txn never null, although can be BOGUS
+     * @param txn never null, although it can be BOGUS
      * @param row never null
      * @param key never null
      * @param oldValue never null
@@ -78,7 +78,7 @@ public class Trigger<R> extends WideLatch {
      * Called after a row has been locked, but before the row has been marked clean. By
      * default, this method always throws an exception.
      *
-     * @param txn never null, although can be BOGUS
+     * @param txn never null, although it can be BOGUS
      * @param row never null, all columns are set
      * @param key never null
      * @param newValue never null
@@ -90,7 +90,7 @@ public class Trigger<R> extends WideLatch {
     /**
      * Variant which supports partial rows.
      *
-     * @param txn never null, although can be BOGUS
+     * @param txn never null, although it can be BOGUS
      * @param row never null
      * @param key never null
      * @param newValue never null
@@ -103,7 +103,7 @@ public class Trigger<R> extends WideLatch {
      * Called after a row has been locked, but before the row has been marked clean. By
      * default, this method always throws an exception.
      *
-     * @param txn never null, although can be BOGUS
+     * @param txn never null, although it can be BOGUS
      * @param row never null, all key columns are set
      * @param key never null
      * @param oldValue never null

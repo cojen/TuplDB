@@ -54,7 +54,7 @@ final class IndexSelector<R> {
     private NavigableSet<ColumnSet> mAlternateKeys;
     private NavigableSet<ColumnSet> mSecondaryIndexes;
 
-    private int mAnyTermMatches;
+    private long mAnyTermMatches;
 
     private boolean mAnyFirstOrderMatches;
 
@@ -606,7 +606,7 @@ final class IndexSelector<R> {
                         // If an index has exactly matched all of the primary key columns, then
                         // peg the score to match that of the primary index. This prevents it
                         // from being immediately ranked higher than the primary index.
-                        score = primaryMatches * 3;
+                        score = primaryMatches * 3L;
                         break scan;
                     }
                     score += 3;

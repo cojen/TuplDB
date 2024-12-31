@@ -326,8 +326,7 @@ public class IndexTriggerMaker<R> {
 
         var tm = new TransformMaker<R>(mRowType, mPrimaryGen.info, available);
 
-        for (int i=0; i<mSecondaryInfos.length; i++) {
-            RowInfo secondaryInfo = mSecondaryInfos[i];
+        for (RowInfo secondaryInfo : mSecondaryInfos) {
             tm.addKeyTarget(secondaryInfo, 0, true);
             tm.addValueTarget(secondaryInfo, 0, true);
         }
@@ -448,7 +447,6 @@ public class IndexTriggerMaker<R> {
      *     void (int schemaVersion, Transaction txn, Row row, byte[] key, byte[] oldValueVar)
      *     void (int schemaVersion, Transaction txn, byte[] key, byte[] oldValueVar)
      */
-    @SuppressWarnings("unchecked")
     public static SwitchCallSite indyDelete(MethodHandles.Lookup lookup, String name,
                                             MethodType mt, WeakReference<RowStore> storeRef,
                                             Class<?> rowType, long indexId,
@@ -475,18 +473,12 @@ public class IndexTriggerMaker<R> {
 
             RowInfo primaryInfo;
             Index[] secondaryIndexes;
-            RowPredicateLock[] secondaryLocks;
             try {
                 primaryInfo = store.rowInfo(rowType, indexId, schemaVersion);
-
                 secondaryIndexes = new Index[secondaryIndexIds.length];
-                secondaryLocks = new RowPredicateLock[secondaryIndexes.length];
-
                 for (int i=0; i<secondaryIndexIds.length; i++) {
                     secondaryIndexes[i] = store.mDatabase.indexById(secondaryIndexIds[i]);
-                    secondaryLocks[i] = store.indexLock(secondaryIndexes[i]);
                 }
-
             } catch (Exception e) {
                 var mm = MethodMaker.begin(lookup, "delete", mtx);
                 return new ExceptionCallSite.Failed(mtx, mm, e);
@@ -660,8 +652,7 @@ public class IndexTriggerMaker<R> {
 
         var tm = new TransformMaker<R>(mRowType, mPrimaryGen.info, available);
 
-        for (int i=0; i<mSecondaryInfos.length; i++) {
-            RowInfo secondaryInfo = mSecondaryInfos[i];
+        for (RowInfo secondaryInfo : mSecondaryInfos) {
             tm.addKeyTarget(secondaryInfo, 0, false);
             tm.addValueTarget(secondaryInfo, 0, false);
         }

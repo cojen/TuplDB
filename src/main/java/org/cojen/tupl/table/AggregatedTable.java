@@ -251,7 +251,7 @@ public abstract class AggregatedTable<S, T> extends WrappedTable<S, T>
         var bob = new StringBuilder();
 
         for (ColumnInfo column : columns) {
-            if (bob.length() != 0) {
+            if (!bob.isEmpty()) {
                 bob.append(" && ");
             }
             bob.append(column.name).append(" == ?");

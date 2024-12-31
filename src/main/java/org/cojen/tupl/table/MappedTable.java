@@ -318,7 +318,7 @@ public abstract class MappedTable<S, T> extends AbstractMappedTable<S, T>
             cleanRow(mappedRow);
             copyRow(mappedRow, targetRow);
         } else {
-            // Can't load back the row. One option is to rollback the transaction, but then the
+            // Can't load back the row. One option is to roll back the transaction, but then the
             // behavior would be inconsistent with the update operation. Unsetting all the
             // columns allows the operation to complete and signal that something is amiss.
             unsetRow(targetRow);
@@ -366,7 +366,7 @@ public abstract class MappedTable<S, T> extends AbstractMappedTable<S, T>
      * Returns an inverse mapper which requires that the primary key columns need to be set.
      */
     final InverseMapper<S, T> inversePk() {
-        var invMapper = (InverseMapper<S, T>) mInversePk;
+        var invMapper = mInversePk;
         if (invMapper == null) {
             invMapper = makeInversePk();
         }
@@ -385,7 +385,7 @@ public abstract class MappedTable<S, T> extends AbstractMappedTable<S, T>
      * Returns an inverse mapper which requires that all columns need to be set.
      */
     private InverseMapper<S, T> inverseFull() {
-        var invMapper = (InverseMapper<S, T>) mInverseFull;
+        var invMapper = mInverseFull;
         if (invMapper == null) {
             invMapper = makeInverseFull();
         }
@@ -405,7 +405,7 @@ public abstract class MappedTable<S, T> extends AbstractMappedTable<S, T>
      * and only dirty columns are updated.
      */
     final InverseMapper<S, T> inverseUpdate() {
-        var invMapper = (InverseMapper<S, T>) mInverseUpdate;
+        var invMapper = mInverseUpdate;
         if (invMapper == null) {
             invMapper = makeInverseUpdate();
         }

@@ -36,7 +36,7 @@ import org.cojen.tupl.core.TupleKey;
 import org.cojen.tupl.table.codec.ColumnCodec;
 
 /**
- * Supports encoding and decoding of materialized rows such that they can fed into a Sorter.
+ * Supports encoding and decoding of materialized rows such that they can feed into a Sorter.
  *
  * @author Brian S. O'Neill
  * @see RowSorter
@@ -78,7 +78,7 @@ public abstract class SortRowCodec<R> implements RowDecoder<R> {
         RowInfo rowInfo = RowInfo.find(rowType);
         RowGen rowGen = rowInfo.rowGen();
         OrderBy orderBy = OrderBy.forSpec(rowInfo, orderBySpec);
-        Class rowClass = RowMaker.find(rowType);
+        Class<?> rowClass = RowMaker.find(rowType);
 
         var keyColumns = new ArrayList<ColumnInfo>(orderBy.size() + 1);
 

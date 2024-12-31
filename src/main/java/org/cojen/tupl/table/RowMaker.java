@@ -151,7 +151,7 @@ public class RowMaker {
         // Add column fields.
         for (ColumnInfo info : mRowInfo.allColumns.values()) {
             // Define fields as public such that they're accessible by generated code located
-            // in different packages. Using different packages faciliates class unloading.
+            // in different packages. Using different packages facilitates class unloading.
             mClassMaker.addField(info.type, info.name).public_();
         }
 
@@ -270,7 +270,7 @@ public class RowMaker {
             hash.set(hash.mul(31));
             Field field = rowObject.field(name);
 
-            Class invoker;
+            Class<?> invoker;
             String method = "hashCode";
 
             if (info.type.isPrimitive()) {

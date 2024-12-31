@@ -63,7 +63,6 @@ final class StoredQueryLauncher<R> extends QueryLauncher<R> {
      *
      * @param expr the parsed query
      */
-    @SuppressWarnings("unchecked")
     static <R> QueryLauncher<R> make(StoredTable<R> table, String queryStr, RelationExpr expr)
         throws IOException
     {
@@ -182,7 +181,7 @@ final class StoredQueryLauncher<R> extends QueryLauncher<R> {
     }
 
     private QueryLauncher<R> forScanner(Transaction txn) throws IOException {
-        // Might need to double check the filter after joining to the primary, in case
+        // Might need to double-check the filter after joining to the primary, in case
         // there were any changes after the secondary entry was loaded.
         return !RowUtils.isUnlocked(txn) ? forScanner() : forScannerDoubleCheck();
     }
@@ -198,7 +197,7 @@ final class StoredQueryLauncher<R> extends QueryLauncher<R> {
     }
 
     private QueryLauncher<R> forUpdater(Transaction txn) throws IOException {
-        // Might need to double check the filter after joining to the primary, in case
+        // Might need to double-check the filter after joining to the primary, in case
         // there were any changes after the secondary entry was loaded. Note that no double
         // check is needed with READ_UNCOMMITTED, because the updater still acquires locks.
         return !RowUtils.isUnsafe(txn) ? forUpdater() : forUpdaterDoubleCheck();
@@ -238,7 +237,7 @@ final class StoredQueryLauncher<R> extends QueryLauncher<R> {
         }
 
         if ((type & DOUBLE_CHECK) != 0 && selector.noJoins()) {
-            // Double checking is only needed when a secondary joins to a primary.
+            // Double-checking is only needed when a secondary joins to a primary.
             launcher = queryLauncher(type & ~DOUBLE_CHECK, selector);
         } else {
             launcher = mTable.newQueryLauncher(type, selector);
