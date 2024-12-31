@@ -195,7 +195,7 @@ public final class JoinIdentityTable extends BaseTable<Row> implements Query<Row
 
     @SuppressWarnings("unchecked")
     private static Comparator<Row> comparator() {
-        return ComparatorMaker.ZERO;
+        return ComparatorMaker.zero();
     }
 
     @Override

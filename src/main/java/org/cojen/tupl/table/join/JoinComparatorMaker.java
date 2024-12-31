@@ -83,7 +83,7 @@ final class JoinComparatorMaker<J> {
     @SuppressWarnings("unchecked")
     Comparator<J> finish() {
         if (mOrderBy.isEmpty()) {
-            return ComparatorMaker.ZERO;
+            return ComparatorMaker.zero();
         }
 
         ClassMaker cm = RowGen.beginClassMaker

@@ -39,7 +39,9 @@ import org.cojen.tupl.core.TupleKey;
  * @author Brian S O'Neill
  */
 public final class ComparatorMaker<R> {
-    public static Comparator ZERO = (a, b) -> 0;
+    public static Comparator zero() {
+        return (Comparator) (a, b) -> 0;
+    }
 
     private static final WeakCache<TupleKey, Comparator<?>, OrderBy> cCache;
 
@@ -114,7 +116,7 @@ public final class ComparatorMaker<R> {
     @SuppressWarnings("unchecked")
     Comparator<R> finish() {
         if (mOrderBy.isEmpty()) {
-            return ZERO;
+            return zero();
         }
 
         Class rowClass = RowMaker.find(mRowType);
