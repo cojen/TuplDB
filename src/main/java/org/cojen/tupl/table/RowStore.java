@@ -1213,30 +1213,7 @@ public final class RowStore {
             }
         }
 
-        RowPredicateLock<?> lock = indexLock(secondaryIndexId);
-
-        if (lock == null) {
-            if (listener != null) {
-                listener.notify(EventType.TABLE_INDEX_INFO, "Dropping %1$s", eventStr);
-            }
-
-            Runnable task;
-            if (taskFactory == null) {
-                task = mDatabase.deleteIndex(secondaryIndex);
-            } else {
-                task = taskFactory.get();
-            }
-
-            if (listener == null) {
-                return task;
-            }
-
-            return () -> {
-                task.run();
-                listener.notify(EventType.TABLE_INDEX_INFO, "Finished dropping %1$s", eventStr);
-            };
-        }
-
+        final RowPredicateLock<?> lock = indexLock(secondaryIndexId);
         final long fSecondaryIndexId = secondaryIndexId;
 
         return () -> {
