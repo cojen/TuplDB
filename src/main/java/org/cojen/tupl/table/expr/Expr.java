@@ -253,7 +253,7 @@ public abstract sealed class Expr
      * Returns this or a replacement expression such that expressions in the given map are
      * replaced.
      *
-     * @param replacements maps expressions to replace with with their replacements
+     * @param replacements maps expressions to replace with their replacements
      */
     public Expr replace(Map<Expr, ? extends Expr> replacements) {
         Expr replaced = replacements.get(this);
@@ -287,7 +287,7 @@ public abstract sealed class Expr
      *
      * @param projMap maps column names to ProjExpr instances with the same name
      * @param flags see ProjExpr
-     * @param observer is called for each ProjExpr which which is put into the map
+     * @param observer is called for each ProjExpr which is put into the map
      */
     public void gatherEvalColumns(TupleType fromType, Map<String, ProjExpr> projMap, int flags,
                                   Consumer<ProjExpr> observer)

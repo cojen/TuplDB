@@ -87,7 +87,7 @@ public final class VarExpr extends Expr implements Attr {
     }
 
     @Override
-    public final boolean isOrderDependent() {
+    public boolean isOrderDependent() {
         return mAssign.isOrderDependent();
     }
 

@@ -166,34 +166,41 @@ public final class ConstantExpr extends Expr {
         if (mValue instanceof Number num && !mType.isUnsigned()) isNum: {
             Object newValue;
 
-            if (num instanceof Integer n) {
-                if (n == Integer.MIN_VALUE) {
-                    if (!widen) {
-                        break isNum;
+            switch (num) {
+                case Integer n:
+                    if (n == Integer.MIN_VALUE) {
+                        if (!widen) {
+                            break isNum;
+                        }
+                        newValue = -((long) n);
+                    } else {
+                        newValue = -n;
                     }
-                    newValue = -((long) n);
-                } else {
-                    newValue = -n;
-                }
-            } else if (num instanceof Double n) {
-                newValue = Double.valueOf(-n);
-            } else if (num instanceof Long n) {
-                if (n == Long.MIN_VALUE) {
-                    if (!widen) {
-                        break isNum;
+                    break;
+                case Double n:
+                    newValue = Double.valueOf(-n);
+                    break;
+                case Long n:
+                    if (n == Long.MIN_VALUE) {
+                        if (!widen) {
+                            break isNum;
+                        }
+                        newValue = BigInteger.valueOf(n).negate();
+                    } else {
+                        newValue = Long.valueOf(-n);
                     }
-                    newValue = BigInteger.valueOf(n).negate();
-                } else {
-                    newValue = Long.valueOf(-n);
-                }
-            } else if (num instanceof BigDecimal n) {
-                newValue = canonicalize(n.negate());
-            } else if (num instanceof BigInteger n) {
-                newValue = canonicalize(n.negate());
-            } else if (num instanceof Float n) {
-                newValue = Float.valueOf(-n);
-            } else {
-                break isNum;
+                    break;
+                case BigDecimal n:
+                    newValue = canonicalize(n.negate());
+                    break;
+                case BigInteger n:
+                    newValue = canonicalize(n.negate());
+                    break;
+                case Float n:
+                    newValue = Float.valueOf(-n);
+                    break;
+                default:
+                    break isNum;
             }
 
             return new ConstantExpr(startPos, endPos(), mType, newValue);

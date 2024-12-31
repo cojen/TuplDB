@@ -102,7 +102,7 @@ public final class ExprFilter extends TermFilter {
     }
 
     @Override
-    public final boolean equals(Object obj) {
+    public boolean equals(Object obj) {
         return obj == this || obj instanceof ExprFilter other && mExpr.equals(other.mExpr);
     }
 

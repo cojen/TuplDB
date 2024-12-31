@@ -127,11 +127,6 @@ public final class RangeExpr extends Expr {
     }
 
     @Override
-    public boolean isTrivial() {
-        return false;
-    }
-
-    @Override
     public boolean isNullable() {
         return false;
     }
@@ -226,7 +221,7 @@ public final class RangeExpr extends Expr {
          * @param eager when true, the value is guaranteed to be evaluated for all execution
          * paths
          */
-        public final Variable evalStart(boolean eager) {
+        public Variable evalStart(boolean eager) {
             Variable var = mEvaluatedStart;
             if (var == null) {
                 mEvaluatedStart = var = doEval(expr().mStart, eager);
@@ -240,7 +235,7 @@ public final class RangeExpr extends Expr {
          * @param eager when true, the value is guaranteed to be evaluated for all execution
          * paths
          */
-        public final Variable evalEnd(boolean eager) {
+        public Variable evalEnd(boolean eager) {
             Variable var = mEvaluatedEnd;
             if (var == null) {
                 mEvaluatedEnd = var = doEval(expr().mEnd, eager);

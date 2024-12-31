@@ -355,7 +355,7 @@ abstract class WindowFunction extends FunctionApplier.Grouped {
     }
 
     protected Variable evalArg(GroupContext context) {
-        var valueVar = context.args().get(0).eval(true);
+        var valueVar = context.args().getFirst().eval(true);
 
         if (!mValueType.equals(mOriginalType)) {
             MethodMaker mm = context.methodMaker();
@@ -598,7 +598,7 @@ abstract class WindowFunction extends FunctionApplier.Grouped {
         } else if (mMode != MODE_ROWS) {
             bufferVar.invoke("trimStart", start);
             bufferVar.invoke("advance");
-        } else if (mStartConstant != null && ((Number) mStartConstant).doubleValue() >= 0) {
+        } else if (mStartConstant != null && mStartConstant.doubleValue() >= 0) {
             bufferVar.invoke("advanceAndRemove");
         } else {
             bufferVar.invoke("advanceAndRemove", start);
@@ -632,7 +632,7 @@ abstract class WindowFunction extends FunctionApplier.Grouped {
      * @param bufferVar refers to a WindowBuffer
      * @param frameStart is a Variable or a constant
      * @param frameEnd is a Variable or a constant
-     * @return a variable with the result type, or it must be trivially convertable to the
+     * @return a variable with the result type, or it must be trivially convertible to the
      * result type
      */
     protected abstract Variable compute(Variable bufferVar, Object frameStart, Object frameEnd);

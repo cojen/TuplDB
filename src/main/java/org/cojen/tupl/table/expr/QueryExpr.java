@@ -96,7 +96,6 @@ public abstract sealed class QueryExpr extends RelationExpr
             for (int i=groupBy; i<projection.size(); i++) {
                 ProjExpr pe = projection.get(i);
                 if (pe.isGrouping()) {
-                    assert i >= groupBy;
                     break;
                 }
                 if (pe.hasOrderBy()) {
@@ -286,9 +285,7 @@ public abstract sealed class QueryExpr extends RelationExpr
             boolean orderByDerived = false;
             boolean isGrouping = false;
 
-            for (int i=0; i<projection.size(); i++) {
-                ProjExpr pe = projection.get(i);
-
+            for (ProjExpr pe : projection) {
                 if (pe.hasExclude()) {
                     int flags = pe.flags() & ~ProjExpr.F_EXCLUDE;
                     pe.gatherEvalColumns(fromType, fromProjMap, flags, fromProjection::add);

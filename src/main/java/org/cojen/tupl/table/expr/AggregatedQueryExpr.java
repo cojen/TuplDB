@@ -417,9 +417,6 @@ final class AggregatedQueryExpr extends QueryExpr {
             var argsVar = argCount == 0 ? null : beginMaker.field("args").get();
 
             beginContext = new Context(argsVar, beginSourceVar) {
-                private int mNumWorkFields;
-                private String mRowNumName, mGroupNumName, mGroupRowNumName;
-
                 @Override
                 String rowNumName() {
                     return initContext.rowNumName();

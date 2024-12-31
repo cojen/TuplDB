@@ -481,9 +481,6 @@ final class GroupedQueryExpr extends QueryExpr {
             var argsVar = argCount == 0 ? null : beginMaker.field("args").get();
 
             beginContext = new Context(argsVar, beginSourceVar) {
-                private int mNumWorkFields;
-                private String mRowNumName, mGroupNumName, mGroupRowNumName;
-
                 @Override
                 String rowNumName() {
                     return initContext.rowNumName();
@@ -603,7 +600,7 @@ final class GroupedQueryExpr extends QueryExpr {
             };
         }
 
-        boolean isGrouping = mFilter == null ? false : mFilter.isGrouping();
+        boolean isGrouping = mFilter != null && mFilter.isGrouping();
 
         if (!isGrouping) {
             for (ProjExpr pe : mProjection) {
@@ -636,8 +633,7 @@ final class GroupedQueryExpr extends QueryExpr {
         // checking if any downstream expressions exist. If any projections are dropped, then
         // the isGrouping check above need to be revised or else grouper might never stop.
         IdentityHashMap<ProjExpr, Variable> projectedVars = null;
-        for (int i=0; i<mProjection.size(); i++) {
-            ProjExpr pe = mProjection.get(i);
+        for (ProjExpr pe : mProjection) {
             if (pe.wrapped() instanceof AssignExpr) {
                 Variable v = pe.makeEval(stepContext);
                 if (projectedVars == null) {

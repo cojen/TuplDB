@@ -96,7 +96,7 @@ public final class StandardFunctionFinder extends SoftCache<String, Object, Obje
                 return null;
             }
 
-            Type type = args.get(0).type();
+            Type type = args.getFirst().type();
 
             for (int i=1; i<args.size(); i++) {
                 type = type.commonTypeLenient(args.get(i).type());
@@ -120,7 +120,7 @@ public final class StandardFunctionFinder extends SoftCache<String, Object, Obje
 
             if (resultVar.classType().isPrimitive()) {
                 // No arguments will be null, so just return the first one.
-                resultVar.set(args.get(0).eval(true));
+                resultVar.set(args.getFirst().eval(true));
                 return;
             }
 
@@ -231,7 +231,7 @@ public final class StandardFunctionFinder extends SoftCache<String, Object, Obje
 
             Type type;
 
-            if (args.size() == 0) {
+            if (args.isEmpty()) {
                 type = BasicType.make(double.class, TYPE_DOUBLE);
             } else {
                 for (Expr arg : args) {
@@ -345,7 +345,7 @@ public final class StandardFunctionFinder extends SoftCache<String, Object, Obje
                 return null;
             }
 
-            Type originalType = args.isEmpty() ? BasicType.BOOLEAN : args.get(0).type();
+            Type originalType = args.isEmpty() ? BasicType.BOOLEAN : args.getFirst().type();
             Type valueType = originalType;
 
             return new StandardWindowFunctions.count(resultType, valueType, originalType, frame);
@@ -354,7 +354,7 @@ public final class StandardFunctionFinder extends SoftCache<String, Object, Obje
         @Override
         public void init(GroupContext context) {
             List<LazyValue> args = context.args();
-            if (!args.isEmpty() && args.get(0).expr().isNullable()) {
+            if (!args.isEmpty() && args.getFirst().expr().isNullable()) {
                 mCountFieldName = context.newWorkField(type().clazz()).name();
             }
         }
@@ -364,7 +364,7 @@ public final class StandardFunctionFinder extends SoftCache<String, Object, Obje
             if (mCountFieldName == null) {
                 return;
             }
-            LazyValue arg = context.args().get(0);
+            LazyValue arg = context.args().getFirst();
             MethodMaker mm = context.methodMaker();
             Field countField = mm.field(mCountFieldName);
             Label notNull = mm.label();
@@ -381,7 +381,7 @@ public final class StandardFunctionFinder extends SoftCache<String, Object, Obje
             if (mCountFieldName == null) {
                 return;
             }
-            var result = context.args().get(0).eval(true);
+            var result = context.args().getFirst().eval(true);
             MethodMaker mm = result.methodMaker();
             Label isNull = mm.label();
             result.ifEq(null, isNull);
@@ -422,7 +422,7 @@ public final class StandardFunctionFinder extends SoftCache<String, Object, Obje
                 return null;
             }
 
-            Type type = args.get(0).type();
+            Type type = args.getFirst().type();
 
             if (!hasFrame(namedArgs)) {
                 return new first(type);
@@ -465,7 +465,7 @@ public final class StandardFunctionFinder extends SoftCache<String, Object, Obje
                 return null;
             }
 
-            Type type = args.get(0).type();
+            Type type = args.getFirst().type();
 
             if (!hasFrame(namedArgs)) {
                 return new last(type);
@@ -486,7 +486,7 @@ public final class StandardFunctionFinder extends SoftCache<String, Object, Obje
 
         @Override
         public void accumulate(GroupContext context) {
-            workField(context).set(context.args().get(0).eval(true));
+            workField(context).set(context.args().getFirst().eval(true));
         }
     }
 

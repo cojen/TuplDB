@@ -289,8 +289,6 @@ public abstract class WindowBuffer<V> extends ValueBuffer<V> {
     /**
      * Returns a value at the current row position. The caller is responsible for ensuring that
      * the buffer has a current row value.
-     *
-     * @param framePos frame position relative to the current row (which is zero)
      */
     public abstract V frameCurrent();
 

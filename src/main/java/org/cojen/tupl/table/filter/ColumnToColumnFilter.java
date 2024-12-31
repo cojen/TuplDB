@@ -156,7 +156,7 @@ public final class ColumnToColumnFilter extends ColumnFilter {
     }
 
     @Override
-    public final boolean equals(Object obj) {
+    public boolean equals(Object obj) {
         return obj == this || obj instanceof ColumnToColumnFilter other
             && mColumn.equals(other.mColumn) && mOperator == other.mOperator
             && mOtherColumn.equals(other.mOtherColumn);

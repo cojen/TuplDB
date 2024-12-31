@@ -315,7 +315,7 @@ public final class CallExpr extends Expr {
 
             grouped.finished(context.finishedContext());
 
-            context.checkContext(ctx -> grouped.check(ctx));
+            context.checkContext(grouped::check);
 
             return grouped.step(context);
         }
@@ -337,8 +337,8 @@ public final class CallExpr extends Expr {
             mNamedArgs.forEach((name, expr) -> namedArgs.put(name, expr.lazyValue(context)));
         }
 
-        // Must rollback to a savepoint for lazy/eager evaluation to work properly. Arguments
-        // which aren't eagerly evaluated will rollback, forcing the underlying expression to
+        // Must roll back to a savepoint for lazy/eager evaluation to work properly. Arguments
+        // which aren't eagerly evaluated will roll back, forcing the underlying expression to
         // be evaluated again later if used again.
         int savepoint = context.refSavepoint();
 

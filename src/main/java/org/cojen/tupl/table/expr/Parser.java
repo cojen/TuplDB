@@ -231,7 +231,7 @@ public final class Parser {
 
         if (groupBy < 0) {
             if (projection != null) {
-                projection.forEach(expr -> verifyNoGrouping(expr));
+                projection.forEach(Parser::verifyNoGrouping);
             }
             if (filter != null) {
                 verifyNoGrouping(filter);
@@ -436,7 +436,7 @@ public final class Parser {
             }
             consumePeek();
             Expr right = parseExpr();
-            Token.Text ident = asIdentifier(path.get(0));
+            Token.Text ident = asIdentifier(path.getFirst());
             String name = ident.text(true);
             var assign = AssignExpr.make(startPos, right.endPos(), name, right);
             expr = assign;
@@ -448,7 +448,7 @@ public final class Parser {
             }
         } else access: {
             if (mLocalVars != null && path.size() == 1) {
-                Token.Text ident = asIdentifier(path.get(0));
+                Token.Text ident = asIdentifier(path.getFirst());
                 String name = ident.text(true);
                 AssignExpr assign = mLocalVars.get(name);
                 if (assign != null) {
@@ -829,7 +829,7 @@ public final class Parser {
         }
 
         if (mLocalVars != null && path.size() == 1) {
-            Token.Text ident = asIdentifier(path.get(0));
+            Token.Text ident = asIdentifier(path.getFirst());
             String name = ident.text(true);
             AssignExpr assign = mLocalVars.get(name);
             if (assign != null) {
@@ -857,7 +857,7 @@ public final class Parser {
             throw next.queryException("Right paren expected");
         }
 
-        int startPos = path.get(0).startPos();
+        int startPos = path.getFirst().startPos();
         int endPos = next.endPos();
 
         String name = toPath(path, false);
@@ -883,7 +883,7 @@ public final class Parser {
         }
 
         TupleType rowType = mFrom.rowType();
-        Token.Text ident = asIdentifier(path.get(0));
+        Token.Text ident = asIdentifier(path.getFirst());
         Column c = rowType.tryFindColumn(ident.text(true));
 
         if (c == null) {
@@ -986,7 +986,7 @@ public final class Parser {
     private static String toPath(List<Token> path, boolean escaped) {
         int size = path.size();
         if (size == 1) {
-            return toPathText(path.get(0), escaped);
+            return toPathText(path.getFirst(), escaped);
         }
         var b = new StringBuilder();
         for (int i=0; i<size; i++) {

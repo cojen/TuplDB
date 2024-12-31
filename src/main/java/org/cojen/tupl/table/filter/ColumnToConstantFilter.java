@@ -137,7 +137,7 @@ public final class ColumnToConstantFilter extends ColumnFilter {
     }
 
     @Override
-    public final boolean equals(Object obj) {
+    public boolean equals(Object obj) {
         return obj == this || obj instanceof ColumnToConstantFilter other
             && mColumn.equals(other.mColumn) && mOperator == other.mOperator
             && Objects.equals(mConstant, other.mConstant);

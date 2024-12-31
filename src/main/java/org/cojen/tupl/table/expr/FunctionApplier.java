@@ -122,7 +122,7 @@ public abstract class FunctionApplier {
         Ordering ordering = Ordering.UNSPECIFIED;
 
         if (projectionMap != null && !projectionMap.isEmpty() && !args.isEmpty()) {
-            Expr arg = args.get(0);
+            Expr arg = args.getFirst();
             if (arg.isConstant()) {
                 ordering = Ordering.ASCENDING; // could be DESCENDING too; doesn't matter
             } else {
@@ -153,7 +153,7 @@ public abstract class FunctionApplier {
                     return null;
                 }
 
-                if (!args.get(0).type().isNumber()) {
+                if (!args.getFirst().type().isNumber()) {
                     reason.accept("range argument type must be a number");
                     return null;
                 }
@@ -191,7 +191,7 @@ public abstract class FunctionApplier {
     }
 
     /**
-     * Validate that the function acceps the given arguments, and returns a new applier
+     * Validate that the function accepts the given arguments, and returns a new applier
      * instance. If any arguments should be converted, directly replace elements of the args
      * list with the desired type.
      *
@@ -289,7 +289,7 @@ public abstract class FunctionApplier {
 
     public static interface GroupContext extends FunctionContext {
         /**
-         * Defines a new field with the given type. Should only be called by a init method.
+         * Defines a new field with the given type. Should only be called by an init method.
          */
         default FieldMaker newWorkField(Class<?> type) {
             throw new IllegalStateException();
@@ -441,7 +441,7 @@ public abstract class FunctionApplier {
 
         @Override
         public void begin(GroupContext context) {
-            workField(context).set(convert(eval(context.args().get(0))));
+            workField(context).set(convert(eval(context.args().getFirst())));
         }
 
         @Override
@@ -517,7 +517,7 @@ public abstract class FunctionApplier {
                 left.ifEq(null, done);
             }
 
-            Variable right = eval(context.args().get(0));
+            Variable right = eval(context.args().getFirst());
 
             if (type.isNullable()) {
                 Label notNull = context.methodMaker().label();
@@ -563,7 +563,7 @@ public abstract class FunctionApplier {
                 return null;
             }
 
-            Type type = args.get(0).type();
+            Type type = args.getFirst().type();
 
             if (!type.isNumber()) {
                 reason.accept("argument must be a number");
@@ -612,7 +612,7 @@ public abstract class FunctionApplier {
                 return;
             }
 
-            var arg = convert(eval(context.args().get(0)));
+            var arg = convert(eval(context.args().getFirst()));
             workField(context).set(arg);
 
             if (mCountFieldName != null) {
@@ -637,7 +637,7 @@ public abstract class FunctionApplier {
 
             var workField = workField(context);
             Variable left = workField.get();
-            Variable right = convert(eval(context.args().get(0)));
+            Variable right = convert(eval(context.args().getFirst()));
 
             MethodMaker mm = context.methodMaker();
             Label done = mm.label();
@@ -727,7 +727,7 @@ public abstract class FunctionApplier {
 
             Field workField = workField(context);
 
-            Variable arg = eval(context.args().get(0));
+            Variable arg = eval(context.args().getFirst());
 
             Label notNull = mm.label();
             arg.ifNe(null, notNull);
@@ -752,7 +752,7 @@ public abstract class FunctionApplier {
             }
 
             var workField = workField(context);
-            Variable arg = eval(context.args().get(0));
+            Variable arg = eval(context.args().getFirst());
 
             MethodMaker mm = context.methodMaker();
             Label done = mm.label();
