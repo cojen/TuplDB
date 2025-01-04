@@ -36,6 +36,7 @@ import org.cojen.maker.Variable;
 
 import org.cojen.tupl.Grouper;
 import org.cojen.tupl.Query;
+import org.cojen.tupl.RowKey;
 import org.cojen.tupl.Scanner;
 import org.cojen.tupl.Table;
 import org.cojen.tupl.Transaction;
@@ -176,6 +177,11 @@ public abstract class GroupedTable<S, T> extends AbstractMappedTable<S, T>
             throw e;
         }
         return message.replace("ordering", "group-by");
+    }
+
+    @Override
+    public final RowKey primaryKey() {
+        return null;
     }
 
     @Override

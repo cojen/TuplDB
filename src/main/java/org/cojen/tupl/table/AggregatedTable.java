@@ -36,6 +36,7 @@ import org.cojen.maker.Variable;
 
 import org.cojen.tupl.Aggregator;
 import org.cojen.tupl.Query;
+import org.cojen.tupl.RowKey;
 import org.cojen.tupl.Scanner;
 import org.cojen.tupl.Table;
 import org.cojen.tupl.Transaction;
@@ -175,12 +176,22 @@ public abstract class AggregatedTable<S, T> extends WrappedTable<S, T>
         // Override additional methods determined by whether or not the target row has a
         // primary key.
 
+        MethodMaker pkMethod = cm.addMethod(RowKey.class, "primaryKey").public_().override();
+
         if (targetInfo.keyColumns.isEmpty()) {
+            pkMethod.return_(pkMethod.var(BasicRowKey.class).invoke("empty"));
+
             cm.addMethod(long.class, "estimateSize").protected_().override().return_(1L);
 
             cm.addMethod(int.class, "characteristics", Scanner.class)
                 .protected_().override().return_(DISTINCT | NONNULL);
         } else {
+            {
+                var condy = pkMethod.var(TableMaker.class)
+                    .condy("condyPrimaryKey", targetType, null);
+                pkMethod.return_(condy.invoke(RowKey.class, "primaryKey"));
+            }
+
             // Define a method to check if the primary key is set, to be used by the load and
             // exists methods.
             Class<?> targetClass = RowMaker.find(targetType);

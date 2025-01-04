@@ -345,6 +345,8 @@ class StaticTableMaker extends TableMaker {
             WriteRowMaker.makeWriteRow(mm, mRowInfo, 0, null);
         }
 
+        addPrimaryKeyMethod();
+
         return mClassMaker.finish();
     }
 

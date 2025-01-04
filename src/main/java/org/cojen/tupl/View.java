@@ -641,14 +641,11 @@ public interface View {
      * @throws NullPointerException if key is null
      */
     public default View viewGe(byte[] key) {
-        Ordering ordering = ordering();
-        if (ordering == Ordering.ASCENDING) {
-            return BoundedView.viewGe(this, key);
-        } else if (ordering == Ordering.DESCENDING) {
-            return BoundedView.viewGe(viewReverse(), key).viewReverse();
-        } else {
-            throw new UnsupportedOperationException("Unsupported ordering: " + ordering);
-        }
+        return switch (ordering()) {
+            case ASCENDING, ASCENDING_NL -> BoundedView.viewGe(this, key);
+            case DESCENDING, DESCENDING_NL -> BoundedView.viewGe(viewReverse(), key).viewReverse();
+            default -> throw unsupportedOrdering();
+        };
     }
 
     /**
@@ -663,14 +660,11 @@ public interface View {
      * @throws NullPointerException if key is null
      */
     public default View viewGt(byte[] key) {
-        Ordering ordering = ordering();
-        if (ordering == Ordering.ASCENDING) {
-            return BoundedView.viewGt(this, key);
-        } else if (ordering == Ordering.DESCENDING) {
-            return BoundedView.viewGt(viewReverse(), key).viewReverse();
-        } else {
-            throw new UnsupportedOperationException("Unsupported ordering: " + ordering);
-        }
+        return switch (ordering()) {
+            case ASCENDING, ASCENDING_NL -> BoundedView.viewGt(this, key);
+            case DESCENDING, DESCENDING_NL -> BoundedView.viewGt(viewReverse(), key).viewReverse();
+            default -> throw unsupportedOrdering();
+        };
     }
 
     /**
@@ -685,14 +679,11 @@ public interface View {
      * @throws NullPointerException if key is null
      */
     public default View viewLe(byte[] key) {
-        Ordering ordering = ordering();
-        if (ordering == Ordering.ASCENDING) {
-            return BoundedView.viewLe(this, key);
-        } else if (ordering == Ordering.DESCENDING) {
-            return BoundedView.viewLe(viewReverse(), key).viewReverse();
-        } else {
-            throw new UnsupportedOperationException("Unsupported ordering: " + ordering);
-        }
+        return switch (ordering()) {
+            case ASCENDING, ASCENDING_NL -> BoundedView.viewLe(this, key);
+            case DESCENDING, DESCENDING_NL -> BoundedView.viewLe(viewReverse(), key).viewReverse();
+            default -> throw unsupportedOrdering();
+        };
     }
 
     /**
@@ -707,14 +698,11 @@ public interface View {
      * @throws NullPointerException if key is null
      */
     public default View viewLt(byte[] key) {
-        Ordering ordering = ordering();
-        if (ordering == Ordering.ASCENDING) {
-            return BoundedView.viewLt(this, key);
-        } else if (ordering == Ordering.DESCENDING) {
-            return BoundedView.viewLt(viewReverse(), key).viewReverse();
-        } else {
-            throw new UnsupportedOperationException("Unsupported ordering: " + ordering);
-        }
+        return switch (ordering()) {
+            case ASCENDING, ASCENDING_NL -> BoundedView.viewLt(this, key);
+            case DESCENDING, DESCENDING_NL -> BoundedView.viewLt(viewReverse(), key).viewReverse();
+            default -> throw unsupportedOrdering();
+        };
     }
 
     /**
@@ -731,14 +719,17 @@ public interface View {
      * @throws IllegalArgumentException if trim is longer than prefix
      */
     public default View viewPrefix(byte[] prefix, int trim) {
-        Ordering ordering = ordering();
-        if (ordering == Ordering.ASCENDING) {
-            return BoundedView.viewPrefix(this, prefix, trim);
-        } else if (ordering == Ordering.DESCENDING) {
-            return BoundedView.viewPrefix(viewReverse(), prefix, trim).viewReverse();
-        } else {
-            throw new UnsupportedOperationException("Unsupported ordering: " + ordering);
-        }
+        return switch (ordering()) {
+            case ASCENDING, ASCENDING_NL ->
+                BoundedView.viewPrefix(this, prefix, trim);
+            case DESCENDING, DESCENDING_NL ->
+                BoundedView.viewPrefix(viewReverse(), prefix, trim).viewReverse();
+            default -> throw unsupportedOrdering();
+        };
+    }
+
+    private UnsupportedOperationException unsupportedOrdering() {
+        return new UnsupportedOperationException("Unsupported ordering: " + ordering());
     }
 
     /**

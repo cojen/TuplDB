@@ -35,6 +35,7 @@ import org.cojen.tupl.ColumnProcessor;
 import org.cojen.tupl.DurabilityMode;
 import org.cojen.tupl.Query;
 import org.cojen.tupl.Row;
+import org.cojen.tupl.RowKey;
 import org.cojen.tupl.Scanner;
 import org.cojen.tupl.Table;
 import org.cojen.tupl.Transaction;
@@ -156,6 +157,11 @@ final class ClientDerivedTable implements Table<Row> {
             });
 
         return new ClientTable<Row>(toReplace.mDb, broken, toReplace.mType);
+    }
+
+    @Override
+    public RowKey primaryKey() {
+        return derived().primaryKey();
     }
 
     @Override

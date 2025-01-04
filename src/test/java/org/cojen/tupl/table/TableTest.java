@@ -88,6 +88,7 @@ public class TableTest {
             TestRow row = table.newRow();
             row.id(1);
             row.name("name-1");
+            row.data(null);
             table.store(null, row);
             fail();
         } catch (DeletedIndexException e) {
@@ -134,6 +135,7 @@ public class TableTest {
             var row = table.newRow();
             row.id(i);
             row.name("name-" + i);
+            row.data(null);
             table.store(null, row);
         }
 
@@ -203,13 +205,52 @@ public class TableTest {
         db.close();
     }
 
+    @Test
+    public void primaryKey() throws Exception {
+        var db = Database.open(new DatabaseConfig());
+
+        var table = db.openTable(TestRow.class);
+
+        RowKey pk = table.primaryKey();
+        assertEquals(1, pk.size());
+        assertEquals("id", pk.column(0));
+        assertEquals(Ordering.ASCENDING, pk.ordering(0));
+        assertEquals("RowKey(+id)", pk.toString());
+        assertSame(pk, RowKey.parse(pk.spec()));
+
+        pk = ((StoredTable) table).viewSecondaryIndex("name").primaryKey();
+        assertEquals(2, pk.size());
+        assertEquals("name", pk.column(0));
+        assertEquals("id", pk.column(1));
+        assertEquals(Ordering.DESCENDING, pk.ordering(0));
+        assertEquals(Ordering.ASCENDING, pk.ordering(1));
+        assertEquals("RowKey(-name+id)", pk.toString());
+        assertSame(pk, RowKey.parse(pk.spec()));
+
+        pk = ((StoredTable) table).viewSecondaryIndex("data", "id").primaryKey();
+        assertEquals(2, pk.size());
+        assertEquals("data", pk.column(0));
+        assertEquals("id", pk.column(1));
+        assertEquals(Ordering.ASCENDING_NL, pk.ordering(0));
+        assertEquals(Ordering.DESCENDING, pk.ordering(1));
+        assertEquals("RowKey(+!data-id)", pk.toString());
+        assertSame(pk, RowKey.parse(pk.spec()));
+
+        db.close();
+    }
+
     @PrimaryKey("id")
-    @SecondaryIndex("name")
+    @SecondaryIndex("-name")
+    @SecondaryIndex({"+!data", "-id"})
     public interface TestRow {
         long id();
         void id(long id);
 
         String name();
         void name(String str);
+
+        @Nullable
+        String data();
+        void data(String str);
     }
 }

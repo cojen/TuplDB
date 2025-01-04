@@ -66,7 +66,7 @@ abstract class WindowFunction extends FunctionApplier.Grouped {
         }
 
         private boolean isDescending() {
-            return ordering == Ordering.DESCENDING;
+            return ordering.isDescending();
         }
 
         private int mode() {

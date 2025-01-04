@@ -18,22 +18,96 @@
 package org.cojen.tupl;
 
 /**
- * Describes entry ordering in {@linkplain View views} and {@linkplain Cursor cursors}.
+ * Describes the ordering of views, cursors, and tables.
  *
  * @author Brian S O'Neill
  */
 public enum Ordering {
-    ASCENDING, DESCENDING, UNSPECIFIED;
+    /**
+     * Describes ascending order, with nulls ordered high (will logically appear last).
+     */
+    ASCENDING,
+
+    /**
+     * Describes descending order, with nulls ordered high (will logically appear first).
+     */
+    DESCENDING,
+
+    /**
+     * Describes ascending order, with nulls ordered low (will logically appear first);
+     */
+    ASCENDING_NL,
+
+    /**
+     * Describes descending order, with nulls ordered low (will logically appear last);
+     */
+    DESCENDING_NL,
+
+    UNSPECIFIED;
+
+    public boolean isAscending() {
+        return this == ASCENDING || this == ASCENDING_NL;
+    }
+
+    public boolean isDescending() {
+        return this == DESCENDING || this == DESCENDING_NL;
+    }
+
+    public boolean areNullsHigh() {
+        return this == ASCENDING || this == DESCENDING;
+    }
+
+    public boolean areNullsLow() {
+        return this == ASCENDING_NL || this == DESCENDING_NL;
+    }
+
+    public boolean areNullsFirst() {
+        return this == DESCENDING || this == ASCENDING_NL;
+    }
+
+    public boolean areNullsLast() {
+        return this == ASCENDING || this == DESCENDING_NL;
+    }
+
+    public Ordering nullsHigh() {
+        return switch (this) {
+            case ASCENDING_NL -> ASCENDING;
+            case DESCENDING_NL -> DESCENDING;
+            default -> this;
+        };
+    }
+
+    public Ordering nullsLow() {
+        return switch (this) {
+            case DESCENDING -> DESCENDING_NL;
+            case ASCENDING -> ASCENDING_NL;
+            default -> this;
+        };
+    }
+
+    public Ordering nullsFirst() {
+        return switch (this) {
+            case ASCENDING -> ASCENDING_NL;
+            case DESCENDING_NL -> DESCENDING;
+            default -> this;
+        };
+    }
+
+    public Ordering nullsLast() {
+        return switch (this) {
+            case DESCENDING -> DESCENDING_NL;
+            case ASCENDING_NL -> ASCENDING;
+            default -> this;
+        };
+    }
 
     public Ordering reverse() {
-        Ordering ordering = this;
-        if (ordering != UNSPECIFIED) {
-            if (ordering == ASCENDING) {
-                ordering = DESCENDING;
-            } else {
-                ordering = ASCENDING;
-            }
-        }
-        return ordering;
+        return switch (this) {
+            case ASCENDING -> DESCENDING;
+            case DESCENDING -> ASCENDING;
+            case ASCENDING_NL -> DESCENDING_NL;
+            case DESCENDING_NL -> ASCENDING_NL;
+            case UNSPECIFIED -> UNSPECIFIED;
+        };
     }
 }

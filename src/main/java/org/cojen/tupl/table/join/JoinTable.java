@@ -31,6 +31,7 @@ import java.util.function.Predicate;
 import org.cojen.tupl.DurabilityMode;
 import org.cojen.tupl.Query;
 import org.cojen.tupl.Row;
+import org.cojen.tupl.RowKey;
 import org.cojen.tupl.Scanner;
 import org.cojen.tupl.Table;
 import org.cojen.tupl.Transaction;
@@ -70,6 +71,11 @@ public abstract class JoinTable<J> extends BaseTable<J> {
             // Not expected.
             throw RowUtils.rethrow(e);
         }
+    }
+
+    @Override
+    public final RowKey primaryKey() {
+        return null;
     }
 
     @Override

@@ -244,6 +244,6 @@ public final class OrderBy extends LinkedHashMap<String, OrderBy.Rule> {
     }
 
     private static IllegalArgumentException malformed(String spec) {
-        return new IllegalArgumentException("Malformed ordering specification: " + spec);
+        return new IllegalArgumentException("Malformed specification: " + spec);
     }
 }

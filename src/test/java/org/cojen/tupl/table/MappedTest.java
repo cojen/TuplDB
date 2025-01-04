@@ -282,6 +282,8 @@ public class MappedTest {
         // String cannot be parsed as an integer.
         assertTrue(mapped.isEmpty());
 
+        assertEquals("+id", mapped.primaryKey().spec());
+
         assertFalse(mapped.exists(null, row));
         assertEquals("{id=1, num=123, str=hello}", row.toString()); // no side effect
 

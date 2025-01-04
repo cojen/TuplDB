@@ -131,9 +131,11 @@ public final class ProjExpr extends WrappedExpr implements Attr {
     }
 
     public Ordering ordering() {
-        return switch (mFlags & (F_ORDER_BY | F_DESCENDING)) {
-            case F_ORDER_BY -> Ordering.ASCENDING;
-            case (F_ORDER_BY | F_DESCENDING) -> Ordering.DESCENDING;
+        return switch (mFlags & (F_ORDER_BY | F_DESCENDING | F_NULL_LOW)) {
+            case  F_ORDER_BY                              -> Ordering.ASCENDING;
+            case (F_ORDER_BY | F_DESCENDING)              -> Ordering.DESCENDING;
+            case (F_ORDER_BY | F_NULL_LOW)                -> Ordering.ASCENDING_NL;
+            case (F_ORDER_BY | F_DESCENDING | F_NULL_LOW) -> Ordering.DESCENDING_NL;
             default -> Ordering.UNSPECIFIED;
         };
     }

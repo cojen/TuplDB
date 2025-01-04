@@ -189,6 +189,7 @@ public class AggregatedTest {
     public void toOneRow() throws Exception {
         Table<TestRowAgg> aggregated = mTable.aggregate(TestRowAgg.class, new Agg1Factory<>());
 
+        assertEquals(0, aggregated.primaryKey().size());
         assertTrue(aggregated.isEmpty());
         assertFalse(aggregated.anyRows(null));
         assertFalse(aggregated.anyRows(null, "count != ?", 999));
@@ -301,6 +302,7 @@ public class AggregatedTest {
         Table<TestRowAggByName> aggregated =
             mTable.aggregate(TestRowAggByName.class, new Agg1Factory<>());
 
+        assertEquals("+name", aggregated.primaryKey().spec());
         assertTrue(aggregated.isEmpty());
         assertFalse(aggregated.anyRows(null));
         assertFalse(aggregated.anyRows(null, "count != ?", 999));

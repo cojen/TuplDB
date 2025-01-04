@@ -46,6 +46,7 @@ import org.cojen.tupl.ColumnProcessor;
 import org.cojen.tupl.NoSuchRowException;
 import org.cojen.tupl.Query;
 import org.cojen.tupl.Row;
+import org.cojen.tupl.RowKey;
 import org.cojen.tupl.Scanner;
 import org.cojen.tupl.Table;
 import org.cojen.tupl.Transaction;
@@ -215,6 +216,11 @@ public abstract sealed class ViewedTable<R> extends WrappedTable<R, R> {
         mArgs = args;
 
         mQueryRef = queryRef;
+    }
+
+    @Override
+    public RowKey primaryKey() {
+        return mSource.primaryKey();
     }
 
     @Override
@@ -1195,6 +1201,11 @@ public abstract sealed class ViewedTable<R> extends WrappedTable<R, R> {
         }
 
         @Override
+        public RowKey primaryKey() {
+            return null;
+        }
+
+        @Override
         public boolean tryLoad(Transaction txn, R row) throws IOException {
             // Requires primary key columns.
             throw projectionConstraint();
@@ -1246,6 +1257,11 @@ public abstract sealed class ViewedTable<R> extends WrappedTable<R, R> {
                                  Table<R> source, Object... args)
         {
             super(queryStr, queryRef, maxArg, source, args);
+        }
+
+        @Override
+        public RowKey primaryKey() {
+            return null;
         }
 
         @Override

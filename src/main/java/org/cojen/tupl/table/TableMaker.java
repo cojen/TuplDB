@@ -34,6 +34,7 @@ import org.cojen.maker.Variable;
 import org.cojen.tupl.Cursor;
 import org.cojen.tupl.Entry;
 import org.cojen.tupl.LockResult;
+import org.cojen.tupl.RowKey;
 import org.cojen.tupl.Transaction;
 
 import org.cojen.tupl.diag.QueryPlan;
@@ -58,7 +59,7 @@ public class TableMaker {
     /**
      * @param rowGen describes row encoding
      * @param codecGen describes key and value codecs (can be different than rowGen)
-     * @param secondaryDesc secondary index descriptor
+     * @param secondaryDesc secondary index descriptor (optional)
      */
     TableMaker(Class<?> type, RowGen rowGen, RowGen codecGen, byte[] secondaryDesc) {
         mRowType = type;
@@ -1004,5 +1005,24 @@ public class TableMaker {
         MethodHandle mh = lookup.findConstructor(lookup.lookupClass(), ctorType);
 
         return mh.asType(mh.type().changeReturnType(SingleScanController.class));
+    }
+
+    protected void addPrimaryKeyMethod() {
+        String name = "primaryKey";
+        MethodMaker mm = mClassMaker.addMethod(RowKey.class, name).public_();
+        var condy = mm.var(TableMaker.class).condy
+            ("condyPrimaryKey", mRowType, mSecondaryDescriptor);
+        mm.return_(condy.invoke(RowKey.class, name));
+    }
+
+    public static RowKey condyPrimaryKey(MethodHandles.Lookup lookup, String name, Class type,
+                                         Class rowType, byte[] secondaryDesc)
+    {
+        if (secondaryDesc == null) {
+            return BasicRowKey.primaryKey(rowType);
+        }
+
+        // Note: This isn't a "real" RowInfo, and so the name isn't relevant.
+        return BasicRowKey.from(RowStore.primaryRowInfo(name, secondaryDesc).keyColumns);
     }
 }

@@ -32,6 +32,7 @@ import org.cojen.tupl.ColumnProcessor;
 import org.cojen.tupl.DurabilityMode;
 import org.cojen.tupl.Query;
 import org.cojen.tupl.Row;
+import org.cojen.tupl.RowKey;
 import org.cojen.tupl.Scanner;
 import org.cojen.tupl.Table;
 import org.cojen.tupl.Transaction;
@@ -78,6 +79,12 @@ final class ClientTable<R> implements Table<R> {
         mType = type;
 
         mHelper = ClientTableHelper.find(type);
+    }
+
+    @Override
+    public RowKey primaryKey() {
+        String spec = mRemote.primaryKeySpec();
+        return spec == null ? null : RowKey.parse(spec);
     }
 
     @Override

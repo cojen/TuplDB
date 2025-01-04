@@ -108,6 +108,11 @@ import static org.cojen.tupl.table.RowUtils.NO_ARGS;
  */
 public interface Table<R> extends Closeable {
     /**
+     * Returns the table's primary key, which is null if one isn't defined.
+     */
+    public RowKey primaryKey();
+
+    /**
      * Returns the interface which defines the rows of this table.
      */
     public Class<R> rowType();
@@ -588,9 +593,10 @@ public interface Table<R> extends Closeable {
     /**
      * Returns a view backed by this table, consisting of aggregate rows, which are grouped by
      * the {@link PrimaryKey primary key} of the target type. The primary key columns must
-     * exactly correspond to columns of this source table. If no primary key is defined, then
-     * the resulting table has one row, which is the aggregate result of all the rows of this
-     * table. The view returned by this method is unmodifiable, and closing it has no effect.
+     * exactly correspond to columns of this source table. If no primary key is defined by the
+     * target type, then the resulting table has one row, which is the aggregate result of all
+     * the rows of this table. The view returned by this method is unmodifiable, and closing it
+     * has no effect.
      *
      * @throws NullPointerException if any parameter is null
      * @throws IllegalArgumentException if target primary key is malformed

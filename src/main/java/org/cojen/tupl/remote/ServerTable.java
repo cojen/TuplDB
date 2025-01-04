@@ -23,6 +23,7 @@ import org.cojen.dirmi.Pipe;
 
 import org.cojen.tupl.DurabilityMode;
 import org.cojen.tupl.Query;
+import org.cojen.tupl.RowKey;
 import org.cojen.tupl.Updater;
 
 import org.cojen.tupl.diag.QueryPlan;
@@ -57,6 +58,12 @@ final class ServerTable<R> implements RemoteTable {
                 }
             }
         };
+    }
+
+    @Override
+    public String primaryKeySpec() {
+        RowKey key = mTable.primaryKey();
+        return key == null ? null : key.spec();
     }
 
     @Override

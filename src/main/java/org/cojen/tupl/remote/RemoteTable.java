@@ -39,6 +39,9 @@ import org.cojen.tupl.diag.QueryPlan;
  */
 @AutoDispose
 public interface RemoteTable extends Remote, Disposable {
+    @RemoteFailure(declared=false)
+    public String primaryKeySpec();
+
     public Pipe newScanner(RemoteTransaction txn, Pipe pipe) throws IOException;
 
     public Pipe newScanner(RemoteTransaction txn, Pipe pipe, String query, Object... args)

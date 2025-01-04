@@ -65,6 +65,8 @@ public class RemoteRowTest {
     public void predicate() throws Exception {
         Table<TestRow> table = mClientDb.openTable(TestRow.class);
 
+        assertEquals("+id", table.primaryKey().spec());
+
         try {
             table.predicate(null);
             fail();

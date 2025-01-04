@@ -32,6 +32,7 @@ import org.cojen.tupl.ColumnProcessor;
 import org.cojen.tupl.DurabilityMode;
 import org.cojen.tupl.Query;
 import org.cojen.tupl.Row;
+import org.cojen.tupl.RowKey;
 import org.cojen.tupl.Scanner;
 import org.cojen.tupl.Table;
 import org.cojen.tupl.Transaction;
@@ -72,6 +73,11 @@ public final class JoinIdentityTable extends BaseTable<Row> implements Query<Row
     }
 
     private JoinIdentityTable() {
+    }
+
+    @Override
+    public RowKey primaryKey() {
+        return BasicRowKey.empty();
     }
 
     @Override

@@ -28,6 +28,7 @@ import java.lang.reflect.Modifier;
 
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.TreeSet;
@@ -45,6 +46,7 @@ import org.cojen.maker.Variable;
 import org.cojen.tupl.LockMode;
 import org.cojen.tupl.Mapper;
 import org.cojen.tupl.Query;
+import org.cojen.tupl.RowKey;
 import org.cojen.tupl.Scanner;
 import org.cojen.tupl.Table;
 import org.cojen.tupl.Transaction;
@@ -198,6 +200,11 @@ public abstract class MappedTable<S, T> extends AbstractMappedTable<S, T>
         super(source);
         mQueryFactoryCache = queryFactoryCache;
         mMapper = mapper;
+    }
+
+    @Override
+    public final RowKey primaryKey() {
+        return inversePk().primaryKey();
     }
 
     @Override
@@ -491,8 +498,50 @@ public abstract class MappedTable<S, T> extends AbstractMappedTable<S, T>
 
         cm.addConstructor().private_();
 
-        MethodMaker mm = cm.addMethod(null, "inverseMap", Object.class, Object.class);
-        mm.public_();
+        if (mode == 1) {
+            // Override the primaryKey method.
+
+            boolean unspecified = false;
+            var b = new StringBuilder(toTargetMap.size() * 10);
+            var used = new HashSet<String>();
+
+            for (Map.Entry<String, ColumnInfo> e : sourceInfo.keyColumns.entrySet()) {
+                Set<ColumnFunction> targets = toTargetMap.get(e.getKey());
+                if (targets.size() != 1) {
+                    unspecified = true;
+                    for (ColumnFunction target : targets) {
+                        String name = target.column().name;
+                        if (used.add(name)) {
+                            b.append('~').append(target.column().name);
+                        }
+                    }
+                } else {
+                    ColumnFunction target = targets.iterator().next();
+                    if (unspecified || !target.isUntransformed()) {
+                        unspecified = true;
+                        b.append('~');
+                    } else {
+                        ColumnInfo source = e.getValue();
+                        b.append(source.isDescending() ? '-' : '+');
+                        if (source.isNullLow() && !target.column().isPrimitive()) {
+                            b.append('!');
+                        }
+                    }
+                    String name = target.column().name;
+                    if (used.add(name)) {
+                        b.append(name);
+                    }
+                }
+            }
+
+            String spec = b.toString();
+
+            MethodMaker mm = cm.addMethod(RowKey.class, "primaryKey").public_();
+            var condy = mm.var(InverseMapper.class).condy("condyPrimaryKey");
+            mm.return_(condy.invoke(RowKey.class, spec));
+        }
+
+        MethodMaker mm = cm.addMethod(null, "inverseMap", Object.class, Object.class).public_();
 
         // Only attempt to check that the source columns are set if the source table type is
         // expected to have the special check methods defined.
@@ -946,6 +995,10 @@ public abstract class MappedTable<S, T> extends AbstractMappedTable<S, T>
     }
 
     public interface InverseMapper<S, T> {
+        default RowKey primaryKey() {
+            return null;
+        }
+
         /**
          * @param sourceRow non null
          * @param targetRow non null
@@ -975,9 +1028,13 @@ public abstract class MappedTable<S, T> extends AbstractMappedTable<S, T>
         default S inverseMapForLoad(Table<S> source, T targetRow) throws IOException {
             return inverseMap(source, targetRow);
         }
+
+        public static RowKey condyPrimaryKey(MethodHandles.Lookup lookup, String spec, Class type) {
+            return BasicRowKey.parse(spec, true);
+        }
     }
 
-    public static class NoInverse implements InverseMapper {
+    public static final class NoInverse implements InverseMapper {
         private static final NoInverse THE = new NoInverse();
 
         @SuppressWarnings("unchecked")
