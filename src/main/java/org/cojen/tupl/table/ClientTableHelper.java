@@ -33,6 +33,7 @@ import org.cojen.maker.Variable;
 
 import org.cojen.tupl.DurabilityMode;
 import org.cojen.tupl.Query;
+import org.cojen.tupl.Row;
 import org.cojen.tupl.Scanner;
 import org.cojen.tupl.Table;
 import org.cojen.tupl.Transaction;
@@ -99,6 +100,16 @@ public abstract class ClientTableHelper<R> implements Table<R> {
 
     @Override
     public final boolean exists(Transaction txn, R row) {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public final <D> Table<D> derive(Class<D> derivedType, String query, Object... args) {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public final Table<Row> derive(String query, Object... args) {
         throw new UnsupportedOperationException();
     }
 

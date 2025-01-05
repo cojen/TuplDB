@@ -58,7 +58,7 @@ public class TableMaker {
     /**
      * @param rowGen describes row encoding
      * @param codecGen describes key and value codecs (can be different than rowGen)
-     * @param secondaryDesc secondary index descriptor
+     * @param secondaryDesc secondary index descriptor (optional)
      */
     TableMaker(Class<?> type, RowGen rowGen, RowGen codecGen, byte[] secondaryDesc) {
         mRowType = type;
