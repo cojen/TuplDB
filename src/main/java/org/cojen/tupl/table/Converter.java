@@ -22,6 +22,7 @@ import java.math.BigInteger;
 
 import org.cojen.maker.Label;
 import org.cojen.maker.MethodMaker;
+import org.cojen.maker.Type;
 import org.cojen.maker.Variable;
 
 import org.cojen.tupl.ConversionException;
@@ -1044,6 +1045,57 @@ public class Converter {
                 default -> dstVar.set(0);
             }
         }
+    }
+
+    /**
+     * Performs a check to see if the given variable is a default value. Returns a boolean
+     * Variable with the result.
+     *
+     * @param nullable pass true to indicate that default is null (unless the value is primitive)
+     */
+    public static Variable isDefault(final Variable v, final boolean nullable) {
+        final Type type = v.type();
+
+        if (type.isPrimitive()) {
+            return v.eq(type.classType() == boolean.class ? false : 0);
+        }
+
+        if (nullable) {
+            return v.eq(null);
+        }
+
+        final MethodMaker mm = v.methodMaker();
+        final Label done = mm.label();
+        final var resultVar = mm.var(boolean.class);
+
+        Label notNull = mm.label();
+        v.ifNe(null, notNull);
+        resultVar.set(true);
+        done.goto_();
+
+        notNull.here();
+
+        final Type unboxed = type.unbox();
+
+        if (unboxed != null) {
+            resultVar.set(v.unbox().eq(unboxed.classType() == boolean.class ? false : 0));
+        } else if (type.isArray()) {
+            resultVar.set(v.alength().eq(0));
+        } else {
+            Class<?> clazz = type.classType();
+            if (CharSequence.class.isAssignableFrom(clazz)) {
+                resultVar.set(v.invoke("isEmpty"));
+            } else if (BigInteger.class.isAssignableFrom(clazz)) {
+                resultVar.set(v.field("ZERO").invoke("equals", v));
+            } else if (BigDecimal.class.isAssignableFrom(clazz)) {
+                resultVar.set(v.field("ZERO").invoke("compareTo", v).eq(0));
+            } else {
+                resultVar.set(false);
+            }
+        }
+
+        done.here();
+        return resultVar;
     }
 
     private static void throwConvertFailException(MethodMaker mm, String columnName,

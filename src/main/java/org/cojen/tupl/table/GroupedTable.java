@@ -436,7 +436,7 @@ public abstract class GroupedTable<S, T> extends AbstractMappedTable<S, T>
 
         pushDown: {
             for (var rule : targetOrderBy.values()) {
-                ColumnFunction source = finder.tryFindSource(rule.column());
+                ColumnFunction source = finder.tryFindSource(rule.column(), true);
                 ColumnInfo sc;
                 if (source == null || !source.isUntransformed() ||
                     !groupBy.containsKey((sc = source.column()).name))

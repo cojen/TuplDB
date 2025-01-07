@@ -835,4 +835,178 @@ public class MappedTest {
         } catch (UnsetColumnException e) {
         }
     }
+
+    @Test
+    public void conversionMapping() throws Exception {
+        Table<TestRow2> mapped = mTable.map(TestRow2.class);
+
+        {
+            TestRow row = mTable.newRow();
+
+            row.id(1);
+            row.str("hello");
+            row.num(123);
+            mTable.store(null, row);
+
+            row.id(5_000_000_000L);
+            row.str("456");
+            row.num(456);
+            mTable.store(null, row);
+        }
+
+        TestRow2 row2 = mapped.newRow();
+        row2.id(1);
+        mapped.load(null, row2);
+        assertEquals(1, row2.id());
+        assertEquals(0, row2.str());
+        assertTrue(123.0 == row2.num());
+        assertNull(row2.x());
+
+        try (var s = mapped.newScanner(null)) {
+            row2 = s.row();
+            assertEquals(1, row2.id());
+            assertEquals(0, row2.str());
+            assertTrue(123.0 == row2.num());
+            
+            row2 = s.step();
+            assertEquals(Integer.MAX_VALUE, row2.id());
+            assertEquals(456, row2.str());
+            assertTrue(456.0 == row2.num());
+        }
+
+        row2.id(Integer.MAX_VALUE);
+        assertFalse(mapped.tryLoad(null, row2));
+
+        row2.id(2);
+        row2.str(567);
+
+        row2.num(67.8);
+
+        try {
+            mapped.store(null, row2);
+            fail();
+        } catch (ConversionException e) {
+            assertTrue(e.getMessage().contains("column=num"));
+            assertTrue(e.getMessage().contains("67.8"));
+        }
+
+        row2.num(null);
+
+        try {
+            mapped.store(null, row2);
+            fail();
+        } catch (ConversionException e) {
+            assertTrue(e.getMessage().contains("column=num"));
+            assertTrue(e.getMessage().contains("null"));
+        }
+
+        row2.num(678.0);
+        mapped.store(null, row2);
+
+        TestRow row = mTable.newRow();
+        row.id(2);
+        mTable.load(null, row);
+        assertEquals(2, row.id());
+        assertEquals("567", row.str());
+        assertEquals(678, row.num());
+
+        row2.id(3);
+        row2.str(33);
+        row2.num(333.0);
+        row2.x(3333);
+
+        try {
+            mapped.store(null, row2);
+        } catch (ConversionException e) {
+            assertTrue(e.getMessage().contains("column=x"));
+        }
+
+        row2.x(0);
+
+        try {
+            mapped.store(null, row2);
+        } catch (ConversionException e) {
+            assertTrue(e.getMessage().contains("column=x"));
+        }
+
+        row2.x(null);
+
+        mapped.store(null, row2);
+
+        row.id(3);
+        mTable.load(null, row);
+        assertEquals("33", row.str());
+        assertEquals(333, row.num());
+
+        row2.x(3333);
+        assertTrue(mapped.tryDelete(null, row2));
+        assertFalse(mTable.tryLoad(null, row));
+    }
+
+    public interface TestRow2 {
+        int id();
+        void id(int id);
+
+        int str();
+        void str(int str);
+
+        @Nullable
+        Double num();
+        void num(Double num);
+
+        @Nullable
+        Integer x();
+        void x(Integer x);
+    }
+
+    @Test
+    public void conversionMappingDroppedSourceColumn() throws Exception {
+        Table<TestRow3> mapped = mTable.map(TestRow3.class);
+
+        TestRow row = mTable.newRow();
+        row.id(1);
+        row.str("hello");
+        row.num(123);
+        mTable.store(null, row);
+
+        TestRow3 row3 = mapped.newRow();
+        row3.id(1);
+        mapped.load(null, row3);
+        assertEquals(1, row3.id());
+        assertEquals("hello", row3.str());
+
+        row3.str("world");
+        mapped.update(null, row3);
+
+        mTable.load(null, row);
+        assertEquals("world", row.str());
+
+        // Cannot insert a new row because the "num" column was dropped.
+        row3.id(2);
+        row3.str("x");
+        try {
+            mapped.tryInsert(null, row3);
+            fail();
+        } catch (UnmodifiableViewException e) {
+        }
+
+        row3.id(1);
+        row3.str(null);
+        try {
+            mapped.update(null, row3);
+            fail();
+        } catch (ConversionException e) {
+            assertTrue(e.getMessage().contains("column=str"));
+            assertTrue(e.getMessage().contains("Cannot assign null to non-nullable type"));
+        }
+    }
+
+    public interface TestRow3 {
+        long id();
+        void id(long id);
+
+        @Nullable
+        String str();
+        void str(String str);
+    }
 }

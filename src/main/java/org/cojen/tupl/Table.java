@@ -33,6 +33,7 @@ import org.cojen.tupl.table.ComparatorMaker;
 import org.cojen.tupl.table.GroupedTable;
 import org.cojen.tupl.table.JoinIdentityTable;
 import org.cojen.tupl.table.MappedTable;
+import org.cojen.tupl.table.MapperMaker;
 import org.cojen.tupl.table.PlainPredicateMaker;
 
 import org.cojen.tupl.table.join.JoinTableMaker;
@@ -583,6 +584,28 @@ public interface Table<R> extends Closeable {
      */
     public default <T> Table<T> map(Class<T> targetType, Mapper<R, T> mapper) throws IOException {
         return MappedTable.map(this, targetType, mapper);
+    }
+
+    /**
+     * Returns a view backed by this table, whose rows have been mapped to target rows,
+     * applying any necessary column value conversions. The returned table instance will throw
+     * a {@link ConversionException} for operations against rows which cannot be converted back
+     * source rows, and closing the table has no effect.
+     *
+     * <p>Source column values are converted to target column values using a potentially lossy
+     * conversion, which can cause numbers to be clamped to a narrower range, etc. Columns
+     * which aren't mapped to the target are dropped, and columns which don't map from the
+     * source are set to the most appropriate default value, preferably null.
+     *
+     * @throws NullPointerException if any parameter is null
+     */
+    @SuppressWarnings("unchecked")
+    public default <T> Table<T> map(Class<T> targetType) throws IOException {
+        Class<R> sourceType = rowType();
+        if (targetType.equals(sourceType)) {
+            return (Table<T>) this;
+        }
+        return map(targetType, MapperMaker.make(sourceType, targetType));
     }
 
     /**

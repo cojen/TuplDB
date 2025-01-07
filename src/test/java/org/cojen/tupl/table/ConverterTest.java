@@ -26,7 +26,9 @@ import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.cojen.maker.ClassMaker;
 import org.cojen.maker.MethodMaker;
+import org.cojen.maker.Variable;
 
 import static org.cojen.tupl.table.ColumnInfo.*;
 
@@ -674,5 +676,54 @@ public class ConverterTest {
 
     private static ColumnInfo arrayType(int typeCode, boolean nullable) {
         return basicType(typeCode | TYPE_ARRAY, nullable);
+    }
+
+    @Test
+    public void isDefault() throws Exception {
+        ClassMaker cm = ClassMaker.begin().public_();
+        MethodMaker mm = cm.addMethod(null, "test").public_().static_();
+
+        isDefault(mm.var(int.class).set(0), true);
+        isDefault(mm.var(double.class).set(10.2), false);
+        isDefault(mm.var(boolean.class).set(false), true);
+        isDefault(mm.var(boolean.class).set(true), false);
+        isDefaultNullable(mm.var(boolean.class).set(false), true);
+        isDefaultNullable(mm.var(boolean.class).set(true), false);
+
+        isDefault(mm.var(Integer.class).set(null), true);
+        isDefault(mm.var(Integer.class).set(0), true);
+        isDefault(mm.var(Integer.class).set(10), false);
+        isDefaultNullable(mm.var(Integer.class).set(null), true);
+        isDefaultNullable(mm.var(Integer.class).set(0), false);
+
+        isDefault(mm.var(int[].class).set(null), true);
+        isDefault(mm.new_(int[].class, 0), true);
+        isDefault(mm.new_(int[].class, 1), false);
+
+        isDefault(mm.var(String.class).set(null), true);
+        isDefault(mm.var(String.class).set(""), true);
+        isDefault(mm.var(String.class).set("x"), false);
+
+        isDefault(mm.new_(BigInteger.class, "0"), true);
+        isDefault(mm.new_(BigInteger.class, "-1"), false);
+
+        isDefault(mm.new_(BigDecimal.class, "0"), true);
+        isDefault(mm.new_(BigDecimal.class, "0.0"), true);
+        isDefault(mm.new_(BigDecimal.class, "1.1"), false);
+
+        isDefault(mm.var(Object.class).setExact(this), false);
+
+        Class<?> clazz = cm.finishHidden().lookupClass();
+        clazz.getMethod("test").invoke(null);
+    }
+
+    private static void isDefault(Variable v, boolean expect) {
+        var resultVar = Converter.isDefault(v, false);
+        v.methodMaker().var(Assert.class).invoke("assertEquals", expect, resultVar);
+    }
+
+    private static void isDefaultNullable(Variable v, boolean expect) {
+        var resultVar = Converter.isDefault(v, true);
+        v.methodMaker().var(Assert.class).invoke("assertEquals", expect, resultVar);
     }
 }

@@ -440,14 +440,26 @@ public abstract class MappedTable<S, T> extends AbstractMappedTable<S, T>
         // Maps source columns to the targets that map to it.
         var toTargetMap = new LinkedHashMap<String, Set<ColumnFunction>>();
 
+        int matchedSources = 0;
+
         for (ColumnInfo targetColumn : targetInfo.allColumns.values()) {
-            ColumnFunction source = finder.tryFindSource(targetColumn);
+            ColumnFunction source = finder.tryFindSource(targetColumn, false);
 
             if (source == null) {
                 continue;
             }
 
-            String sourceName = source.column().name;
+            String sourceName;
+            {
+                ColumnInfo sourceColumn = source.column();
+                if (sourceColumn == null) {
+                    sourceName = null;
+                } else {
+                    matchedSources++;
+                    sourceName = sourceColumn.name;
+                }
+            }
+
             Set<ColumnFunction> set = toTargetMap.get(sourceName);
 
             if (set == null) {
@@ -471,7 +483,7 @@ public abstract class MappedTable<S, T> extends AbstractMappedTable<S, T>
         }
 
         if (mode < 3) {
-            if (toTargetMap.size() != sourceColumns.size()) {
+            if (matchedSources != sourceColumns.size()) {
                 // Not enough source columns have been mapped.
                 return NoInverse.instance();
             }
@@ -511,6 +523,19 @@ public abstract class MappedTable<S, T> extends AbstractMappedTable<S, T>
 
         for (Map.Entry<String, Set<ColumnFunction>> e : toTargetMap.entrySet()) {
             String sourceColumnName = e.getKey();
+
+            if (sourceColumnName == null) {
+                // The inverse mapping function is of the form "target_to_" and is used to only
+                // validate the target column value.
+                if (mode > 1) for (ColumnFunction targetColumnFun : e.getValue()) {
+                    ColumnInfo targetColumn = targetColumnFun.column();
+                    var targetColumnVar = targetRowVar.field(targetColumn.name);
+                    Method fun = targetColumnFun.function();
+                    mm.var(fun.getDeclaringClass()).invoke(fun.getName(), targetColumnVar);
+                }
+                continue;
+            }
+
             ColumnInfo sourceColumnInfo = ColumnSet.findColumn
                 (sourceInfo.allColumns, sourceColumnName);
 
@@ -807,7 +832,7 @@ public abstract class MappedTable<S, T> extends AbstractMappedTable<S, T>
         OrderBy sourceOrder = null;
 
         for (var rule : targetOrder.values()) {
-            ColumnFunction source = finder.tryFindSource(rule.column());
+            ColumnFunction source = finder.tryFindSource(rule.column(), true);
             if (source == null || !source.isUntransformed()) {
                 break;
             }

@@ -127,7 +127,7 @@ public abstract class AbstractMappedTable<S, T> extends WrappedTable<S, T> {
 
         @Override
         public RowFilter apply(ColumnFilter cf) {
-            ColumnFunction source = mFinder.tryFindSource(cf.column());
+            ColumnFunction source = mFinder.tryFindSource(cf.column(), true);
             if (source == null) {
                 return null;
             }
@@ -154,7 +154,7 @@ public abstract class AbstractMappedTable<S, T> extends WrappedTable<S, T> {
                 if (!source.isUntransformed()) {
                     return null;
                 }
-                ColumnFunction otherSource = mFinder.tryFindSource(c2c.otherColumn());
+                ColumnFunction otherSource = mFinder.tryFindSource(c2c.otherColumn(), true);
                 if (otherSource == null || !otherSource.isUntransformed()) {
                     return null;
                 }
@@ -249,7 +249,12 @@ public abstract class AbstractMappedTable<S, T> extends WrappedTable<S, T> {
             }
         }
 
-        ColumnFunction tryFindSource(ColumnInfo targetColumn) {
+        /**
+         * @param requie pass false to allow mappings of the form "target_to_" which don't
+         * specify a source column; the ColumnFunction.column field will be null and the
+         * function returns void
+         */
+        ColumnFunction tryFindSource(ColumnInfo targetColumn, boolean require) {
             String prefix = targetColumn.name + "_to_";
 
             for (Method candidate : mAllMethods.tailMap(prefix).values()) {
@@ -262,11 +267,6 @@ public abstract class AbstractMappedTable<S, T> extends WrappedTable<S, T> {
                     continue;
                 }
 
-                Class<?> retType = candidate.getReturnType();
-                if (retType == null || retType == void.class) {
-                    continue;
-                }
-
                 Class<?>[] paramTypes = candidate.getParameterTypes();
                 if (paramTypes.length != 1) {
                     continue;
@@ -274,6 +274,14 @@ public abstract class AbstractMappedTable<S, T> extends WrappedTable<S, T> {
 
                 if (!paramTypes[0].isAssignableFrom(targetColumn.type)) {
                     continue;
+                }
+
+                Class<?> retType = candidate.getReturnType();
+                if (retType == null || retType == void.class) {
+                    if (require || !name.equals(prefix)) {
+                        continue;
+                    }
+                    return new ColumnFunction(null, candidate);
                 }
 
                 String sourceName = RowMethodsMaker.unescape(name.substring(prefix.length()));
