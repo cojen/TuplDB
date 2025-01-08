@@ -872,6 +872,8 @@ public class MappedTest {
             assertEquals(Integer.MAX_VALUE, row2.id());
             assertEquals(456, row2.str());
             assertTrue(456.0 == row2.num());
+
+            assertNull(s.step());
         }
 
         row2.id(Integer.MAX_VALUE);
@@ -941,6 +943,25 @@ public class MappedTest {
         row2.x(3333);
         assertTrue(mapped.tryDelete(null, row2));
         assertFalse(mTable.tryLoad(null, row));
+
+        try (var s = mapped.query("{id, str, num=3.0}").newScanner(null)) {
+            row2 = s.row();
+            assertEquals(1, row2.id());
+            assertEquals(0, row2.str());
+            assertTrue(3.0 == row2.num());
+            
+            row2 = s.step();
+            assertEquals(2, row2.id());
+            assertEquals(567, row2.str());
+            assertTrue(3.0 == row2.num());
+
+            row2 = s.step();
+            assertEquals(Integer.MAX_VALUE, row2.id());
+            assertEquals(456, row2.str());
+            assertTrue(3.0 == row2.num());
+
+            assertNull(s.step());
+        }
     }
 
     public interface TestRow2 {

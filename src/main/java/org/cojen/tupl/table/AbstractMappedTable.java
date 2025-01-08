@@ -56,6 +56,11 @@ public abstract class AbstractMappedTable<S, T> extends WrappedTable<S, T> {
         super(source);
     }
 
+    // Defined by QueryFactoryCache.Helper, as needed by the subclasses.
+    public Table<T> table() {
+        return this;
+    }
+
     protected abstract String sourceProjection();
 
     /**

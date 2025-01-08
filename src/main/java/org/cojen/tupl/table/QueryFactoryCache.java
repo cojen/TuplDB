@@ -17,11 +17,17 @@
 
 package org.cojen.tupl.table;
 
+import java.io.IOException;
+
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
 
+import org.cojen.tupl.Table;
+
+import org.cojen.tupl.table.expr.CompiledQuery;
 import org.cojen.tupl.table.expr.Parser;
+import org.cojen.tupl.table.expr.RelationExpr;
 
 import org.cojen.tupl.table.filter.QuerySpec;
 
@@ -56,21 +62,46 @@ public final class QueryFactoryCache extends SoftCache<String, MethodHandle, Obj
     public static interface Helper {
         Class<?> rowType();
 
+        Table<?> table();
+
+        /**
+         * Returns a MethodHandle which accepts a specific Table type and returns a Query.
+         */
         MethodHandle makeQueryFactory(QuerySpec query);
+
+        /**
+         * Returns a MethodHandle with the same signature as makeQueryFactory, ignoring the
+         * Table parameter.
+         */
+        default MethodHandle makeQueryHandle(CompiledQuery cq) {
+            MethodHandle mh = MethodHandles.constant(CompiledQuery.class, cq);
+            return MethodHandles.dropArguments(mh, 0, Table.class);
+        }
     }
 
     @Override
     protected MethodHandle newValue(String queryStr, Object helperObj) {
-        if (helperObj instanceof Helper helper) {
-            QuerySpec query = Parser.parseQuerySpec(helper.rowType(), queryStr);
+        if (!(helperObj instanceof Helper helper)) {
+            return ((ForCanonical) helperObj).makeQueryFactory();
+        }
+
+        var rowType = helper.rowType();
+        RelationExpr expr = Parser.parse(helper.table(), rowType, queryStr);
+        QuerySpec query = expr.tryQuerySpec(rowType);
+
+        if (query != null) {
             String canonicalStr = query.toString();
             if (canonicalStr.equals(queryStr)) {
                 return helper.makeQueryFactory(query);
             } else {
                 return obtain(canonicalStr, new ForCanonical(helper, query));
             }
-        } else {
-            return ((ForCanonical) helperObj).makeQueryFactory();
+        }
+
+        try {
+            return helper.makeQueryHandle(expr.makeCompiledQuery(rowType));
+        } catch (IOException e) {
+            throw RowUtils.rethrow(e);
         }
     }
 

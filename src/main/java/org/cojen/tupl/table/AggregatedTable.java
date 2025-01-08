@@ -350,6 +350,11 @@ public abstract class AggregatedTable<S, T> extends WrappedTable<S, T>
     }
 
     @Override
+    public Table<T> table() {
+        return this;
+    }
+
+    @Override
     public MethodHandle makeQueryFactory(QuerySpec targetQuery) {
         Class<S> sourceType = mSource.rowType();
         RowInfo sourceInfo = RowInfo.find(sourceType);
