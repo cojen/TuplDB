@@ -144,12 +144,26 @@ public interface Query<R> {
      */
     default long deleteAll(Transaction txn, Object... args) throws IOException {
         // Note: If the transaction is null, deleting in batches is an acceptable optimization.
+
         long total = 0;
+
+        if (txn != null && !txn.isBogus()) {
+            txn.enter();
+        }
+
         try (var updater = newUpdater(txn, args)) {
             for (var row = updater.row(); row != null; row = updater.delete(row)) {
                 total++;
             }
+            if (txn != null) {
+                txn.commit();
+            }
+        } finally {
+            if (txn != null) {
+                txn.exit();
+            }
         }
+
         return total;
     }
 
@@ -247,4 +261,3 @@ public interface Query<R> {
         return streamPlan(txn, NO_ARGS);
     }
 }
-
