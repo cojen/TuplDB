@@ -147,7 +147,7 @@ public interface Query<R> {
 
         long total = 0;
 
-        if (txn != null && !txn.isBogus()) {
+        if (txn != null) {
             txn.enter();
         }
 

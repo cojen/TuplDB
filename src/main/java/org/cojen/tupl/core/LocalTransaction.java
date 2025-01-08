@@ -558,7 +558,13 @@ public final class LocalTransaction extends Locker implements CoreTransaction {
 
     @Override
     public final void enter() throws IOException {
-        check();
+        Object borked = mBorked;
+        if (borked != null) {
+            if (borked == BOGUS) {
+                return;
+            }
+            check(borked);
+        }
 
         try {
             ParentScope parentScope = super.scopeEnter();
