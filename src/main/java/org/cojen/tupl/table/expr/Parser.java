@@ -43,6 +43,8 @@ import static org.cojen.tupl.table.expr.Token.*;
  * @author Brian S. O'Neill
  */
 public final class Parser {
+    // FIXME: Consider caching the results.
+
     public static RelationExpr parse(String query) throws QueryException {
         return parse((RelationExpr) null, null, query);
     }
@@ -245,7 +247,7 @@ public final class Parser {
     private static void verifyNoGrouping(Expr expr) {
         if (expr.isGrouping()) {
             throw expr.queryException("Query depends on a function which requires grouping, " +
-                                     "but no group specification is defined");
+                                      "but no group specification is defined");
         }
     }
 

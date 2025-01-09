@@ -994,4 +994,63 @@ public abstract sealed class QueryPlan implements Serializable {
             return super.hashCode() ^ 533558266;
         }
     }
+
+    /**
+     * Query plan node which represents a concatenated set of plans.
+     */
+    public static sealed class Concat extends Set {
+        private static final long serialVersionUID = 1L;
+
+        /**
+         * @param sources child plan nodes
+         */
+        public Concat(QueryPlan... sources) {
+            super(sources);
+        }
+
+        @Override
+        void appendTo(Appendable a, String in1, String in2) throws IOException {
+            appendTo(a, in1, in2, "concat");
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            return obj instanceof Concat concat && matches(concat);
+        }
+
+        @Override
+        public int hashCode() {
+            return super.hashCode() ^ -2085193523;
+        }
+    }
+
+    /**
+     * Query plan node which represents a concatenated set of plans which have an explicit
+     * ordering.
+     */
+    public static final class Merge extends Concat {
+        private static final long serialVersionUID = 1L;
+
+        /**
+         * @param sources child plan nodes
+         */
+        public Merge(QueryPlan... sources) {
+            super(sources);
+        }
+
+        @Override
+        void appendTo(Appendable a, String in1, String in2) throws IOException {
+            appendTo(a, in1, in2, "merge");
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            return obj instanceof Merge merge && matches(merge);
+        }
+
+        @Override
+        public int hashCode() {
+            return super.hashCode() ^ -481770497;
+        }
+    }
 }

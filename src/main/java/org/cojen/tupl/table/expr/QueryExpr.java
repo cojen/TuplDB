@@ -597,6 +597,25 @@ public abstract sealed class QueryExpr extends RelationExpr
         throw null;
     }
 
+    @Override
+    public final String orderBySpec() {
+        List<ProjExpr> projection = mProjection;
+
+        if (projection == null || projection.isEmpty()) {
+            return "";
+        }
+
+        var b = new StringBuilder();
+
+        for (ProjExpr pe : projection) {
+            if (pe.hasOrderBy() && !pe.hasExclude()) {
+                pe.appendToOrderBySpec(b);
+            }
+        }
+
+        return b.isEmpty() ? "" : b.toString();
+    }
+
     /**
      * @param strict when true return null when projecting anything other than a plain column;
      * when false, those projections are dropped

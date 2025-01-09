@@ -28,6 +28,8 @@ import java.util.function.Consumer;
 import org.cojen.tupl.QueryException;
 import org.cojen.tupl.Row;
 
+import org.cojen.tupl.table.OrderBy;
+
 import org.cojen.tupl.table.filter.QuerySpec;
 import org.cojen.tupl.table.filter.TrueFilter;
 
@@ -116,6 +118,11 @@ public abstract sealed class RelationExpr extends Expr permits TableExpr, QueryE
             consumer.accept(ProjExpr.make(-1, -1, ColumnExpr.make(-1, -1, tt, column), 0));
         }
     }
+
+    /**
+     * Returns the explictly specified relation ordering, which is empty if unspecified.
+     */
+    public abstract String orderBySpec();
 
     /**
      * Returns a QuerySpec if this RelationExpr can be represented by one, against this

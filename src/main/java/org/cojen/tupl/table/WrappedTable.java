@@ -90,17 +90,18 @@ public abstract class WrappedTable<S, T> extends BaseTable<T> {
 
     @Override
     @SuppressWarnings("unchecked")
-    public Table<Row> derive(String query, Object... args) throws IOException {
-        return ((CompiledQuery<Row>) cacheObtain(TYPE_2, query, this)).table(args);
-    }
-
-    @Override
-    @SuppressWarnings("unchecked")
     public <D> Table<D> derive(Class<D> derivedType, String query, Object... args)
         throws IOException
     {
         // See the cacheNewValue method.
         var key = new CompiledQuery.DerivedKey(derivedType, query);
         return ((CompiledQuery<D>) cacheObtain(TYPE_2, key, this)).table(args);
+    }
+
+    @Override
+    @SuppressWarnings("unchecked")
+    public Table<Row> derive(String query, Object... args) throws IOException {
+        // See the cacheNewValue method.
+        return ((CompiledQuery<Row>) cacheObtain(TYPE_2, query, this)).table(args);
     }
 }

@@ -135,6 +135,11 @@ public final class TableExpr extends RelationExpr {
     }
 
     @Override
+    public String orderBySpec() {
+        return "";
+    }
+
+    @Override
     public QuerySpec querySpec() {
         return new QuerySpec(null, null, TrueFilter.THE);
     }

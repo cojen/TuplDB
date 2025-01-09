@@ -29,6 +29,7 @@ import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
 import org.cojen.tupl.LockMode;
+import org.cojen.tupl.Query;
 import org.cojen.tupl.Scanner;
 import org.cojen.tupl.Transaction;
 
@@ -831,5 +832,32 @@ public class RowUtils extends Utils {
                 Utils.rethrow(e);
             }
         });
+    }
+
+    public static <R> long deleteAll(Query<R> query, Transaction txn, Object... args)
+        throws IOException
+    {
+        // Note: If the transaction is null, deleting in batches is an acceptable optimization.
+
+        long total = 0;
+
+        if (txn != null) {
+            txn.enter();
+        }
+
+        try (var updater = query.newUpdater(txn, args)) {
+            for (var row = updater.row(); row != null; row = updater.delete(row)) {
+                total++;
+            }
+            if (txn != null) {
+                txn.commit();
+            }
+        } finally {
+            if (txn != null) {
+                txn.exit();
+            }
+        }
+
+        return total;
     }
 }
