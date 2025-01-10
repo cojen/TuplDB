@@ -763,14 +763,12 @@ public interface Table<R> extends Closeable {
     public static <T> Table<T> concat(Class<T> targetType, Table<?>... sources)
         throws IOException
     {
-        if (sources.length <= 1) {
-            if (sources.length == 0) {
-                return new EmptyTable<>(targetType);
-            } else {
-                return sources[0].map(targetType);
-            }
-        } else {
+        if (sources.length > 1) {
             return ConcatTable.concat(targetType, sources);
+        } else if (sources.length == 1) {
+            return sources[0].map(targetType);
+        } else {
+            return new EmptyTable<>(targetType);
         }
     }
 
@@ -788,14 +786,12 @@ public interface Table<R> extends Closeable {
      * @see #map(Class)
      */
     public static Table<Row> concat(Table<?>... sources) throws IOException {
-       if (sources.length <= 1) {
-            if (sources.length == 0) {
-                return new EmptyTable<>(Row.class);
-            } else {
-                return sources[0].map(CommonRowTypeMaker.makeFor(sources[0]));
-            }
-        } else {
+        if (sources.length > 1) {
             return ConcatTable.concat(CommonRowTypeMaker.makeFor(sources), sources);
+        } else if (sources.length == 1) {
+            return sources[0].map(CommonRowTypeMaker.makeFor(sources[0]));
+        } else {
+            return new EmptyTable<>(Row.class);
         }
     }
 
