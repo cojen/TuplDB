@@ -109,6 +109,8 @@ loadScripts(document, 'script');</script>
 <li><a href="#join()" tabindex="0">join()</a></li>
 <li><a href="#derive(java.lang.Class,java.lang.String,java.lang.Object...)" tabindex="0">derive(Class, String, Object...)</a></li>
 <li><a href="#derive(java.lang.String,java.lang.Object...)" tabindex="0">derive(String, Object...)</a></li>
+<li><a href="#concat(java.lang.Class,org.cojen.tupl.Table...)" tabindex="0">concat(Class, Table...)</a></li>
+<li><a href="#concat(org.cojen.tupl.Table...)" tabindex="0">concat(Table...)</a></li>
 <li><a href="#comparator(java.lang.String)" tabindex="0">comparator(String)</a></li>
 <li><a href="#predicate(java.lang.String,java.lang.Object...)" tabindex="0">predicate(String, Object...)</a></li>
 <li><a href="#close()" tabindex="0">close()</a></li>
@@ -254,6 +256,19 @@ public interface MyRow {
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
 <div class="block">Returns a row comparator based on the given specification, which defines the ordering
  columns.</div>
+</div>
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab1"><code>static &lt;T&gt;&nbsp;<a href="Table.html" title="interface in org.cojen.tupl">Table</a><wbr>&lt;T&gt;</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab1"><code><a href="#concat(java.lang.Class,org.cojen.tupl.Table...)" class="member-name-link">concat</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/23/docs/api/java.base/java/lang/Class.html" title="class or interface in java.lang" class="external-link">Class</a>&lt;T&gt;&nbsp;targetType,
+ <a href="Table.html" title="interface in org.cojen.tupl">Table</a>&lt;?&gt;...&nbsp;sources)</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab1">
+<div class="block">Returns a view consisting of all rows from the given source tables concatenated
+ together, possibly resulting in duplicate rows.</div>
+</div>
+<div class="col-first even-row-color method-summary-table method-summary-table-tab1"><code>static <a href="Table.html" title="interface in org.cojen.tupl">Table</a><wbr>&lt;<a href="Row.html" title="interface in org.cojen.tupl">Row</a>&gt;</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab1"><code><a href="#concat(org.cojen.tupl.Table...)" class="member-name-link">concat</a><wbr>(<a href="Table.html" title="interface in org.cojen.tupl">Table</a>&lt;?&gt;...&nbsp;sources)</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab1">
+<div class="block">Returns a view consisting of all rows from the given source tables concatenated
+ together, possibly resulting in duplicate rows.</div>
 </div>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code>void</code></div>
 <div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#copyRow(R,R)" class="member-name-link">copyRow</a><wbr>(<a href="Table.html" title="type parameter in Table">R</a>&nbsp;from,
@@ -1151,6 +1166,8 @@ public interface MyRow {
  which aren't mapped to the target are dropped, and columns which don't map from the
  source are set to the most appropriate default value, preferably null.</div>
 <dl class="notes">
+<dt>Parameters:</dt>
+<dd><code>targetType</code> - target row type; the primary key is ignored</dd>
 <dt>Throws:</dt>
 <dd><code><a href="https://docs.oracle.com/en/java/javase/23/docs/api/java.base/java/lang/NullPointerException.html" title="class or interface in java.lang" class="external-link">NullPointerException</a></code> - if any parameter is null</dd>
 <dd><code><a href="https://docs.oracle.com/en/java/javase/23/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
@@ -1334,6 +1351,65 @@ public interface MyRow {
 <dl class="notes">
 <dt>Throws:</dt>
 <dd><code><a href="https://docs.oracle.com/en/java/javase/23/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
+</dl>
+</div>
+</section>
+</li>
+<li>
+<section class="detail" id="concat(java.lang.Class,org.cojen.tupl.Table...)">
+<h3>concat</h3>
+<div class="horizontal-scroll">
+<div class="member-signature"><span class="modifiers">static</span>&nbsp;<span class="type-parameters">&lt;T&gt;</span>&nbsp;<span class="return-type"><a href="Table.html" title="interface in org.cojen.tupl">Table</a>&lt;T&gt;</span>&nbsp;<span class="element-name">concat</span><wbr><span class="parameters">(<a href="https://docs.oracle.com/en/java/javase/23/docs/api/java.base/java/lang/Class.html" title="class or interface in java.lang" class="external-link">Class</a>&lt;T&gt;&nbsp;targetType,
+ <a href="Table.html" title="interface in org.cojen.tupl">Table</a>&lt;?&gt;...&nbsp;sources)</span>
+                    throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/23/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
+<div class="block">Returns a view consisting of all rows from the given source tables concatenated
+ together, possibly resulting in duplicate rows. All of the rows are mapped to the target
+ type, applying any necessary column value conversions. The returned table instance will
+ throw a <a href="ConversionException.html" title="class in org.cojen.tupl"><code>ConversionException</code></a> for operations against rows which cannot be
+ converted back source rows, and closing the table has no effect.</div>
+<dl class="notes">
+<dt>Parameters:</dt>
+<dd><code>targetType</code> - target row type; the primary key is ignored</dd>
+<dd><code>sources</code> - source tables to concatenate; if none are provided, then the returned
+ view is empty</dd>
+<dt>Throws:</dt>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/23/docs/api/java.base/java/lang/NullPointerException.html" title="class or interface in java.lang" class="external-link">NullPointerException</a></code> - if any parameter is null</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/23/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
+<dt>See Also:</dt>
+<dd>
+<ul class="tag-list">
+<li><a href="#map(java.lang.Class)"><code>map(Class)</code></a></li>
+</ul>
+</dd>
+</dl>
+</div>
+</section>
+</li>
+<li>
+<section class="detail" id="concat(org.cojen.tupl.Table...)">
+<h3>concat</h3>
+<div class="horizontal-scroll">
+<div class="member-signature"><span class="modifiers">static</span>&nbsp;<span class="return-type"><a href="Table.html" title="interface in org.cojen.tupl">Table</a>&lt;<a href="Row.html" title="interface in org.cojen.tupl">Row</a>&gt;</span>&nbsp;<span class="element-name">concat</span><wbr><span class="parameters">(<a href="Table.html" title="interface in org.cojen.tupl">Table</a>&lt;?&gt;...&nbsp;sources)</span>
+                  throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/23/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
+<div class="block">Returns a view consisting of all rows from the given source tables concatenated
+ together, possibly resulting in duplicate rows. All of the rows are mapped to an
+ automatically selected target type (possibly generated), applying any necessary column
+ value conversions. The returned table instance will throw a <a href="ConversionException.html" title="class in org.cojen.tupl"><code>ConversionException</code></a>
+ for operations against rows which cannot be converted back source rows, and closing the
+ table has no effect.</div>
+<dl class="notes">
+<dt>Parameters:</dt>
+<dd><code>sources</code> - source tables to concatenate; if none are provided, then the returned
+ view is empty</dd>
+<dt>Throws:</dt>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/23/docs/api/java.base/java/lang/NullPointerException.html" title="class or interface in java.lang" class="external-link">NullPointerException</a></code> - if any parameter is null</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/23/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
+<dt>See Also:</dt>
+<dd>
+<ul class="tag-list">
+<li><a href="#map(java.lang.Class)"><code>map(Class)</code></a></li>
+</ul>
+</dd>
 </dl>
 </div>
 </section>
