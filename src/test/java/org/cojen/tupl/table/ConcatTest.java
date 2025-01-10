@@ -17,6 +17,8 @@
 
 package org.cojen.tupl.table;
 
+import java.util.regex.Matcher;
+
 import org.junit.*;
 import static org.junit.Assert.*;
 
@@ -54,6 +56,15 @@ public class ConcatTest {
 
     @Test
     public void basic() throws Exception {
+        basic(false);
+    }
+
+    @Test
+    public void basicAutoType() throws Exception {
+        basic(true);
+    }
+
+    private void basic(boolean autoType) throws Exception {
         for (int i=1; i<=2; i++) {
             TestRow1 row = mTable1.newRow();
             row.id(i);
@@ -71,26 +82,34 @@ public class ConcatTest {
             mTable2.insert(null, row);
         }
 
-        Table<ConcatRow> concat = Table.concat(ConcatRow.class, mTable1, mTable2);
+        Table<?> concat;
+        if (!autoType) {
+            concat = Table.concat(ConcatRow.class, mTable1, mTable2);
+        } else {
+            concat = Table.concat(mTable1, mTable2);
+        }
 
-        Query<ConcatRow> query;
-        QueryPlan plan;
+        Query<?> query;
+        String plan, expect;
 
         query = concat.query("{*} id != ?");
-        plan = query.scannerPlan(null, 100_000);
+        plan = query.scannerPlan(null, 100_000).toString();
 
-        assertEquals("""
+        expect = """
 - concat
-  - map: org.cojen.tupl.table.ConcatTest$ConcatRow
+  - map: TARGET
     - filter: id != ?1
       - full scan over primary key: org.cojen.tupl.table.ConcatTest$TestRow1
         key columns: +id
-  - map: org.cojen.tupl.table.ConcatTest$ConcatRow
+  - map: TARGET
     - filter: id != ?2
       - full scan over primary key: org.cojen.tupl.table.ConcatTest$TestRow2
         key columns: +id
-""", plan.toString()
-        );
+""";
+
+        expect = expect.replaceAll("TARGET", Matcher.quoteReplacement(concat.rowType().getName()));
+
+        assertEquals(expect, plan);
 
         try (var s = query.newScanner(null, 100_000)) {
             verify(s, new String[] {
@@ -111,24 +130,27 @@ public class ConcatTest {
         }
 
         query = concat.query("{a, +b, c, d='dee'} id != ?");
-        plan = query.scannerPlan(null, 100_000);
+        plan = query.scannerPlan(null, 100_000).toString();
 
-        assertEquals("""
+        expect = """
 - merge
-  - map: org.cojen.tupl.table.ConcatTest$ConcatRow
+  - map: TARGET
     - sort: +b
-      - map: org.cojen.tupl.table.ConcatTest$ConcatRow
+      - map: TARGET
         - filter: id != ?1
           - full scan over primary key: org.cojen.tupl.table.ConcatTest$TestRow1
             key columns: +id
-  - map: org.cojen.tupl.table.ConcatTest$ConcatRow
-    - map: org.cojen.tupl.table.ConcatTest$ConcatRow
+  - map: TARGET
+    - map: TARGET
       - sort: +b
         - filter: id != ?2
           - full scan over primary key: org.cojen.tupl.table.ConcatTest$TestRow2
             key columns: +id
-""", plan.toString()
-        );
+""";
+
+        expect = expect.replaceAll("TARGET", Matcher.quoteReplacement(concat.rowType().getName()));
+
+        assertEquals(expect, plan);
 
         try (var s = query.newScanner(null, 100_000)) {
             verify(s, new String[] {
@@ -147,6 +169,35 @@ public class ConcatTest {
                     "{a=11, c=100, b=98, d=dee}",
                    });
         }
+    }
+
+    @Test
+    public void concatNoneAuto() throws Exception {
+        Table<Row> empty = Table.concat();
+        assertTrue(empty.isEmpty());
+        Row r = empty.newRow();
+        try {
+            empty.store(null, r);
+            fail();
+        } catch (UnmodifiableViewException e) {
+        }
+    }
+
+    @Test
+    public void concatOneAuto() throws Exception {
+        Table<Row> table = Table.concat(mTable1);
+
+        Row r = table.newRow();
+        r.set("id", 1);
+        r.set("a", 2);
+        r.set("b", 3);
+        r.set("c", 4);
+        table.insert(null, r);
+
+        TestRow1 r2 = mTable1.newRow();
+        r2.id(1);
+        mTable1.load(null, r2);
+        assertEquals("{id=1, a=2, b=3, c=4}", r2.toString());
     }
 
     private void verify(Scanner<?> s, String[] expect) throws Exception {

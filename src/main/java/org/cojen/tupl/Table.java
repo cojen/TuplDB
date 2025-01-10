@@ -29,6 +29,7 @@ import java.util.stream.Stream;
 import org.cojen.tupl.io.Utils;
 
 import org.cojen.tupl.table.AggregatedTable;
+import org.cojen.tupl.table.CommonRowTypeMaker;
 import org.cojen.tupl.table.ComparatorMaker;
 import org.cojen.tupl.table.ConcatTable;
 import org.cojen.tupl.table.EmptyTable;
@@ -773,10 +774,30 @@ public interface Table<R> extends Closeable {
         }
     }
 
-    /* FIXME: define this concat variant which generates a Row class
+    /**
+     * Returns a view consisting of all rows from the given source tables concatenated
+     * together, possibly resulting in duplicate rows. All of the rows are mapped to an
+     * automatically selected target type (possibly generated), applying any necessary column
+     * value conversions. The returned table instance will throw a {@link ConversionException}
+     * for operations against rows which cannot be converted back source rows, and closing the
+     * table has no effect.
+     *
+     * @param sources source tables to concatenate; if none are provided, then the returned
+     * view is empty
+     * @throws NullPointerException if any parameter is null
+     * @see #map(Class)
+     */
     public static Table<Row> concat(Table<?>... sources) throws IOException {
+       if (sources.length <= 1) {
+            if (sources.length == 0) {
+                return new EmptyTable<>(Row.class);
+            } else {
+                return sources[0].map(CommonRowTypeMaker.makeFor(sources[0]));
+            }
+        } else {
+            return ConcatTable.concat(CommonRowTypeMaker.makeFor(sources), sources);
+        }
     }
-    */
 
     /**
      * Returns a row comparator based on the given specification, which defines the ordering

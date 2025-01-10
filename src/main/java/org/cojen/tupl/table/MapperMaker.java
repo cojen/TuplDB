@@ -64,6 +64,11 @@ public class MapperMaker {
         ClassMaker cm = ClassMaker.begin(Mapper.class.getName()).implement(Mapper.class).public_();
         cm.sourceFile(MapperMaker.class.getSimpleName());
 
+        // If the source or target types are generated, then they might not be findable using
+        // the hierarchical class loading technique.
+        cm.installClass(sourceType);
+        cm.installClass(targetType);
+
         // Keep a singleton instance, in order for the weakly cached reference to the Mapper to
         // stick around until the class is unloaded.
         cm.addField(Object.class, "_").private_().static_();
