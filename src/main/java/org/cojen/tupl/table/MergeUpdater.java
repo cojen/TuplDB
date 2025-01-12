@@ -21,6 +21,7 @@ import java.io.IOException;
 
 import java.util.Comparator;
 
+import org.cojen.tupl.Scanner;
 import org.cojen.tupl.Updater;
 
 /**
@@ -28,38 +29,60 @@ import org.cojen.tupl.Updater;
  * @see MergeQuery
  */
 final class MergeUpdater<R> extends MergeScanner<R> implements Updater<R> {
-    MergeUpdater(Updater<R>[] sources, Comparator<R> c) throws IOException {
-        super(sources, c);
+    /**
+     * @param sources must have at least one element
+     */
+    static <R> Updater<R> make(Comparator<R> c, Updater<R>[] sources) {
+        int length = sources.length;
+        if (length == 2) {
+            return new MergeUpdater<R>(c, sources[0], sources[1]);
+        }
+        return make(c, sources, 0, length);
+    }
+
+    private static <R> Updater<R> make(Comparator<R> c, Updater<R>[] sources, int start, int end) {
+        int length = end - start;
+        if (length == 1) {
+            return sources[start];
+        }
+        // Use rint for half-even rounding.
+        int mid = start + ((int) Math.rint(length / 2.0));
+        return new MergeUpdater<R>(c, make(c, sources, start, mid), make(c, sources, mid, end));
+    }
+
+    MergeUpdater(Comparator<R> c, Updater<R> source1, Updater<R> source2) {
+        super(c, source1, source2);
     }
 
     @Override
     public R update(R dst) throws IOException {
-        Updater<R> current = current();
-        if (current == null) {
-            return null;
+        var current = (Updater<R>) mCurrent;
+        R row1, row2;
+
+        if (current == mSource1) {
+            row1 = current.update(dst);
+            row2 = mSource2.row();
+        } else {
+            row1 = mSource1.row();
+            row2 = current.update(dst);
         }
-        R row = current.update(dst);
-        if (row != null) {
-            dst = null; // cannot share dst among the sources
-        }
-        return step(dst);
+
+        return finishStep(row1, row2);
     }
 
     @Override
     public R delete(R dst) throws IOException {
-        Updater<R> current = current();
-        if (current == null) {
-            return null;
-        }
-        R row = current.delete(dst);
-        if (row != null) {
-            dst = null; // cannot share dst among the sources
-        }
-        return step(dst);
-    }
+        var current = (Updater<R>) mCurrent;
+        R row1, row2;
 
-    @Override
-    protected Updater<R> current() {
-        return (Updater<R>) super.current();
+        if (current == mSource1) {
+            row1 = current.delete(dst);
+            row2 = mSource2.row();
+        } else {
+            row1 = mSource1.row();
+            row2 = current.delete(dst);
+        }
+
+        return finishStep(row1, row2);
     }
 }

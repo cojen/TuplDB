@@ -84,11 +84,33 @@ public final class ConcatTable<R> extends BaseTable<R> {
         if (sources.length == 0) {
             throw new IllegalArgumentException();
         }
-        sources = sources.clone();
-        for (int i=0; i<sources.length; i++) {
-            sources[i] = sources[i].map(targetType);
+
+        int num = 0;
+        for (var source : sources) {
+            if (source instanceof ConcatTable ct && ct.rowType() == targetType) {
+                num += ct.mSources.length;
+            } else {
+                num++;
+            }
         }
-        return new ConcatTable(sources);
+
+        Table<?>[] allSources = new Table[num];
+        int allPos = 0;
+
+        for (int i=0; i<sources.length; i++) {
+            Table<?> source = sources[i];
+            if (source instanceof ConcatTable ct && ct.rowType() == targetType) {
+                Table<?>[] subSources = ct.mSources;
+                System.arraycopy(subSources, 0, allSources, allPos, subSources.length);
+                allPos += subSources.length;
+            } else {
+                allSources[allPos++] = source.map(targetType);
+            }
+        }
+
+        assert allPos == allSources.length;
+
+        return new ConcatTable(allSources);
     }
 
     private final Table<R>[] mSources;

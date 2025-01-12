@@ -200,6 +200,123 @@ public class ConcatTest {
         assertEquals("{id=1, a=2, b=3, c=4}", r2.toString());
     }
 
+    @Test
+    public void concatMany() throws Exception {
+        for (int i=1; i<=2; i++) {
+            TestRow1 row = mTable1.newRow();
+            row.id(i);
+            row.a(10 + i);
+            row.b(100 - (i * 2));
+            row.c(100L * i);
+            mTable1.insert(null, row);
+        }
+
+        for (int i=1; i<=3; i++) {
+            TestRow2 row = mTable2.newRow();
+            row.id(i);
+            row.b("" + (100 - (i * 2 + 1)));
+            row.d("" + (100L * i));
+            mTable2.insert(null, row);
+        }
+
+        Table<?> concat = Table.concat(mTable1, mTable2);
+        concat = Table.concat(concat, mTable1, mTable2);
+
+        Query<?> query;
+        String plan, expect;
+
+        query = concat.query("{*} id != ?");
+        plan = query.scannerPlan(null, 100_000).toString();
+
+        expect = """
+- concat
+  - map: TARGET
+    - filter: id != ?1
+      - full scan over primary key: org.cojen.tupl.table.ConcatTest$TestRow1
+        key columns: +id
+  - map: TARGET
+    - filter: id != ?2
+      - full scan over primary key: org.cojen.tupl.table.ConcatTest$TestRow2
+        key columns: +id
+  - map: TARGET
+    - filter: id != ?1
+      - full scan over primary key: org.cojen.tupl.table.ConcatTest$TestRow1
+        key columns: +id
+  - map: TARGET
+    - filter: id != ?2
+      - full scan over primary key: org.cojen.tupl.table.ConcatTest$TestRow2
+        key columns: +id
+""";
+
+        expect = expect.replaceAll("TARGET", Matcher.quoteReplacement(concat.rowType().getName()));
+
+        assertEquals(expect, plan);
+
+        try (var s = query.newScanner(null, 100_000)) {
+            verify(s, new String[] {
+                    "{a=11, id=1, c=100, b=98, d=}",
+                    "{a=12, id=2, c=200, b=96, d=}",
+                    "{a=0, id=1, c=null, b=97, d=100}",
+                    "{a=0, id=2, c=null, b=95, d=200}",
+                    "{a=0, id=3, c=null, b=93, d=300}",
+                    "{a=11, id=1, c=100, b=98, d=}",
+                    "{a=12, id=2, c=200, b=96, d=}",
+                    "{a=0, id=1, c=null, b=97, d=100}",
+                    "{a=0, id=2, c=null, b=95, d=200}",
+                    "{a=0, id=3, c=null, b=93, d=300}",
+                   });
+        }
+        query = concat.query("{a, +b, c = c / 100, d} id != ?");
+        plan = query.scannerPlan(null, 100_000).toString();
+
+        expect = """
+- merge
+  - map: TARGET
+    - sort: +b
+      - map: TARGET
+        - filter: id != ?1
+          - full scan over primary key: org.cojen.tupl.table.ConcatTest$TestRow1
+            key columns: +id
+  - map: TARGET
+    - map: TARGET
+      - sort: +b
+        - filter: id != ?2
+          - full scan over primary key: org.cojen.tupl.table.ConcatTest$TestRow2
+            key columns: +id
+  - map: TARGET
+    - sort: +b
+      - map: TARGET
+        - filter: id != ?1
+          - full scan over primary key: org.cojen.tupl.table.ConcatTest$TestRow1
+            key columns: +id
+  - map: TARGET
+    - map: TARGET
+      - sort: +b
+        - filter: id != ?2
+          - full scan over primary key: org.cojen.tupl.table.ConcatTest$TestRow2
+            key columns: +id
+""";
+
+        expect = expect.replaceAll("TARGET", Matcher.quoteReplacement(concat.rowType().getName()));
+
+        assertEquals(expect, plan);
+
+        try (var s = query.newScanner(null, 100_000)) {
+            verify(s, new String[] {
+                    "{a=0, c=null, b=93, d=300}",
+                    "{a=0, c=null, b=93, d=300}",
+                    "{a=0, c=null, b=95, d=200}",
+                    "{a=0, c=null, b=95, d=200}",
+                    "{a=12, c=2, b=96, d=}",
+                    "{a=12, c=2, b=96, d=}",
+                    "{a=0, c=null, b=97, d=100}",
+                    "{a=0, c=null, b=97, d=100}",
+                    "{a=11, c=1, b=98, d=}",
+                    "{a=11, c=1, b=98, d=}",
+                   });
+        }
+    }
+
     private void verify(Scanner<?> s, String[] expect) throws Exception {
         Object current = null;
 

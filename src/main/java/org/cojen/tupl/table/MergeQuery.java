@@ -55,7 +55,7 @@ final class MergeQuery<R> extends ConcatQuery<R> {
             sources[i] = mSources[i].newScanner(txn, args);
         }
 
-        return new MergeScanner<>(sources, mComparator);
+        return MergeScanner.make(mComparator, sources);
     }
 
     @Override
@@ -72,7 +72,7 @@ final class MergeQuery<R> extends ConcatQuery<R> {
             sources[i] = mSources[i].newUpdater(txn, args);
         }
 
-        return new MergeUpdater<>(sources, mComparator);
+        return MergeUpdater.make(mComparator, sources);
     }
 
     @Override

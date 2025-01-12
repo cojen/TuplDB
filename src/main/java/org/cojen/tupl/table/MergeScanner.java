@@ -20,7 +20,6 @@ package org.cojen.tupl.table;
 import java.io.IOException;
 
 import java.util.Comparator;
-import java.util.PriorityQueue;
 
 import org.cojen.tupl.Scanner;
 
@@ -28,84 +27,97 @@ import org.cojen.tupl.Scanner;
  * @author Brian S. O'Neill
  * @see MergeQuery
  */
-class MergeScanner<R> implements Scanner<R>, Comparator<Scanner<R>> {
-    private final Comparator<R> mComparator;
-    private final PriorityQueue<Scanner<R>> mQueue;
+class MergeScanner<R> implements Scanner<R> {
+    /**
+     * @param sources must have at least one element
+     */
+    static <R> Scanner<R> make(Comparator<R> c, Scanner<R>[] sources) {
+        int length = sources.length;
+        if (length == 2) {
+            return new MergeScanner<R>(c, sources[0], sources[1]);
+        }
+        return make(c, sources, 0, length);
+    }
 
-    MergeScanner(Scanner<R>[] sources, Comparator<R> c) throws IOException {
+    private static <R> Scanner<R> make(Comparator<R> c, Scanner<R>[] sources, int start, int end) {
+        int length = end - start;
+        if (length == 1) {
+            return sources[start];
+        }
+        // Use rint for half-even rounding.
+        int mid = start + ((int) Math.rint(length / 2.0));
+        return new MergeScanner<R>(c, make(c, sources, start, mid), make(c, sources, mid, end));
+    }
+
+    protected final Comparator<R> mComparator;
+    protected final Scanner<R> mSource1, mSource2;
+
+    protected Scanner<R> mCurrent;
+
+    MergeScanner(Comparator<R> c, Scanner<R> source1, Scanner<R> source2) {
         mComparator = c;
-        mQueue = new PriorityQueue<>(sources.length, this);
-        for (var source : sources) {
-            if (source.row() != null) {
-                mQueue.add(source);
+        mSource1 = source1;
+        mSource2 = source2;
+
+        R row1 = source1.row();
+        if (row1 == null) {
+            mCurrent = source2;
+        } else {
+            R row2 = source2.row();
+            if (row2 == null) {
+                mCurrent = source1;
+            } else {
+                mCurrent = mComparator.compare(row1, row2) <= 0 ? source1 : source2;
             }
         }
     }
 
     @Override
     public R row() {
-        Scanner<R> source = mQueue.peek();
-        return source == null ? null : source.row();
+        return mCurrent.row();
     }
 
     @Override
     public R step(R dst) throws IOException {
-        PriorityQueue<Scanner<R>> queue = mQueue;
+        Scanner<R> current = mCurrent;
+        R row1, row2;
 
-        while (true) {
-            Scanner<R> source = queue.poll();
+        if (current == mSource1) {
+            row1 = current.step(dst);
+            row2 = mSource2.row();
+        } else {
+            row1 = mSource1.row();
+            row2 = current.step(dst);
+        }
 
-            if (source == null) {
-                return null;
-            }
+        return finishStep(row1, row2);
+    }
 
-            R row = source.step(dst);
+    protected R finishStep(R row1, R row2) {
+        if (row1 == null) {
+            mCurrent = mSource2;
+            return row2;
+        } else if (row2 == null) {
+            mCurrent = mSource1;
+            return row1;
+        }
 
-            Scanner<R> current;
-            if (row == null) {
-                current = queue.peek();
-                if (current == null) {
-                    return null;
-                }
-            } else {
-                queue.add(source);
-                current = queue.peek();
-                if (current == source) {
-                    return row;
-                }
-            }
+        int cmp = mComparator.compare(row1, row2);
 
-            row = current.row();
-
-            if (row != null) {
-                return row;
-            }
-
-            // This point is only expected to be reached if the current scanner isn't working
-            // correctly and has closed for some reason. Loop back to discard it.
-
-            dst = null; // cannot share dst among the sources
+        if (cmp <= 0) {
+            mCurrent = mSource1;
+            return row1;
+        } else {
+            mCurrent = mSource2;
+            return row2;
         }
     }
 
     @Override
     public void close() throws IOException {
-        Throwable ex = null;
-
-        for (Scanner s : mQueue) {
-            try {
-                s.close();
-            } catch (Throwable e) {
-                if (ex == null) {
-                    ex = e;
-                }
-            }
-        }
-
-        mQueue.clear();
-
-        if (ex != null) {
-            throw RowUtils.rethrow(ex);
+        // Use try-with-resources to close both and not lose any exceptions.
+        try (mSource1) {
+            mSource2.close();
         }
     }
 
@@ -117,14 +129,5 @@ class MergeScanner<R> implements Scanner<R>, Comparator<Scanner<R>> {
     @Override
     public int characteristics() {
         return NONNULL | ORDERED | CONCURRENT;
-    }
-
-    @Override
-    public int compare(Scanner<R> a, Scanner<R> b) {
-        return mComparator.compare(a.row(), b.row());
-    }
-
-    protected Scanner<R> current() {
-        return mQueue.peek();
     }
 }
