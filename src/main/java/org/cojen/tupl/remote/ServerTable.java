@@ -60,6 +60,11 @@ final class ServerTable<R> implements RemoteTable {
     }
 
     @Override
+    public boolean hasPrimaryKey() {
+        return mTable.hasPrimaryKey();
+    }
+
+    @Override
     public Pipe newScanner(RemoteTransaction txn, Pipe pipe) throws IOException {
         try {
             mTable.scanWrite(ServerTransaction.txn(txn), pipe);

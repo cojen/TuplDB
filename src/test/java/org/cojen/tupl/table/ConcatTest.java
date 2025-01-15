@@ -89,6 +89,8 @@ public class ConcatTest {
             concat = Table.concat(mTable1, mTable2);
         }
 
+        assertFalse(concat.hasPrimaryKey());
+
         Query<?> query;
         String plan, expect;
 
@@ -172,10 +174,19 @@ public class ConcatTest {
     }
 
     @Test
+    public void concatNone() throws Exception {
+        concatNone(Table.concat(ConcatRow.class));
+    }
+
+    @Test
     public void concatNoneAuto() throws Exception {
-        Table<Row> empty = Table.concat();
+        concatNone(Table.concat());
+    }
+
+    private <R> void concatNone(Table<R> empty) throws Exception {
+        assertFalse(empty.hasPrimaryKey());
         assertTrue(empty.isEmpty());
-        Row r = empty.newRow();
+        R r = empty.newRow();
         try {
             empty.store(null, r);
             fail();

@@ -63,7 +63,8 @@ public class ConvertUtils {
      * Finds a common type which two columns can be converted to without loss or abiguity. The
      * name of the returned ColumnInfo is undefined (it might be null).
      *
-     * @param op defined in ColumnFilter; pass -1 if not performing a comparison operation
+     * @param op defined in ColumnFilter; pass -1 if not performing a comparison operation;
+     * pass OP_EQ to use a lenient rule which doesn't care if a number converts to a string
      * @return null if a common type cannot be inferred or is ambiguous
      */
     public static ColumnInfo commonType(ColumnInfo aInfo, ColumnInfo bInfo, int op) {

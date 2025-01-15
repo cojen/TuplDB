@@ -125,6 +125,8 @@ public abstract class MappedTable<S, T> extends AbstractMappedTable<S, T>
             ctor.invokeSuperConstructor(ctor.field("cache"), ctor.param(1), ctor.param(2));
         }
 
+        addHasPrimaryKeyMethod(tableMaker, key.sourceType(), targetType, key.mapperClass());
+
         addMarkValuesUnset(key, info, tableMaker);
 
         MethodHandles.Lookup lookup = tableMaker.finishLookup();
@@ -435,7 +437,7 @@ public abstract class MappedTable<S, T> extends AbstractMappedTable<S, T>
             sourceColumns = sourceInfo.allColumns;
         }
 
-        var finder = new InverseFinder(sourceColumns);
+        var finder = new InverseFinder(sourceColumns, inverseFunctions());
 
         // Maps source columns to the targets that map to it.
         var toTargetMap = new LinkedHashMap<String, Set<ColumnFunction>>();

@@ -85,6 +85,7 @@ public class MappedTest {
             return target;
         });
 
+        assertFalse(mapped.hasPrimaryKey());
         assertTrue(mapped.isEmpty());
 
         TestRow row = mTable.newRow();
@@ -271,6 +272,7 @@ public class MappedTest {
         // Swap the str and num columns.
         Table<TestRow> mapped = mTable.map(TestRow.class, new Swapper());
 
+        assertTrue(mapped.hasPrimaryKey());
         assertTrue(mapped.isEmpty());
 
         TestRow row = mTable.newRow();
@@ -625,6 +627,8 @@ public class MappedTest {
     public void rename() throws Exception {
         Table<Renamed> mapped = mTable.map(Renamed.class, new Renamer());
 
+        assertFalse(mapped.hasPrimaryKey());
+
         Renamed row = mapped.newRow();
         row.identifier(1);
         row.string("hello");
@@ -840,6 +844,8 @@ public class MappedTest {
     public void conversionMapping() throws Exception {
         Table<TestRow2> mapped = mTable.map(TestRow2.class);
 
+        assertFalse(mapped.hasPrimaryKey());
+
         {
             TestRow row = mTable.newRow();
 
@@ -984,6 +990,8 @@ public class MappedTest {
     public void conversionMappingDroppedSourceColumn() throws Exception {
         Table<TestRow3> mapped = mTable.map(TestRow3.class);
 
+        assertFalse(mapped.hasPrimaryKey());
+
         TestRow row = mTable.newRow();
         row.id(1);
         row.str("hello");
@@ -1029,5 +1037,62 @@ public class MappedTest {
         @Nullable
         String str();
         void str(String str);
+    }
+
+    @Test
+    public void pkTransformed1() throws Exception {
+        // Target primary key column is transformed.
+        Table<Mapped1> mapped = mTable.map(Mapped1.class, new Mapper1());
+        assertFalse(mapped.hasPrimaryKey());
+    }
+
+    @Test
+    public void pkTransformed1_1() throws Exception {
+        // Target primary key column has a potential lossy conversion.
+        Table<Mapped1> mapped = mTable.map(Mapped1.class, new Mapper1_1());
+        assertFalse(mapped.hasPrimaryKey());
+    }
+
+    public static class Mapper1 implements Mapper<TestRow, Mapped1> {
+        @Override
+        public Mapped1 map(TestRow source, Mapped1 target) {
+            target.id((int) source.id());
+            target.str(source.str());
+            target.num(source.num());
+            return target;
+        }
+
+        public static long id_to_id(int id) {
+            return id;
+        }
+
+        @Untransformed
+        public static String str_to_str(String str) {
+            return str;
+        }
+
+        @Untransformed
+        public static int num_to_num(int num) {
+            return num;
+        }
+    }
+
+    public static class Mapper1_1 extends Mapper1 {
+        @Untransformed
+        public static long id_to_id(int id) {
+            return id;
+        }
+    }
+
+    @PrimaryKey("id")
+    public interface Mapped1 {
+        int id();
+        void id(int id);
+
+        String str();
+        void str(String str);
+
+        int num();
+        void num(int num);
     }
 }

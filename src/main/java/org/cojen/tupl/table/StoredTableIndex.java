@@ -50,6 +50,11 @@ public abstract class StoredTableIndex<R> extends StoredTable<R> {
     }
 
     @Override
+    public final boolean hasPrimaryKey() {
+        return false;
+    }
+
+    @Override
     public final void store(Transaction txn, R row) throws IOException {
         throw new UnmodifiableViewException();
     }

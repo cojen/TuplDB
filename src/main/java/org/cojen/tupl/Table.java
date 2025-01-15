@@ -112,6 +112,12 @@ import static org.cojen.tupl.table.RowUtils.NO_ARGS;
  */
 public interface Table<R> extends Closeable {
     /**
+     * Returns true if this table has a primary key defined, as specified by the {@link rowType
+     * row type}.
+     */
+    public boolean hasPrimaryKey();
+
+    /**
      * Returns the interface which defines the rows of this table.
      */
     public Class<R> rowType();

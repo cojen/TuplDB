@@ -130,6 +130,11 @@ public abstract class StoredTable<R> extends BaseTable<R> implements ScanControl
     }
 
     @Override
+    public boolean hasPrimaryKey() {
+        return true;
+    }
+
+    @Override
     public final Scanner<R> newScanner(R row, Transaction txn) throws IOException {
         return newScanner(row, txn, unfiltered());
     }

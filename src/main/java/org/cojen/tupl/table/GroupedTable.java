@@ -141,6 +141,8 @@ public abstract class GroupedTable<S, T> extends AbstractMappedTable<S, T>
                 (ctor.field("cache"), ctor.param(1), groupBySpec, orderBySpec, ctor.param(2));
         }
 
+        addHasPrimaryKeyMethod(cm, sourceType, targetType, key.factoryClass());
+
         MethodHandles.Lookup lookup = cm.finishLookup();
         Class<?> tableClass = lookup.lookupClass();
 

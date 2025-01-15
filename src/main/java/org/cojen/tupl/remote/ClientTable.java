@@ -81,6 +81,11 @@ final class ClientTable<R> implements Table<R> {
     }
 
     @Override
+    public boolean hasPrimaryKey() {
+        return mRemote.hasPrimaryKey();
+    }
+
+    @Override
     public Class<R> rowType() {
         return mType;
     }

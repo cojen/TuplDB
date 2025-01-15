@@ -159,6 +159,11 @@ final class ClientDerivedTable implements Table<Row> {
     }
 
     @Override
+    public boolean hasPrimaryKey() {
+        return derived().hasPrimaryKey();
+    }
+
+    @Override
     public Class<Row> rowType() {
         return derived().rowType();
     }

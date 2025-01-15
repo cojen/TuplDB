@@ -274,6 +274,7 @@ public class GroupedTest {
         Table<TestRowGroup> grouped = mTable.group
             ("", "", TestRowGroup.class, new Grouped1Factory(false, true));
 
+        assertFalse(grouped.hasPrimaryKey());
         assertTrue(grouped.isEmpty());
         assertFalse(grouped.anyRows(null));
         assertFalse(grouped.anyRows(null, "count == ?", 3));

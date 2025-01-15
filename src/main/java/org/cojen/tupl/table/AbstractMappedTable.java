@@ -17,6 +17,8 @@
 
 package org.cojen.tupl.table;
 
+import java.lang.invoke.MethodHandles;
+
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 
@@ -52,6 +54,67 @@ import org.cojen.tupl.table.filter.TrueFilter;
  * @author Brian S. O'Neill
  */
 public abstract class AbstractMappedTable<S, T> extends WrappedTable<S, T> {
+    /**
+     * The primary key columns of the target row type must have untransformed inverse mappings,
+     * and the target column types must support the corresponding source types with no loss.
+     *
+     * @param inverseFunctions the class which contains static inverse functions
+     */
+    protected static boolean hasPrimaryKey(Class<?> sourceType, Class<?> targetType,
+                                           Class<?> inverseFunctions)
+    {
+        RowInfo targetInfo = RowInfo.find(targetType);
+
+        if (targetInfo.keyColumns.isEmpty()) {
+            return false;
+        }
+
+        RowInfo sourceInfo = RowInfo.find(sourceType);
+        var finder = new InverseFinder(sourceInfo.allColumns, inverseFunctions);
+
+        for (ColumnInfo targetColumn : targetInfo.keyColumns.values()) {
+            ColumnFunction sourceFun = finder.tryFindSource(targetColumn, true);
+
+            if (sourceFun == null) {
+                // Target primary key column doesn't map to a source column.
+                return false;
+            }
+
+            if (!sourceFun.isUntransformed()) {
+                // Target primary key column is transformed.
+                return false;
+            }
+
+            ColumnInfo commonType = ConvertUtils.commonType
+                (targetColumn, sourceFun.column(), ColumnFilter.OP_EQ);
+
+            if (commonType == null || commonType.type != targetColumn.type) {
+                // Target primary key column has a potential lossy conversion.
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    // Condy bootstrap method.
+    protected static boolean hasPrimaryKey(MethodHandles.Lookup lookup, String name, Class type,
+                                           Class<?> sourceType, Class<?> targetType,
+                                           Class<?> inverseFunctions)
+    {
+        return hasPrimaryKey(sourceType, targetType, inverseFunctions);
+    }
+
+    protected static void addHasPrimaryKeyMethod(ClassMaker cm,
+                                                 Class<?> sourceType, Class<?> targetType,
+                                                 Class<?> inverseFunctions)
+    {
+        MethodMaker mm = cm.addMethod(boolean.class, "hasPrimaryKey").public_();
+        var bootstrap = mm.var(AbstractMappedTable.class)
+            .condy("hasPrimaryKey", sourceType, targetType, inverseFunctions);
+        mm.return_(bootstrap.invoke(boolean.class, "_"));
+    }
+
     protected AbstractMappedTable(Table<S> source) {
         super(source);
     }
@@ -88,7 +151,7 @@ public abstract class AbstractMappedTable<S, T> extends WrappedTable<S, T> {
 
         Splitter(QuerySpec targetQuery) {
             RowInfo sourceInfo = RowInfo.find(mSource.rowType());
-            var finder = new InverseFinder(sourceInfo.allColumns);
+            var finder = new InverseFinder(sourceInfo.allColumns, inverseFunctions());
 
             RowFilter targetFilter = targetQuery.filter();
 
@@ -241,21 +304,26 @@ public abstract class AbstractMappedTable<S, T> extends WrappedTable<S, T> {
     /**
      * Finds inverse mapping functions defined in a Mapper or GrouperFactory implementation.
      */
-    protected class InverseFinder {
+    protected static class InverseFinder {
         final Map<String, ColumnInfo> mSourceColumns;
         final TreeMap<String, Method> mAllMethods;
 
-        InverseFinder(Map<String, ColumnInfo> sourceColumns) {
+        /**
+         * @param inverseFunctions the class which contains static inverse functions
+         */
+        InverseFinder(Map<String, ColumnInfo> sourceColumns, Class<?> inverseFunctions) {
             mSourceColumns = sourceColumns;
 
             mAllMethods = new TreeMap<>();
-            for (Method m : inverseFunctions().getMethods()) {
-                mAllMethods.put(m.getName(), m);
+            for (Method m : inverseFunctions.getMethods()) {
+                if (Modifier.isStatic(m.getModifiers())) {
+                    mAllMethods.put(m.getName(), m);
+                }
             }
         }
 
         /**
-         * @param requie pass false to allow mappings of the form "target_to_" which don't
+         * @param require pass false to allow mappings of the form "target_to_" which don't
          * specify a source column; the ColumnFunction.column field will be null and the
          * function returns void
          */
@@ -266,10 +334,6 @@ public abstract class AbstractMappedTable<S, T> extends WrappedTable<S, T> {
                 String name = candidate.getName();
                 if (!name.startsWith(prefix)) {
                     break;
-                }
-
-                if (!Modifier.isStatic(candidate.getModifiers())) {
-                    continue;
                 }
 
                 Class<?>[] paramTypes = candidate.getParameterTypes();

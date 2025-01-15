@@ -966,6 +966,11 @@ public abstract sealed class ViewedTable<R> extends WrappedTable<R, R> {
         }
 
         @Override
+        public boolean hasPrimaryKey() {
+            return mSource.hasPrimaryKey();
+        }
+
+        @Override
         public boolean tryLoad(Transaction txn, R row) throws IOException {
             return mSource.tryLoad(txn, row);
         }
@@ -1019,6 +1024,11 @@ public abstract sealed class ViewedTable<R> extends WrappedTable<R, R> {
                   Table<R> source, Object... args)
         {
             super(queryStr, queryRef, maxArg, source, args);
+        }
+
+        @Override
+        public boolean hasPrimaryKey() {
+            return mSource.hasPrimaryKey();
         }
 
         @Override
@@ -1195,6 +1205,11 @@ public abstract sealed class ViewedTable<R> extends WrappedTable<R, R> {
         }
 
         @Override
+        public boolean hasPrimaryKey() {
+            return false;
+        }
+
+        @Override
         public boolean tryLoad(Transaction txn, R row) throws IOException {
             // Requires primary key columns.
             throw projectionConstraint();
@@ -1246,6 +1261,11 @@ public abstract sealed class ViewedTable<R> extends WrappedTable<R, R> {
                                  Table<R> source, Object... args)
         {
             super(queryStr, queryRef, maxArg, source, args);
+        }
+
+        @Override
+        public boolean hasPrimaryKey() {
+            return false;
         }
 
         @Override

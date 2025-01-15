@@ -75,6 +75,11 @@ public final class JoinIdentityTable extends BaseTable<Row> implements Query<Row
     }
 
     @Override
+    public boolean hasPrimaryKey() {
+        return false;
+    }
+
+    @Override
     public Class<Row> rowType() {
         return Row.class;
     }

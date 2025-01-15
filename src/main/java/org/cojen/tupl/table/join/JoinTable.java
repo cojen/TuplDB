@@ -73,6 +73,11 @@ public abstract class JoinTable<J> extends BaseTable<J> {
     }
 
     @Override
+    public final boolean hasPrimaryKey() {
+        return false;
+    }
+
+    @Override
     public final Scanner<J> newScanner(J row, Transaction txn) throws IOException {
         return newScanner(row, txn, "{*}", (Object[]) null);
     }

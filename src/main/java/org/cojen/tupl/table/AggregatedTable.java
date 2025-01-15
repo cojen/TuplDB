@@ -138,6 +138,12 @@ public abstract class AggregatedTable<S, T> extends WrappedTable<S, T>
             ctor.invokeSuperConstructor(ctor.field("cache"), ctor.param(1), ctor.param(2));
         }
 
+        // Add the hasPrimaryKey method.
+        {
+            MethodMaker mm = cm.addMethod(boolean.class, "hasPrimaryKey").public_();
+            mm.return_(!targetInfo.keyColumns.isEmpty());
+        }
+
         // Add the compareSourceRows method.
         {
             MethodMaker mm = cm.addMethod

@@ -46,6 +46,11 @@ public final class EmptyTable<R> implements Table<R> {
     }
 
     @Override
+    public boolean hasPrimaryKey() {
+        return mEmpty.hasPrimaryKey();
+    }
+
+    @Override
     public Class<R> rowType() {
         return mEmpty.rowType();
     }

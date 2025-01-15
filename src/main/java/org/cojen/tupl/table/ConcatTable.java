@@ -123,6 +123,11 @@ public final class ConcatTable<R> extends BaseTable<R> {
     }
 
     @Override
+    public boolean hasPrimaryKey() {
+        return false;
+    }
+
+    @Override
     public Class<R> rowType() {
         return mSources[0].rowType();
     }
