@@ -87,6 +87,8 @@ public class ConcatTest {
             concat = Table.concat(ConcatRow.class, mTable1, mTable2);
         } else {
             concat = Table.concat(mTable1, mTable2);
+            PrimaryKey pk = concat.rowType().getAnnotation(PrimaryKey.class);
+            assertArrayEquals(new String[] {"id"}, pk.value());
         }
 
         assertFalse(concat.hasPrimaryKey());
@@ -113,22 +115,44 @@ public class ConcatTest {
 
         assertEquals(expect, plan);
 
-        try (var s = query.newScanner(null, 100_000)) {
-            verify(s, new String[] {
-                    "{a=11, id=1, c=100, b=98, d=}",
-                    "{a=12, id=2, c=200, b=96, d=}",
-                    "{a=0, id=1, c=null, b=97, d=100}",
-                    "{a=0, id=2, c=null, b=95, d=200}",
-                    "{a=0, id=3, c=null, b=93, d=300}",
-                   });
+        if (!autoType) {
+            try (var s = query.newScanner(null, 100_000)) {
+                verify(s, new String[] {
+                        "{a=11, id=1, c=100, b=98, d=}",
+                        "{a=12, id=2, c=200, b=96, d=}",
+                        "{a=0, id=1, c=null, b=97, d=100}",
+                        "{a=0, id=2, c=null, b=95, d=200}",
+                        "{a=0, id=3, c=null, b=93, d=300}",
+                    });
+            }
+        } else {
+            try (var s = query.newScanner(null, 100_000)) {
+                verify(s, new String[] {
+                        "{id=1, a=11, c=100, b=98, d=}",
+                        "{id=2, a=12, c=200, b=96, d=}",
+                        "{id=1, a=0, c=null, b=97, d=100}",
+                        "{id=2, a=0, c=null, b=95, d=200}",
+                        "{id=3, a=0, c=null, b=93, d=300}",
+                    });
+            }
         }
 
-        try (var s = query.newScanner(null, 2)) {
-            verify(s, new String[] {
-                    "{a=11, id=1, c=100, b=98, d=}",
-                    "{a=0, id=1, c=null, b=97, d=100}",
-                    "{a=0, id=3, c=null, b=93, d=300}",
-                   });
+        if (!autoType) {
+            try (var s = query.newScanner(null, 2)) {
+                verify(s, new String[] {
+                        "{a=11, id=1, c=100, b=98, d=}",
+                        "{a=0, id=1, c=null, b=97, d=100}",
+                        "{a=0, id=3, c=null, b=93, d=300}",
+                    });
+            }
+        } else {
+            try (var s = query.newScanner(null, 2)) {
+                verify(s, new String[] {
+                        "{id=1, a=11, c=100, b=98, d=}",
+                        "{id=1, a=0, c=null, b=97, d=100}",
+                        "{id=3, a=0, c=null, b=93, d=300}",
+                    });
+            }
         }
 
         query = concat.query("{a, +b, c, d='dee'} id != ?");
@@ -233,6 +257,9 @@ public class ConcatTest {
         Table<?> concat = Table.concat(mTable1, mTable2);
         concat = Table.concat(concat, mTable1, mTable2);
 
+        PrimaryKey pk = concat.rowType().getAnnotation(PrimaryKey.class);
+        assertArrayEquals(new String[] {"id"}, pk.value());
+
         Query<?> query;
         String plan, expect;
 
@@ -265,16 +292,16 @@ public class ConcatTest {
 
         try (var s = query.newScanner(null, 100_000)) {
             verify(s, new String[] {
-                    "{a=11, id=1, c=100, b=98, d=}",
-                    "{a=12, id=2, c=200, b=96, d=}",
-                    "{a=0, id=1, c=null, b=97, d=100}",
-                    "{a=0, id=2, c=null, b=95, d=200}",
-                    "{a=0, id=3, c=null, b=93, d=300}",
-                    "{a=11, id=1, c=100, b=98, d=}",
-                    "{a=12, id=2, c=200, b=96, d=}",
-                    "{a=0, id=1, c=null, b=97, d=100}",
-                    "{a=0, id=2, c=null, b=95, d=200}",
-                    "{a=0, id=3, c=null, b=93, d=300}",
+                    "{id=1, a=11, c=100, b=98, d=}",
+                    "{id=2, a=12, c=200, b=96, d=}",
+                    "{id=1, a=0, c=null, b=97, d=100}",
+                    "{id=2, a=0, c=null, b=95, d=200}",
+                    "{id=3, a=0, c=null, b=93, d=300}",
+                    "{id=1, a=11, c=100, b=98, d=}",
+                    "{id=2, a=12, c=200, b=96, d=}",
+                    "{id=1, a=0, c=null, b=97, d=100}",
+                    "{id=2, a=0, c=null, b=95, d=200}",
+                    "{id=3, a=0, c=null, b=93, d=300}",
                    });
         }
         query = concat.query("{a, +b, c = c / 100, d} id != ?");

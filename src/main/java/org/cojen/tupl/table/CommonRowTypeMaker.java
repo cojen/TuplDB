@@ -18,6 +18,7 @@
 package org.cojen.tupl.table;
 
 import java.util.HashMap;
+import java.util.Set;
 
 import org.cojen.tupl.Row;
 import org.cojen.tupl.Table;
@@ -29,6 +30,11 @@ import org.cojen.tupl.table.expr.TupleType;
 import org.cojen.tupl.table.filter.ColumnFilter;
 
 /**
+ * Makes a row type which serves the requirements of multiple row types, possibly applying
+ * column conversions. If a common column type cannot be determined (unlikely), an
+ * IllegalArgumentException is thrown. When possible, the generated row type has a suitable
+ * primary key defined.
+ *
  * @author Brian S. O'Neill
  * @see Table#concat
  */
@@ -86,8 +92,13 @@ public final class CommonRowTypeMaker {
 
         var allColumns = new HashMap<String, ColumnInfo>();
 
+        Set<String> pkColumns = null;
+        boolean hasPk = true;
+
         for (int i=0; i<rowTypes.length; i++) {
-            for (ColumnInfo column : RowInfo.find(rowTypes[i]).allColumns.values()) {
+            RowInfo info = RowInfo.find(rowTypes[i]);
+
+            for (ColumnInfo column : info.allColumns.values()) {
                 allColumns.merge(column.name, column, (ColumnInfo current, ColumnInfo mix) -> {
                     // Pass OP_EQ for lenient conversion, which might select a string type.
                     ColumnInfo common = ConvertUtils.commonType(current, mix, ColumnFilter.OP_EQ);
@@ -100,12 +111,22 @@ public final class CommonRowTypeMaker {
                     return common;
                 });
             }
+
+            if (hasPk) {
+                if (pkColumns == null) {
+                    pkColumns = info.keyColumns.keySet();
+                } else if (!pkColumns.equals(info.keyColumns.keySet())) {
+                    hasPk = false;
+                }
+            }
         }
 
         if (allColumns.isEmpty()) {
             return Row.class;
         }
 
-        return (Class<Row>) TupleType.makeForColumns(allColumns.values()).clazz();
+        String[] pk = hasPk ? pkColumns.toArray(new String[pkColumns.size()]) : null;
+
+        return (Class<Row>) TupleType.makeForColumns(allColumns.values(), pk).clazz();
     }
 }

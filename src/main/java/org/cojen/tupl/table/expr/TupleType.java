@@ -113,6 +113,17 @@ public final class TupleType extends Type implements Iterable<Column> {
      * @throws QueryException if any names are duplicated
      */
     public static TupleType makeForColumns(Collection<ColumnInfo> columnList) {
+        return makeForColumns(columnList, null);
+    }
+
+    /**
+     * Makes a type which has a generated row type class.
+     *
+     * @param primaryKey can be null if none
+     * @throws QueryException if any names are duplicated
+     * @throws IllegalArgumentException if the primary key columns don't refer to any columns
+     */
+    public static TupleType makeForColumns(Collection<ColumnInfo> columnList, String[] primaryKey) {
         var columns = new TreeMap<String, Column>();
 
         var enc = new KeyEncoder();
@@ -123,7 +134,19 @@ public final class TupleType extends Type implements Iterable<Column> {
             column.encodeKey(enc);
         }
 
-        Class rowType = cGeneratedCache.obtain(enc.finish(), columns);
+        Object helper;
+        if (primaryKey == null || primaryKey.length == 0) {
+            helper = columns;
+        } else {
+            for (String name : primaryKey) {
+                if (!columns.containsKey(name)) {
+                    throw new IllegalArgumentException();
+                }
+            }
+            helper = TupleKey.make.with(primaryKey, columns);
+        }
+
+        Class rowType = cGeneratedCache.obtain(enc.finish(), helper);
 
         return new TupleType(rowType, TYPE_REFERENCE, null, columns);
     }
