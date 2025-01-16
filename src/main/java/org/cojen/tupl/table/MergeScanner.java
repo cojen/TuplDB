@@ -67,7 +67,7 @@ class MergeScanner<R> implements Scanner<R> {
             if (row2 == null) {
                 mCurrent = source1;
             } else {
-                mCurrent = mComparator.compare(row1, row2) <= 0 ? source1 : source2;
+                mCurrent = c.compare(row1, row2) <= 0 ? source1 : source2;
             }
         }
     }
