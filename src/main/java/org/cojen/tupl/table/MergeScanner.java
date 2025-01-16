@@ -29,7 +29,7 @@ import org.cojen.tupl.Scanner;
  */
 class MergeScanner<R> implements Scanner<R> {
     /**
-     * @param sources must have at least one element
+     * @param sources must have at least one element; each source must be ordered
      */
     static <R> Scanner<R> make(Comparator<R> c, Scanner<R>[] sources) {
         int length = sources.length;
@@ -128,6 +128,6 @@ class MergeScanner<R> implements Scanner<R> {
 
     @Override
     public int characteristics() {
-        return NONNULL | ORDERED | CONCURRENT;
+        return NONNULL | ORDERED | SORTED | CONCURRENT;
     }
 }
