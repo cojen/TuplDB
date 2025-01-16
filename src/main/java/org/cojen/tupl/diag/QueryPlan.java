@@ -1026,26 +1026,26 @@ public abstract sealed class QueryPlan implements Serializable {
 
     /**
      * Query plan node which represents a concatenated set of plans which have an explicit
-     * ordering.
+     * ordering, and source rows are compared to each other to maintain the ordering.
      */
-    public static final class Merge extends Concat {
+    public static final class MergeConcat extends Concat {
         private static final long serialVersionUID = 1L;
 
         /**
          * @param sources child plan nodes
          */
-        public Merge(QueryPlan... sources) {
+        public MergeConcat(QueryPlan... sources) {
             super(sources);
         }
 
         @Override
         void appendTo(Appendable a, String in1, String in2) throws IOException {
-            appendTo(a, in1, in2, "merge");
+            appendTo(a, in1, in2, "merge concat");
         }
 
         @Override
         public boolean equals(Object obj) {
-            return obj instanceof Merge merge && matches(merge);
+            return obj instanceof MergeConcat merge && matches(merge);
         }
 
         @Override

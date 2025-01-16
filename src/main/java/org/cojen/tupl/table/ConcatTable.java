@@ -280,7 +280,7 @@ public final class ConcatTable<R> extends BaseTable<R> {
         if (orderBy.isEmpty()) {
             return new ConcatQuery<R>(queries);
         } else {
-            return new MergeQuery<R>(queries, comparator(orderBy));
+            return new MergeQuery<R>(comparator(orderBy), queries);
         }
     }
 }

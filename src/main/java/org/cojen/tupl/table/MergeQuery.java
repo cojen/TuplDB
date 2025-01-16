@@ -38,7 +38,7 @@ final class MergeQuery<R> extends ConcatQuery<R> {
     /**
      * @param sources must have at least one element; all must have the same arguments
      */
-    MergeQuery(Query<R>[] sources, Comparator<R> c) {
+    MergeQuery(Comparator<R> c, Query<R>[] sources) {
         super(sources);
         mComparator = c;
     }
@@ -50,9 +50,14 @@ final class MergeQuery<R> extends ConcatQuery<R> {
 
         sources[0] = mSources[0].newScanner(dst, txn, args);
 
-        for (int i=1; i<mSources.length; i++) {
-            // cannot share dst among the sources
-            sources[i] = mSources[i].newScanner(txn, args);
+        try {
+            for (int i=1; i<mSources.length; i++) {
+                // cannot share dst among the sources
+                sources[i] = mSources[i].newScanner(txn, args);
+            }
+        } catch (Throwable e) {
+            for (var source : sources) RowUtils.closeQuietly(source);
+            throw e;
         }
 
         return MergeScanner.make(mComparator, sources);
@@ -67,9 +72,14 @@ final class MergeQuery<R> extends ConcatQuery<R> {
 
         sources[0] = mSources[0].newUpdater(dst, txn, args);
 
-        for (int i=1; i<mSources.length; i++) {
-            // cannot share dst among the sources
-            sources[i] = mSources[i].newUpdater(txn, args);
+        try {
+            for (int i=1; i<mSources.length; i++) {
+                // cannot share dst among the sources
+                sources[i] = mSources[i].newUpdater(txn, args);
+            }
+        } catch (Throwable e) {
+            for (var source : sources) RowUtils.closeQuietly(source);
+            throw e;
         }
 
         return MergeUpdater.make(mComparator, sources);
@@ -83,6 +93,6 @@ final class MergeQuery<R> extends ConcatQuery<R> {
 
     @Override
     protected QueryPlan newPlan(QueryPlan[] subPlans) {
-        return new QueryPlan.Merge(subPlans);
+        return new QueryPlan.MergeConcat(subPlans);
     }
 }

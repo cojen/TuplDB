@@ -159,7 +159,7 @@ public class ConcatTest {
         plan = query.scannerPlan(null, 100_000).toString();
 
         expect = """
-- merge
+- merge concat
   - map: TARGET
     - sort: +b
       - map: TARGET
@@ -329,7 +329,7 @@ public class ConcatTest {
         plan = query.scannerPlan(null, 100_000).toString();
 
         expect = """
-- merge
+- merge concat
   - map: TARGET
     - sort: +b
       - map: TARGET
