@@ -130,4 +130,9 @@ class MergeScanner<R> implements Scanner<R> {
     public int characteristics() {
         return NONNULL | ORDERED | SORTED | CONCURRENT;
     }
+
+    @Override
+    public Comparator<R> getComparator() {
+        return mComparator;
+    }
 }
