@@ -78,17 +78,29 @@ public final class CommonRowTypeMaker {
             return Row.class;
         }
 
-        // If all rowTypes are the same, and it implements Row, just use that.
+        // If all rowTypes are the same, and it implements Row, and it has a primary key
+        // consisting of all columns, just use that.
         sameCheck: {
             Class<?> rowType = rowTypes[0];
+
             if (!Row.class.isAssignableFrom(rowType)) {
                 break sameCheck;
             }
+
             for (int i=1; i<rowTypes.length; i++) {
                 if (rowTypes[i] != rowType) {
                     break sameCheck;
                 }
             }
+
+            try {
+                if (!RowInfo.find(rowType).valueColumns.isEmpty()) {
+                    break sameCheck;
+                }
+            } catch (IllegalArgumentException e) {
+                break sameCheck;
+            }
+
             return (Class<Row>) rowType;
         }
 
