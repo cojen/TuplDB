@@ -88,7 +88,7 @@ public class ConcatTest {
         } else {
             concat = Table.concat(mTable1, mTable2);
             PrimaryKey pk = concat.rowType().getAnnotation(PrimaryKey.class);
-            assertArrayEquals(new String[] {"id"}, pk.value());
+            assertArrayEquals(new String[] {"id", "a", "b", "c", "d"}, pk.value());
         }
 
         assertFalse(concat.hasPrimaryKey());
@@ -128,11 +128,11 @@ public class ConcatTest {
         } else {
             try (var s = query.newScanner(null, 100_000)) {
                 verify(s, new String[] {
-                        "{id=1, a=11, c=100, b=98, d=}",
-                        "{id=2, a=12, c=200, b=96, d=}",
-                        "{id=1, a=0, c=null, b=97, d=100}",
-                        "{id=2, a=0, c=null, b=95, d=200}",
-                        "{id=3, a=0, c=null, b=93, d=300}",
+                        "{id=1, a=11, b=98, c=100, d=}",
+                        "{id=2, a=12, b=96, c=200, d=}",
+                        "{id=1, a=0, b=97, c=null, d=100}",
+                        "{id=2, a=0, b=95, c=null, d=200}",
+                        "{id=3, a=0, b=93, c=null, d=300}",
                     });
             }
         }
@@ -148,9 +148,9 @@ public class ConcatTest {
         } else {
             try (var s = query.newScanner(null, 2)) {
                 verify(s, new String[] {
-                        "{id=1, a=11, c=100, b=98, d=}",
-                        "{id=1, a=0, c=null, b=97, d=100}",
-                        "{id=3, a=0, c=null, b=93, d=300}",
+                        "{id=1, a=11, b=98, c=100, d=}",
+                        "{id=1, a=0, b=97, c=null, d=100}",
+                        "{id=3, a=0, b=93, c=null, d=300}",
                     });
             }
         }
@@ -178,22 +178,42 @@ public class ConcatTest {
 
         assertEquals(expect, plan);
 
-        try (var s = query.newScanner(null, 100_000)) {
-            verify(s, new String[] {
-                    "{a=0, c=null, b=93, d=dee}",
-                    "{a=0, c=null, b=95, d=dee}",
-                    "{a=12, c=200, b=96, d=dee}",
-                    "{a=0, c=null, b=97, d=dee}",
-                    "{a=11, c=100, b=98, d=dee}",
-                   });
-        }
+        if (!autoType) {
+            try (var s = query.newScanner(null, 100_000)) {
+                verify(s, new String[] {
+                        "{a=0, c=null, b=93, d=dee}",
+                        "{a=0, c=null, b=95, d=dee}",
+                        "{a=12, c=200, b=96, d=dee}",
+                        "{a=0, c=null, b=97, d=dee}",
+                        "{a=11, c=100, b=98, d=dee}",
+                    });
+            }
 
-        try (var s = query.newScanner(null, 2)) {
-            verify(s, new String[] {
-                    "{a=0, c=null, b=93, d=dee}",
-                    "{a=0, c=null, b=97, d=dee}",
-                    "{a=11, c=100, b=98, d=dee}",
-                   });
+            try (var s = query.newScanner(null, 2)) {
+                verify(s, new String[] {
+                        "{a=0, c=null, b=93, d=dee}",
+                        "{a=0, c=null, b=97, d=dee}",
+                        "{a=11, c=100, b=98, d=dee}",
+                    });
+            }
+        } else {
+            try (var s = query.newScanner(null, 100_000)) {
+                verify(s, new String[] {
+                        "{a=0, b=93, c=null, d=dee}",
+                        "{a=0, b=95, c=null, d=dee}",
+                        "{a=12, b=96, c=200, d=dee}",
+                        "{a=0, b=97, c=null, d=dee}",
+                        "{a=11, b=98, c=100, d=dee}",
+                    });
+            }
+
+            try (var s = query.newScanner(null, 2)) {
+                verify(s, new String[] {
+                        "{a=0, b=93, c=null, d=dee}",
+                        "{a=0, b=97, c=null, d=dee}",
+                        "{a=11, b=98, c=100, d=dee}",
+                    });
+            }
         }
     }
 
@@ -258,7 +278,7 @@ public class ConcatTest {
         concat = Table.concat(concat, mTable1, mTable2);
 
         PrimaryKey pk = concat.rowType().getAnnotation(PrimaryKey.class);
-        assertArrayEquals(new String[] {"id"}, pk.value());
+        assertArrayEquals(new String[] {"id", "a", "b", "c", "d"}, pk.value());
 
         Query<?> query;
         String plan, expect;
@@ -292,18 +312,19 @@ public class ConcatTest {
 
         try (var s = query.newScanner(null, 100_000)) {
             verify(s, new String[] {
-                    "{id=1, a=11, c=100, b=98, d=}",
-                    "{id=2, a=12, c=200, b=96, d=}",
-                    "{id=1, a=0, c=null, b=97, d=100}",
-                    "{id=2, a=0, c=null, b=95, d=200}",
-                    "{id=3, a=0, c=null, b=93, d=300}",
-                    "{id=1, a=11, c=100, b=98, d=}",
-                    "{id=2, a=12, c=200, b=96, d=}",
-                    "{id=1, a=0, c=null, b=97, d=100}",
-                    "{id=2, a=0, c=null, b=95, d=200}",
-                    "{id=3, a=0, c=null, b=93, d=300}",
+                    "{id=1, a=11, b=98, c=100, d=}",
+                    "{id=2, a=12, b=96, c=200, d=}",
+                    "{id=1, a=0, b=97, c=null, d=100}",
+                    "{id=2, a=0, b=95, c=null, d=200}",
+                    "{id=3, a=0, b=93, c=null, d=300}",
+                    "{id=1, a=11, b=98, c=100, d=}",
+                    "{id=2, a=12, b=96, c=200, d=}",
+                    "{id=1, a=0, b=97, c=null, d=100}",
+                    "{id=2, a=0, b=95, c=null, d=200}",
+                    "{id=3, a=0, b=93, c=null, d=300}",
                    });
         }
+
         query = concat.query("{a, +b, c = c / 100, d} id != ?");
         plan = query.scannerPlan(null, 100_000).toString();
 
@@ -341,16 +362,16 @@ public class ConcatTest {
 
         try (var s = query.newScanner(null, 100_000)) {
             verify(s, new String[] {
-                    "{a=0, c=null, b=93, d=300}",
-                    "{a=0, c=null, b=93, d=300}",
-                    "{a=0, c=null, b=95, d=200}",
-                    "{a=0, c=null, b=95, d=200}",
-                    "{a=12, c=2, b=96, d=}",
-                    "{a=12, c=2, b=96, d=}",
-                    "{a=0, c=null, b=97, d=100}",
-                    "{a=0, c=null, b=97, d=100}",
-                    "{a=11, c=1, b=98, d=}",
-                    "{a=11, c=1, b=98, d=}",
+                    "{a=0, b=93, c=null, d=300}",
+                    "{a=0, b=93, c=null, d=300}",
+                    "{a=0, b=95, c=null, d=200}",
+                    "{a=0, b=95, c=null, d=200}",
+                    "{a=12, b=96, c=2, d=}",
+                    "{a=12, b=96, c=2, d=}",
+                    "{a=0, b=97, c=null, d=100}",
+                    "{a=0, b=97, c=null, d=100}",
+                    "{a=11, b=98, c=1, d=}",
+                    "{a=11, b=98, c=1, d=}",
                    });
         }
     }

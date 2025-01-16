@@ -119,9 +119,8 @@ public final class TupleType extends Type implements Iterable<Column> {
     /**
      * Makes a type which has a generated row type class.
      *
-     * @param primaryKey can be null if none
+     * @param primaryKey can be null if none; can use +/- prefixes; not validated
      * @throws QueryException if any names are duplicated
-     * @throws IllegalArgumentException if the primary key columns don't refer to any columns
      */
     public static TupleType makeForColumns(Collection<ColumnInfo> columnList, String[] primaryKey) {
         var columns = new TreeMap<String, Column>();
@@ -138,11 +137,6 @@ public final class TupleType extends Type implements Iterable<Column> {
         if (primaryKey == null || primaryKey.length == 0) {
             helper = columns;
         } else {
-            for (String name : primaryKey) {
-                if (!columns.containsKey(name)) {
-                    throw new IllegalArgumentException();
-                }
-            }
             helper = TupleKey.make.with(primaryKey, columns);
         }
 

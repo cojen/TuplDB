@@ -606,13 +606,13 @@ public interface Table<R> extends Closeable {
      * which aren't mapped to the target are dropped, and columns which don't map from the
      * source are set to the most appropriate default value, preferably null.
      *
-     * @param targetType target row type; the primary key is ignored
+     * @param targetType target row type; the primary key is possibly ignored
      * @throws NullPointerException if any parameter is null
      */
     @SuppressWarnings("unchecked")
     public default <T> Table<T> map(Class<T> targetType) throws IOException {
         Class<R> sourceType = rowType();
-        if (targetType.equals(sourceType)) {
+        if (targetType == sourceType) {
             return (Table<T>) this;
         }
         return map(targetType, MapperMaker.make(sourceType, targetType));
@@ -760,7 +760,7 @@ public interface Table<R> extends Closeable {
      * throw a {@link ConversionException} for operations against rows which cannot be
      * converted back source rows, and closing the table has no effect.
      *
-     * @param targetType target row type; the primary key is ignored
+     * @param targetType target row type; the primary key is possibly ignored
      * @param sources source tables to concatenate; if none are provided, then the returned
      * view is empty
      * @throws NullPointerException if any parameter is null
@@ -788,6 +788,8 @@ public interface Table<R> extends Closeable {
      *
      * @param sources source tables to concatenate; if none are provided, then the returned
      * view is empty
+     * @return a table whose row type primary key consists of all the source columns, but the
+     * table doesn't actually have a primary key
      * @throws NullPointerException if any parameter is null
      * @see #map(Class)
      */
