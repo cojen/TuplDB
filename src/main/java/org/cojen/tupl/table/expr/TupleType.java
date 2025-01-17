@@ -24,6 +24,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.SortedMap;
 import java.util.SortedSet;
 import java.util.TreeMap;
 import java.util.TreeSet;
@@ -61,10 +62,6 @@ public final class TupleType extends Type implements Iterable<Column> {
      * @throws QueryException if any names are duplicated
      */
     public static TupleType make(List<ProjExpr> projExprs, int pkNum) {
-        var columns = new TreeMap<String, Column>();
-
-        var enc = new KeyEncoder();
-
         String[] primaryKey;
         if (pkNum <= 0) {
             primaryKey = null;
@@ -88,7 +85,11 @@ public final class TupleType extends Type implements Iterable<Column> {
             }
         }
 
-        enc.encodeStrings(primaryKey);
+        return make(projExprs, pkNum, primaryKey);
+    }
+
+    private static TupleType make(List<ProjExpr> projExprs, int pkNum, String[] primaryKey) {
+        var columns = new TreeMap<String, Column>();
 
         for (int i=0; i<projExprs.size(); i++) {
             ProjExpr pe = projExprs.get(i);
@@ -96,13 +97,10 @@ public final class TupleType extends Type implements Iterable<Column> {
                 boolean hidden = pe.wrapped() instanceof ColumnExpr ce && ce.isHidden();
                 Column column = Column.make(pe.type(), pe.name(), hidden);
                 addColumn(columns, column);
-                column.encodeKey(enc);
             }
         }
 
-        Object helper = primaryKey == null ? columns : TupleKey.make.with(primaryKey, columns);
-
-        Class rowType = cGeneratedCache.obtain(enc.finish(), helper);
+        Class rowType = findRowTypeClass(columns, primaryKey);
 
         return new TupleType(rowType, TYPE_REFERENCE, null, columns);
     }
@@ -125,14 +123,17 @@ public final class TupleType extends Type implements Iterable<Column> {
     public static TupleType makeForColumns(Collection<ColumnInfo> columnList, String[] primaryKey) {
         var columns = new TreeMap<String, Column>();
 
-        var enc = new KeyEncoder();
-
         for (ColumnInfo ci : columnList) {
             Column column = toColumn(ci);
             addColumn(columns, column);
-            column.encodeKey(enc);
         }
 
+        Class rowType = findRowTypeClass(columns, primaryKey);
+
+        return new TupleType(rowType, TYPE_REFERENCE, null, columns);
+    }
+
+    private static Class findRowTypeClass(SortedMap<String, Column> columns, String[] primaryKey) {
         Object helper;
         if (primaryKey == null || primaryKey.length == 0) {
             helper = columns;
@@ -140,9 +141,13 @@ public final class TupleType extends Type implements Iterable<Column> {
             helper = TupleKey.make.with(primaryKey, columns);
         }
 
-        Class rowType = cGeneratedCache.obtain(enc.finish(), helper);
+        var enc = new KeyEncoder();
+        enc.encodeStrings(primaryKey);
+        for (Column column : columns.values()) {
+            column.encodeKey(enc);
+        }
 
-        return new TupleType(rowType, TYPE_REFERENCE, null, columns);
+        return cGeneratedCache.obtain(enc.finish(), helper);
     }
 
     /**
@@ -345,6 +350,29 @@ public final class TupleType extends Type implements Iterable<Column> {
         }
 
         return new TupleType(clazz(), typeCode(), projColumns.navigableKeySet(), projColumns);
+    }
+
+    /**
+     * Returns a TupleType which has generated row type class with the given primary key, if
+     * provided. The primary key elements can be prefixed to control column sort order.
+     *
+     * <p>This method shouldn't be called if the row type class already implements Row and
+     * conforms to the given primary key specification.
+     *
+     * @param primaryKey can be null if none
+     */
+    public TupleType withPrimaryKey(String[] primaryKey) {
+        SortedMap<String, Column> columns;
+        if (mColumns instanceof SortedMap<String, Column> sm) {
+            columns = sm;
+        } else {
+            columns = new TreeMap<>();
+            columns.putAll(mColumns);
+        }
+
+        Class rowType = findRowTypeClass(columns, primaryKey);
+
+        return new TupleType(rowType, typeCode, mProjection, mColumns);
     }
 
     /**

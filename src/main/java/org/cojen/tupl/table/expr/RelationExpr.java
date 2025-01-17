@@ -25,6 +25,7 @@ import java.util.List;
 
 import java.util.function.Consumer;
 
+import org.cojen.tupl.PrimaryKey;
 import org.cojen.tupl.QueryException;
 import org.cojen.tupl.Row;
 
@@ -113,7 +114,7 @@ public abstract sealed class RelationExpr extends Expr permits TableExpr, QueryE
         fullProjection(consumer, rowType());
     }
 
-    private void fullProjection(Consumer<? super ProjExpr> consumer, TupleType tt) {
+    private static void fullProjection(Consumer<? super ProjExpr> consumer, TupleType tt) {
         for (Column column : tt) {
             consumer.accept(ProjExpr.make(-1, -1, ColumnExpr.make(-1, -1, tt, column), 0));
         }
@@ -164,16 +165,19 @@ public abstract sealed class RelationExpr extends Expr permits TableExpr, QueryE
      */
     @SuppressWarnings("unchecked")
     public final CompiledQuery<Row> makeCompiledRowQuery() throws IOException {
-        if (Row.class.isAssignableFrom(rowTypeClass())) {
+        Class<?> rowTypeClass = rowTypeClass();
+
+        if (Row.class.isAssignableFrom(rowTypeClass)) {
             return (CompiledQuery<Row>) makeCompiledQuery();
         }
 
-        List<ProjExpr> projection = fullProjection();
+        PrimaryKey ann = rowTypeClass.getAnnotation(PrimaryKey.class);
+        String[] primaryKey = ann == null ? null : ann.value();
 
-        var newType = RelationType.make(TupleType.make(projection, 0), type().cardinality());
+        var newType = RelationType.make(rowType().withPrimaryKey(primaryKey), type().cardinality());
 
         return MappedQueryExpr.make
-            (-1, -1, newType, this, TrueFilter.THE, null, projection, maxArgument(), null)
+            (-1, -1, newType, this, TrueFilter.THE, null, fullProjection(), maxArgument(), null)
             .makeCompiledRowQuery();
     }
 }

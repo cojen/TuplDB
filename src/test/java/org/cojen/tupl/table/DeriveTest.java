@@ -240,11 +240,16 @@ public class DeriveTest {
 
         Table<Row> derived = mTable.derive("{*}");
 
+        assertTrue(derived.hasPrimaryKey());
+
+        PrimaryKey pk = derived.rowType().getAnnotation(PrimaryKey.class);
+        assertArrayEquals(new String[] {"id"}, pk.value());
+
         try (Scanner<Row> s = derived.newScanner(null)) {
             Row row = s.row();
-            assertEquals("{a=2, id=1, c=3, b=hello}", row.toString());
+            assertEquals("{id=1, a=2, c=3, b=hello}", row.toString());
             row = s.step(row);
-            assertEquals("{a=12, id=2, c=13, b=world}", row.toString());
+            assertEquals("{id=2, a=12, c=13, b=world}", row.toString());
             assertTrue(s.step() == null);
         }
 
