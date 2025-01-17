@@ -110,6 +110,10 @@ public abstract class AbstractMappedTable<S, T> extends WrappedTable<S, T> {
                                                  Class<?> inverseFunctions)
     {
         MethodMaker mm = cm.addMethod(boolean.class, "hasPrimaryKey").public_();
+        Label cont = mm.label();
+        mm.field("mSource").invoke("hasPrimaryKey").ifTrue(cont);
+        mm.return_(false);
+        cont.here();
         var bootstrap = mm.var(AbstractMappedTable.class)
             .condy("hasPrimaryKey", sourceType, targetType, inverseFunctions);
         mm.return_(bootstrap.invoke(boolean.class, "_"));
