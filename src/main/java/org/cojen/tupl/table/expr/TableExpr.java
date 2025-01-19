@@ -55,7 +55,7 @@ public final class TableExpr extends RelationExpr {
      */
     public static TableExpr make(int startPos, int endPos, Table table, Set<String> projection) {
         var cardinality = table instanceof JoinIdentityTable ? Cardinality.ONE : Cardinality.MANY;
-        var type = RelationType.make(TupleType.make(table.rowType(), projection), cardinality);
+        var type = RelationType.make(TupleType.forClass(table.rowType(), projection), cardinality);
         return new TableExpr(startPos, endPos, type, table);
     }
 
@@ -67,7 +67,7 @@ public final class TableExpr extends RelationExpr {
      * @param endPos source code end position, zero-based, exclusive; is -1 if not applicable
      */
     public static TableExpr make(int startPos, int endPos, Class<?> rowType) {
-        var type = RelationType.make(TupleType.make(rowType, null), Cardinality.MANY);
+        var type = RelationType.make(TupleType.forClass(rowType, null), Cardinality.MANY);
         return new TableExpr(startPos, endPos, type, null);
     }
 
@@ -82,7 +82,7 @@ public final class TableExpr extends RelationExpr {
     public static TableExpr make(int startPos, int endPos,
                                  Class<?> rowType, Set<String> projection)
     {
-        var type = RelationType.make(TupleType.make(rowType, projection), Cardinality.MANY);
+        var type = RelationType.make(TupleType.forClass(rowType, projection), Cardinality.MANY);
         return new TableExpr(startPos, endPos, type, null);
     }
 

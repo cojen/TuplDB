@@ -340,7 +340,7 @@ public abstract sealed class QueryExpr extends RelationExpr
         TupleType rowType;
         selectRowType: {
             if (rowTypeClass != null) {
-                TupleType desiredType = TupleType.make(rowTypeClass, null);
+                TupleType desiredType = TupleType.forClass(rowTypeClass, null);
 
                 boolean canRepresent;
                 if (projection == null) {

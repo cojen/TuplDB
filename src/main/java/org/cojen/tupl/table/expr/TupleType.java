@@ -156,7 +156,7 @@ public final class TupleType extends Type implements Iterable<Column> {
      * @param projection consists of column names; can pass null to project all columns
      * @throws QueryException if projection refers to a non-existent column
      */
-    public static TupleType make(Class rowType, Set<String> projection) {
+    public static TupleType forClass(Class rowType, Set<String> projection) {
         // Validate the rowType definition.
         RowInfo.find(rowType);
 
