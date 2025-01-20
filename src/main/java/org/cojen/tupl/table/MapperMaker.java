@@ -148,11 +148,11 @@ public class MapperMaker {
             var proj = new StringBuilder(matchedSources * 10);
 
             for (ColumnInfo sourceCol : sourceInfo.allColumns.values()) {
-                if (!proj.isEmpty()) {
-                    proj.append(',');
-                }
                 String name = sourceCol.name;
                 if (targetInfo.allColumns.containsKey(name)) {
+                    if (!proj.isEmpty()) {
+                        proj.append(',');
+                    }
                     proj.append(name);
                 }
             }
