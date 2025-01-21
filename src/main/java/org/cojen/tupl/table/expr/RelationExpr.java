@@ -21,6 +21,7 @@ import java.io.IOException;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
 
 import java.util.function.Consumer;
@@ -171,13 +172,34 @@ public abstract sealed class RelationExpr extends Expr permits TableExpr, QueryE
             return (CompiledQuery<Row>) makeCompiledQuery();
         }
 
+        List<ProjExpr> projection = fullProjection();
+
         PrimaryKey ann = rowTypeClass.getAnnotation(PrimaryKey.class);
         String[] primaryKey = ann == null ? null : ann.value();
+
+        if (primaryKey != null) {
+            // Verify that all primary key columns are projected.
+            if (projection.size() < primaryKey.length) {
+                // Not possible.
+                primaryKey = null;
+            } else {
+                var projSet = new HashSet<String>(projection.size() << 1);
+                for (ProjExpr pe : projection) {
+                    projSet.add(pe.name());
+                }
+                for (String name : primaryKey) {
+                    if (!projSet.contains(name)) {
+                        primaryKey = null;
+                        break;
+                    }
+                }
+            }
+        }
 
         var newType = RelationType.make(rowType().withPrimaryKey(primaryKey), type().cardinality());
 
         return MappedQueryExpr.make
-            (-1, -1, newType, this, TrueFilter.THE, null, fullProjection(), maxArgument(), null)
+            (-1, -1, newType, this, TrueFilter.THE, null, projection, maxArgument(), null)
             .makeCompiledRowQuery();
     }
 }
