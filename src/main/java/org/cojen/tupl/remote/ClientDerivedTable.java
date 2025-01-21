@@ -327,6 +327,12 @@ final class ClientDerivedTable implements Table<Row> {
     }
 
     @Override
+    public Table<Row> distinct() throws IOException {
+        // FIXME: distinct
+        throw null;
+    }
+
+    @Override
     public void close() throws IOException {
         derived().close();
     }

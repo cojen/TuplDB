@@ -192,6 +192,11 @@ public final class JoinIdentityTable extends BaseTable<Row> implements Query<Row
     }
 
     @Override
+    public Table<Row> distinct() {
+        return this;
+    }
+
+    @Override
     public Comparator<Row> comparator(String spec) {
         // Validate.
         OrderBy.forSpec(Collections.emptyMap(), spec);

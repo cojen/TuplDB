@@ -804,6 +804,13 @@ public interface Table<R> extends Closeable {
     }
 
     /**
+     * Returns a view of this table which has duplicate rows filtered out. If this table
+     * doesn't have any duplicates, then it's simply returned as-is. If an actual view is
+     * returned, then the instance is unmodifiable, and closing it has no effect.
+     */
+    public Table<R> distinct() throws IOException;
+
+    /**
      * Returns a row comparator based on the given specification, which defines the ordering
      * columns. Each column name is prefixed with '+' or '-', to indicate ascending or
      * descending order. For example: {@code "+lastName+firstName-birthdate"}. By default,

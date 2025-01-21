@@ -134,6 +134,11 @@ public final class EmptyTable<R> implements Table<R> {
     }
 
     @Override
+    public Table<R> distinct() {
+        return this;
+    }
+
+    @Override
     public void close() {
         // Do nothing.
     }

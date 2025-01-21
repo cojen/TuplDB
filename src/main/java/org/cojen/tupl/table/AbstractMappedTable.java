@@ -17,6 +17,8 @@
 
 package org.cojen.tupl.table;
 
+import java.io.IOException;
+
 import java.lang.invoke.MethodHandles;
 
 import java.lang.reflect.Method;
@@ -121,6 +123,11 @@ public abstract class AbstractMappedTable<S, T> extends WrappedTable<S, T> {
 
     protected AbstractMappedTable(Table<S> source) {
         super(source);
+    }
+
+    @Override
+    public Table<T> distinct() throws IOException {
+        return AggregatedTable.distinct(this);
     }
 
     // Defined by QueryFactoryCache.Helper, as needed by the subclasses.

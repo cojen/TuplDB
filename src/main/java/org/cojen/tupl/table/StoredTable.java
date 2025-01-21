@@ -354,6 +354,11 @@ public abstract class StoredTable<R> extends BaseTable<R> implements ScanControl
     }
 
     @Override
+    public Table<R> distinct() {
+        return this;
+    }
+
+    @Override
     public final String toString() {
         var b = new StringBuilder();
         RowUtils.appendMiniString(b, this);

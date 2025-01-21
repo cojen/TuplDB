@@ -63,13 +63,22 @@ public abstract class AggregatedTable<S, T> extends WrappedTable<S, T>
 {
     private record FactoryKey(Class<?> sourceType, Class<?> targetType, Class<?> factoryClass) { }
 
-    private static final WeakCache<FactoryKey, MethodHandle, Table> cFactoryCache;
+    private static final WeakCache<Object, MethodHandle, Table> cFactoryCache;
 
     static {
         cFactoryCache = new WeakCache<>() {
             @Override
-            public MethodHandle newValue(FactoryKey key, Table source) {
-                return makeTableFactory(key, source);
+            public MethodHandle newValue(Object key, Table source) {
+                Class<?> sourceType, targetType;
+                if (key instanceof FactoryKey fk) {
+                    sourceType = fk.sourceType();
+                    targetType = fk.targetType();
+                } else {
+                    sourceType = (Class<?>) key;
+                    targetType = null;
+                }
+
+                return makeTableFactory(sourceType, targetType, source);
             }
         };
     }
@@ -90,20 +99,52 @@ public abstract class AggregatedTable<S, T> extends WrappedTable<S, T>
     }
 
     /**
+     * Applies a special form of aggregation which selects distinct rows. If the given table
+     * already has a primary key, then it's simply returned. Otherwise, a primary key is
+     * chosen, the source is ordered by it, and an AggregatedTable is returned which uses
+     * DistinctScanner instead of AggregatedScanner.
+     */
+    public static <R> Table<R> distinct(Table<R> source) throws IOException {
+        if (source.hasPrimaryKey()) {
+            return source;
+        }
+
+        Class<R> rowType = source.rowType();
+        Class<R> fullPkRowType = FullPkRowTypeMaker.makeFor(rowType);
+
+        if (rowType != fullPkRowType) {
+            source = source.map(fullPkRowType);
+        }
+
+        MethodHandle mh = cFactoryCache.obtain(fullPkRowType, source);
+
+        try {
+            return (AggregatedTable<R, R>) mh.invokeExact(mh, source, (Aggregator.Factory) null);
+        } catch (Throwable e) {
+            throw RowUtils.rethrow(e);
+        }
+    }
+
+    /**
      * MethodHandle signature:
      *
      *  AggregatedTable<S, T> make(MethodHandle self, Table<S> source, Aggregator.Factory<S, T>)
      */
-    private static MethodHandle makeTableFactory(FactoryKey key, Table<?> source) {
-        Class<?> sourceType = key.sourceType();
-        Class<?> targetType = key.targetType();
+    private static MethodHandle makeTableFactory(Class<?> sourceType, Class<?> targetType,
+                                                 Table<?> source)
+    {
+        boolean distinct = false;
+        if (targetType == null) {
+            distinct = true;
+            targetType = sourceType;
+        }
 
         assert source.rowType() == sourceType;
 
         RowInfo targetInfo = RowInfo.find(targetType);
 
         // Verify that the target primary key refers to source columns exactly.
-        if (!targetInfo.keyColumns.isEmpty()) {
+        if (sourceType != targetType && !targetInfo.keyColumns.isEmpty()) {
             RowInfo sourceInfo = RowInfo.find(source.rowType());
             for (ColumnInfo targetColumn : targetInfo.keyColumns.values()) {
                 String name = targetColumn.name;
@@ -144,12 +185,12 @@ public abstract class AggregatedTable<S, T> extends WrappedTable<S, T>
             mm.return_(!targetInfo.keyColumns.isEmpty());
         }
 
-        // Add the compareSourceRows method.
+        // Add the compareSourceRows method. Note: not really needed for the distinct variant.
         {
             MethodMaker mm = cm.addMethod
                 (int.class, "compareSourceRows", Object.class, Object.class).protected_();
 
-            if (targetInfo.keyColumns.isEmpty()) {
+            if (distinct || targetInfo.keyColumns.isEmpty()) {
                 mm.return_(0);
             } else {
                 var spec = new StringBuilder();
@@ -161,12 +202,14 @@ public abstract class AggregatedTable<S, T> extends WrappedTable<S, T>
             }
         }
 
-        // Add the finishTarget method.
+        // Add the finishTarget method. Note: not really needed for the distinct variant.
         {
             MethodMaker mm = cm.addMethod
                 (null, "finishTarget", Object.class, Object.class).protected_();
 
-            if (targetInfo.keyColumns.isEmpty()) {
+            if (distinct) {
+                mm.return_();
+            } else if (targetInfo.keyColumns.isEmpty()) {
                 mm.invoke("cleanRow", mm.param(1));
             } else {
                 var sourceVar = mm.param(0).cast(sourceType);
@@ -308,6 +351,11 @@ public abstract class AggregatedTable<S, T> extends WrappedTable<S, T>
         return anyRows(txn);
     }
 
+    @Override
+    public final Table<T> distinct() {
+        return this;
+    }
+
     /**
      * Called by AggregatedScanner. Returns zero if the source rows are in the same group.
      */
@@ -360,6 +408,22 @@ public abstract class AggregatedTable<S, T> extends WrappedTable<S, T>
         return this;
     }
 
+    /**
+     * Used for constructing the aggregator plan.
+     */
+    private String[] groupByColumns() {
+        RowInfo info = RowInfo.find(rowType());
+        if (info.keyColumns.isEmpty()) {
+            return null;
+        }
+        var columns = new String[info.keyColumns.size()];
+        int ix = 0;
+        for (String name : info.keyColumns.keySet()) {
+            columns[ix++] = name;
+        }
+        return columns;
+    }
+
     @Override
     public MethodHandle makeQueryFactory(QuerySpec targetQuery) {
         Class<S> sourceType = mSource.rowType();
@@ -368,11 +432,13 @@ public abstract class AggregatedTable<S, T> extends WrappedTable<S, T>
         // Prepare an initial source query, which will be replaced later.
         QuerySpec sourceQuery;
         {
-            String proj = mAggregatorFactory.sourceProjection();
-            if (proj == null) {
-                sourceQuery = new QuerySpec(null, null, TrueFilter.THE);
-            } else {
+            String proj;
+            if (mAggregatorFactory != null &&
+                (proj = mAggregatorFactory.sourceProjection()) != null)
+            {
                 sourceQuery = Parser.parseQuerySpec(sourceType, '{' + proj + '}');
+            } else {
+                sourceQuery = new QuerySpec(null, null, TrueFilter.THE);
             }
         }
 
@@ -476,8 +542,10 @@ public abstract class AggregatedTable<S, T> extends WrappedTable<S, T>
         sourceQuery = sourceQuery.withOrderBy(sourceOrderBy).withFilter(sourceFilter);
         targetQuery = targetQuery.withOrderBy(targetOrderBy).withFilter(targetFilter);
 
+        Class<?> baseClass = mAggregatorFactory != null ? BaseQuery.class : DistinctQuery.class;
+
         ClassMaker queryMaker = targetInfo.rowGen().beginClassMaker
-            (AggregatedTable.class, targetType, "query").final_().extend(BaseQuery.class);
+            (AggregatedTable.class, targetType, "query").final_().extend(baseClass);
 
         {
             MethodMaker mm = queryMaker.addConstructor(AggregatedTable.class).private_();
@@ -492,7 +560,7 @@ public abstract class AggregatedTable<S, T> extends WrappedTable<S, T>
         // Add the newScanner method.
 
         {
-            String methodName = "newScanner";
+            final String methodName = "newScanner";
 
             MethodMaker mm = queryMaker.addMethod
                 (Scanner.class, methodName, Object.class, Transaction.class, Object[].class)
@@ -503,12 +571,9 @@ public abstract class AggregatedTable<S, T> extends WrappedTable<S, T>
             var argsVar = mm.param(2);
             var tableVar = mm.field("table").get();
 
-            var sourceScannerVar = mm.field("squery").invoke(methodName, txnVar, argsVar);
-            var aggregatorVar = tableVar.invoke("newAggregator", sourceScannerVar);
+            // Define the comparator returned by AggregatedScanner or DistinctScanner.
 
-            // Define the comparator returned by AggregatedScanner.
-
-            Variable aggregateComparatorVar = null;
+            Variable targetComparatorVar = null;
 
             if (!targetInfo.keyColumns.isEmpty()) {
                 var aggregateOrderBy = new OrderBy(sourceOrderBy);
@@ -524,14 +589,37 @@ public abstract class AggregatedTable<S, T> extends WrappedTable<S, T>
                 }
             
                 if (!sourceOrderBy.isEmpty()) {
-                    aggregateComparatorVar = mm.var(Comparator.class).setExact
+                    targetComparatorVar = mm.var(Comparator.class).setExact
                         (ComparatorMaker.comparator
                          (targetType, aggregateOrderBy, aggregateOrderBy.spec()));
                 }
             }
 
-            var targetScannerVar = mm.new_(AggregatedScanner.class, tableVar, sourceScannerVar,
-                                           aggregateComparatorVar, targetRowVar, aggregatorVar);
+            Variable targetScannerVar;
+
+            if (mAggregatorFactory != null) {
+                var sourceScannerVar = mm.field("squery").invoke(methodName, txnVar, argsVar);
+                var aggregatorVar = tableVar.invoke("newAggregator", sourceScannerVar);
+
+                targetScannerVar = mm.new_(AggregatedScanner.class, tableVar, sourceScannerVar,
+                                           targetComparatorVar, targetRowVar, aggregatorVar);
+            } else {
+                final var comparatorVar = targetComparatorVar;
+                assert comparatorVar != null;
+
+                final var distinctScannerVar = mm.var(Scanner.class);
+                targetScannerVar = distinctScannerVar;
+
+                var sourceScannerVar = mm.field("squery")
+                    .invoke(methodName, targetRowVar, txnVar, argsVar);
+
+                mm.invoke("isUnion", sourceScannerVar).ifTrue(() -> {
+                    distinctScannerVar.set(sourceScannerVar);
+                }, () -> {
+                    distinctScannerVar.set(mm.new_(DistinctScanner.class, mm.invoke("source"),
+                                                   comparatorVar, sourceScannerVar));
+                });
+            }
 
             targetScannerVar = WrappedScanner.wrap(targetType, argsVar, targetScannerVar,
                                                    targetQuery.filter(), targetQuery.projection());
@@ -567,16 +655,14 @@ public abstract class AggregatedTable<S, T> extends WrappedTable<S, T>
             var txnVar = mm.param(0);
             var argsVar = mm.param(1);
             var tableVar = mm.field("table").get();
-            var sourceQueryVar = mm.field("squery");
 
-            final var planVar = sourceQueryVar.invoke("scannerPlan", txnVar, argsVar);
+            var planVar = mm.field("squery").invoke("scannerPlan", txnVar, argsVar);
 
-            var targetVar = mm.var(Class.class).set(targetType).invoke("getName");
-            var groupByVar = tableVar.invoke("groupByColumns");
-
-            var aggregatorPlanVar = mm.new_
-                (QueryPlan.Aggregator.class, targetVar, null, groupByVar, planVar);
-            planVar.set(tableVar.invoke("plan", aggregatorPlanVar));
+            if (mAggregatorFactory != null) {
+                planVar = tableVar.invoke("plan", mm.invoke("aggregatorPlan", null, planVar));
+            } else {
+                planVar = mm.invoke("distinctPlan", planVar);
+            }
 
             if (targetQuery.filter() != TrueFilter.THE) {
                 planVar.set(mm.new_(QueryPlan.Filter.class,
@@ -604,13 +690,16 @@ public abstract class AggregatedTable<S, T> extends WrappedTable<S, T>
         protected final Query<S> squery;
 
         protected BaseQuery(AggregatedTable<S, T> table) throws IOException {
-            this.table = table;
-            this.squery = table.mSource.queryAll();
+            this(table, table.mSource.queryAll());
         }
 
         protected BaseQuery(AggregatedTable<S, T> table, String queryStr) throws IOException {
+            this(table, table.mSource.query(queryStr));
+        }
+
+        protected BaseQuery(AggregatedTable<S, T> table, Query<S> squery) {
             this.table = table;
-            this.squery = table.mSource.query(queryStr);
+            this.squery = squery;
         }
 
         @Override
@@ -621,6 +710,42 @@ public abstract class AggregatedTable<S, T> extends WrappedTable<S, T>
         @Override
         public final int argumentCount() {
             return squery.argumentCount();
+        }
+
+        protected final QueryPlan.Aggregator aggregatorPlan(String op, QueryPlan source) {
+            return new QueryPlan.Aggregator
+                (rowType().getName(), op, table.groupByColumns(), source);
+        }
+    }
+
+    public abstract static class DistinctQuery<R> extends BaseQuery<R, R> {
+        protected DistinctQuery(AggregatedTable<R, R> table) throws IOException {
+            this(table, table.mSource.queryAll());
+        }
+
+        protected DistinctQuery(AggregatedTable<R, R> table, String queryStr) throws IOException {
+            this(table, table.mSource.query(queryStr));
+        }
+
+        protected DistinctQuery(AggregatedTable<R, R> table, Query<R> squery) {
+            super(table, preferUnion(squery));
+        }
+
+        private static <R> Query<R> preferUnion(Query<R> query) {
+            // Prefer a UnionQuery because then no extra distinct reduction step is necessary.
+            return query instanceof MergeQuery<R> mq ? mq.asUnionQuery() : query;
+        }
+
+        protected final Table<R> source() {
+            return table.mSource;
+        }
+
+        protected static final boolean isUnion(Scanner<?> scanner) {
+            return scanner instanceof UnionScanner;
+        }
+
+        protected final QueryPlan distinctPlan(QueryPlan source) {
+            return squery instanceof UnionQuery ? source : aggregatorPlan("distinct", source);
         }
     }
 
@@ -645,21 +770,5 @@ public abstract class AggregatedTable<S, T> extends WrappedTable<S, T>
      */
     public final QueryPlan plan(QueryPlan.Aggregator plan) {
         return mAggregatorFactory.plan(plan);
-    }
-
-    /**
-     * Called by generated Query instances. Returns columns (or null) for QueryPlan.Aggregator.
-     */
-    public final String[] groupByColumns() {
-        RowInfo info = RowInfo.find(rowType());
-        if (info.keyColumns.isEmpty()) {
-            return null;
-        }
-        var columns = new String[info.keyColumns.size()];
-        int ix = 0;
-        for (String name : info.keyColumns.keySet()) {
-            columns[ix++] = name;
-        }
-        return columns;
     }
 }

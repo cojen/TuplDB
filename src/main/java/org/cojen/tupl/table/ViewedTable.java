@@ -59,6 +59,7 @@ import org.cojen.tupl.diag.QueryPlan;
 import org.cojen.tupl.table.expr.CompiledQuery;
 import org.cojen.tupl.table.expr.Parser;
 import org.cojen.tupl.table.expr.RelationExpr;
+import org.cojen.tupl.table.expr.TupleType;
 
 import org.cojen.tupl.table.filter.ColumnFilter;
 import org.cojen.tupl.table.filter.ColumnToArgFilter;
@@ -291,6 +292,11 @@ public abstract sealed class ViewedTable<R> extends WrappedTable<R, R> {
         // See the cacheNewValue method.
         var key = new CompiledQuery.DerivedKey(derivedType, query);
         return ((CompiledQuery<D>) cacheObtain(TYPE_4, key, null)).table(fuseArguments(args));
+    }
+
+    @Override
+    public boolean hasPrimaryKey() {
+        return mSource.hasPrimaryKey();
     }
 
     @Override // MultiCache; see also WrappedTable
@@ -599,6 +605,22 @@ public abstract sealed class ViewedTable<R> extends WrappedTable<R, R> {
         }
 
         {
+            mm = cm.addMethod(Table.class, "withProjection", ViewedTable.class);
+            mm.protected_().override();
+            var tableVar = mm.param(0);
+
+            Map<String, ColumnInfo> projection = query.projection();
+
+            if (projection == null || projection.keySet().containsAll(info.allColumns.keySet())) {
+                mm.return_(tableVar);
+            }
+
+            var condy = mm.var(ViewedTable.class).condy("condyTypeForProjection", rowType);
+            var mappedTypeVar = condy.invoke(Class.class, table.mQueryStr);
+            mm.return_(tableVar.invoke("map", mappedTypeVar));
+        }
+
+        {
             mm = cm.addMethod(Object[].class, "fusePkArguments",
                               Object[].class, Object.class).protected_().override();
             var argsVar = mm.param(0);
@@ -645,6 +667,13 @@ public abstract sealed class ViewedTable<R> extends WrappedTable<R, R> {
         } catch (Throwable e) {
             throw RowUtils.rethrow(e);
         }
+    }
+
+    public static Class<?> condyTypeForProjection(MethodHandles.Lookup lookup, String queryStr,
+                                                  Class<?> type, Class<?> rowType)
+    {
+        QuerySpec query = Parser.parseQuerySpec(rowType, queryStr);
+        return TupleType.makeForColumns(query.projection().values(), query.primaryKey()).clazz();
     }
 
     public static CallSite indyCopyNonPkDirtyColumns(MethodHandles.Lookup lookup, String name,
@@ -859,6 +888,13 @@ public abstract sealed class ViewedTable<R> extends WrappedTable<R, R> {
         }
 
         /**
+         * If the row type has more columns than are projected, then a mapped table is returned
+         * with a row type which only consists of the projected columns. If the row type already
+         * matches the projection, then the original table is returned.
+         */
+        protected abstract Table<R> withProjection(ViewedTable<R> table) throws IOException;
+
+        /**
          * Used in conjunction with fuseQueryWithPk.
          */
         protected abstract Object[] fusePkArguments(Object[] args, R row);
@@ -960,14 +996,14 @@ public abstract sealed class ViewedTable<R> extends WrappedTable<R, R> {
         }
 
         @Override
-        protected Updater<R> applyChecks(Updater<R> updater) {
-            // No checks are required.
-            return updater;
+        public Table<R> distinct() throws IOException {
+            return hasPrimaryKey() ? this : AggregatedTable.distinct(this);
         }
 
         @Override
-        public boolean hasPrimaryKey() {
-            return mSource.hasPrimaryKey();
+        protected Updater<R> applyChecks(Updater<R> updater) {
+            // No checks are required.
+            return updater;
         }
 
         @Override
@@ -1027,8 +1063,8 @@ public abstract sealed class ViewedTable<R> extends WrappedTable<R, R> {
         }
 
         @Override
-        public boolean hasPrimaryKey() {
-            return mSource.hasPrimaryKey();
+        public Table<R> distinct() throws IOException {
+            return hasPrimaryKey() ? this : AggregatedTable.distinct(this);
         }
 
         @Override
@@ -1095,6 +1131,11 @@ public abstract sealed class ViewedTable<R> extends WrappedTable<R, R> {
         }
 
         @Override
+        public Table<R> distinct() throws IOException {
+            return hasPrimaryKey() ? this : AggregatedTable.distinct(helper().withProjection(this));
+        }
+
+        @Override
         public boolean tryLoad(Transaction txn, R row) throws IOException {
             return helper().tryLoad(this, txn, row);
         }
@@ -1149,6 +1190,11 @@ public abstract sealed class ViewedTable<R> extends WrappedTable<R, R> {
                                   Table<R> source, Object... args)
         {
             super(queryStr, queryRef, maxArg, source, args);
+        }
+
+        @Override
+        public Table<R> distinct() throws IOException {
+            return hasPrimaryKey() ? this : AggregatedTable.distinct(helper().withProjection(this));
         }
 
         @Override
@@ -1210,6 +1256,11 @@ public abstract sealed class ViewedTable<R> extends WrappedTable<R, R> {
         }
 
         @Override
+        public Table<R> distinct() throws IOException {
+            return AggregatedTable.distinct(helper().withProjection(this));
+        }
+
+        @Override
         public boolean tryLoad(Transaction txn, R row) throws IOException {
             // Requires primary key columns.
             throw projectionConstraint();
@@ -1266,6 +1317,11 @@ public abstract sealed class ViewedTable<R> extends WrappedTable<R, R> {
         @Override
         public boolean hasPrimaryKey() {
             return false;
+        }
+
+        @Override
+        public Table<R> distinct() throws IOException {
+            return AggregatedTable.distinct(helper().withProjection(this));
         }
 
         @Override

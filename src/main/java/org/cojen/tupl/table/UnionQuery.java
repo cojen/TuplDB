@@ -24,30 +24,33 @@ import java.util.Comparator;
 import org.cojen.tupl.Query;
 import org.cojen.tupl.Scanner;
 import org.cojen.tupl.Transaction;
-import org.cojen.tupl.Updater;
 
 import org.cojen.tupl.diag.QueryPlan;
 
 /**
  * @author Brian S. O'Neill
- * @see ConcatTable
+ * @see MergeQuery
  */
-final class MergeQuery<R> extends ConcatQuery<R> {
+final class UnionQuery<R> implements Query<R> {
     private final Comparator<R> mComparator;
+    private final Query<R>[] mSources;
 
     /**
      * @param sources must have at least one element; all must have the same arguments
      */
-    MergeQuery(Comparator<R> c, Query<R>[] sources) {
-        super(sources);
+    UnionQuery(Comparator<R> c, Query<R>[] sources) {
         mComparator = c;
+        mSources = sources;
     }
 
-    /**
-     * @see AggregatedTable
-     */
-    UnionQuery<R> asUnionQuery() {
-        return new UnionQuery<R>(mComparator, mSources);
+    @Override
+    public Class<R> rowType() {
+        return mSources[0].rowType();
+    }
+
+    @Override
+    public int argumentCount() {
+        return mSources[0].argumentCount();
     }
 
     @Override
@@ -67,39 +70,25 @@ final class MergeQuery<R> extends ConcatQuery<R> {
             throw e;
         }
 
-        return MergeScanner.make(mComparator, sources);
+        return UnionScanner.make(mComparator, sources);
     }
 
     @Override
-    public Updater<R> newUpdater(R dst, Transaction txn, Object... args) throws IOException {
-        checkCanUpdate(txn, args);
-
-        @SuppressWarnings("unchecked")
-        Updater<R>[] sources = new Updater[mSources.length];
-
-        sources[0] = mSources[0].newUpdater(dst, txn, args);
-
-        try {
-            for (int i=1; i<mSources.length; i++) {
-                // cannot share dst among the sources
-                sources[i] = mSources[i].newUpdater(txn, args);
+    public boolean anyRows(R row, Transaction txn, Object... args) throws IOException {
+        for (var source : mSources) {
+            if (source.anyRows(row, txn, args)) {
+                return true;
             }
-        } catch (Throwable e) {
-            for (var source : sources) RowUtils.closeQuietly(source);
-            throw e;
         }
-
-        return MergeUpdater.make(mComparator, sources);
+        return false;
     }
 
     @Override
-    public long deleteAll(Transaction txn, Object... args) throws IOException {
-        // Use the default deleteAll implementation to delete in the desired order.
-        return RowUtils.deleteAll(this, txn, args);
-    }
-
-    @Override
-    protected QueryPlan newPlan(QueryPlan[] subPlans) {
-        return new QueryPlan.MergeConcat(subPlans);
+    public QueryPlan scannerPlan(Transaction txn, Object... args) throws IOException {
+        var subPlans = new QueryPlan[mSources.length];
+        for (int i=0; i<subPlans.length; i++) {
+            subPlans[i] = mSources[i].scannerPlan(txn, args);
+        }
+        return new QueryPlan.MergeUnion(subPlans);
     }
 }

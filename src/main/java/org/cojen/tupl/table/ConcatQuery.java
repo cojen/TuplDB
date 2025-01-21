@@ -30,9 +30,8 @@ import org.cojen.tupl.ViewConstraintException;
 import org.cojen.tupl.diag.QueryPlan;
 
 /**
- * 
- *
  * @author Brian S. O'Neill
+ * @see ConcatTable
  */
 class ConcatQuery<R> implements Query<R> {
     protected final Query<R>[] mSources;

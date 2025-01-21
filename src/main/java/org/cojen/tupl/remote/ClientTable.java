@@ -312,6 +312,12 @@ final class ClientTable<R> implements Table<R> {
         });
     }
 
+    @Override
+    public Table<R> distinct() throws IOException {
+        // FIXME: distinct
+        throw null;
+    }
+
     private RemoteTableProxy proxy() throws IOException {
         var proxy = (RemoteTableProxy) cProxyHandle.getAcquire(this);
 

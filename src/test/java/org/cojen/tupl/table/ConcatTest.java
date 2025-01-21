@@ -376,6 +376,197 @@ public class ConcatTest {
         }
     }
 
+    @Test
+    public void distinct1() throws Exception {
+        for (int i=1; i<=2; i++) {
+            TestRow1 row = mTable1.newRow();
+            row.id(i);
+            row.a(10 + i);
+            row.b(100 - (i * 2));
+            row.c(100L * i);
+            mTable1.insert(null, row);
+        }
+
+        for (int i=1; i<=3; i++) {
+            TestRow2 row = mTable2.newRow();
+            row.id(i);
+            row.b("" + (100 - (i * 2 + 1)));
+            row.d("" + (100L * i));
+            mTable2.insert(null, row);
+        }
+
+        Table<ConcatRow> concat = Table.concat(ConcatRow.class, mTable1, mTable2, mTable1);
+        Table<ConcatRow> distinct = concat.distinct();
+        assertTrue(distinct.hasPrimaryKey());
+
+        String plan = distinct.queryAll().scannerPlan(null).toString();
+
+        String expect = """
+- aggregate: TARGET
+  operation: distinct
+  group by: a, b, c, d, id
+  - map: TARGET
+    - merge concat
+      - sort: +a, +b, +c, +d, +id
+        - map: org.cojen.tupl.table.ConcatTest$ConcatRow
+          - full scan over primary key: org.cojen.tupl.table.ConcatTest$TestRow1
+            key columns: +id
+      - sort: +a, +b, +c, +d, +id
+        - map: org.cojen.tupl.table.ConcatTest$ConcatRow
+          - full scan over primary key: org.cojen.tupl.table.ConcatTest$TestRow2
+            key columns: +id
+      - sort: +a, +b, +c, +d, +id
+        - map: org.cojen.tupl.table.ConcatTest$ConcatRow
+          - full scan over primary key: org.cojen.tupl.table.ConcatTest$TestRow1
+            key columns: +id
+""";
+
+        expect = expect.replaceAll
+            ("TARGET", Matcher.quoteReplacement(distinct.rowType().getName()));
+
+        assertEquals(expect, plan);
+
+        try (var s = distinct.newScanner(null)) {
+            verify(s, new String[] {
+                    "{a=0, b=93, c=null, d=300, id=3}",
+                    "{a=0, b=95, c=null, d=200, id=2}",
+                    "{a=0, b=97, c=null, d=100, id=1}",
+                    "{a=11, b=98, c=100, d=, id=1}",
+                    "{a=12, b=96, c=200, d=, id=2}",
+                   });
+        }
+
+        Table<Row> derive = distinct.derive("{id, a}");
+
+        try (var s = derive.newScanner(null)) {
+            verify(s, new String[] {
+                    "{a=0, id=3}",
+                    "{a=0, id=2}",
+                    "{a=0, id=1}",
+                    "{a=11, id=1}",
+                    "{a=12, id=2}",
+                   });
+        }
+
+        Table<Row> distinct2 = derive.derive("{id}").distinct();
+        assertTrue(distinct2.hasPrimaryKey());
+
+        try (var s = distinct2.newScanner(null)) {
+            verify(s, new String[] {
+                    "{id=1}",
+                    "{id=2}",
+                    "{id=3}",
+                   });
+        }
+    }
+
+    @Test
+    public void distinct2() throws Exception {
+        for (int i=1; i<=2; i++) {
+            TestRow1 row = mTable1.newRow();
+            row.id(i);
+            row.a(10 + i);
+            row.b(100 - (i * 2));
+            row.c(100L * i);
+            mTable1.insert(null, row);
+        }
+
+        for (int i=1; i<=3; i++) {
+            TestRow2 row = mTable2.newRow();
+            row.id(i);
+            row.b("" + (100 - (i * 2 + 1)));
+            row.d("" + (100L * i));
+            mTable2.insert(null, row);
+        }
+
+        Table<Row> concat = Table.concat(mTable1, mTable2, mTable1);
+        Table<Row> distinct = concat.distinct();
+        assertTrue(distinct.hasPrimaryKey());
+
+        Table<Row> derive = distinct.derive("{a, c} b != 999");
+
+        String plan = derive.queryAll().scannerPlan(null).toString();
+
+        // Note: If the distinct method was smarter, it would eliminate the duplicate tables.
+        String expect = """
+- merge union
+  - sort: +id, +a, +b, +c, +d
+    - map: TARGET
+      - filter: b != ?2
+        - full scan over primary key: org.cojen.tupl.table.ConcatTest$TestRow1
+          key columns: +id
+  - sort: +id, +a, +b, +c, +d
+    - map: TARGET
+      - filter: b != ?1
+        - full scan over primary key: org.cojen.tupl.table.ConcatTest$TestRow2
+          key columns: +id
+  - sort: +id, +a, +b, +c, +d
+    - map: TARGET
+      - filter: b != ?2
+        - full scan over primary key: org.cojen.tupl.table.ConcatTest$TestRow1
+          key columns: +id
+""";
+
+        expect = expect.replaceAll
+            ("TARGET", Matcher.quoteReplacement(distinct.rowType().getName()));
+
+        assertEquals(expect, plan);
+
+        try (var s = derive.newScanner(null)) {
+            verify(s, new String[] {
+                    "{a=0, c=null}",
+                    "{a=11, c=100}",
+                    "{a=0, c=null}",
+                    "{a=12, c=200}",
+                    "{a=0, c=null}",
+                   });
+        }
+
+        distinct = derive.distinct();
+        assertTrue(distinct.hasPrimaryKey());
+
+        plan = distinct.queryAll().scannerPlan(null).toString();
+
+        expect = """
+- aggregate: TARGET2
+  operation: distinct
+  group by: a, c
+  - map: TARGET2
+    - merge union
+      - sort: +a, +c, +id, +b, +d
+        - map: TARGET1
+          - filter: b != ?2
+            - full scan over primary key: org.cojen.tupl.table.ConcatTest$TestRow1
+              key columns: +id
+      - sort: +a, +c, +id, +b, +d
+        - map: TARGET1
+          - filter: b != ?1
+            - full scan over primary key: org.cojen.tupl.table.ConcatTest$TestRow2
+              key columns: +id
+      - sort: +a, +c, +id, +b, +d
+        - map: TARGET1
+          - filter: b != ?2
+            - full scan over primary key: org.cojen.tupl.table.ConcatTest$TestRow1
+              key columns: +id
+""";
+
+        expect = expect.replaceAll
+            ("TARGET1", Matcher.quoteReplacement(derive.rowType().getName()));
+
+        expect = expect.replaceAll
+            ("TARGET2", Matcher.quoteReplacement(distinct.rowType().getName()));
+
+        assertEquals(expect, plan);
+
+        try (var s = distinct.newScanner(null)) {
+            verify(s, new String[] {
+                    "{a=0, c=null}",
+                    "{a=11, c=100}",
+                    "{a=12, c=200}",
+                   });
+        }
+    }
+
     private void verify(Scanner<?> s, String[] expect) throws Exception {
         Object current = null;
 

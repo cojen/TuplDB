@@ -908,6 +908,36 @@ public abstract sealed class QueryPlan implements Serializable {
     }
 
     /**
+     * Query plan node which represents a union set of plans which have an common ordering, and
+     * rows are compared to each other for eliminating duplicates.
+     */
+    public static final class MergeUnion extends Union {
+        private static final long serialVersionUID = 1L;
+
+        /**
+         * @param sources child plan nodes
+         */
+        public MergeUnion(QueryPlan... sources) {
+            super(sources);
+        }
+
+        @Override
+        void appendTo(Appendable a, String in1, String in2) throws IOException {
+            appendTo(a, in1, in2, "merge union");
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            return obj instanceof MergeUnion union && matches(union);
+        }
+
+        @Override
+        public int hashCode() {
+            return super.hashCode() ^ 658549224;
+        }
+    }
+
+    /**
      * Query plan node which represents a nested loop join.
      */
     public static final class NestedLoopsJoin extends Set {

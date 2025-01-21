@@ -92,6 +92,28 @@ public record QuerySpec(Map<String, ColumnInfo> projection, OrderBy orderBy, Row
         return projection == null && orderBy == null && filter == TrueFilter.THE;
     }
 
+    /**
+     * Returns a primary key specification consisting of all the projected columns, with the
+     * proper orderBy.
+     */
+    public String[] primaryKey() {
+        var map = new LinkedHashMap<String, String>();
+
+        if (orderBy != null) {
+            for (OrderBy.Rule rule : orderBy.values()) {
+                map.computeIfAbsent(rule.column().name, _ -> rule.toString());
+            }
+        }
+
+        if (projection != null) {
+            for (String name : projection.keySet()) {
+                map.putIfAbsent(name, name);
+            }
+        }
+
+        return map.values().toArray(String[]::new);
+    }
+
     @Override
     public String toString() {
         Set<String> names;
