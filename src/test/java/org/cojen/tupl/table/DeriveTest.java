@@ -242,8 +242,9 @@ public class DeriveTest {
 
         assertTrue(derived.hasPrimaryKey());
 
-        PrimaryKey pk = derived.rowType().getAnnotation(PrimaryKey.class);
-        assertArrayEquals(new String[] {"id"}, pk.value());
+        String[] pk = derived.rowType().getAnnotation(PrimaryKey.class).value();
+        assertTrue(pk.length == 1);
+        assertTrue("id".equals(pk[0]) || "+id".equals(pk[0]));
 
         try (Scanner<Row> s = derived.newScanner(null)) {
             Row row = s.row();
