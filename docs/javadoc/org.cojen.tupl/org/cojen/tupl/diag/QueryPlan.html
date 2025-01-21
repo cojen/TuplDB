@@ -181,60 +181,66 @@ implements <a href="https://docs.oracle.com/en/java/javase/23/docs/api/java.base
 <div class="block">Query plan node which applies custom row mapping and filtering.</div>
 </div>
 <div class="col-first even-row-color"><code>static final class&nbsp;</code></div>
-<div class="col-second even-row-color"><code><a href="QueryPlan.Merge.html" class="type-name-link" title="class in org.cojen.tupl.diag">QueryPlan.Merge</a></code></div>
+<div class="col-second even-row-color"><code><a href="QueryPlan.MergeConcat.html" class="type-name-link" title="class in org.cojen.tupl.diag">QueryPlan.MergeConcat</a></code></div>
 <div class="col-last even-row-color">
 <div class="block">Query plan node which represents a concatenated set of plans which have an explicit
- ordering.</div>
+ ordering, and source rows are compared to each other to maintain the ordering.</div>
 </div>
-<div class="col-first odd-row-color"><code>static class&nbsp;</code></div>
-<div class="col-second odd-row-color"><code><a href="QueryPlan.NaturalJoin.html" class="type-name-link" title="class in org.cojen.tupl.diag">QueryPlan.NaturalJoin</a></code></div>
+<div class="col-first odd-row-color"><code>static final class&nbsp;</code></div>
+<div class="col-second odd-row-color"><code><a href="QueryPlan.MergeUnion.html" class="type-name-link" title="class in org.cojen.tupl.diag">QueryPlan.MergeUnion</a></code></div>
 <div class="col-last odd-row-color">
+<div class="block">Query plan node which represents a union set of plans which have an common ordering, and
+ rows are compared to each other for eliminating duplicates.</div>
+</div>
+<div class="col-first even-row-color"><code>static class&nbsp;</code></div>
+<div class="col-second even-row-color"><code><a href="QueryPlan.NaturalJoin.html" class="type-name-link" title="class in org.cojen.tupl.diag">QueryPlan.NaturalJoin</a></code></div>
+<div class="col-last even-row-color">
 <div class="block">Query plan node which joins a target to a source based on a common set of columns.</div>
 </div>
-<div class="col-first even-row-color"><code>static final class&nbsp;</code></div>
-<div class="col-second even-row-color"><code><a href="QueryPlan.NestedLoopsJoin.html" class="type-name-link" title="class in org.cojen.tupl.diag">QueryPlan.NestedLoopsJoin</a></code></div>
-<div class="col-last even-row-color">
+<div class="col-first odd-row-color"><code>static final class&nbsp;</code></div>
+<div class="col-second odd-row-color"><code><a href="QueryPlan.NestedLoopsJoin.html" class="type-name-link" title="class in org.cojen.tupl.diag">QueryPlan.NestedLoopsJoin</a></code></div>
+<div class="col-last odd-row-color">
 <div class="block">Query plan node which represents a nested loop join.</div>
 </div>
-<div class="col-first odd-row-color"><code>static final class&nbsp;</code></div>
-<div class="col-second odd-row-color"><code><a href="QueryPlan.PrimaryJoin.html" class="type-name-link" title="class in org.cojen.tupl.diag">QueryPlan.PrimaryJoin</a></code></div>
-<div class="col-last odd-row-color">
+<div class="col-first even-row-color"><code>static final class&nbsp;</code></div>
+<div class="col-second even-row-color"><code><a href="QueryPlan.PrimaryJoin.html" class="type-name-link" title="class in org.cojen.tupl.diag">QueryPlan.PrimaryJoin</a></code></div>
+<div class="col-last even-row-color">
 <div class="block">Query plan node which joins index rows to primary rows.</div>
 </div>
-<div class="col-first even-row-color"><code>static final class&nbsp;</code></div>
-<div class="col-second even-row-color"><code><a href="QueryPlan.RangeScan.html" class="type-name-link" title="class in org.cojen.tupl.diag">QueryPlan.RangeScan</a></code></div>
-<div class="col-last even-row-color">
+<div class="col-first odd-row-color"><code>static final class&nbsp;</code></div>
+<div class="col-second odd-row-color"><code><a href="QueryPlan.RangeScan.html" class="type-name-link" title="class in org.cojen.tupl.diag">QueryPlan.RangeScan</a></code></div>
+<div class="col-last odd-row-color">
 <div class="block">Query plan node which scans a range of rows from a table.</div>
 </div>
-<div class="col-first odd-row-color"><code>static final class&nbsp;</code></div>
-<div class="col-second odd-row-color"><code><a href="QueryPlan.RangeUnion.html" class="type-name-link" title="class in org.cojen.tupl.diag">QueryPlan.RangeUnion</a></code></div>
-<div class="col-last odd-row-color">
+<div class="col-first even-row-color"><code>static final class&nbsp;</code></div>
+<div class="col-second even-row-color"><code><a href="QueryPlan.RangeUnion.html" class="type-name-link" title="class in org.cojen.tupl.diag">QueryPlan.RangeUnion</a></code></div>
+<div class="col-last even-row-color">
 <div class="block">Query plan node which represents a union set of plans, where each source plan is limited
  to a range, and all sources produce rows in the same order.</div>
 </div>
-<div class="col-first even-row-color"><code>static class&nbsp;</code></div>
-<div class="col-second even-row-color"><code><a href="QueryPlan.Scan.html" class="type-name-link" title="class in org.cojen.tupl.diag">QueryPlan.Scan</a></code></div>
-<div class="col-last even-row-color">
+<div class="col-first odd-row-color"><code>static class&nbsp;</code></div>
+<div class="col-second odd-row-color"><code><a href="QueryPlan.Scan.html" class="type-name-link" title="class in org.cojen.tupl.diag">QueryPlan.Scan</a></code></div>
+<div class="col-last odd-row-color">
 <div class="block">Query plan node which scans a table.</div>
 </div>
-<div class="col-first odd-row-color"><code>static class&nbsp;</code></div>
-<div class="col-second odd-row-color"><code><a href="QueryPlan.Set.html" class="type-name-link" title="class in org.cojen.tupl.diag">QueryPlan.Set</a></code></div>
-<div class="col-last odd-row-color">
+<div class="col-first even-row-color"><code>static class&nbsp;</code></div>
+<div class="col-second even-row-color"><code><a href="QueryPlan.Set.html" class="type-name-link" title="class in org.cojen.tupl.diag">QueryPlan.Set</a></code></div>
+<div class="col-last even-row-color">
 <div class="block">Query plan node which represents a set of plans.</div>
 </div>
-<div class="col-first even-row-color"><code>static class&nbsp;</code></div>
-<div class="col-second even-row-color"><code><a href="QueryPlan.Sort.html" class="type-name-link" title="class in org.cojen.tupl.diag">QueryPlan.Sort</a></code></div>
-<div class="col-last even-row-color">
+<div class="col-first odd-row-color"><code>static class&nbsp;</code></div>
+<div class="col-second odd-row-color"><code><a href="QueryPlan.Sort.html" class="type-name-link" title="class in org.cojen.tupl.diag">QueryPlan.Sort</a></code></div>
+<div class="col-last odd-row-color">
 <div class="block">Query plan node which sorts the rows.</div>
 </div>
-<div class="col-first odd-row-color"><code>static class&nbsp;</code></div>
-<div class="col-second odd-row-color"><code><a href="QueryPlan.Table.html" class="type-name-link" title="class in org.cojen.tupl.diag">QueryPlan.Table</a></code></div>
-<div class="col-last odd-row-color">
+<div class="col-first even-row-color"><code>static class&nbsp;</code></div>
+<div class="col-second even-row-color"><code><a href="QueryPlan.Table.html" class="type-name-link" title="class in org.cojen.tupl.diag">QueryPlan.Table</a></code></div>
+<div class="col-last even-row-color">
 <div class="block">Query plan node which accesses rows from a table.</div>
 </div>
-<div class="col-first even-row-color"><code>static class&nbsp;</code></div>
-<div class="col-second even-row-color"><code><a href="QueryPlan.Union.html" class="type-name-link" title="class in org.cojen.tupl.diag">QueryPlan.Union</a></code></div>
-<div class="col-last even-row-color">
+<div class="col-first odd-row-color"><code>static class&nbsp;</code></div>
+<div class="col-second odd-row-color"><code><a href="QueryPlan.Union.html" class="type-name-link" title="class in org.cojen.tupl.diag">QueryPlan.Union</a></code></div>
+<div class="col-last odd-row-color">
 <div class="block">Query plan node which represents a union set of plans.</div>
 </div>
 </div>

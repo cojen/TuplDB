@@ -65,6 +65,7 @@ loadScripts(document, 'script');</script>
 <li><a href="#method-summary" tabindex="0">Method Summary</a></li>
 <li><a href="#method-detail" tabindex="0">Method Details</a>
 <ol class="toc-list">
+<li><a href="#hasPrimaryKey()" tabindex="0">hasPrimaryKey()</a></li>
 <li><a href="#rowType()" tabindex="0">rowType()</a></li>
 <li><a href="#newRow()" tabindex="0">newRow()</a></li>
 <li><a href="#cloneRow(R)" tabindex="0">cloneRow(R)</a></li>
@@ -111,6 +112,7 @@ loadScripts(document, 'script');</script>
 <li><a href="#derive(java.lang.String,java.lang.Object...)" tabindex="0">derive(String, Object...)</a></li>
 <li><a href="#concat(java.lang.Class,org.cojen.tupl.Table...)" tabindex="0">concat(Class, Table...)</a></li>
 <li><a href="#concat(org.cojen.tupl.Table...)" tabindex="0">concat(Table...)</a></li>
+<li><a href="#distinct()" tabindex="0">distinct()</a></li>
 <li><a href="#comparator(java.lang.String)" tabindex="0">comparator(String)</a></li>
 <li><a href="#predicate(java.lang.String,java.lang.Object...)" tabindex="0">predicate(String, Object...)</a></li>
 <li><a href="#close()" tabindex="0">close()</a></li>
@@ -295,33 +297,43 @@ public interface MyRow {
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
 <div class="block">Returns a view backed by this table, specified by a fully-featured query expression.</div>
 </div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default <a href="Table.html" title="type parameter in Table">R</a></code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#exchange(org.cojen.tupl.Transaction,R)" class="member-name-link">exchange</a><wbr>(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="Table.html" title="interface in org.cojen.tupl">Table</a><wbr>&lt;<a href="Table.html" title="type parameter in Table">R</a>&gt;</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#distinct()" class="member-name-link">distinct</a>()</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
+<div class="block">Returns a view of this table which has duplicate rows filtered out.</div>
+</div>
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default <a href="Table.html" title="type parameter in Table">R</a></code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#exchange(org.cojen.tupl.Transaction,R)" class="member-name-link">exchange</a><wbr>(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
  <a href="Table.html" title="type parameter in Table">R</a>&nbsp;row)</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
 <div class="block">Unconditionally stores the given row, potentially replacing a corresponding row which
  already exists.</div>
 </div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code>boolean</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#exists(org.cojen.tupl.Transaction,R)" class="member-name-link">exists</a><wbr>(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code>boolean</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#exists(org.cojen.tupl.Transaction,R)" class="member-name-link">exists</a><wbr>(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
  <a href="Table.html" title="type parameter in Table">R</a>&nbsp;row)</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
 <div class="block">Checks if a row exists by searching against the primary key.</div>
 </div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code>void</code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#forEach(R,org.cojen.tupl.ColumnProcessor)" class="member-name-link">forEach</a><wbr>(<a href="Table.html" title="type parameter in Table">R</a>&nbsp;row,
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code>void</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#forEach(R,org.cojen.tupl.ColumnProcessor)" class="member-name-link">forEach</a><wbr>(<a href="Table.html" title="type parameter in Table">R</a>&nbsp;row,
  <a href="ColumnProcessor.html" title="interface in org.cojen.tupl">ColumnProcessor</a>&lt;? super <a href="Table.html" title="type parameter in Table">R</a>&gt;&nbsp;action)</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
 <div class="block">For the given row, performs an action for each column which is set.</div>
 </div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default &lt;T&gt;&nbsp;<a href="Table.html" title="interface in org.cojen.tupl">Table</a><wbr>&lt;T&gt;</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#group(java.lang.String,java.lang.String,java.lang.Class,org.cojen.tupl.Grouper.Factory)" class="member-name-link">group</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/23/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;groupBy,
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default &lt;T&gt;&nbsp;<a href="Table.html" title="interface in org.cojen.tupl">Table</a><wbr>&lt;T&gt;</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#group(java.lang.String,java.lang.String,java.lang.Class,org.cojen.tupl.Grouper.Factory)" class="member-name-link">group</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/23/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;groupBy,
  <a href="https://docs.oracle.com/en/java/javase/23/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;orderBy,
  <a href="https://docs.oracle.com/en/java/javase/23/docs/api/java.base/java/lang/Class.html" title="class or interface in java.lang" class="external-link">Class</a>&lt;T&gt;&nbsp;targetType,
  <a href="Grouper.Factory.html" title="interface in org.cojen.tupl">Grouper.Factory</a>&lt;<a href="Table.html" title="type parameter in Table">R</a>,<wbr>T&gt;&nbsp;factory)</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
 <div class="block">Returns a view backed by this table, which processes groups of source rows into groups
  of target rows.</div>
+</div>
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code>boolean</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#hasPrimaryKey()" class="member-name-link">hasPrimaryKey</a>()</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
+<div class="block">Returns true if this table has a primary key defined, as specified by the <a href="#rowType()"><code>row type</code></a>.</div>
 </div>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default void</code></div>
 <div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#insert(org.cojen.tupl.Transaction,R)" class="member-name-link">insert</a><wbr>(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
@@ -535,6 +547,15 @@ public interface MyRow {
 <section class="method-details" id="method-detail">
 <h2>Method Details</h2>
 <ul class="member-list">
+<li>
+<section class="detail" id="hasPrimaryKey()">
+<h3>hasPrimaryKey</h3>
+<div class="horizontal-scroll">
+<div class="member-signature"><span class="return-type">boolean</span>&nbsp;<span class="element-name">hasPrimaryKey</span>()</div>
+<div class="block">Returns true if this table has a primary key defined, as specified by the <a href="#rowType()"><code>row type</code></a>.</div>
+</div>
+</section>
+</li>
 <li>
 <section class="detail" id="rowType()">
 <h3>rowType</h3>
@@ -1167,7 +1188,7 @@ public interface MyRow {
  source are set to the most appropriate default value, preferably null.</div>
 <dl class="notes">
 <dt>Parameters:</dt>
-<dd><code>targetType</code> - target row type; the primary key is ignored</dd>
+<dd><code>targetType</code> - target row type; the primary key is possibly ignored</dd>
 <dt>Throws:</dt>
 <dd><code><a href="https://docs.oracle.com/en/java/javase/23/docs/api/java.base/java/lang/NullPointerException.html" title="class or interface in java.lang" class="external-link">NullPointerException</a></code> - if any parameter is null</dd>
 <dd><code><a href="https://docs.oracle.com/en/java/javase/23/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
@@ -1369,7 +1390,7 @@ public interface MyRow {
  converted back source rows, and closing the table has no effect.</div>
 <dl class="notes">
 <dt>Parameters:</dt>
-<dd><code>targetType</code> - target row type; the primary key is ignored</dd>
+<dd><code>targetType</code> - target row type; the primary key is possibly ignored</dd>
 <dd><code>sources</code> - source tables to concatenate; if none are provided, then the returned
  view is empty</dd>
 <dt>Throws:</dt>
@@ -1401,6 +1422,9 @@ public interface MyRow {
 <dt>Parameters:</dt>
 <dd><code>sources</code> - source tables to concatenate; if none are provided, then the returned
  view is empty</dd>
+<dt>Returns:</dt>
+<dd>a table whose row type primary key consists of all the source columns, but the
+ table doesn't actually have a primary key</dd>
 <dt>Throws:</dt>
 <dd><code><a href="https://docs.oracle.com/en/java/javase/23/docs/api/java.base/java/lang/NullPointerException.html" title="class or interface in java.lang" class="external-link">NullPointerException</a></code> - if any parameter is null</dd>
 <dd><code><a href="https://docs.oracle.com/en/java/javase/23/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
@@ -1410,6 +1434,22 @@ public interface MyRow {
 <li><a href="#map(java.lang.Class)"><code>map(Class)</code></a></li>
 </ul>
 </dd>
+</dl>
+</div>
+</section>
+</li>
+<li>
+<section class="detail" id="distinct()">
+<h3>distinct</h3>
+<div class="horizontal-scroll">
+<div class="member-signature"><span class="return-type"><a href="Table.html" title="interface in org.cojen.tupl">Table</a>&lt;<a href="Table.html" title="type parameter in Table">R</a>&gt;</span>&nbsp;<span class="element-name">distinct</span>()
+           throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/23/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
+<div class="block">Returns a view of this table which has duplicate rows filtered out. If this table
+ doesn't have any duplicates, then it's simply returned as-is. If an actual view is
+ returned, then the instance is unmodifiable, and closing it has no effect.</div>
+<dl class="notes">
+<dt>Throws:</dt>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/23/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
 </dl>
 </div>
 </section>

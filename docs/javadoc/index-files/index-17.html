@@ -135,10 +135,15 @@ loadScripts(document, 'script');</script>
 <dd>
 <div class="block">Query plan node which applies custom row mapping and filtering.</div>
 </dd>
-<dt><a href="../org.cojen.tupl/org/cojen/tupl/diag/QueryPlan.Merge.html" class="type-name-link" title="class in org.cojen.tupl.diag">QueryPlan.Merge</a> - Class in <a href="../org.cojen.tupl/org/cojen/tupl/diag/package-summary.html">org.cojen.tupl.diag</a></dt>
+<dt><a href="../org.cojen.tupl/org/cojen/tupl/diag/QueryPlan.MergeConcat.html" class="type-name-link" title="class in org.cojen.tupl.diag">QueryPlan.MergeConcat</a> - Class in <a href="../org.cojen.tupl/org/cojen/tupl/diag/package-summary.html">org.cojen.tupl.diag</a></dt>
 <dd>
 <div class="block">Query plan node which represents a concatenated set of plans which have an explicit
- ordering.</div>
+ ordering, and source rows are compared to each other to maintain the ordering.</div>
+</dd>
+<dt><a href="../org.cojen.tupl/org/cojen/tupl/diag/QueryPlan.MergeUnion.html" class="type-name-link" title="class in org.cojen.tupl.diag">QueryPlan.MergeUnion</a> - Class in <a href="../org.cojen.tupl/org/cojen/tupl/diag/package-summary.html">org.cojen.tupl.diag</a></dt>
+<dd>
+<div class="block">Query plan node which represents a union set of plans which have an common ordering, and
+ rows are compared to each other for eliminating duplicates.</div>
 </dd>
 <dt><a href="../org.cojen.tupl/org/cojen/tupl/diag/QueryPlan.NaturalJoin.html" class="type-name-link" title="class in org.cojen.tupl.diag">QueryPlan.NaturalJoin</a> - Class in <a href="../org.cojen.tupl/org/cojen/tupl/diag/package-summary.html">org.cojen.tupl.diag</a></dt>
 <dd>

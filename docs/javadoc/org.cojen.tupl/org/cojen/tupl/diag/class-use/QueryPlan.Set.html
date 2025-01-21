@@ -95,25 +95,31 @@ loadScripts(document, 'script');</script>
 <div class="block">Query plan node which represents an empty set.</div>
 </div>
 <div class="col-first odd-row-color"><code>static final class&nbsp;</code></div>
-<div class="col-second odd-row-color"><code><a href="../QueryPlan.Merge.html" class="type-name-link" title="class in org.cojen.tupl.diag">QueryPlan.Merge</a></code></div>
+<div class="col-second odd-row-color"><code><a href="../QueryPlan.MergeConcat.html" class="type-name-link" title="class in org.cojen.tupl.diag">QueryPlan.MergeConcat</a></code></div>
 <div class="col-last odd-row-color">
 <div class="block">Query plan node which represents a concatenated set of plans which have an explicit
- ordering.</div>
+ ordering, and source rows are compared to each other to maintain the ordering.</div>
 </div>
 <div class="col-first even-row-color"><code>static final class&nbsp;</code></div>
-<div class="col-second even-row-color"><code><a href="../QueryPlan.NestedLoopsJoin.html" class="type-name-link" title="class in org.cojen.tupl.diag">QueryPlan.NestedLoopsJoin</a></code></div>
+<div class="col-second even-row-color"><code><a href="../QueryPlan.MergeUnion.html" class="type-name-link" title="class in org.cojen.tupl.diag">QueryPlan.MergeUnion</a></code></div>
 <div class="col-last even-row-color">
-<div class="block">Query plan node which represents a nested loop join.</div>
+<div class="block">Query plan node which represents a union set of plans which have an common ordering, and
+ rows are compared to each other for eliminating duplicates.</div>
 </div>
 <div class="col-first odd-row-color"><code>static final class&nbsp;</code></div>
-<div class="col-second odd-row-color"><code><a href="../QueryPlan.RangeUnion.html" class="type-name-link" title="class in org.cojen.tupl.diag">QueryPlan.RangeUnion</a></code></div>
+<div class="col-second odd-row-color"><code><a href="../QueryPlan.NestedLoopsJoin.html" class="type-name-link" title="class in org.cojen.tupl.diag">QueryPlan.NestedLoopsJoin</a></code></div>
 <div class="col-last odd-row-color">
+<div class="block">Query plan node which represents a nested loop join.</div>
+</div>
+<div class="col-first even-row-color"><code>static final class&nbsp;</code></div>
+<div class="col-second even-row-color"><code><a href="../QueryPlan.RangeUnion.html" class="type-name-link" title="class in org.cojen.tupl.diag">QueryPlan.RangeUnion</a></code></div>
+<div class="col-last even-row-color">
 <div class="block">Query plan node which represents a union set of plans, where each source plan is limited
  to a range, and all sources produce rows in the same order.</div>
 </div>
-<div class="col-first even-row-color"><code>static class&nbsp;</code></div>
-<div class="col-second even-row-color"><code><a href="../QueryPlan.Union.html" class="type-name-link" title="class in org.cojen.tupl.diag">QueryPlan.Union</a></code></div>
-<div class="col-last even-row-color">
+<div class="col-first odd-row-color"><code>static class&nbsp;</code></div>
+<div class="col-second odd-row-color"><code><a href="../QueryPlan.Union.html" class="type-name-link" title="class in org.cojen.tupl.diag">QueryPlan.Union</a></code></div>
+<div class="col-last odd-row-color">
 <div class="block">Query plan node which represents a union set of plans.</div>
 </div>
 </div>

@@ -85,8 +85,14 @@ loadScripts(document, 'script');</script>
  produces rows which aren't produced by the other sources.</div>
 </div>
 <div class="col-first odd-row-color"><code>static final class&nbsp;</code></div>
-<div class="col-second odd-row-color"><code><a href="../QueryPlan.RangeUnion.html" class="type-name-link" title="class in org.cojen.tupl.diag">QueryPlan.RangeUnion</a></code></div>
+<div class="col-second odd-row-color"><code><a href="../QueryPlan.MergeUnion.html" class="type-name-link" title="class in org.cojen.tupl.diag">QueryPlan.MergeUnion</a></code></div>
 <div class="col-last odd-row-color">
+<div class="block">Query plan node which represents a union set of plans which have an common ordering, and
+ rows are compared to each other for eliminating duplicates.</div>
+</div>
+<div class="col-first even-row-color"><code>static final class&nbsp;</code></div>
+<div class="col-second even-row-color"><code><a href="../QueryPlan.RangeUnion.html" class="type-name-link" title="class in org.cojen.tupl.diag">QueryPlan.RangeUnion</a></code></div>
+<div class="col-last even-row-color">
 <div class="block">Query plan node which represents a union set of plans, where each source plan is limited
  to a range, and all sources produce rows in the same order.</div>
 </div>
