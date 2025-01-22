@@ -62,6 +62,15 @@ public abstract class JoinTable<J> extends BaseTable<J> {
         mTables = tables;
     }
 
+    /**
+     * Constructor to be used by the withTables method.
+     */
+    protected JoinTable(JoinTable<J> jt, Table... tables) {
+        mSpecStr = jt.mSpecStr;
+        mSpecRef = jt.mSpecRef;
+        mTables = tables;
+    }
+
     @SuppressWarnings("unchecked")
     protected final QueryLauncher<J> scannerQueryLauncher(String query) {
         try {
@@ -137,6 +146,26 @@ public abstract class JoinTable<J> extends BaseTable<J> {
     }
 
     @Override
+    public final JoinTable<J> distinct() throws IOException {
+        Table[] tables = mTables;
+        boolean cloned = false;
+
+        for (int i=0; i<tables.length; i++) {
+            Table t = tables[i];
+            Table distinct = t.distinct();
+            if (t != distinct) {
+                if (!cloned) {
+                    tables = tables.clone();
+                    cloned = true;
+                }
+                tables[i] = distinct;
+            }
+        }
+
+        return cloned ? withTables(tables) : this;
+    }
+
+    @Override
     public final Predicate<J> predicate(String query, Object... args) {
         return JoinPredicateMaker.newInstance(rowType(), query, args);
     }
@@ -199,4 +228,6 @@ public abstract class JoinTable<J> extends BaseTable<J> {
 
         throw new AssertionError();
     }
+
+    protected abstract JoinTable<J> withTables(Table[] tables);
 }

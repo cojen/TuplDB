@@ -209,7 +209,7 @@ public class JoinTableMaker {
     }
 
     private Class<?> finish() {
-        addConstructor();
+        addConstructors();
 
         // Add the simple rowType method.
         mClassMaker.addMethod(Class.class, "rowType").public_().return_(mJoinType);
@@ -270,18 +270,37 @@ public class JoinTableMaker {
             indy.invoke(null, "forEach", null, mm.param(0), mm.param(1));
         }
 
+        // Add the withTables method.
+        {
+            MethodMaker mm = mClassMaker.addMethod(JoinTable.class, "withTables", Table[].class)
+                .protected_().override();
+            mm.return_(mm.new_(mClassMaker, mm.this_(), mm.param(0)));
+        }
+
         return mClassMaker.finish();
     }
 
-    private void addConstructor() {
-        MethodMaker mm = mClassMaker.addConstructor(String.class, JoinSpec.class, Table[].class);
-        mm.varargs().public_();
+    private void addConstructors() {
+        {
+            MethodMaker mm = mClassMaker.addConstructor
+                (String.class, JoinSpec.class, Table[].class).varargs().public_();
 
-        var specStrVar = mm.param(0);
-        var specVar = mm.param(1);
-        var tablesVar = mm.param(2);
+            var specStrVar = mm.param(0);
+            var specVar = mm.param(1);
+            var tablesVar = mm.param(2);
 
-        mm.invokeSuperConstructor(specStrVar, specVar, tablesVar);
+            mm.invokeSuperConstructor(specStrVar, specVar, tablesVar);
+        }
+
+        {
+            MethodMaker mm = mClassMaker.addConstructor
+                (mClassMaker, Table[].class).varargs().public_();
+
+            var jtVar = mm.param(0);
+            var tablesVar = mm.param(1);
+
+            mm.invokeSuperConstructor(jtVar, tablesVar);
+        }
     }
 
     public static CallSite indyIsSet(MethodHandles.Lookup lookup, String name, MethodType mt,
