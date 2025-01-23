@@ -51,7 +51,7 @@ public final class FullPkRowTypeMaker {
         }
 
         ClassMaker cm = RowGen.beginClassMakerForRowType
-            (rowType.getPackage().getName(), rowType.getName());
+            (rowType.getPackageName(), rowType.getName());
 
         cm.public_().interface_().implement(rowType);
 
