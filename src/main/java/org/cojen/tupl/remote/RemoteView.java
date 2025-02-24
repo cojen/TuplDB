@@ -21,6 +21,7 @@ import java.io.IOException;
 
 import org.cojen.dirmi.AutoDispose;
 import org.cojen.dirmi.Batched;
+import org.cojen.dirmi.Data;
 import org.cojen.dirmi.Remote;
 import org.cojen.dirmi.RemoteFailure;
 
@@ -38,7 +39,7 @@ import org.cojen.tupl.ViewConstraintException;
  */
 @AutoDispose
 public interface RemoteView extends Remote, Disposable {
-    @RemoteFailure(declared=false)
+    @Data
     public Ordering ordering();
 
     @Batched
@@ -111,9 +112,9 @@ public interface RemoteView extends Remote, Disposable {
     @RemoteFailure(declared=false)
     public LockResult lockCheck(RemoteTransaction txn, byte[] key) throws ViewConstraintException;
 
-    @RemoteFailure(declared=false)
+    @Data
     public boolean isUnmodifiable();
 
-    @RemoteFailure(declared=false)
+    @Data
     public boolean isModifyAtomic();
 }

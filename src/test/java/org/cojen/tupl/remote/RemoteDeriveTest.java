@@ -69,7 +69,7 @@ public class RemoteDeriveTest extends DeriveTest {
 
     @Test
     public void restore() throws Exception {
-        // Test that the ClientDerivedTable is able to restore after a reconnect.
+        // Test that the ClientTable is able to restore after a reconnect.
 
         assertTrue(mDb instanceof ClientDatabase);
 
@@ -83,8 +83,6 @@ public class RemoteDeriveTest extends DeriveTest {
         }
 
         Table<Row> derived = mTable.derive("{id, sum = a + c}");
-
-        assertTrue(derived instanceof ClientDerivedTable);
 
         Session session = ((ClientDatabase) mDb).session();
         session.reconnect();

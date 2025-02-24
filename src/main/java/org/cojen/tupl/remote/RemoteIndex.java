@@ -20,6 +20,7 @@ package org.cojen.tupl.remote;
 import java.io.IOException;
 
 import org.cojen.dirmi.AutoDispose;
+import org.cojen.dirmi.Data;
 import org.cojen.dirmi.Disposer;
 import org.cojen.dirmi.RemoteException;
 import org.cojen.dirmi.RemoteFailure;
@@ -37,7 +38,7 @@ import org.cojen.tupl.diag.IndexStats;
  */
 @AutoDispose
 public interface RemoteIndex extends RemoteView {
-    @RemoteFailure(declared=false)
+    @Data
     public long id();
 
     @RemoteFailure(declared=false)

@@ -20,6 +20,7 @@ package org.cojen.tupl.remote;
 import java.io.IOException;
 
 import org.cojen.dirmi.Batched;
+import org.cojen.dirmi.Data;
 import org.cojen.dirmi.Disposer;
 import org.cojen.dirmi.Pipe;
 import org.cojen.dirmi.Remote;
@@ -34,7 +35,7 @@ import org.cojen.tupl.Ordering;
  * @author Brian S O'Neill
  */
 public interface RemoteCursor extends Remote {
-    @RemoteFailure(declared=false)
+    @Data
     public Ordering ordering();
 
     @Batched

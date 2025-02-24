@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2024 Cojen.org
+ *  Copyright (C) 2025 Cojen.org
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU Affero General Public License as
@@ -17,16 +17,25 @@
 
 package org.cojen.tupl.remote;
 
-import org.cojen.tupl.Row;
+import java.io.IOException;
+
+import org.cojen.tupl.table.BaseTable;
 
 /**
- * Simple pairing of a derived table and the row type descriptor.
+ * 
  *
  * @author Brian S. O'Neill
- * @see RemoteTable#derive
  */
-public record DeriveResult(RemoteTable table, byte[] descriptor) {
-    Class<Row> rowType() {
-        return RowTypeCache.findRow(descriptor);
+final class ServerDerivedTable<R> extends ServerTable<R> implements RemoteTable {
+    private final byte[] mDescriptor;
+
+    ServerDerivedTable(BaseTable<R> table, byte[] descriptor) throws IOException {
+        super(table);
+        mDescriptor = descriptor;
+    }
+
+    @Override
+    public byte[] descriptor() {
+        return mDescriptor;
     }
 }

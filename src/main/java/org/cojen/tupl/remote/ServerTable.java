@@ -39,7 +39,7 @@ import org.cojen.tupl.table.WeakCache;
  *
  * @author Brian S O'Neill
  */
-final class ServerTable<R> implements RemoteTable {
+sealed class ServerTable<R> implements RemoteTable permits ServerDerivedTable {
     final BaseTable<R> mTable;
 
     private final WeakCache<byte[], RemoteTableProxy, Object> mProxyCache;
@@ -57,6 +57,11 @@ final class ServerTable<R> implements RemoteTable {
                 }
             }
         };
+    }
+
+    @Override
+    public byte[] descriptor() {
+        return null;
     }
 
     @Override
@@ -201,10 +206,10 @@ final class ServerTable<R> implements RemoteTable {
 
     @Override
     @SuppressWarnings("unchecked")
-    public DeriveResult derive(String query, Object... args) throws IOException {
+    public RemoteTable derive(String query, Object... args) throws IOException {
         var table = (BaseTable) mTable.derive(query, args);
         byte[] descriptor = RowStore.primaryDescriptor(RowInfo.find(table.rowType()));
-        return new DeriveResult(new ServerTable(table), descriptor);
+        return new ServerDerivedTable(table, descriptor);
     }
 
     @Override

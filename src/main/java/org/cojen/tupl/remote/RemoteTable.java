@@ -21,6 +21,7 @@ import java.io.IOException;
 
 import org.cojen.dirmi.AutoDispose;
 import org.cojen.dirmi.Batched;
+import org.cojen.dirmi.Data;
 import org.cojen.dirmi.Disposer;
 import org.cojen.dirmi.Pipe;
 import org.cojen.dirmi.Remote;
@@ -39,7 +40,13 @@ import org.cojen.tupl.diag.QueryPlan;
  */
 @AutoDispose
 public interface RemoteTable extends Remote, Disposable {
-    @RemoteFailure(declared=false)
+    /**
+     * Is non-null only for derived tables.
+     */
+    @Data
+    public byte[] descriptor();
+
+    @Data
     public boolean hasPrimaryKey();
 
     public Pipe newScanner(RemoteTransaction txn, Pipe pipe) throws IOException;
@@ -73,8 +80,8 @@ public interface RemoteTable extends Remote, Disposable {
     public RemoteTable derive(String typeName, byte[] descriptor, String query, Object... args)
         throws IOException;
 
-    // Note: Cannot be @Restorable because DeriveResult is a serialized object.
-    public DeriveResult derive(String query, Object... args) throws IOException;
+    @Restorable
+    public RemoteTable derive(String query, Object... args) throws IOException;
 
     @Restorable
     public RemoteTableProxy proxy(byte[] descriptor) throws IOException;
