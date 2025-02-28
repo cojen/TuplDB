@@ -56,6 +56,11 @@ public class RestrictedTest {
 
     @Test
     public void accessChecks() throws Exception {
+        accessChecks(false);
+        accessChecks(true);
+    }
+
+    private void accessChecks(boolean hidden) throws Exception {
         // Test with a generated class in a module which doesn't have native access.
 
         MethodHandles.Lookup lookup = newModule
@@ -110,7 +115,12 @@ public class RestrictedTest {
         mm = cm.addMethod(null, "lz4").public_().static_();
         mm.var(PageCompressor.class).invoke("lz4").invoke("get");
 
-        Class<?> clazz = cm.finish();
+        Class<?> clazz;
+        if (!hidden) {
+            clazz = cm.finish();
+        } else {
+            clazz = cm.finishHidden().lookupClass();
+        }
 
         invokeAndVerify(clazz, "FileIO_1");
         invokeAndVerify(clazz, "FileIO_2");

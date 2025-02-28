@@ -18,6 +18,7 @@
 package org.cojen.tupl.ext;
 
 import java.lang.invoke.MethodHandles;
+import java.lang.invoke.MethodType;
 
 import java.lang.reflect.InvocationTargetException;
 
@@ -41,6 +42,11 @@ public class RestrictedTest {
 
     @Test
     public void accessChecks() throws Exception {
+        accessChecks(false);
+        accessChecks(true);
+    }
+
+    private void accessChecks(boolean hidden) throws Exception {
         // Test with a generated class in a module which doesn't have native access.
 
         MethodHandles.Lookup lookup = org.cojen.tupl.io.RestrictedTest.newModule
@@ -63,13 +69,27 @@ public class RestrictedTest {
         mm = cm.addMethod(null, "CipherCrypto_5").public_().static_();
         mm.new_(CipherCrypto.class, null, 16);
 
-        Class<?> clazz = cm.finish();
+        mm = cm.addMethod(null, "CipherCrypto_6").public_().static_();
+        MethodType mt = MethodType.methodType(void.class, int.class);
+        mm.var(MethodHandles.class).invoke("lookup")
+            .invoke("findConstructor", CipherCrypto.class, mt)
+            .invoke("invoke", 16);
+
+        mm.new_(CipherCrypto.class, null, 16);
+
+        Class<?> clazz;
+        if (!hidden) {
+            clazz = cm.finish();
+        } else {
+            clazz = cm.finishHidden().lookupClass();
+        }
 
         invokeAndVerify(clazz, "CipherCrypto_1");
         invokeAndVerify(clazz, "CipherCrypto_2");
         invokeAndVerify(clazz, "CipherCrypto_3");
         invokeAndVerify(clazz, "CipherCrypto_4");
         invokeAndVerify(clazz, "CipherCrypto_5");
+        invokeAndVerify(clazz, "CipherCrypto_6");
     }
 
     private static void invokeAndVerify(Class<?> clazz, String name) throws Exception {

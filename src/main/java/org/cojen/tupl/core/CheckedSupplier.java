@@ -40,14 +40,7 @@ public interface CheckedSupplier<T> extends Supplier<T> {
      * access enabled
      */
     static Object check(int skip) {
-        Class<?> caller = StackWalker.getInstance
-            (EnumSet.of(StackWalker.Option.DROP_METHOD_INFO,
-                        StackWalker.Option.RETAIN_CLASS_REFERENCE))
-            .walk(s -> s.map(StackWalker.StackFrame::getDeclaringClass).skip(skip).findFirst())
-            .orElse(null);
-
-        check(caller);
-
+        check(findCaller(skip));
         return null;
     }
 
@@ -57,12 +50,7 @@ public interface CheckedSupplier<T> extends Supplier<T> {
      */
     @Override
     default T get() {
-        Class<?> caller = StackWalker.getInstance
-            (EnumSet.of(StackWalker.Option.DROP_METHOD_INFO,
-                        StackWalker.Option.RETAIN_CLASS_REFERENCE)).getCallerClass();
-
-        check(caller);
-
+        check(findCaller(1));
         try {
             return doGet();
         } catch (Throwable e) {
@@ -71,6 +59,27 @@ public interface CheckedSupplier<T> extends Supplier<T> {
     }
 
     T doGet() throws Throwable;
+
+    /**
+     * Finds the caller for performing a permission check. All stack frames in the base module
+     * are skipped, because MethodHandles are defined in the base module and can be used to
+     * hide the caller activity. In particular, MethodHandles.Lookup.findConstructor allows an
+     * object to be constructed without the true caller from being exposed.
+     *
+     * @param skip typically at least 1
+     * @return null if unknown (permission check should fail)
+     */
+    private static Class<?> findCaller(int skip) {
+        // Note that 1 is added to the skip, to skip this method's frame.
+        return StackWalker.getInstance
+            (EnumSet.of(StackWalker.Option.DROP_METHOD_INFO,
+                        StackWalker.Option.RETAIN_CLASS_REFERENCE,
+                        StackWalker.Option.SHOW_HIDDEN_FRAMES))
+            .walk(s -> s.map(StackWalker.StackFrame::getDeclaringClass)
+                  .filter(c -> !"java.base".equals(c.getModule().getName()))
+                  .skip(skip + 1).findFirst())
+            .orElse(null);
+    }
 
     private static void check(Class<?> caller) {
         Module module = caller == null ? null : caller.getModule();
