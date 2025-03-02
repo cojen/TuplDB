@@ -1,6 +1,82 @@
 Changelog
 =========
 
+v1.9.0
+------
+
+* Bug fixes:
+  * Fix query sorting against columns which are ordered descending or null low.
+  * Add special checks for handling header corruption.
+  * Throw exceptions when deleting files, except when the delete doesn't need to succeed.
+  * Tests and (minor) fixes for opening the database multiple times.
+  * Fix View Query implementation of argumentCount.
+  * The generated join classes should only use the Nullable annotation when the joined column
+    is part of an outer join.
+  * Workaround an unknown bug in which the file lock close method throws an exception
+    indicating that the underlying channel has been closed, when in fact it should not have
+    been closed yet.
+  * Strip off IPv6 scoped address from replication group members.
+  * Prevent double rollback if local leadership is lost in the middle of writing a redo commit
+    operation.
+  * Fix a potential race condition which could delete a segment file after it's brought back
+    into service.
+  * Fix a bug when extending a term causes the contiguous range to extend when it shouldn't.
+  * Force a checkpoint when converting to/from replicated mode.
+  * Drop direct use of FileChannel because it closes down when the thread is interrupted.
+  * Sync should work even when opened in read-only mode.
+  * Fix sync race conditions when checkpoint is running.
+  * The deleteAll method should operate within a transaction scope.
+
+* Breaking changes:
+  * Switched to the Java FFM API, and direct page access mode is always enabled. This change is
+    really expected to be "breaking", but it's a major change. The FFM API is slightly slower
+    compared to using the Unsafe class directly, and so TuplDB will attempt to use one of the
+    Unsafe classes automatically by default, falling back to the FFM API when necessary.
+  * Swapped checksum and encryption order.
+  * Remove the PageArray.open method. It was only needed by a test.
+  * Rename JoinedPageArray to SpilloverPageArray.
+
+* New features:
+  * Support complex query expressions.
+  * Support derived queries.
+  * Define newScanner and newUpdater methods which accept an initial row instance.
+  * Define an optional Row interface.
+  * Add a method for processing all the set columns of a row.
+  * Allow Mapper to indicate if it performs any filtering.
+  * Add rowType and argumentCount methods to the Query interface.
+  * Notify when allocation using large pages didn't work.
+  * Attempt to restore a corrupt header from one of the copies.
+  * Define an explicit exception for checksum mismatches.
+  * Support accessing join columns via dotted path names.
+  * Add a Table method which returns the join identity.
+  * Add leader state and failover JMX operations.
+  * Remote API relies on auto-dispose features of Dirmi.
+  * Give replicator threads a useful name.
+  * Add a method to rebuild a database.
+  * Support large pages when using Windows.
+  * Make Transaction interface extend Closeable.
+  * Add a map method for performing column conversions.
+  * Allow enter() to be called on bogus transaction considering that exit() is already allowed.
+  * Allow non-deriving expressions in mapped, aggregate, and grouped table queries.
+  * Add the ability to concatenate tables together.
+  * Add a Table.hasPrimaryKey method.
+  * Add a Table.distinct view method.
+
+* Performance improvements:
+  * Don't hold the node latch the whole time when verifying large fragmented values.
+  * A temporary database doesn't need the checkpointer running.
+  * Don't issue a checkpoint when finishing an index build if automatic checkpointing isn't
+    enabled.
+  * Make remote decoding a bit more efficient by not allocating a temporary byte array.
+  * Process pending transactions batches, reducing the number of latch acquisitions.
+  * Fix a performance issue when leadership is lost during a checkpoint, caused by massive
+    amount of hash collisions.
+  * Speed up verification by using multiple threads.
+  * Reduce the amount of time the Parker spins (and yields) before fully parking. Overall
+    performance is just as good and CPU load is lower.
+  * Skip over large value gaps when verifying or copying them.
+
+
 v1.8.0 (2024-03-04)
 ------
 
