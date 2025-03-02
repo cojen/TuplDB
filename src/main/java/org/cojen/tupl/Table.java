@@ -171,7 +171,12 @@ public interface Table<R> extends Closeable {
     }
 
     /**
-     * @hidden
+     * Returns a new scanner for all rows of this table.
+     *
+     * @param row row instance for the scanner to use; pass null to create a new instance
+     * @param txn optional transaction for the scanner to use; pass null for auto-commit mode
+     * @return a new scanner positioned at the first row in the table
+     * @throws IllegalStateException if transaction belongs to another database instance
      */
     public Scanner<R> newScanner(R row, Transaction txn) throws IOException;
 
@@ -197,7 +202,13 @@ public interface Table<R> extends Closeable {
     }
 
     /**
-     * @hidden
+     * Returns a new scanner for a subset of rows from this table, as specified by the query
+     * expression.
+     *
+     * @param row row instance for the scanner to use; pass null to create a new instance
+     * @param txn optional transaction for the scanner to use; pass null for auto-commit mode
+     * @return a new scanner positioned at the first row in the table accepted by the query
+     * @throws IllegalStateException if transaction belongs to another database instance
      */
     public default Scanner<R> newScanner(R row, Transaction txn, String query, Object... args)
         throws IOException
@@ -230,7 +241,18 @@ public interface Table<R> extends Closeable {
     }
 
     /**
-     * @hidden
+     * Returns a new updater for all rows of this table.
+     *
+     * <p>When providing a transaction which acquires locks (or the transaction is null),
+     * upgradable locks are acquired for each row visited by the updater. If the transaction
+     * lock mode is non-repeatable, any lock acquisitions for rows which are stepped over are
+     * released when moving to the next row. Updates with a null transaction are auto-committed
+     * and become visible to other transactions as the updater moves along.
+     *
+     * @param row row instance for the updater to use; pass null to create a new instance
+     * @param txn optional transaction for the updater to use; pass null for auto-commit mode
+     * @return a new updater positioned at the first row in the table
+     * @throws IllegalStateException if transaction belongs to another database instance
      */
     public default Updater<R> newUpdater(R row, Transaction txn) throws IOException {
         throw new UnmodifiableViewException();
@@ -264,7 +286,19 @@ public interface Table<R> extends Closeable {
     }
 
     /**
-     * @hidden
+     * Returns a new updater for a subset of rows from this table, as specified by the query
+     * expression.
+     *
+     * <p>When providing a transaction which acquires locks (or the transaction is null),
+     * upgradable locks are acquired for each row visited by the updater. If the transaction
+     * lock mode is non-repeatable, any lock acquisitions for rows which are stepped over are
+     * released when moving to the next row. Updates with a null transaction are auto-committed
+     * and become visible to other transactions as the updater moves along.
+     *
+     * @param row row instance for the updater to use; pass null to create a new instance
+     * @param txn optional transaction for the updater to use; pass null for auto-commit mode
+     * @return a new updater positioned at the first row in the table accepted by the query
+     * @throws IllegalStateException if transaction belongs to another database instance
      */
     public default Updater<R> newUpdater(R row, Transaction txn, String query, Object... args)
         throws IOException
@@ -376,7 +410,13 @@ public interface Table<R> extends Closeable {
     }
 
     /**
-     * @hidden
+     * Returns true if a subset of rows from this table exists, as specified by the query
+     * expression.
+     *
+     * @param row row instance for the implementation to use; pass null to create a new
+     * instance if necessary
+     * @param txn optional transaction to use; pass null for auto-commit mode
+     * @throws IllegalStateException if transaction belongs to another database instance
      */
     public default boolean anyRows(R row, Transaction txn, String query, Object... args)
         throws IOException

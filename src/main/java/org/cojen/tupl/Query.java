@@ -67,7 +67,13 @@ public interface Query<R> {
     }
 
     /**
-     * @hidden
+     * Returns a new scanner for all the rows of this query.
+     *
+     * @param row row instance for the scanner to use; pass null to create a new instance
+     * @param txn optional transaction for the scanner to use; pass null for auto-commit mode
+     * @param args arguments required by this query
+     * @return a new scanner positioned at the first row in the table accepted by the query
+     * @throws IllegalStateException if transaction belongs to another database instance
      */
     Scanner<R> newScanner(R row, Transaction txn, Object... args) throws IOException;
 
@@ -98,7 +104,13 @@ public interface Query<R> {
     }
 
     /**
-     * @hidden
+     * Returns a new updater for all the rows of this query.
+     *
+     * @param row row instance for the updater to use; pass null to create a new instance
+     * @param txn optional transaction for the updater to use; pass null for auto-commit mode
+     * @param args arguments required by this query
+     * @return a new updater positioned at the first row in the table accepted by the query
+     * @throws IllegalStateException if transaction belongs to another database instance
      */
     default Updater<R> newUpdater(R row, Transaction txn, Object... args) throws IOException {
         throw new UnmodifiableViewException();
@@ -174,7 +186,14 @@ public interface Query<R> {
     }
 
     /**
-     * @hidden
+     * Returns true if this query produces any rows.
+     *
+     * @param row row instance for the implementation to use; pass null to create a new
+     * instance if necessary
+     * @param txn optional transaction to use; pass null for auto-commit mode
+     * @param args arguments required by this query
+     * @throws IllegalStateException if transaction belongs to another database instance
+     * @see Table#isEmpty
      */
     default boolean anyRows(R row, Transaction txn, Object... args) throws IOException {
         // TODO: Subclasses should provide an optimized implementation.
