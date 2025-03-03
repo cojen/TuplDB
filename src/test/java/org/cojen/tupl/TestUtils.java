@@ -66,6 +66,12 @@ public class TestUtils {
         });
     }
 
+    public static void assertNativeAccessEnabled() {
+        if (!Utils.isNativeAccessEnabled(TestUtils.class.getModule())) {
+            throw new AssertionError("Native access isn't enabled for module");
+        }
+    }
+
     public static void fastAssertArrayEquals(byte[] expected, byte[] actual) {
         if (!Arrays.equals(expected, actual)) {
             org.junit.Assert.assertArrayEquals(expected, actual);

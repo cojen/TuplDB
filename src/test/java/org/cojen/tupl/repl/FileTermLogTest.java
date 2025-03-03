@@ -55,6 +55,7 @@ public class FileTermLogTest {
 
     @Before
     public void setup() throws Exception {
+        TestUtils.assertNativeAccessEnabled();
         mBase = TestUtils.newTempBaseFile(getClass());
         mWorker = Worker.make(1, 15, TimeUnit.SECONDS, null);
         mCaches = new FileTermLog.Caches();

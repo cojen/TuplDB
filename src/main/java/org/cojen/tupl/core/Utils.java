@@ -22,6 +22,8 @@ import java.io.IOException;
 
 import java.lang.invoke.VarHandle;
 
+import java.lang.foreign.MemorySegment;
+
 import java.nio.charset.StandardCharsets;
 
 import java.util.Arrays;
@@ -54,6 +56,24 @@ public class Utils extends org.cojen.tupl.io.Utils {
 
     /** Comparator is used for special in-memory mappings. */
     public static final Comparator<byte[]> KEY_COMPARATOR = Arrays::compareUnsigned;
+
+    /**
+     * @param module must not be null
+     */
+    public static boolean isNativeAccessEnabled(Module module) {
+        if (module.isNativeAccessEnabled()) {
+            return true;
+        }
+
+        // Calling a restricted API can potentially enable access for the module, although
+        // this won't work in a future Java release.
+        try {
+            MemorySegment.NULL.reinterpret(0);
+        } catch (Throwable e) {
+        }
+
+        return module.isNativeAccessEnabled();
+    }
 
     public static long toNanos(long timeout, TimeUnit unit) {
         return timeout < 0 ? -1 :

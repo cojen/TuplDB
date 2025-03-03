@@ -33,6 +33,7 @@ import java.util.function.Supplier;
 
 import java.util.zip.Checksum;
 
+import org.cojen.tupl.DatabaseException;
 import org.cojen.tupl.DurabilityMode;
 import org.cojen.tupl.LockUpgradeRule;
 
@@ -418,6 +419,15 @@ public final class Launcher implements Cloneable {
     }
 
     public LocalDatabase open(boolean destroy, InputStream restore) throws IOException {
+        Module module = getClass().getModule();
+
+        if (!isNativeAccessEnabled(module)) {
+            String modName = module.getName();
+            throw new DatabaseException
+                ("Must enable native access using --enable-native-access=" + 
+                 (modName == null ? "ALL-UNNAMED" : modName));
+        }
+
         Launcher launcher = clone();
         boolean openedReplicator = launcher.openReplicator();
 

@@ -17,8 +17,6 @@
 
 package org.cojen.tupl.core;
 
-import java.lang.foreign.MemorySegment;
-
 import java.util.EnumSet;
 
 import java.util.function.Supplier;
@@ -83,16 +81,12 @@ public interface CheckedSupplier<T> extends Supplier<T> {
 
     private static void check(Class<?> caller) {
         Module module = caller == null ? null : caller.getModule();
-        if (module == null || !module.isNativeAccessEnabled()) {
+        if (module == null || !Utils.isNativeAccessEnabled(module)) {
+            String message = "Native access isn't enabled";
             if (module != null) {
-                // Calling a restricted API can potentilly enable access for the module,
-                // although this won't work in a future Java release.
-                MemorySegment.NULL.reinterpret(0);
-                if (module.isNativeAccessEnabled()) {
-                    return;
-                }
+                message = message + " for " + module;
             }
-            throw new IllegalCallerException("Native access isn't enabled for " + module);
+            throw new IllegalCallerException(message);
         }
     }
 }
