@@ -28,11 +28,11 @@ v1.9.0 (2025-03-04)
   * The deleteAll method should operate within a transaction scope.
 
 * Breaking changes:
-  * Depends on Java 22 and switched to the Java FFM API, and direct page access mode is always
-    enabled. This change isn't really expected to be "breaking", but it's a major change. The
-    FFM API is slightly slower compared to using the Unsafe class directly, and so TuplDB will
-    attempt to use one of the Unsafe classes automatically by default, falling back to the FFM
-    API when necessary.
+  * Depends on Java 22 and switched to the Java FFM API. Direct page access mode is now always
+    enabled, and disabling it has no effect. This change isn't really expected to be
+    "breaking", but it's a major change. The FFM API is slightly slower compared to using the
+    Unsafe class directly, and so TuplDB will attempt to use one of the Unsafe classes
+    automatically by default, falling back to the FFM API when necessary.
   * Swapped checksum and encryption order.
   * Remove the PageArray.open method. It was only needed by a test.
   * Rename JoinedPageArray to SpilloverPageArray.
