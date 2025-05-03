@@ -115,122 +115,122 @@ public interface Range {
      * Returns a fully open range instance.
      */
     public static Range open() {
-        class Open implements Range {
-            static final Open THE = new Open();
+        return Open.THE;
+    }
 
-            @Override
-            public boolean isOpenStart() {
-                return true;
-            }
+    static final class Open implements Range {
+        static final Open THE = new Open();
 
-            @Override
-            public boolean isOpenEnd() {
-                return true;
-            }
-
-            @Override
-            public boolean includesZero() {
-                return true;
-            }
-
-            @Override
-            public int start_int() {
-                return Integer.MIN_VALUE;
-            }
-
-            @Override
-            public long start_long() {
-                return Long.MIN_VALUE;
-            }
-
-            @Override
-            public double start_double() {
-                return Double.NEGATIVE_INFINITY;
-            }
-
-            @Override
-            public int end_int() {
-                return Integer.MAX_VALUE;
-            }
-
-            @Override
-            public long end_long() {
-                return Long.MAX_VALUE;
-            }
-
-            @Override
-            public double end_double() {
-                return Double.POSITIVE_INFINITY;
-            }
-
-            @Override
-            public String toString() {
-                return "..";
-            }
+        @Override
+        public boolean isOpenStart() {
+            return true;
         }
 
-        return Open.THE;
+        @Override
+        public boolean isOpenEnd() {
+            return true;
+        }
+
+        @Override
+        public boolean includesZero() {
+            return true;
+        }
+
+        @Override
+        public int start_int() {
+            return Integer.MIN_VALUE;
+        }
+
+        @Override
+        public long start_long() {
+            return Long.MIN_VALUE;
+        }
+
+        @Override
+        public double start_double() {
+            return Double.NEGATIVE_INFINITY;
+        }
+
+        @Override
+        public int end_int() {
+            return Integer.MAX_VALUE;
+        }
+
+        @Override
+        public long end_long() {
+            return Long.MAX_VALUE;
+        }
+
+        @Override
+        public double end_double() {
+            return Double.POSITIVE_INFINITY;
+        }
+
+        @Override
+        public String toString() {
+            return "..";
+        }
     }
 
     /**
      * Returns a range where the start and end are both zero.
      */
     public static Range zero() {
-        class Zero implements Range {
-            static final Zero THE = new Zero();
+        return Zero.THE;
+    }
 
-            @Override
-            public boolean isOpenStart() {
-                return false;
-            }
+    static final class Zero implements Range {
+        static final Zero THE = new Zero();
 
-            @Override
-            public boolean isOpenEnd() {
-                return false;
-            }
-
-            @Override
-            public boolean includesZero() {
-                return true;
-            }
-
-            @Override
-            public int start_int() {
-                return 0;
-            }
-
-            @Override
-            public long start_long() {
-                return 0;
-            }
-
-            @Override
-            public double start_double() {
-                return 0;
-            }
-
-            @Override
-            public int end_int() {
-                return 0;
-            }
-
-            @Override
-            public long end_long() {
-                return 0;
-            }
-
-            @Override
-            public double end_double() {
-                return 0;
-            }
-
-            @Override
-            public String toString() {
-                return "0..0";
-            }
+        @Override
+        public boolean isOpenStart() {
+            return false;
         }
 
-        return Zero.THE;
+        @Override
+        public boolean isOpenEnd() {
+            return false;
+        }
+
+        @Override
+        public boolean includesZero() {
+            return true;
+        }
+
+        @Override
+        public int start_int() {
+            return 0;
+        }
+
+        @Override
+        public long start_long() {
+            return 0;
+        }
+
+        @Override
+        public double start_double() {
+            return 0;
+        }
+
+        @Override
+        public int end_int() {
+            return 0;
+        }
+
+        @Override
+        public long end_long() {
+            return 0;
+        }
+
+        @Override
+        public double end_double() {
+            return 0;
+        }
+
+        @Override
+        public String toString() {
+            return "0..0";
+        }
     }
 
     /**
