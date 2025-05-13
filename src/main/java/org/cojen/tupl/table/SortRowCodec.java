@@ -72,6 +72,7 @@ public abstract class SortRowCodec<R> implements RowDecoder<R> {
         };
     }
 
+    @SuppressWarnings("unchecked")
     private static <R> SortRowCodec<R> make(Class<?> rowType,
                                             Set<String> projection, String orderBySpec)
     {

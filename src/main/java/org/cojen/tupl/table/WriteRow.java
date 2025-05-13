@@ -63,6 +63,7 @@ public abstract class WriteRow<R> {
      * Returns an object suitable for writing resolved row objects. Unset columns aren't
      * written, and dirty columns will be read back clean by the RowReader.
      */
+    @SuppressWarnings("unchecked")
     private static <R> WriteRow<R> makeWriteRow(Class<R> rowType) {
         Class<?> rowClass = RowMaker.find(rowType);
 

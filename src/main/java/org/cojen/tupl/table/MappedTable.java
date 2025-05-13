@@ -82,6 +82,7 @@ public abstract class MappedTable<S, T> extends AbstractMappedTable<S, T>
         };
     }
 
+    @SuppressWarnings("unchecked")
     public static <S, T> MappedTable<S, T> map(Table<S> source, Class<T> targetType,
                                                Mapper<S, T> mapper)
     {
@@ -337,6 +338,7 @@ public abstract class MappedTable<S, T> extends AbstractMappedTable<S, T>
     }
 
     @Override // MultiCache; see also WrappedTable
+    @SuppressWarnings("unchecked")
     protected final Object cacheNewValue(Type type, Object key, Object helper)
         throws IOException
     {
@@ -425,6 +427,7 @@ public abstract class MappedTable<S, T> extends AbstractMappedTable<S, T>
     /**
      * @param mode 1: pk, mode 2: full, mode 3: update
      */
+    @SuppressWarnings("unchecked")
     private InverseMapper<S, T> makeInverseMapper(int mode) {
         RowInfo sourceInfo = RowInfo.find(mSource.rowType());
         RowInfo targetInfo = RowInfo.find(rowType());
@@ -705,7 +708,7 @@ public abstract class MappedTable<S, T> extends AbstractMappedTable<S, T>
 
             var targetRowVar = mm.param(0);
             var txnVar = mm.param(1);
-            var argsVar = mm.param(2);
+            Variable argsVar = mm.param(2);
             var tableVar = mm.field("table");
 
             SortPlan sortPlan = splitter.mSortPlan;

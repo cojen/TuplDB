@@ -83,6 +83,7 @@ public abstract class AggregatedTable<S, T> extends WrappedTable<S, T>
         };
     }
 
+    @SuppressWarnings("unchecked")
     public static <S, T> AggregatedTable<S, T> aggregate(Table<S> source, Class<T> targetType,
                                                          Aggregator.Factory<S, T> factory)
     {
@@ -104,6 +105,7 @@ public abstract class AggregatedTable<S, T> extends WrappedTable<S, T>
      * chosen, the source is ordered by it, and an AggregatedTable is returned which uses
      * DistinctScanner instead of AggregatedScanner.
      */
+    @SuppressWarnings("unchecked")
     public static <R> Table<R> distinct(Table<R> source) throws IOException {
         if (source.hasPrimaryKey()) {
             return source;
@@ -384,6 +386,7 @@ public abstract class AggregatedTable<S, T> extends WrappedTable<S, T>
     }
 
     @Override // MultiCache; see also WrappedTable
+    @SuppressWarnings("unchecked")
     protected final Object cacheNewValue(Type type, Object key, Object helper)
         throws IOException
     {

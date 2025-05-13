@@ -63,6 +63,7 @@ public final class PlainPredicateMaker {
     /**
      * Returns a new predicate instance.
      */
+    @SuppressWarnings("unchecked")
     public static <R> Predicate<R> predicate(Class<R> rowType, String query, Object... args) {
         try {
             return (Predicate<R>) predicateHandle(rowType, query).invokeExact(args);
@@ -74,6 +75,7 @@ public final class PlainPredicateMaker {
     /**
      * Returns a new predicate instance.
      */
+    @SuppressWarnings("unchecked")
     public static <R> Predicate<R> predicate(Class<R> rowType, RowFilter filter, Object... args) {
         try {
             return (Predicate<R>) predicateHandle(rowType, filter).invokeExact(args);

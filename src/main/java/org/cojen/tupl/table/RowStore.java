@@ -1992,6 +1992,7 @@ public final class RowStore {
         return key;
     }
 
+    @SuppressWarnings("unchecked")
     <R> Transcoder findSortTranscoder(Class<?> rowType, RowEvaluator<R> evaluator,
                                       SecondaryInfo sortedInfo)
     {

@@ -82,6 +82,7 @@ public final class JoinPredicateMaker implements Visitor {
     /**
      * @see Table#predicate
      */
+    @SuppressWarnings("unchecked")
     public static <J> Predicate<J> newInstance(Class<J> joinType, String queryStr, Object... args) {
         try {
             return (Predicate<J>) find(joinType, queryStr, null).invoke(args);

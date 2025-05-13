@@ -83,6 +83,7 @@ public class IndexTriggerMaker<R> {
      * @param primaryIndexId primary index id
      * @param which which secondary index to make a backfill for 
      */
+    @SuppressWarnings("unchecked")
     IndexBackfill<R> makeBackfill(RowStore rs, long primaryIndexId,
                                   TableManager<R> manager, int which)
     {
@@ -306,7 +307,7 @@ public class IndexTriggerMaker<R> {
         boolean isPartial = variant == "insertP";
 
         var txnVar = mm.param(0);
-        var rowVar = mm.param(1);
+        Variable rowVar = mm.param(1);
         var keyVar = mm.param(2);
         var newValueVar = mm.param(3);
 
@@ -633,7 +634,7 @@ public class IndexTriggerMaker<R> {
         boolean isPartial = variant == "storeP";
 
         var txnVar = mm.param(0);
-        var rowVar = mm.param(1);
+        Variable rowVar = mm.param(1);
         var keyVar = mm.param(2);
         var oldValueVar = mm.param(3);
         var newValueVar = mm.param(4);

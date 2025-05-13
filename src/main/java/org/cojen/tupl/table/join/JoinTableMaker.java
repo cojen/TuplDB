@@ -145,6 +145,7 @@ public class JoinTableMaker {
         return join(joinType, spec);
     }
 
+    @SuppressWarnings("unchecked")
     static <J> JoinTable<J> join(Class<J> joinType, JoinSpec spec) {
         Class<?> clazz = findClass(joinType);
 

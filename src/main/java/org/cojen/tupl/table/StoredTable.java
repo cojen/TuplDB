@@ -938,6 +938,7 @@ public abstract class StoredTable<R> extends BaseTable<R> implements ScanControl
      * half refers to columns to mark clean
      * @see DecodePartialMaker
      */
+    @SuppressWarnings("unchecked")
     protected final MethodHandle decodePartialHandle(byte[] spec, int schemaVersion) {
         WeakCache<TupleKey, MethodHandle, byte[]> cache = mDecodePartialCache;
 
@@ -982,6 +983,7 @@ public abstract class StoredTable<R> extends BaseTable<R> implements ScanControl
      *
      * @param spec can be null if all columns are projected
      */
+    @SuppressWarnings("unchecked")
     protected final MethodHandle writeRowHandle(byte[] spec) {
         WeakCache<Object, MethodHandle, byte[]> cache = mWriteRowCache;
 
@@ -1667,6 +1669,7 @@ public abstract class StoredTable<R> extends BaseTable<R> implements ScanControl
      * @param trigger can pass null to remove the trigger
      * @throws UnsupportedOperationException if triggers aren't supported by this table
      */
+    @SuppressWarnings("unchecked")
     final void setTrigger(Trigger<R> trigger) {
         if (mTrigger == null) {
             throw new UnsupportedOperationException();
@@ -1692,6 +1695,7 @@ public abstract class StoredTable<R> extends BaseTable<R> implements ScanControl
      * acquired, check if the trigger is disabled. This method must be public because it's
      * sometimes accessed from generated code which isn't a subclass of StoredTable.
      */
+    @SuppressWarnings("unchecked")
     public final Trigger<R> trigger() {
         return (Trigger<R>) cTriggerHandle.getOpaque(this);
     }

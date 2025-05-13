@@ -377,6 +377,7 @@ public class FilteredScanMaker<R> {
         return newFactory(mUnfiltered, mFilterMaker.finish());
     }
 
+    @SuppressWarnings("unchecked")
     public static <R> ScanControllerFactory<R> newFactory(SingleScanController<R> unfiltered,
                                                           Class<?> filterClass)
     {
@@ -615,7 +616,7 @@ public class FilteredScanMaker<R> {
 
         var cursorVar = mm.param(0);
         var resultVar = mm.param(1);
-        var rowVar = mm.param(2);
+        Variable rowVar = mm.param(2);
         var predicateVar = mm.field("predicate");
 
         if (mSecondaryDescriptor == null && mTable.rowType() != Entry.class) {

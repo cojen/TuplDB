@@ -57,6 +57,7 @@ public class MapperMaker {
         return cCache.obtain(TupleKey.make.with(sourceType, targetType), null);
     }
 
+    @SuppressWarnings("unchecked")
     private static <S, T> Mapper<S, T> doMake(Class<S> sourceType, Class<T> targetType) {
         RowInfo sourceInfo = RowInfo.find(sourceType);
         RowInfo targetInfo = RowInfo.find(targetType);

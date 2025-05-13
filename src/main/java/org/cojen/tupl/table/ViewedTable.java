@@ -41,6 +41,7 @@ import java.util.function.Predicate;
 import org.cojen.maker.ClassMaker;
 import org.cojen.maker.Label;
 import org.cojen.maker.MethodMaker;
+import org.cojen.maker.Variable;
 
 import org.cojen.tupl.ColumnProcessor;
 import org.cojen.tupl.NoSuchRowException;
@@ -118,6 +119,7 @@ public abstract sealed class ViewedTable<R> extends WrappedTable<R, R> {
         return view(source, query, RowUtils.NO_ARGS);
     }
 
+    @SuppressWarnings("unchecked")
     public static <R> ViewedTable<R> view(Table<R> source, String query, Object... args)
         throws IOException
     {
@@ -525,6 +527,7 @@ public abstract sealed class ViewedTable<R> extends WrappedTable<R, R> {
      *
      * @param table used to obtain the QuerySpec
      */
+    @SuppressWarnings("unchecked")
     private static <R> Helper<R> makeHelper(Class<R> rowType, ViewedTable<R> table) {
         RowInfo info = RowInfo.find(rowType);
         Map<String, ColumnInfo> keyColumns = info.keyColumns;
@@ -578,7 +581,7 @@ public abstract sealed class ViewedTable<R> extends WrappedTable<R, R> {
             }
 
             mm = cm.addMethod(null, methodName, Object.class).protected_().override();
-            var rowVar = mm.param(0);
+            Variable rowVar = mm.param(0);
 
             if (projection != null) {
                 var disallowed = new HashMap<>(info.allColumns);
@@ -623,7 +626,7 @@ public abstract sealed class ViewedTable<R> extends WrappedTable<R, R> {
         {
             mm = cm.addMethod(Object[].class, "fusePkArguments",
                               Object[].class, Object.class).protected_().override();
-            var argsVar = mm.param(0);
+            Variable argsVar = mm.param(0);
             var rowVar = mm.param(1).cast(rowType);
 
             var maxArg = argsVar.alength();

@@ -86,6 +86,7 @@ public class WeakPool<B> {
         return new Entry<B>(this, obj);
     }
 
+    @SuppressWarnings("unchecked")
     private void release(Entry<B> entry) {
         // Enqueue the entry.
         var prev = (Entry<B>) cLastHandle.getAndSet(this, entry);

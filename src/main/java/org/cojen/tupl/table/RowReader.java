@@ -249,6 +249,7 @@ public class RowReader<R> implements Scanner<R> {
         R decodeRow(RowReader reader, R row) throws IOException;
     }
 
+    @SuppressWarnings("unchecked")
     private static <R> Decoder<R> makeDecoder(Class<R> rowType, byte[] header) {
         RowInfo rowInfo = RowInfo.find(rowType);
         Class<? extends R> rowClass = RowMaker.find(rowType);
