@@ -1005,8 +1005,8 @@ final class BTreeValue {
                             throw releaseExclusive(node, e);
                         }
                         p_copy(b, bOff, pageAddr, iLoc, iLen);
-                        bLen -= amt;
-                        bOff += amt;
+                        bLen -= iLen;
+                        bOff += iLen;
                         pos = fInlineLen;
                     }
                     // Move location to first page pointer.
