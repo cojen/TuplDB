@@ -319,32 +319,35 @@ class CursorFrame {
                 {
                     if (node != mNode || node.mLastCursorFrame != this) {
                         // Frame is now locked, but node has changed due to a concurrent
-                        // rebinding of this frame. Unlock and try again.
-                        mNextCousin = n;
+                        // rebinding of this frame.
                     } else {
                         // Update previous frame to be the new last frame.
-                        CursorFrame p;
-                        do {
-                            p = this.mPrevCousin;
-                        } while (p != null && (p.mNextCousin != this
-                                               || !cNextCousinHandle.compareAndSet(p, this, p)));
-                        // Update the last frame reference.
-                        node.mLastCursorFrame = p;
-                        return true;
+                        CursorFrame p = mPrevCousin;
+                        if (p == null || (p.mNextCousin == this
+                                          && cNextCousinHandle.compareAndSet(p, this, p)))
+                        {
+                            // Update the last frame reference.
+                            node.mLastCursorFrame = p;
+                            return true;
+                        }
                     }
+                    // Unlock and try again.
+                    mNextCousin = n;
                 }
             } else {
                 // Unbinding an interior or first frame.
                 if (n.mPrevCousin == this && cNextCousinHandle.compareAndSet(this, n, to)) {
                     // Update next reference chain to skip over the unbound frame.
-                    CursorFrame p;
-                    do {
-                        p = this.mPrevCousin;
-                    } while (p != null && (p.mNextCousin != this
-                                           || !cNextCousinHandle.compareAndSet(p, this, n)));
-                    // Update previous reference chain to skip over the unbound frame.
-                    n.mPrevCousin = p;
-                    return true;
+                    CursorFrame p = mPrevCousin;
+                    if (p == null || (p.mNextCousin == this
+                                      && cNextCousinHandle.compareAndSet(p, this, n)))
+                    {
+                        // Update previous reference chain to skip over the unbound frame.
+                        n.mPrevCousin = p;
+                        return true;
+                    }
+                    // Unlock and try again.
+                    mNextCousin = n;
                 }
             }
 
