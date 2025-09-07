@@ -223,8 +223,8 @@
           <parallel>classes</parallel>
           <perCoreThreadCount>false</perCoreThreadCount>
           <threadCount>6</threadCount>
-          <argLine>--enable-native-access=org.cojen.tupl -Xmx5g</argLine>
-          <!--argLine>${argLine} - -enable-native-access=org.cojen.tupl -Xmx5g</argLine>-->
+          <argLine>--enable-native-access=org.cojen.tupl,org.lz4.java -Xmx5g</argLine>
+          <!--argLine>${argLine} - -enable-native-access=org.cojen.tupl,org.lz4.java -Xmx5g</argLine>-->
         </configuration>
       </plugin>
 
