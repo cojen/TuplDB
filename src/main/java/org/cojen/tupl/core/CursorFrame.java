@@ -303,7 +303,7 @@ class CursorFrame {
      * @param to null to fully unbind and never use frame again, or REBIND_FRAME if rebinding
      */
     private boolean unbind(CursorFrame to) {
-        for (int trials = SPIN_LIMIT;;) {
+        start: for (int trials = SPIN_LIMIT;;) {
             CursorFrame n = this.mNextCousin;
 
             if (n == null) {
@@ -319,35 +319,48 @@ class CursorFrame {
                 {
                     if (node != mNode || node.mLastCursorFrame != this) {
                         // Frame is now locked, but node has changed due to a concurrent
-                        // rebinding of this frame.
+                        // rebinding of this frame. Unlock and try again.
+                        mNextCousin = n;
                     } else {
                         // Update previous frame to be the new last frame.
-                        CursorFrame p = mPrevCousin;
-                        if (p == null || (p.mNextCousin == this
-                                          && cNextCousinHandle.compareAndSet(p, this, p)))
-                        {
-                            // Update the last frame reference.
-                            node.mLastCursorFrame = p;
-                            return true;
+                        while (true) {
+                            CursorFrame p = mPrevCousin;
+                            if (p == null || (p.mNextCousin == this
+                                              && cNextCousinHandle.compareAndSet(p, this, p)))
+                            {
+                                // Update the last frame reference.
+                                node.mLastCursorFrame = p;
+                                return true;
+                            }
+                            Thread.onSpinWait();
+                            if (--trials < 0) {
+                                // Unlock and try again.
+                                mNextCousin = n;
+                                continue start;
+                            }
                         }
                     }
-                    // Unlock and try again.
-                    mNextCousin = n;
                 }
             } else {
                 // Unbinding an interior or first frame.
                 if (n.mPrevCousin == this && cNextCousinHandle.compareAndSet(this, n, to)) {
                     // Update next reference chain to skip over the unbound frame.
-                    CursorFrame p = mPrevCousin;
-                    if (p == null || (p.mNextCousin == this
-                                      && cNextCousinHandle.compareAndSet(p, this, n)))
-                    {
-                        // Update previous reference chain to skip over the unbound frame.
-                        n.mPrevCousin = p;
-                        return true;
+                    while (true) {
+                        CursorFrame p = mPrevCousin;
+                        if (p == null || (p.mNextCousin == this
+                                          && cNextCousinHandle.compareAndSet(p, this, n)))
+                        {
+                            // Update previous reference chain to skip over the unbound frame.
+                            n.mPrevCousin = p;
+                            return true;
+                        }
+                        Thread.onSpinWait();
+                        if (--trials < 0) {
+                            // Unlock and try again.
+                            mNextCousin = n;
+                            continue start;
+                        }
                     }
-                    // Unlock and try again.
-                    mNextCousin = n;
                 }
             }
 
