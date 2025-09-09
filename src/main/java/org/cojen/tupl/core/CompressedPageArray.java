@@ -156,6 +156,7 @@ final class CompressedPageArray extends PageArray implements Supplier<PageCompre
                 PageCompressor compressor = entry.get();
                 int len = compressor.compress(srcAddr, offset, pageSize());
                 c.valueWrite(0, compressor.compressedBytes(), 0, len);
+                c.valueLength(len);
             } finally {
                 entry.release();
             }
