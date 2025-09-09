@@ -182,11 +182,11 @@
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-javadoc-plugin</artifactId>
-        <version>3.11.2</version>
+        <version>3.5.0</version>
         <configuration>
           <detectJavaApiLink>true</detectJavaApiLink>
           <links>
-            <link>https://docs.oracle.com/en/java/javase/23/docs/api</link>
+            <link>https://docs.oracle.com/en/java/javase/24/docs/api</link>
           </links>
           <author>false</author>
           <nodeprecatedlist>true</nodeprecatedlist>
