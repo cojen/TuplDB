@@ -54,6 +54,24 @@ public interface PageCompressor extends Closeable {
     }
 
     /**
+     * Returns a supplier of new Zstandard compressors. The native zstd library isn't provided
+     * by this class, and so it must be installed separately.
+     */
+    public static Supplier<PageCompressor> zstd() {
+        return zstd(0); // 0 selects the default level
+    }
+
+    /**
+     * Returns a supplier of new Zstandard compressors. The native zstd library isn't provided
+     * by this class, and so it must be installed separately.
+     *
+     * @param level compression level [1..22]
+     */
+     public static Supplier<PageCompressor> zstd(int level) {
+        return (CheckedSupplier<PageCompressor>) () -> new ZstdCompressor(level);
+    }
+
+    /**
      * Compress to a byte array from a raw memory address.
      *
      * @return the compressed size
