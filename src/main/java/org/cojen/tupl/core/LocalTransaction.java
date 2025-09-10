@@ -1225,7 +1225,7 @@ public final class LocalTransaction extends Locker implements CoreTransaction {
 
         UndoLog oldUndo = mUndoLog;
         var newUndo = new UndoLog(mDatabase, mTxnId);
-        newUndo.pushLock(UndoLog.OP_LOCK_EXCLUSIVE, Tree.PREPARED_TXNS_ID, prepareKey);
+        newUndo.pushLock(UndoLog.OP_LOCK_EXCLUSIVE, BTree.PREPARED_TXNS_ID, prepareKey);
         newUndo.pushPrepared(handlerId, message, true);
 
         CommitLock.Shared shared = mDatabase.commitLock().acquireShared();

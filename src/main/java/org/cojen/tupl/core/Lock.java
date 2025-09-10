@@ -99,7 +99,7 @@ class Lock {
     }
 
     final boolean isPrepareLock() {
-        return mIndexId == Tree.PREPARED_TXNS_ID;
+        return mIndexId == BTree.PREPARED_TXNS_ID;
     }
 
     /**

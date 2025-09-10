@@ -249,8 +249,8 @@ public final class LocalDatabase implements Database {
     private final Latch mOpenTreesLatch;
     // Maps tree names to open trees.
     // Must be a concurrent map because we rely on concurrent iteration.
-    private final Map<byte[], TreeRef> mOpenTrees;
-    private final LHashTable.Obj<TreeRef> mOpenTreesById;
+    private final Map<byte[], BTreeRef> mOpenTrees;
+    private final LHashTable.Obj<BTreeRef> mOpenTreesById;
     private final ReferenceQueue<Object> mOpenTreesRefQueue;
 
     // Map of all loaded nodes.
@@ -656,9 +656,9 @@ public final class LocalDatabase implements Database {
 
             // Cannot call newBTreeInstance because mRedoWriter isn't set yet.
             if (launcher.mRepl != null) {
-                mRegistry = new BTree.Repl(this, Tree.REGISTRY_ID, null, rootNode);
+                mRegistry = new BTree.Repl(this, BTree.REGISTRY_ID, null, rootNode);
             } else {
-                mRegistry = new BTree(this, Tree.REGISTRY_ID, null, rootNode);
+                mRegistry = new BTree(this, BTree.REGISTRY_ID, null, rootNode);
             }
 
             mOpenTreesLatch = new Latch();
@@ -693,7 +693,7 @@ public final class LocalDatabase implements Database {
             if (launcher.mBasicMode) {
                 mRegistryKeyMap = null;
             } else {
-                mRegistryKeyMap = openInternalTree(Tree.REGISTRY_KEY_MAP_ID, true, launcher);
+                mRegistryKeyMap = openInternalTree(BTree.REGISTRY_KEY_MAP_ID, true, launcher);
                 if (debugListener != null) {
                     Cursor c = indexRegistryById().newCursor(Transaction.BOGUS);
                     try {
@@ -711,7 +711,7 @@ public final class LocalDatabase implements Database {
 
             BTree cursorRegistry = null;
             if (!launcher.mBasicMode) {
-                cursorRegistry = openInternalTree(Tree.CURSOR_REGISTRY_ID, false, launcher);
+                cursorRegistry = openInternalTree(BTree.CURSOR_REGISTRY_ID, false, launcher);
             }
 
             // Limit maximum non-fragmented entry size to 0.75 of usable node size.
@@ -1246,7 +1246,7 @@ public final class LocalDatabase implements Database {
     }
 
     private Index indexById(Transaction txn, long id) throws IOException {
-        if (Tree.isInternal(id)) {
+        if (BTree.isInternal(id)) {
             throw new IllegalArgumentException("Invalid id: " + id);
         }
 
@@ -1316,10 +1316,10 @@ public final class LocalDatabase implements Database {
     /**
      * @return null if index is not open
      */
-    private Tree lookupIndexById(long id) {
+    private BTree lookupIndexById(long id) {
         mOpenTreesLatch.acquireShared();
         try {
-            LHashTable.ObjEntry<TreeRef> entry = mOpenTreesById.get(id);
+            LHashTable.ObjEntry<BTreeRef> entry = mOpenTreesById.get(id);
             return entry == null ? null : entry.value.get();
         } finally {
             mOpenTreesLatch.releaseShared();
@@ -1337,20 +1337,20 @@ public final class LocalDatabase implements Database {
      * Allows access to internal indexes which can use the redo log.
      */
     Index anyIndexById(Transaction txn, long id) throws IOException {
-        return Tree.isInternal(id) ? internalIndex(id) : indexById(txn, id);
+        return BTree.isInternal(id) ? internalIndex(id) : indexById(txn, id);
     }
 
     /**
      * @param id must be an internal index
      */
     private Index internalIndex(long id) throws IOException {
-        if (id == Tree.REGISTRY_KEY_MAP_ID) {
+        if (id == BTree.REGISTRY_KEY_MAP_ID) {
             return mRegistryKeyMap;
-        } else if (id == Tree.FRAGMENTED_TRASH_ID) {
+        } else if (id == BTree.FRAGMENTED_TRASH_ID) {
             return fragmentedTrash();
-        } else if (id == Tree.PREPARED_TXNS_ID) {
+        } else if (id == BTree.PREPARED_TXNS_ID) {
             return preparedTxns();
-        } else if (id == Tree.SCHEMATA_ID) {
+        } else if (id == BTree.SCHEMATA_ID) {
             return rowStore().schemata();
         } else {
             throw new CorruptDatabaseException("Internal index referenced by redo log: " + id);
@@ -1375,16 +1375,8 @@ public final class LocalDatabase implements Database {
         // Database instance makes this operation a bit more of a hassle to use, which is
         // desirable. Rename is not expected to be a common operation.
 
-        accessTree(index).rename(newName, redoTxnId);
-    }
+        final BTree tree = accessTree(index);
 
-    /**
-     * @param newName not cloned
-     * @param redoTxnId non-zero if rename is performed by recovery
-     */
-    void renameBTree(final BTree tree, final byte[] newName, final long redoTxnId)
-        throws IOException
-    {
         final byte[] idKey, trashIdKey;
         final byte[] oldName, oldNameKey;
         final byte[] newNameKey;
@@ -1396,7 +1388,7 @@ public final class LocalDatabase implements Database {
         try {
             checkClosedIndexException(root.mPageAddr);
 
-            if (Tree.isInternal(tree.mId)) {
+            if (BTree.isInternal(tree.mId)) {
                 throw new IllegalStateException("Cannot rename an internal index");
             }
 
@@ -1529,10 +1521,10 @@ public final class LocalDatabase implements Database {
         }
     }
 
-    private Tree accessTree(Index index) {
+    private BTree accessTree(Index index) {
         try {
-            Tree tree;
-            if ((tree = ((Tree) index)).isMemberOf(this)) {
+            BTree tree;
+            if ((tree = ((BTree) index)).mDatabase == this) {
                 return tree;
             }
         } catch (ClassCastException e) {
@@ -1661,7 +1653,7 @@ public final class LocalDatabase implements Database {
     void quickDeleteTemporaryTree(BTree tree) throws IOException {
         mOpenTreesLatch.acquireExclusive();
         try {
-            TreeRef ref = mOpenTreesById.removeValue(tree.mId);
+            BTreeRef ref = mOpenTreesById.removeValue(tree.mId);
             if (ref == null || ref.get() != tree) {
                 // BTree is likely being closed by a concurrent database close.
                 return;
@@ -1953,7 +1945,7 @@ public final class LocalDatabase implements Database {
 
                 try {
                     var tree = new BTree.Temp(this, treeId, treeIdBytes, root);
-                    var treeRef = new TreeRef(tree, tree, mOpenTreesRefQueue);
+                    var treeRef = new BTreeRef(tree, mOpenTreesRefQueue);
 
                     mOpenTreesLatch.acquireExclusive();
                     try {
@@ -2367,7 +2359,7 @@ public final class LocalDatabase implements Database {
      *
      * @param workerCount maximum parallelism; must be at least 1
      */
-    Tree parallelCopy(Index source, int workerCount) throws IOException {
+    BTree parallelCopy(Index source, int workerCount) throws IOException {
         var copier = new BTreeCopier(this, (BTree) source, Runner.current(), workerCount);
         copier.start();
         return copier.result();
@@ -2473,10 +2465,10 @@ public final class LocalDatabase implements Database {
 
         dout.writeLong(PRIMER_MAGIC_NUMBER);
 
-        for (TreeRef treeRef : mOpenTrees.values()) {
-            Tree tree = treeRef.get();
+        for (BTreeRef treeRef : mOpenTrees.values()) {
+            BTree tree = treeRef.get();
             // TODO: Doesn't work for anonymous indexes. The written name is empty and useless.
-            if (tree != null && !Tree.isInternal(tree.id())) {
+            if (tree != null && !BTree.isInternal(tree.id())) {
                 tree.writeCachePrimer(dout);
             }
         }
@@ -2513,7 +2505,7 @@ public final class LocalDatabase implements Database {
                 }
                 var name = new byte[len];
                 din.readFully(name);
-                Tree tree = openTree(name, false);
+                BTree tree = openTree(name, false);
                 if (tree != null) {
                     tree.applyCachePrimer(din);
                 } else {
@@ -2574,8 +2566,8 @@ public final class LocalDatabase implements Database {
             long cursorCount = 0;
             int openTreesCount = 0;
 
-            for (TreeRef treeRef : mOpenTrees.values()) {
-                Tree tree = treeRef.get();
+            for (BTreeRef treeRef : mOpenTrees.values()) {
+                BTree tree = treeRef.get();
                 if (tree != null) {
                     openTreesCount++;
                     cursorCount += tree.countCursors(strict);
@@ -2878,7 +2870,7 @@ public final class LocalDatabase implements Database {
             final CompactionObserver fobserver = observer;
 
             completed = scanAllIndexes(ix -> {
-                var tree = (Tree) ix;
+                var tree = (BTree) ix;
                 return tree.compactTree(tree.observableView(), highestNodeId, fobserver);
             });
 
@@ -2920,7 +2912,7 @@ public final class LocalDatabase implements Database {
         var vo = new VerifyObserver(observer);
 
         scanAllIndexes(ix -> {
-            var tree = (Tree) ix;
+            var tree = (BTree) ix;
             Index view = tree.observableView();
             return tree.verifyTree(view, vo, numThreads) && vo.indexComplete(view, true, null);
         });
@@ -3019,7 +3011,7 @@ public final class LocalDatabase implements Database {
                 long id = decodeLongBE(all.value(), 0);
 
                 Index index = indexById(id);
-                if (index instanceof Tree tree && !visitor.apply(tree)) {
+                if (index instanceof BTree tree && !visitor.apply(tree)) {
                     return false;
                 }
             }
@@ -3134,7 +3126,7 @@ public final class LocalDatabase implements Database {
                 // Clear out open trees with commit lock held, to prevent any trees from being
                 // opened again. Any attempt to open a tree must acquire the commit lock and
                 // then check if the database is closed.
-                final ArrayList<Tree> trees;
+                final ArrayList<BTree> trees;
 
                 if (lock == null) {
                     mOpenTreesLatch.acquireExclusive();
@@ -3154,7 +3146,7 @@ public final class LocalDatabase implements Database {
                     trees = new ArrayList<>(mOpenTreesById.size());
 
                     mOpenTreesById.traverse(entry -> {
-                        Tree tree = entry.value.get();
+                        BTree tree = entry.value.get();
                         if (tree != null) {
                             trees.add(tree);
                             entry.value.clear();
@@ -3177,7 +3169,7 @@ public final class LocalDatabase implements Database {
 
                     rs = mRowStore;
                     if (rs != null) {
-                        trees.add((Tree) mRowStore.schemata());
+                        trees.add((BTree) mRowStore.schemata());
                         mRowStore = null;
                     }
                 } finally {
@@ -3187,7 +3179,7 @@ public final class LocalDatabase implements Database {
                     }
                 }
 
-                for (Tree tree : trees) {
+                for (BTree tree : trees) {
                     if (tree != null) {
                         tree.forceClose();
                     }
@@ -3350,10 +3342,10 @@ public final class LocalDatabase implements Database {
     void treeClosed(BTree tree) {
         mOpenTreesLatch.acquireExclusive();
         try {
-            TreeRef ref = mOpenTreesById.getValue(tree.mId);
+            BTreeRef ref = mOpenTreesById.getValue(tree.mId);
             if (ref != null) {
-                Tree actual = ref.get();
-                if (actual != null && actual.isUserOf(tree)) {
+                BTree actual = ref.get();
+                if (actual != null && actual == tree) {
                     ref.clear();
                     if (tree.mName != null) {
                         mOpenTrees.remove(tree.mName);
@@ -3467,7 +3459,7 @@ public final class LocalDatabase implements Database {
         try {
             mOpenTreesLatch.acquireExclusive();
             try {
-                TreeRef ref = mOpenTreesById.removeValue(tree.mId);
+                BTreeRef ref = mOpenTreesById.removeValue(tree.mId);
                 if (ref != null && ref.get() == tree) {
                     ref.clear();
                 }
@@ -3496,7 +3488,7 @@ public final class LocalDatabase implements Database {
         mOpenTreesLatch.acquireExclusive();
         try {
             if ((cursorRegistry = mCursorRegistry) == null) {
-                cursorRegistry = openInternalTree(Tree.CURSOR_REGISTRY_ID, create);
+                cursorRegistry = openInternalTree(BTree.CURSOR_REGISTRY_ID, create);
                 VarHandle.storeStoreFence();
                 mCursorRegistry = cursorRegistry;
             }
@@ -3562,7 +3554,7 @@ public final class LocalDatabase implements Database {
         mOpenTreesLatch.acquireExclusive();
         try {
             if ((preparedTxns = mPreparedTxns) == null) {
-                preparedTxns = openInternalTree(Tree.PREPARED_TXNS_ID, create);
+                preparedTxns = openInternalTree(BTree.PREPARED_TXNS_ID, create);
                 VarHandle.storeStoreFence();
                 mPreparedTxns = preparedTxns;
             }
@@ -3602,7 +3594,7 @@ public final class LocalDatabase implements Database {
         mOpenTreesLatch.acquireExclusive();
         try {
             if ((rs = mRowStore) == null) {
-                Index schemata = openInternalTree(Tree.SCHEMATA_ID, create);
+                Index schemata = openInternalTree(BTree.SCHEMATA_ID, create);
                 if (schemata != null) {
                     rs = new RowStore(this, schemata);
                     VarHandle.storeStoreFence();
@@ -3783,7 +3775,7 @@ public final class LocalDatabase implements Database {
     /**
      * @param name required (cannot be null)
      */
-    private Tree openTree(byte[] name, boolean create) throws IOException {
+    private BTree openTree(byte[] name, boolean create) throws IOException {
         return openTree(null, null, name, create);
     }
 
@@ -3792,18 +3784,18 @@ public final class LocalDatabase implements Database {
      * @param treeIdBytes optional
      * @param name required, unless anonymous and treeIdBytes is provided
      */
-    private Tree openTree(Transaction findTxn, byte[] treeIdBytes, byte[] name, boolean create)
+    private BTree openTree(Transaction findTxn, byte[] treeIdBytes, byte[] name, boolean create)
         throws IOException
     {
         find: if (name != null) {
-            TreeRef treeRef;
+            BTreeRef treeRef;
             mOpenTreesLatch.acquireShared();
             try {
                 treeRef = mOpenTrees.get(name);
                 if (treeRef == null) {
                     break find;
                 }
-                Tree tree = treeRef.get();
+                BTree tree = treeRef.get();
                 if (tree != null) {
                     return tree;
                 }
@@ -3833,7 +3825,7 @@ public final class LocalDatabase implements Database {
      * @param treeIdBytes optional
      * @param name required, unless anonymous and treeIdBytes is provided
      */
-    private Tree doOpenTree(Transaction findTxn, byte[] treeIdBytes, byte[] name, boolean create)
+    private BTree doOpenTree(Transaction findTxn, byte[] treeIdBytes, byte[] name, boolean create)
         throws IOException
     {
         checkClosed();
@@ -3979,7 +3971,7 @@ public final class LocalDatabase implements Database {
             // Pass the transaction to acquire the lock.
             byte[] rootIdBytes = mRegistry.load(txn, treeIdBytes);
 
-            Tree tree = lookupIndexById(treeId);
+            BTree tree = lookupIndexById(treeId);
             if (tree != null) {
                 // Another thread got the lock first and loaded the tree.
                 return tree;
@@ -3988,13 +3980,10 @@ public final class LocalDatabase implements Database {
             long rootId = (rootIdBytes == null || rootIdBytes.length == 0) ? 0
                 : decodeLongLE(rootIdBytes, 0);
 
-            Node root = loadTreeRoot(rootId);
-
-            BTree btree = newBTreeInstance(treeId, treeIdBytes, name, root);
-            tree = btree;
+            tree = newBTreeInstance(treeId, treeIdBytes, name, loadTreeRoot(rootId));
 
             try {
-                var treeRef = new TreeRef(tree, btree, mOpenTreesRefQueue);
+                var treeRef = new BTreeRef(tree, mOpenTreesRefQueue);
 
                 mOpenTreesLatch.acquireExclusive();
                 try {
@@ -4013,7 +4002,7 @@ public final class LocalDatabase implements Database {
                     mOpenTreesLatch.releaseExclusive();
                 }
             } catch (Throwable e) {
-                btree.close();
+                tree.close();
                 throw e;
             }
 
@@ -4094,7 +4083,7 @@ public final class LocalDatabase implements Database {
             long treeId;
             do {
                 treeId = scramble((nextTreeId++) ^ treeIdMask);
-            } while (Tree.isInternal(treeId));
+            } while (BTree.isInternal(treeId));
 
             encodeLongLE(nextTreeIdBytes, 0, nextTreeId);
 
@@ -4121,7 +4110,7 @@ public final class LocalDatabase implements Database {
                 if (ref == null) {
                     break;
                 }
-                if (ref instanceof TreeRef treeRef) {
+                if (ref instanceof BTreeRef treeRef) {
                     cleanupUnreferencedTree(treeRef);
                 }
             }
@@ -4132,13 +4121,13 @@ public final class LocalDatabase implements Database {
         }
     }
 
-    private void cleanupUnreferencedTree(TreeRef ref) throws IOException {
+    private void cleanupUnreferencedTree(BTreeRef ref) throws IOException {
         Node root = ref.mRoot;
         root.acquireShared();
         try {
             mOpenTreesLatch.acquireExclusive();
             try {
-                LHashTable.ObjEntry<TreeRef> entry = mOpenTreesById.get(ref.mId);
+                LHashTable.ObjEntry<BTreeRef> entry = mOpenTreesById.get(ref.mId);
                 if (entry == null || entry.value != ref) {
                     return;
                 }
@@ -6102,7 +6091,7 @@ public final class LocalDatabase implements Database {
         mOpenTreesLatch.acquireExclusive();
         try {
             if ((trash = mFragmentedTrash) == null) {
-                trash = openInternalTree(Tree.FRAGMENTED_TRASH_ID, create);
+                trash = openInternalTree(BTree.FRAGMENTED_TRASH_ID, create);
                 VarHandle.storeStoreFence();
                 mFragmentedTrash = trash;
             }
@@ -6130,7 +6119,7 @@ public final class LocalDatabase implements Database {
         }
 
         try {
-            trash = openInternalTree(Tree.FRAGMENTED_TRASH_ID, false);
+            trash = openInternalTree(BTree.FRAGMENTED_TRASH_ID, false);
             if (trash == null) {
                 mOpenTreesLatch.releaseExclusive();
                 return;
@@ -6184,7 +6173,7 @@ public final class LocalDatabase implements Database {
      * Atomically swaps the root nodes of two trees.
      */
     public void rootSwap(Index a, Index b) throws IOException {
-        ((Tree) a).rootSwap((Tree) b);
+        accessTree(a).rootSwap(accessTree(b));
     }
 
     long databaseId() {
@@ -6207,11 +6196,11 @@ public final class LocalDatabase implements Database {
         return mPageDb.checksumFactory();
     }
 
-    Tree registry() {
+    BTree registry() {
         return mRegistry;
     }
 
-    Tree registryKeyMap() {
+    BTree registryKeyMap() {
         return mRegistryKeyMap;
     }
 

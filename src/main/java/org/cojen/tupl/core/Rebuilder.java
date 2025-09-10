@@ -100,7 +100,7 @@ public final class Rebuilder {
 
         mOldDb.scanAllIndexes(oldIndex -> {
             long id = oldIndex.id();
-            if (Tree.REGISTRY_ID <= id && id <= Tree.CURSOR_REGISTRY_ID) {
+            if (BTree.REGISTRY_ID <= id && id <= BTree.CURSOR_REGISTRY_ID) {
                 // Don't copy any kind of registry, because the anyIndexById method rejects it.
                 // There no reason to copy them again, or they don't need to be copied anyhow.
                 return true;
@@ -114,7 +114,7 @@ public final class Rebuilder {
 
             copy(oldIndex, newIndex);
 
-            if (!Tree.isInternal(id)) {
+            if (!BTree.isInternal(id)) {
                 oldIndex.close();
                 newIndex.close();
             }

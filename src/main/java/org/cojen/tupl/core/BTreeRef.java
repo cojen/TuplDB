@@ -21,23 +21,22 @@ import java.lang.ref.ReferenceQueue;
 import java.lang.ref.WeakReference;
 
 /**
- * Allows open Trees to be unloaded when no longer in use.
+ * Allows open BTrees to be unloaded when no longer in use.
  *
  * @author Brian S O'Neill
  */
-final class TreeRef extends WeakReference<Tree> {
+final class BTreeRef extends WeakReference<BTree> {
     final long mId;
     final byte[] mName;
     final Node mRoot;
 
     /**
      * @param tree referenced tree
-     * @param btree access to internal state; can be same as tree param
      */
-    TreeRef(Tree tree, BTree btree, ReferenceQueue<Object> queue) {
+    BTreeRef(BTree tree, ReferenceQueue<Object> queue) {
         super(tree, queue);
-        mId = btree.mId;
-        mName = btree.mName;
-        mRoot = btree.mRoot;
+        mId = tree.mId;
+        mName = tree.mName;
+        mRoot = tree.mRoot;
     }
 }

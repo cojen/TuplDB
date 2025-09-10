@@ -41,11 +41,13 @@ import org.cojen.tupl.diag.CompactionObserver;
 import org.cojen.tupl.diag.EventListener;
 import org.cojen.tupl.diag.EventType;
 import org.cojen.tupl.diag.IndexStats;
+import org.cojen.tupl.diag.VerificationObserver;
 
 import org.cojen.tupl.util.Runner;
 
 import org.cojen.tupl.views.BoundedView;
 import org.cojen.tupl.views.UnmodifiableView;
+import org.cojen.tupl.views.ViewUtils;
 
 import static org.cojen.tupl.core.PageOps.*;
 import static org.cojen.tupl.core.Utils.*;
@@ -57,7 +59,21 @@ import static java.util.Arrays.compareUnsigned;
  *
  * @author Brian S O'Neill
  */
-class BTree extends Tree implements View, Index {
+sealed class BTree implements Index {
+    // Reserved internal index ids. When defining a new internal index, be sure to update the
+    // LocalDatabase.scanAllIndexes and stats methods to consider the new index.
+    static final int
+        REGISTRY_ID = 0,
+        REGISTRY_KEY_MAP_ID = 1,
+        CURSOR_REGISTRY_ID = 2,
+        FRAGMENTED_TRASH_ID = 3,
+        PREPARED_TXNS_ID = 4,
+        SCHEMATA_ID = 5;
+
+    static boolean isInternal(long id) {
+        return (id & ~0xff) == 0;
+    }
+
     final LocalDatabase mDatabase;
     final LockManager mLockManager;
 
@@ -114,12 +130,17 @@ class BTree extends Tree implements View, Index {
     }
 
     @Override
+    public final String toString() {
+        return ViewUtils.toString(this);
+    }
+
+    @Override
     public final Ordering ordering() {
         return Ordering.ASCENDING;
     }
 
     @Override
-    public Comparator<byte[]> comparator() {
+    public final Comparator<byte[]> comparator() {
         return KEY_COMPARATOR;
     }
 
@@ -803,12 +824,18 @@ class BTree extends Tree implements View, Index {
         }
     }
 
-    @Override
+    /**
+     * Returns a view which can be passed to an observer. Internal trees are returned as
+     * unmodifiable.
+     */
     final Index observableView() {
         return isInternal(mId) ? new UnmodifiableView(this) : this;
     }
 
-    @Override
+    /**
+     * @param view view to pass to observer
+     * @return false if compaction should stop
+     */
     final boolean compactTree(Index view, long highestNodeId, CompactionObserver observer)
         throws IOException
     {
@@ -850,6 +877,19 @@ class BTree extends Tree implements View, Index {
     }
 
     @Override
+    public final boolean verify(VerificationObserver observer, int numThreads) throws IOException {
+        var vo = new VerifyObserver(observer);
+        Index view = observableView();
+        if (verifyTree(view, vo, numThreads)) {
+            vo.indexComplete(view, true, null);
+        }
+        return vo.passed();
+    }
+
+    /**
+     * @param view view to pass to observer
+     * @return false if should stop
+     */
     final boolean verifyTree(Index view, VerifyObserver observer, int numThreads)
         throws IOException
     {
@@ -875,8 +915,12 @@ class BTree extends Tree implements View, Index {
         }
     }
 
-    @Override
-    long countCursors(boolean strict) {
+    /**
+     * Count the number of cursors bound to the tree.
+     *
+     * @param strict pass false to fail-fast when trying to latch nodes, preventing deadlocks
+     */
+    final long countCursors(boolean strict) {
         return mRoot.countCursors(strict);
     }
 
@@ -904,7 +948,6 @@ class BTree extends Tree implements View, Index {
     /**
      * Close any kind of index, even an internal one.
      */
-    @Override
     final void forceClose() {
         close(false, false, true);
     }
@@ -1011,24 +1054,13 @@ class BTree extends Tree implements View, Index {
     }
 
     @Override
-    final boolean isMemberOf(Database db) {
-        return mDatabase == db;
-    }
-
-    @Override
-    final boolean isUserOf(Tree tree) {
-        return this == tree;
-    }
-
-    @Override
-    final void rename(byte[] newName, long redoTxnId) throws IOException {
-        mDatabase.renameBTree(this, newName, redoTxnId);
+    public final void drop() throws IOException {
+        drop(true).run();
     }
 
     /**
      * @return delete task
      */
-    @Override
     final Runnable drop(boolean mustBeEmpty) throws IOException {
         // Acquire early to avoid deadlock when moving tree to trash.
         CommitLock.Shared shared = mDatabase.commitLock().acquireShared();
@@ -1382,7 +1414,6 @@ class BTree extends Tree implements View, Index {
         }
     }
 
-    @Override
     final void writeCachePrimer(final DataOutput dout) throws IOException {
         // Encode name instead of identifier, to support priming set portability
         // between databases. The identifiers won't match, but the names might.
@@ -1421,9 +1452,24 @@ class BTree extends Tree implements View, Index {
         dout.writeShort(0xffff);
     }
 
-    @Override
     final void applyCachePrimer(DataInput din) throws IOException {
         new Primer(this, din).run();
+    }
+
+    static void skipCachePrimer(DataInput din) throws IOException {
+        while (true) {
+            int len = din.readUnsignedShort();
+            if (len == 0xffff) {
+                break;
+            }
+            while (len > 0) {
+                int amt = din.skipBytes(len);
+                if (amt <= 0) {
+                    break;
+                }
+                len -= amt;
+            }
+        }
     }
 
     /**
@@ -1659,12 +1705,7 @@ class BTree extends Tree implements View, Index {
     /**
      * Atomically swaps the root node of this tree with another.
      */
-    @Override
-    final void rootSwap(Tree other) throws IOException {
-        rootSwap((BTree) other);
-    }
-
-    private void rootSwap(BTree other) throws IOException {
+    final void rootSwap(BTree other) throws IOException {
         CommitLock.Shared shared = mDatabase.commitLock().acquireShared();
         try {
             final Node aRoot = mRoot;

@@ -154,7 +154,7 @@ public class TxnPrepareTest {
         var key = new byte[8];
         Utils.encodeLongBE(key, 0, txn.id());
         assertEquals(LockResult.OWNED_EXCLUSIVE,
-                     txn.tryLockExclusive(Tree.PREPARED_TXNS_ID, key, 0));
+                     txn.tryLockExclusive(BTree.PREPARED_TXNS_ID, key, 0));
 
         assertEquals(LockResult.ACQUIRED, txn.lockUpgradable(0, "hello".getBytes()));
         assertEquals(LockResult.UPGRADED, txn.lockExclusive(0, "hello".getBytes()));
