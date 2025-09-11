@@ -35,7 +35,7 @@ import org.cojen.tupl.io.PageArray;
  *
  * @author Brian S O'Neill
  */
-final class PageManager {
+final class PageManager implements Compactable {
     /*
 
     Header structure is encoded as follows, in 140 bytes:
@@ -617,6 +617,11 @@ final class PageManager {
             mRemoveLock.unlock();
         }
         return false;
+    }
+
+    @Override
+    public boolean compact(double target) throws IOException {
+        return mPageArray instanceof Compactable c && c.compact(target);
     }
 
     /**

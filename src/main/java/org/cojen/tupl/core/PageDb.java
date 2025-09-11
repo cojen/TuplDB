@@ -239,7 +239,7 @@ abstract class PageDb implements CauseCloseable {
      * 6. forced checkpoint (ensures previous scan is applied)
      * 7. verify; if not, scan and checkpoint again
      * 8. end (must always be called if start returned true)
-     * 8. truncate
+     * 9. truncate
      *
      * @return false if target cannot be met or compaction is not supported
      * @throws IllegalStateException if compaction is already in progress

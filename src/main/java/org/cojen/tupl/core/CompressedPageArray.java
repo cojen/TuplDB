@@ -42,7 +42,7 @@ import org.cojen.tupl.util.LocalPool;
  *
  * @author Brian S O'Neill
  */
-final class CompressedPageArray extends PageArray implements Supplier<PageCompressor> {
+final class CompressedPageArray extends PageArray implements Supplier<PageCompressor>, Compactable {
     private final LocalDatabase mDatabase;
     private final Index mPages;
     private final Supplier<? extends PageCompressor> mCompressorFactory;
@@ -108,6 +108,11 @@ final class CompressedPageArray extends PageArray implements Supplier<PageCompre
         } finally {
             c.reset();
         }
+    }
+
+    @Override
+    public boolean compact(double target) throws IOException {
+        return mDatabase.compactFile(null, target);
     }
 
     @Override

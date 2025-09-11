@@ -2800,17 +2800,26 @@ public final class LocalDatabase implements Database {
             return true;
         }
 
+        boolean success = false;
+
         // Block calls to suspend automatic checkpoints.
         mCheckpointer.acquireExclusive();
         try {
             if (mCheckpointer.isSuspended()) {
                 // Compaction needs to perform several checkpoints, so abort if suspended.
-                return false;
+                success = false;
+            } else {
+                success = doCompactFile(observer, target);
             }
-            return doCompactFile(observer, target);
         } finally {
             mCheckpointer.releaseExclusive();
         }
+
+        if (mPageDb instanceof Compactable c) {
+            success |= c.compact(target);
+        }
+
+        return success;
     }
 
     private boolean doCompactFile(CompactionObserver observer, double target) throws IOException {
@@ -3005,18 +3014,20 @@ public final class LocalDatabase implements Database {
 
         // Note that temporary indexes aren't scanned. Some operations performed on them (the
         // sorter) aren't thread-safe, and so verification and compaction cannot examine them.
-        Cursor all = indexRegistryByName().newCursor(null);
-        try {
-            for (all.first(); all.key() != null; all.next()) {
-                long id = decodeLongBE(all.value(), 0);
+        if (mRegistryKeyMap != null) {
+            Cursor all = indexRegistryByName().newCursor(null);
+            try {
+                for (all.first(); all.key() != null; all.next()) {
+                    long id = decodeLongBE(all.value(), 0);
 
-                Index index = indexById(id);
-                if (index instanceof BTree tree && !visitor.apply(tree)) {
-                    return false;
+                    Index index = indexById(id);
+                    if (index instanceof BTree tree && !visitor.apply(tree)) {
+                        return false;
+                    }
                 }
+            } finally {
+                all.reset();
             }
-        } finally {
-            all.reset();
         }
 
         return true;

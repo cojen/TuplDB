@@ -17,6 +17,8 @@
 
 package org.cojen.tupl.core;
 
+import java.io.IOException;
+
 import java.util.function.Supplier;
 
 import java.util.zip.Checksum;
@@ -28,7 +30,7 @@ import org.cojen.tupl.io.PageArray;
  *
  * @author Brian S O'Neill
  */
-abstract class TransformedPageArray extends PageArray {
+abstract class TransformedPageArray extends PageArray implements Compactable {
     protected final PageArray mSource;
 
     TransformedPageArray(PageArray source) {
@@ -39,6 +41,11 @@ abstract class TransformedPageArray extends PageArray {
     TransformedPageArray(int pageSize, PageArray source) {
         super(pageSize);
         mSource = source;
+    }
+
+    @Override
+    public boolean compact(double target) throws IOException {
+        return mSource instanceof Compactable c && c.compact(target);
     }
 
     @Override

@@ -49,7 +49,7 @@ import static org.cojen.tupl.core.Utils.*;
  *
  * @author Brian S O'Neill
  */
-final class SnapshotPageArray extends PageArray {
+final class SnapshotPageArray extends PageArray implements Compactable {
     final PageArray mSource;
 
     private volatile SnapshotImpl[] mSnapshots;
@@ -93,6 +93,11 @@ final class SnapshotPageArray extends PageArray {
             }
         }
         throw new IllegalStateException();
+    }
+
+    @Override
+    public boolean compact(double target) throws IOException {
+        return mSource instanceof Compactable c && c.compact(target);
     }
 
     @Override

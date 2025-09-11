@@ -79,7 +79,7 @@ import static org.cojen.tupl.core.Utils.*;
  *
  * @author Brian S O'Neill
  */
-final class StoredPageDb extends PageDb {
+final class StoredPageDb extends PageDb implements Compactable {
     /*
 
     Header format for first and second pages in file, which is always 512 bytes:
@@ -673,6 +673,11 @@ final class StoredPageDb extends PageDb {
     @Override
     public boolean truncatePages() throws IOException {
         return mPageManager.truncatePages();
+    }
+
+    @Override
+    public boolean compact(double target) throws IOException {
+        return mPageManager.compact(target);
     }
 
     @Override
