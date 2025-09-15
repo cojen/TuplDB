@@ -210,6 +210,8 @@ public final class Runner extends AbstractExecutorService {
 
         private Loop mPrev, mNext;
 
+        private volatile boolean mStarted;
+
         private volatile Runnable mTask;
 
         Loop(Runnable task) {
@@ -221,6 +223,12 @@ public final class Runner extends AbstractExecutorService {
 
         @Override
         public void run() {
+            if (mStarted) {
+                return;
+            }
+
+            mStarted = true;
+
             final String name = getName();
             Runnable task = mTask;
 
