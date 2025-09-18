@@ -45,6 +45,8 @@ import org.cojen.tupl.core.CheckedSupplier;
 
 import org.cojen.tupl.io.Utils;
 
+import org.cojen.tupl.util.LocalPool;
+
 /**
  * Crypto implementation which uses {@link Cipher} and defaults to the AES algorithm. An
  * encrypted salt-sector initialization vector <a
@@ -71,8 +73,8 @@ public class CipherCrypto implements Crypto {
         System.out.println(toString(new CipherCrypto(null, keySize).secretKey()));
     }
 
-    private final ThreadLocal<Cipher> mHeaderPageCipher = new ThreadLocal<>();
-    private final ThreadLocal<Cipher> mDataPageCipher = new ThreadLocal<>();
+    private final LocalPool<Cipher> mHeaderPageCipher = new LocalPool<>(this::newHpCipher, -4);
+    private final LocalPool<Cipher> mDataPageCipher = new LocalPool<>(this::newDpCipher, -4);
     private final SecretKey mRootKey;
     private final int mKeySize;
 
@@ -172,48 +174,58 @@ public class CipherCrypto implements Crypto {
             dataKey = mDataKey;
         }
 
-        Cipher cipher;
         if (pageIndex <= 1) {
-            cipher = headerPageCipher();
-            initCipher(cipher, Cipher.ENCRYPT_MODE, mRootKey);
+            LocalPool.Entry<Cipher> entry = mHeaderPageCipher.access();
+            try {
+                Cipher cipher = entry.get();
+                initCipher(cipher, Cipher.ENCRYPT_MODE, mRootKey);
 
-            // Store IV and additional keys at end of header page, which (presently) has at
-            // least 196 bytes available. Max AES block size is 32 bytes, so required space is
-            // 99 bytes. If block size is 64 bytes, required header space is 195 bytes.
+                // Store IV and additional keys at end of header page, which (presently) has at
+                // least 196 bytes available. Max AES block size is 32 bytes, so required space
+                // is 99 bytes. If block size is 64 bytes, required header space is 195 bytes.
 
-            try (Arena a = Arena.ofConfined()) {
-                MemorySegment srcCopy = a.allocate(pageSize);
-                MemorySegment.copy
-                    (MemorySegment.ofAddress(srcAddr + srcOffset).reinterpret(pageSize), 0,
-                     srcCopy, 0, pageSize);
-                srcAddr = srcCopy.address();
-                srcOffset = 0;
-                int offset = pageSize;
+                try (Arena a = Arena.ofConfined()) {
+                    MemorySegment srcCopy = a.allocate(pageSize);
+                    MemorySegment.copy
+                        (MemorySegment.ofAddress(srcAddr + srcOffset).reinterpret(pageSize), 0,
+                         srcCopy, 0, pageSize);
+                    srcAddr = srcCopy.address();
+                    srcOffset = 0;
+                    int offset = pageSize;
 
-                byte[] headerIv = cipher.getIV();
-                checkBlockLength(headerIv);
-                offset = encodeBlock(srcAddr, offset, headerIv);
-                // Don't encrypt the IV.
-                encodeBlock(dstAddr, dstOffset + pageSize, headerIv);
-                pageSize = offset;
+                    byte[] headerIv = cipher.getIV();
+                    checkBlockLength(headerIv);
+                    offset = encodeBlock(srcAddr, offset, headerIv);
+                    // Don't encrypt the IV.
+                    encodeBlock(dstAddr, dstOffset + pageSize, headerIv);
+                    pageSize = offset;
 
-                offset = encodeBlock(srcAddr, offset, dataIvSalt);
-                offset = encodeBlock(srcAddr, offset, dataKey.getEncoded());
+                    offset = encodeBlock(srcAddr, offset, dataIvSalt);
+                    offset = encodeBlock(srcAddr, offset, dataKey.getEncoded());
+
+                    if (cipherDoFinal(cipher, srcAddr, srcOffset, pageSize, dstAddr, dstOffset)
+                        != pageSize)
+                    {
+                        throw new GeneralSecurityException("Encrypted length does not match");
+                    }
+                }
+            } finally {
+                entry.release();
+            }
+        } else {
+            LocalPool.Entry<Cipher> entry = mDataPageCipher.access();
+            try {
+                Cipher cipher = entry.get();
+                IvParameterSpec ivSpec = generateDataPageIv(cipher, pageIndex, dataIvSalt, dataKey);
+                initCipher(cipher, Cipher.ENCRYPT_MODE, dataKey, ivSpec);
 
                 if (cipherDoFinal(cipher, srcAddr, srcOffset, pageSize, dstAddr, dstOffset)
                     != pageSize)
                 {
                     throw new GeneralSecurityException("Encrypted length does not match");
                 }
-            }
-        } else {
-            cipher = dataPageCipher();
-            IvParameterSpec ivSpec = generateDataPageIv(cipher, pageIndex, dataIvSalt, dataKey);
-            initCipher(cipher, Cipher.ENCRYPT_MODE, dataKey, ivSpec);
-
-            if (cipherDoFinal(cipher, srcAddr, srcOffset, pageSize, dstAddr, dstOffset) != pageSize)
-            {
-                throw new GeneralSecurityException("Encrypted length does not match");
+            } finally {
+                entry.release();
             }
         }
     }
@@ -237,19 +249,24 @@ public class CipherCrypto implements Crypto {
                                   long srcAddr, int srcOffset, long dstAddr, int dstOffset)
         throws GeneralSecurityException
     {
-        Cipher cipher;
         if (pageIndex <= 1) {
             byte[] headerIv = decodeBlock(srcAddr, srcOffset + pageSize);
 
             // Don't decrypt the IV.
             pageSize = pageSize - headerIv.length - 1;
 
-            cipher = headerPageCipher();
-            initCipher(cipher, Cipher.DECRYPT_MODE, mRootKey, new IvParameterSpec(headerIv));
+            LocalPool.Entry<Cipher> entry = mHeaderPageCipher.access();
+            try {
+                Cipher cipher = entry.get();
+                initCipher(cipher, Cipher.DECRYPT_MODE, mRootKey, new IvParameterSpec(headerIv));
 
-            if (cipherDoFinal(cipher, srcAddr, srcOffset, pageSize, dstAddr, dstOffset) != pageSize)
-            {
-                throw new GeneralSecurityException("Decrypted length does not match");
+                if (cipherDoFinal(cipher, srcAddr, srcOffset, pageSize, dstAddr, dstOffset)
+                    != pageSize)
+                {
+                    throw new GeneralSecurityException("Decrypted length does not match");
+                }
+            } finally {
+                entry.release();
             }
 
             if (mDataIvSalt == null) synchronized (mRootKey) {
@@ -263,14 +280,21 @@ public class CipherCrypto implements Crypto {
                 }
             }
         } else {
-            cipher = dataPageCipher();
-            SecretKey dataKey = mDataKey;
-            IvParameterSpec ivSpec = generateDataPageIv(cipher, pageIndex, mDataIvSalt, dataKey);
-            initCipher(cipher, Cipher.DECRYPT_MODE, dataKey, ivSpec);
+            LocalPool.Entry<Cipher> entry = mDataPageCipher.access();
+            try {
+                Cipher cipher = entry.get();
+                SecretKey dataKey = mDataKey;
+                IvParameterSpec ivSpec = generateDataPageIv
+                    (cipher, pageIndex, mDataIvSalt, dataKey);
+                initCipher(cipher, Cipher.DECRYPT_MODE, dataKey, ivSpec);
 
-            if (cipherDoFinal(cipher, srcAddr, srcOffset, pageSize, dstAddr, dstOffset) != pageSize)
-            {
-                throw new GeneralSecurityException("Decrypted length does not match");
+                if (cipherDoFinal(cipher, srcAddr, srcOffset, pageSize, dstAddr, dstOffset)
+                    != pageSize)
+                {
+                    throw new GeneralSecurityException("Decrypted length does not match");
+                }
+            } finally {
+                entry.release();
             }
         }
     }
@@ -401,22 +425,26 @@ public class CipherCrypto implements Crypto {
         cipher.init(opmode, key, ivSpec);
     }
 
-    private Cipher headerPageCipher() throws GeneralSecurityException {
-        Cipher cipher = mHeaderPageCipher.get();
-        if (cipher == null) {
-            cipher = newStreamCipher();
-            mHeaderPageCipher.set(cipher);
+    /**
+     * Returns a new Cipher for header pages.
+     */
+    private Cipher newHpCipher() {
+        try {
+            return newStreamCipher();
+        } catch (GeneralSecurityException e) {
+            throw Utils.rethrow(e);
         }
-        return cipher;
     }
 
-    private Cipher dataPageCipher() throws GeneralSecurityException {
-        Cipher cipher = mDataPageCipher.get();
-        if (cipher == null) {
-            cipher = newPageCipher();
-            mDataPageCipher.set(cipher);
+    /**
+     * Returns a new Cipher for data pages.
+     */
+    private Cipher newDpCipher() {
+        try {
+            return newPageCipher();
+        } catch (GeneralSecurityException e) {
+            throw Utils.rethrow(e);
         }
-        return cipher;
     }
 
     private static void checkBlockLength(byte[] bytes) throws GeneralSecurityException {

@@ -203,12 +203,12 @@ abstract class ChecksumPageArray extends TransformedPageArray {
 
     private static class Direct extends ChecksumPageArray {
         private final int mAbsPageSize;
-        private final ThreadLocal<Checksum> mLocalChecksum;
+        private final LocalPool<? extends Checksum> mLocalChecksum;
 
         Direct(PageArray source, Supplier<? extends Checksum> supplier) {
             super(source, supplier);
             mAbsPageSize = Math.abs(source.directPageSize());
-            mLocalChecksum = new ThreadLocal<>();
+            mLocalChecksum = new LocalPool<>(mSupplier, -4);
         }
 
         @Override
@@ -231,33 +231,34 @@ abstract class ChecksumPageArray extends TransformedPageArray {
                 mSource.readPage(index, dstAddr, offset, pageSize);
                 MemorySegment ms = MemorySegment.ofAddress(dstAddr + offset).reinterpret(pageSize);
                 int storedChecksum = ms.get(INT_LE, length);
-                Checksum checksum = checksum();
-                checksum.reset();
-                checksum.update(ms.asByteBuffer().limit(length));
-                check(index, storedChecksum, checksum);
+                LocalPool.Entry<? extends Checksum> entry = mLocalChecksum.access();
+                try {
+                    Checksum checksum = entry.get();
+                    checksum.reset();
+                    checksum.update(ms.asByteBuffer().limit(length));
+                    check(index, storedChecksum, checksum);
+                } finally {
+                    entry.release();
+                }
             }
         }
 
         @Override
         public void writePage(long index, long srcAddr, int offset) throws IOException {
-            Checksum checksum = checksum();
-            checksum.reset();
             // Assume that the caller has provided a buffer sized to match the direct page.
             int pageSize = mAbsPageSize;
             MemorySegment ms = MemorySegment.ofAddress(srcAddr + offset).reinterpret(pageSize);
             pageSize -= 4;
-            checksum.update(ms.asByteBuffer().limit(pageSize));
-            ms.set(INT_LE, pageSize, (int) checksum.getValue());
-            mSource.writePage(index, srcAddr, offset);
-        }
-
-        private Checksum checksum() {
-            Checksum checksum = mLocalChecksum.get();
-            if (checksum == null) {
-                checksum = mSupplier.get();
-                mLocalChecksum.set(checksum);
+            LocalPool.Entry<? extends Checksum> entry = mLocalChecksum.access();
+            try {
+                Checksum checksum = entry.get();
+                checksum.reset();
+                checksum.update(ms.asByteBuffer().limit(pageSize));
+                ms.set(INT_LE, pageSize, (int) checksum.getValue());
+            } finally {
+                entry.release();
             }
-            return checksum;
+            mSource.writePage(index, srcAddr, offset);
         }
     }
 }
