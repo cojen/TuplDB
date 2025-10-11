@@ -305,14 +305,6 @@ public class DatabaseConfig implements Cloneable {
     }
 
     /**
-     * @deprecated direct page access is always enabled
-     */
-    @Deprecated
-    public DatabaseConfig directPageAccess(boolean direct) {
-        return this;
-    }
-
-    /**
      * Enable automatic cache priming, which writes a priming set into a special file when the
      * process is cleanly shutdown. When opened again, the priming set is applied and the file
      * is deleted. Option has no effect if database is non-durable.
