@@ -319,7 +319,7 @@ abstract sealed class AbstractFileIO extends FileIO permits JavaFileIO, PosixFil
         // Set the start time if there's not already an ongoing sync. Ignore
         // cas fails; first writer wins.
         boolean shouldReset = mSyncStartNanos == 0 && 
-            cSyncStartNanosHandle.compareAndSet(this, 0, System.nanoTime());
+            cSyncStartNanosHandle.compareAndSet(this, 0L, System.nanoTime());
         try {
             mSyncLatch.acquireShared();
             try {

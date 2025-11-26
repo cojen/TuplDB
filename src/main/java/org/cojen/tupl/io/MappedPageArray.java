@@ -230,7 +230,7 @@ public abstract sealed class MappedPageArray extends PageArray
                 return;
             }
             cCauseHandle.compareAndSet(this, null, cause);
-            if (cMappingAddrHandle.compareAndSet(this, addr, 0)) {
+            if (cMappingAddrHandle.compareAndSet(this, addr, 0L)) {
                 mCause = cause;
                 doClose(addr);
                 return;
@@ -244,7 +244,7 @@ public abstract sealed class MappedPageArray extends PageArray
     }
 
     void setMappingAddr(long addr) throws IOException {
-        while (!cMappingAddrHandle.compareAndSet(this, 0, addr)) {
+        while (!cMappingAddrHandle.compareAndSet(this, 0L, addr)) {
             if (mMappingAddr != 0) {
                 throw new IllegalStateException();
             }
