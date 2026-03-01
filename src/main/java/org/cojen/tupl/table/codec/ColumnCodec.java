@@ -418,7 +418,7 @@ public abstract class ColumnCodec {
      * should only consider the column type and not the specific encoding format.
      *
      * @param in true if argument is a collection for "in" filtering
-     * @param argVar argument value to compare against, converted to the the column type; if null,
+     * @param argVar argument value to compare against, converted to the column type; if null,
      * extra fields aren't final and are lazily initialized
      */
     public void filterDefineExtraFields(boolean in, Variable argVar, String argFieldName) {

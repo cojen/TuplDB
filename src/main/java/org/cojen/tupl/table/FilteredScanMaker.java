@@ -716,7 +716,7 @@ public class FilteredScanMaker<R> {
     }
 
     /**
-     * Given a non-null primary key and value, fully or partially decodes the a row. The
+     * Given a non-null primary key and value, fully or partially decodes the row. The
      * generated method never returns null.
      *
      * This method should only needs to be called when a projection is defined.
@@ -781,7 +781,7 @@ public class FilteredScanMaker<R> {
 
     /**
      * Given a non-null primary key and value, applies a filtering step (optional) and fully or
-     * partially decodes the a row. The generated method returns null when rows are filtered out.
+     * partially decodes the row. The generated method returns null when rows are filtered out.
      *
      * private R joinedEval(byte[] primaryKey, byte[] primaryValue, R row)
      */

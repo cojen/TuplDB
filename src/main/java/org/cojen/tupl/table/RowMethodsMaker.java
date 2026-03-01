@@ -84,6 +84,25 @@ public final class RowMethodsMaker {
         return name;
     }
 
+    /* Also see:
+
+       https://web.archive.org/web/20160622140347/http://blogs.oracle.com/jrose/entry/symbolic_freedom_in_the_vm
+
+/ 002F 	delimits a package prefix in a class name 	any name 	\| 005C 007C
+. 002E 	looks like a package prefix 	any name 	\, 005C 002C
+; 003B 	delimits a type within a field or method signature
+	any name 	\? 005C 003F
+$ 0024 	looks like a nested class name or synthetic member 	nowhere 	\% 005C 0025
+< 003C 	looks like <init>, delimiter in generic type signature 	method name 	\^ 005C 005E
+> 003E 	looks like <init> 	method name 	\_ 005C 005F
+[ 005B 	begins the name of an array class 	class name 	\{ 005C 007B
+] 005D 	not dangerous, but goes with ]; reserved 	nowhere 	\} 005C 007D
+: 003A 	not dangerous, but reserved for language use 	nowhere 	\! 005C 0021
+\ 005C 	not dangerous, except when forming an accidental escape 	nowhere 	\- 005C 002D
+(null string) 	bytecode names must be non-empty 	any name 	\= 005C 003D
+
+    */
+
     /**
      * @return 0 if no need to escape
      */
