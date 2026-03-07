@@ -70,13 +70,10 @@ Index userByNameIx = ...
 
 byte[] userNameKey = encodeUserName(user);
 
-Transaction txn = db.newTransaction();
-try {
+try (Transaction txn = db.newTransaction()) {
     userIx.store(txn, userKey, userValue);
     userByNameIx.store(txn, userNameKey, userKey);
     txn.commit();
-} finally {
-    txn.reset();
 }
 ```
 
@@ -88,8 +85,7 @@ byte[] startKey = encodeUserName("J");
 byte[] endKey = encodeUserName("K");
 
 // Open a new cursor with an auto-commit transaction.
-Cursor namesCursor = userByNameIx.newCursor(null);
-try {
+try (Cursor namesCursor = userByNameIx.newCursor(null)) {
     // Find names greater than or equal to the start key.
     namesCursor.findGe(startKey);
     byte[] nameKey;
@@ -100,8 +96,6 @@ try {
         // Move to next name, while still being less than the end key.
         namesCursor.nextLt(endKey);
     }
-} finally {
-    namesCursor.reset();
 }
 ```
 
@@ -112,8 +106,7 @@ The above example can also be implemented using a sub-view:
 View userByNameView = userByNameIx.viewPrefix(startKey, 0);
 
 // Scan the entire view of names.
-Cursor namesCursor = userByNameView.newCursor(null);
-try {
+try (Cursor namesCursor = userByNameView.newCursor(null)) {
     namesCursor.first();
     byte[] nameKey;
     while ((nameKey = namesCursor.key()) != null) {
@@ -122,7 +115,5 @@ try {
 
         namesCursor.next();
     }
-} finally {
-    namesCursor.reset();
 }
 ```
