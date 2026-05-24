@@ -1,6 +1,14 @@
 Changelog
 =========
 
+v1.9.1 (2026-05-24)
+------
+* Reduce unbind spinning overhead when under high contention. ~1000 threads.
+* Truncate compressed pages when they shrink.
+* Added support for zstd compression.
+* Support compaction of compressed databases.
+* Internally uses LocalPool instead of ThreadLocal, to benefit virtual threads.
+
 v1.9.0 (2025-03-04)
 ------
 
