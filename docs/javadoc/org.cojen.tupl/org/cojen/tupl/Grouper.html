@@ -83,12 +83,12 @@ initTheme();
 <section class="class-description" id="class-description">
 <dl class="notes">
 <dt>All Superinterfaces:</dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/24/docs/api/java.base/java/lang/AutoCloseable.html" title="interface in java.lang" class="external-link">AutoCloseable</a>, <a href="https://docs.oracle.com/en/java/javase/24/docs/api/java.base/java/io/Closeable.html" title="interface in java.io" class="external-link">Closeable</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/26/docs/api/java.base/java/lang/AutoCloseable.html" title="interface in java.lang" class="external-link">AutoCloseable</a>, <a href="https://docs.oracle.com/en/java/javase/26/docs/api/java.base/java/io/Closeable.html" title="interface in java.io" class="external-link">Closeable</a></code></dd>
 </dl>
 <hr>
 <div class="horizontal-scroll">
 <div class="type-signature"><span class="modifiers">public interface </span><span class="element-name type-name-label">Grouper&lt;R,<wbr>T&gt;</span><span class="extends-implements">
-extends <a href="https://docs.oracle.com/en/java/javase/24/docs/api/java.base/java/io/Closeable.html" title="interface in java.io" class="external-link">Closeable</a></span></div>
+extends <a href="https://docs.oracle.com/en/java/javase/26/docs/api/java.base/java/io/Closeable.html" title="interface in java.io" class="external-link">Closeable</a></span></div>
 <div class="block">Interface which processes groups of rows into other groups of rows.</div>
 <dl class="notes">
 <dt>See Also:</dt>
@@ -177,7 +177,7 @@ is called.</div>
 <h3 id="begin(java.lang.Object)">begin</h3>
 <div class="horizontal-scroll">
 <div class="member-signature"><span class="return-type"><a href="#type-param-R" title="type parameter in Grouper">R</a></span>&nbsp;<span class="element-name">begin</span><wbr><span class="parameters">(<a href="#type-param-R" title="type parameter in Grouper">R</a>&nbsp;source)</span>
- throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/24/docs/api/java.base/java/io/IOException.html" title="class in java.io" class="external-link">IOException</a></span></div>
+ throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/26/docs/api/java.base/java/io/IOException.html" title="class in java.io" class="external-link">IOException</a></span></div>
 <div class="block">Is called for the first source row in the group, and then the <a href="#step(T)"><code>step</code></a> method
 is called.</div>
 <dl class="notes">
@@ -186,7 +186,7 @@ is called.</div>
 <dt>Returns:</dt>
 <dd>the next source row instance to use, or null if it was kept by the grouper</dd>
 <dt>Throws:</dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/24/docs/api/java.base/java/io/IOException.html" title="class in java.io" class="external-link">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/26/docs/api/java.base/java/io/IOException.html" title="class in java.io" class="external-link">IOException</a></code></dd>
 </dl>
 </div>
 </section>
@@ -196,7 +196,7 @@ is called.</div>
 <h3 id="accumulate(java.lang.Object)">accumulate</h3>
 <div class="horizontal-scroll">
 <div class="member-signature"><span class="return-type"><a href="#type-param-R" title="type parameter in Grouper">R</a></span>&nbsp;<span class="element-name">accumulate</span><wbr><span class="parameters">(<a href="#type-param-R" title="type parameter in Grouper">R</a>&nbsp;source)</span>
-      throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/24/docs/api/java.base/java/io/IOException.html" title="class in java.io" class="external-link">IOException</a></span></div>
+      throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/26/docs/api/java.base/java/io/IOException.html" title="class in java.io" class="external-link">IOException</a></span></div>
 <div class="block">Is called for each source row in the group, other than the first one, and then the
 <a href="#step(T)"><code>step</code></a> method is called.</div>
 <dl class="notes">
@@ -205,7 +205,7 @@ is called.</div>
 <dt>Returns:</dt>
 <dd>the next source row instance to use, or null if it was kept by the grouper</dd>
 <dt>Throws:</dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/24/docs/api/java.base/java/io/IOException.html" title="class in java.io" class="external-link">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/26/docs/api/java.base/java/io/IOException.html" title="class in java.io" class="external-link">IOException</a></code></dd>
 </dl>
 </div>
 </section>
@@ -215,11 +215,11 @@ is called.</div>
 <h3>finished</h3>
 <div class="horizontal-scroll">
 <div class="member-signature"><span class="modifiers">default</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="element-name">finished</span>()
-               throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/24/docs/api/java.base/java/io/IOException.html" title="class in java.io" class="external-link">IOException</a></span></div>
+               throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/26/docs/api/java.base/java/io/IOException.html" title="class in java.io" class="external-link">IOException</a></span></div>
 <div class="block">Is called after the last source row in the group has been provided, and then the <a href="#step(T)"><code>step</code></a> method is called.</div>
 <dl class="notes">
 <dt>Throws:</dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/24/docs/api/java.base/java/io/IOException.html" title="class in java.io" class="external-link">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/26/docs/api/java.base/java/io/IOException.html" title="class in java.io" class="external-link">IOException</a></code></dd>
 </dl>
 </div>
 </section>
@@ -229,7 +229,7 @@ is called.</div>
 <h3 id="step(java.lang.Object)">step</h3>
 <div class="horizontal-scroll">
 <div class="member-signature"><span class="return-type"><a href="#type-param-T" title="type parameter in Grouper">T</a></span>&nbsp;<span class="element-name">step</span><wbr><span class="parameters">(<a href="#type-param-T" title="type parameter in Grouper">T</a>&nbsp;target)</span>
-throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/24/docs/api/java.base/java/io/IOException.html" title="class in java.io" class="external-link">IOException</a></span></div>
+throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/26/docs/api/java.base/java/io/IOException.html" title="class in java.io" class="external-link">IOException</a></span></div>
 <div class="block">Is called to produce the next target row. Returning null indicates that no target
 rows remain, and that reading of source group rows can resume.</div>
 <dl class="notes">
@@ -238,7 +238,7 @@ rows remain, and that reading of source group rows can resume.</div>
 <dt>Returns:</dt>
 <dd>null if no target rows remain</dd>
 <dt>Throws:</dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/24/docs/api/java.base/java/io/IOException.html" title="class in java.io" class="external-link">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/26/docs/api/java.base/java/io/IOException.html" title="class in java.io" class="external-link">IOException</a></code></dd>
 </dl>
 </div>
 </section>
@@ -248,15 +248,15 @@ rows remain, and that reading of source group rows can resume.</div>
 <h3>close</h3>
 <div class="horizontal-scroll">
 <div class="member-signature"><span class="modifiers">default</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="element-name">close</span>()
-            throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/24/docs/api/java.base/java/io/IOException.html" title="class in java.io" class="external-link">IOException</a></span></div>
+            throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/26/docs/api/java.base/java/io/IOException.html" title="class in java.io" class="external-link">IOException</a></span></div>
 <div class="block">Is called when this <code>Grouper</code> instance is no longer needed.</div>
 <dl class="notes">
 <dt>Specified by:</dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/24/docs/api/java.base/java/lang/AutoCloseable.html#close()" class="external-link">close</a></code>&nbsp;in interface&nbsp;<code><a href="https://docs.oracle.com/en/java/javase/24/docs/api/java.base/java/lang/AutoCloseable.html" title="interface in java.lang" class="external-link">AutoCloseable</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/26/docs/api/java.base/java/lang/AutoCloseable.html#close()" class="external-link">close</a></code>&nbsp;in interface&nbsp;<code><a href="https://docs.oracle.com/en/java/javase/26/docs/api/java.base/java/lang/AutoCloseable.html" title="interface in java.lang" class="external-link">AutoCloseable</a></code></dd>
 <dt>Specified by:</dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/24/docs/api/java.base/java/io/Closeable.html#close()" class="external-link">close</a></code>&nbsp;in interface&nbsp;<code><a href="https://docs.oracle.com/en/java/javase/24/docs/api/java.base/java/io/Closeable.html" title="interface in java.io" class="external-link">Closeable</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/26/docs/api/java.base/java/io/Closeable.html#close()" class="external-link">close</a></code>&nbsp;in interface&nbsp;<code><a href="https://docs.oracle.com/en/java/javase/26/docs/api/java.base/java/io/Closeable.html" title="interface in java.io" class="external-link">Closeable</a></code></dd>
 <dt>Throws:</dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/24/docs/api/java.base/java/io/IOException.html" title="class in java.io" class="external-link">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/26/docs/api/java.base/java/io/IOException.html" title="class in java.io" class="external-link">IOException</a></code></dd>
 </dl>
 </div>
 </section>

@@ -82,7 +82,7 @@ initTheme();
 <section class="class-description" id="class-description">
 <dl class="notes">
 <dt>All Superinterfaces:</dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/24/docs/api/java.base/java/lang/AutoCloseable.html" title="interface in java.lang" class="external-link">AutoCloseable</a>, <a href="https://docs.oracle.com/en/java/javase/24/docs/api/java.base/java/io/Closeable.html" title="interface in java.io" class="external-link">Closeable</a>, <a href="Replicator.Accessor.html" title="interface in org.cojen.tupl.repl">Replicator.Accessor</a>, <a href="Replicator.Writer.html" title="interface in org.cojen.tupl.repl">Replicator.Writer</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/26/docs/api/java.base/java/lang/AutoCloseable.html" title="interface in java.lang" class="external-link">AutoCloseable</a>, <a href="https://docs.oracle.com/en/java/javase/26/docs/api/java.base/java/io/Closeable.html" title="interface in java.io" class="external-link">Closeable</a>, <a href="Replicator.Accessor.html" title="interface in org.cojen.tupl.repl">Replicator.Accessor</a>, <a href="Replicator.Writer.html" title="interface in org.cojen.tupl.repl">Replicator.Writer</a></code></dd>
 </dl>
 <dl class="notes">
 <dt>Enclosing interface:</dt>
@@ -157,7 +157,7 @@ reached, the messages are committed and become available for all members to read
 <div class="table-header col-second">Method</div>
 <div class="table-header col-last">Description</div>
 <div class="col-first even-row-color"><code>void</code></div>
-<div class="col-second even-row-color"><code><a href="Replicator.Accessor.html#addCommitListener(java.util.function.LongConsumer)" class="member-name-link">addCommitListener</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/24/docs/api/java.base/java/util/function/LongConsumer.html" title="interface in java.util.function" class="external-link">LongConsumer</a>&nbsp;listener)</code></div>
+<div class="col-second even-row-color"><code><a href="Replicator.Accessor.html#addCommitListener(java.util.function.LongConsumer)" class="member-name-link">addCommitListener</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/26/docs/api/java.base/java/util/function/LongConsumer.html" title="interface in java.util.function" class="external-link">LongConsumer</a>&nbsp;listener)</code></div>
 <div class="col-last even-row-color">
 <div class="block">Install a callback which receives a stream of commit position updates.</div>
 </div>
@@ -192,7 +192,7 @@ position.</div>
 </div>
 <div class="col-first odd-row-color"><code>void</code></div>
 <div class="col-second odd-row-color"><code><a href="Replicator.Accessor.html#uponCommit(long,java.util.function.LongConsumer)" class="member-name-link">uponCommit</a><wbr>(long&nbsp;position,
- <a href="https://docs.oracle.com/en/java/javase/24/docs/api/java.base/java/util/function/LongConsumer.html" title="interface in java.util.function" class="external-link">LongConsumer</a>&nbsp;task)</code></div>
+ <a href="https://docs.oracle.com/en/java/javase/26/docs/api/java.base/java/util/function/LongConsumer.html" title="interface in java.util.function" class="external-link">LongConsumer</a>&nbsp;task)</code></div>
 <div class="col-last odd-row-color">
 <div class="block">Invokes the given task when the commit position reaches the requested position.</div>
 </div>
@@ -225,7 +225,7 @@ position.</div>
 <h3>write</h3>
 <div class="horizontal-scroll">
 <div class="member-signature"><span class="modifiers">default</span>&nbsp;<span class="return-type">int</span>&nbsp;<span class="element-name">write</span><wbr><span class="parameters">(byte[]&nbsp;messages)</span>
-           throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/24/docs/api/java.base/java/io/IOException.html" title="class in java.io" class="external-link">IOException</a></span></div>
+           throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/26/docs/api/java.base/java/io/IOException.html" title="class in java.io" class="external-link">IOException</a></span></div>
 <div class="block">Write complete messages to the log. Equivalent to: <code>write(messages, 0,
 messages.length, </code><a href="Replicator.Accessor.html#position()"><code>position() + </code></a><code>messages.length)</code></div>
 <dl class="notes">
@@ -233,7 +233,7 @@ messages.length, </code><a href="Replicator.Accessor.html#position()"><code>posi
 <dd>1 if successful, -1 if fully deactivated, or 0 if should write any remaining
 messages and then close the writer</dd>
 <dt>Throws:</dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/24/docs/api/java.base/java/io/IOException.html" title="class in java.io" class="external-link">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/26/docs/api/java.base/java/io/IOException.html" title="class in java.io" class="external-link">IOException</a></code></dd>
 </dl>
 </div>
 </section>
@@ -245,7 +245,7 @@ messages and then close the writer</dd>
 <div class="member-signature"><span class="modifiers">default</span>&nbsp;<span class="return-type">int</span>&nbsp;<span class="element-name">write</span><wbr><span class="parameters">(byte[]&nbsp;messages,
  int&nbsp;offset,
  int&nbsp;length)</span>
-           throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/24/docs/api/java.base/java/io/IOException.html" title="class in java.io" class="external-link">IOException</a></span></div>
+           throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/26/docs/api/java.base/java/io/IOException.html" title="class in java.io" class="external-link">IOException</a></span></div>
 <div class="block">Write complete messages to the log. Equivalent to: <code>write(messages, offset,
 length, </code><a href="Replicator.Accessor.html#position()"><code>position() + </code></a><code>length)</code></div>
 <dl class="notes">
@@ -253,7 +253,7 @@ length, </code><a href="Replicator.Accessor.html#position()"><code>position() + 
 <dd>1 if successful, -1 if fully deactivated, or 0 if should write any remaining
 messages and then close the writer</dd>
 <dt>Throws:</dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/24/docs/api/java.base/java/io/IOException.html" title="class in java.io" class="external-link">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/26/docs/api/java.base/java/io/IOException.html" title="class in java.io" class="external-link">IOException</a></code></dd>
 </dl>
 </div>
 </section>
@@ -266,7 +266,7 @@ messages and then close the writer</dd>
  int&nbsp;offset,
  int&nbsp;length,
  long&nbsp;highestPosition)</span>
-           throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/24/docs/api/java.base/java/io/IOException.html" title="class in java.io" class="external-link">IOException</a></span></div>
+           throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/26/docs/api/java.base/java/io/IOException.html" title="class in java.io" class="external-link">IOException</a></span></div>
 <div class="block">Write complete or partial messages to the log. The <code>highestPosition</code> parameter
 defines the new absolute log position which can become the commit position. The
 provided highest position is permitted to exceed the current log size, in
@@ -284,7 +284,7 @@ position</dd>
 <dd>1 if successful, -1 if fully deactivated, or 0 if should write any remaining
 messages and then close the writer</dd>
 <dt>Throws:</dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/24/docs/api/java.base/java/io/IOException.html" title="class in java.io" class="external-link">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/26/docs/api/java.base/java/io/IOException.html" title="class in java.io" class="external-link">IOException</a></code></dd>
 </dl>
 </div>
 </section>
@@ -298,7 +298,7 @@ messages and then close the writer</dd>
  int&nbsp;offset,
  int&nbsp;length,
  long&nbsp;highestPosition)</span>
-   throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/24/docs/api/java.base/java/io/IOException.html" title="class in java.io" class="external-link">IOException</a></span></div>
+   throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/26/docs/api/java.base/java/io/IOException.html" title="class in java.io" class="external-link">IOException</a></span></div>
 <div class="block">Write complete or partial messages to the log.</div>
 <dl class="notes">
 <dt>Parameters:</dt>
@@ -310,7 +310,7 @@ position</dd>
 <dd>1 if successful, -1 if fully deactivated, or 0 if should write any remaining
 messages and then close the writer</dd>
 <dt>Throws:</dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/24/docs/api/java.base/java/io/IOException.html" title="class in java.io" class="external-link">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/26/docs/api/java.base/java/io/IOException.html" title="class in java.io" class="external-link">IOException</a></code></dd>
 </dl>
 </div>
 </section>

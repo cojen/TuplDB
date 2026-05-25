@@ -79,12 +79,12 @@ initTheme();
 <section class="class-description" id="class-description">
 <dl class="notes">
 <dt>All Superinterfaces:</dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/24/docs/api/java.base/java/lang/AutoCloseable.html" title="interface in java.lang" class="external-link">AutoCloseable</a>, <a href="https://docs.oracle.com/en/java/javase/24/docs/api/java.base/java/io/Closeable.html" title="interface in java.io" class="external-link">Closeable</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/26/docs/api/java.base/java/lang/AutoCloseable.html" title="interface in java.lang" class="external-link">AutoCloseable</a>, <a href="https://docs.oracle.com/en/java/javase/26/docs/api/java.base/java/io/Closeable.html" title="interface in java.io" class="external-link">Closeable</a></code></dd>
 </dl>
 <hr>
 <div class="horizontal-scroll">
 <div class="type-signature"><span class="modifiers">public interface </span><span class="element-name type-name-label">Server</span><span class="extends-implements">
-extends <a href="https://docs.oracle.com/en/java/javase/24/docs/api/java.base/java/io/Closeable.html" title="interface in java.io" class="external-link">Closeable</a></span></div>
+extends <a href="https://docs.oracle.com/en/java/javase/26/docs/api/java.base/java/io/Closeable.html" title="interface in java.io" class="external-link">Closeable</a></span></div>
 <div class="block">Controls remote access into a database.</div>
 <dl class="notes">
 <dt>See Also:</dt>
@@ -110,7 +110,7 @@ extends <a href="https://docs.oracle.com/en/java/javase/24/docs/api/java.base/ja
 <div class="table-header col-second">Method</div>
 <div class="table-header col-last">Description</div>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code>void</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#acceptAll(java.net.ServerSocket,long...)" class="member-name-link">acceptAll</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/24/docs/api/java.base/java/net/ServerSocket.html" title="class in java.net" class="external-link">ServerSocket</a>&nbsp;ss,
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#acceptAll(java.net.ServerSocket,long...)" class="member-name-link">acceptAll</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/26/docs/api/java.base/java/net/ServerSocket.html" title="class in java.net" class="external-link">ServerSocket</a>&nbsp;ss,
  long...&nbsp;tokens)</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
 <div class="block">Call to enable remote access via all sockets accepted by the given <code>ServerSocket</code>.</div>
@@ -138,15 +138,15 @@ extends <a href="https://docs.oracle.com/en/java/javase/24/docs/api/java.base/ja
 <section class="detail" id="acceptAll(java.net.ServerSocket,long...)">
 <h3>acceptAll</h3>
 <div class="horizontal-scroll">
-<div class="member-signature"><span class="return-type">void</span>&nbsp;<span class="element-name">acceptAll</span><wbr><span class="parameters">(<a href="https://docs.oracle.com/en/java/javase/24/docs/api/java.base/java/net/ServerSocket.html" title="class in java.net" class="external-link">ServerSocket</a>&nbsp;ss,
+<div class="member-signature"><span class="return-type">void</span>&nbsp;<span class="element-name">acceptAll</span><wbr><span class="parameters">(<a href="https://docs.oracle.com/en/java/javase/26/docs/api/java.base/java/net/ServerSocket.html" title="class in java.net" class="external-link">ServerSocket</a>&nbsp;ss,
  long...&nbsp;tokens)</span>
-        throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/24/docs/api/java.base/java/io/IOException.html" title="class in java.io" class="external-link">IOException</a></span></div>
+        throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/26/docs/api/java.base/java/io/IOException.html" title="class in java.io" class="external-link">IOException</a></span></div>
 <div class="block">Call to enable remote access via all sockets accepted by the given <code>ServerSocket</code>.
 At least one token must match in order for a connection to be accepted.</div>
 <dl class="notes">
 <dt>Throws:</dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/24/docs/api/java.base/java/lang/IllegalArgumentException.html" title="class in java.lang" class="external-link">IllegalArgumentException</a></code> - if not given one or two tokens</dd>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/24/docs/api/java.base/java/io/IOException.html" title="class in java.io" class="external-link">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/26/docs/api/java.base/java/lang/IllegalArgumentException.html" title="class in java.lang" class="external-link">IllegalArgumentException</a></code> - if not given one or two tokens</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/26/docs/api/java.base/java/io/IOException.html" title="class in java.io" class="external-link">IOException</a></code></dd>
 </dl>
 </div>
 </section>
@@ -159,9 +159,9 @@ At least one token must match in order for a connection to be accepted.</div>
 <div class="block">Disables remote access, closes all acceptors, and closes all existing connections.</div>
 <dl class="notes">
 <dt>Specified by:</dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/24/docs/api/java.base/java/lang/AutoCloseable.html#close()" class="external-link">close</a></code>&nbsp;in interface&nbsp;<code><a href="https://docs.oracle.com/en/java/javase/24/docs/api/java.base/java/lang/AutoCloseable.html" title="interface in java.lang" class="external-link">AutoCloseable</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/26/docs/api/java.base/java/lang/AutoCloseable.html#close()" class="external-link">close</a></code>&nbsp;in interface&nbsp;<code><a href="https://docs.oracle.com/en/java/javase/26/docs/api/java.base/java/lang/AutoCloseable.html" title="interface in java.lang" class="external-link">AutoCloseable</a></code></dd>
 <dt>Specified by:</dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/24/docs/api/java.base/java/io/Closeable.html#close()" class="external-link">close</a></code>&nbsp;in interface&nbsp;<code><a href="https://docs.oracle.com/en/java/javase/24/docs/api/java.base/java/io/Closeable.html" title="interface in java.io" class="external-link">Closeable</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/26/docs/api/java.base/java/io/Closeable.html#close()" class="external-link">close</a></code>&nbsp;in interface&nbsp;<code><a href="https://docs.oracle.com/en/java/javase/26/docs/api/java.base/java/io/Closeable.html" title="interface in java.io" class="external-link">Closeable</a></code></dd>
 </dl>
 </div>
 </section>

@@ -88,7 +88,7 @@ initTheme();
 </dl>
 <hr>
 <div class="horizontal-scroll">
-<div class="type-signature"><span class="annotations"><a href="https://docs.oracle.com/en/java/javase/24/docs/api/java.base/java/lang/FunctionalInterface.html" title="annotation interface in java.lang" class="external-link">@FunctionalInterface</a>
+<div class="type-signature"><span class="annotations"><a href="https://docs.oracle.com/en/java/javase/26/docs/api/java.base/java/lang/FunctionalInterface.html" title="annotation interface in java.lang" class="external-link">@FunctionalInterface</a>
 </span><span class="modifiers">public interface </span><span class="element-name type-name-label">Filter</span><span class="extends-implements">
 extends <a href="Transformer.html" title="interface in org.cojen.tupl">Transformer</a></span></div>
 <div class="block">View transformer which filters out entries which don't belong. Implementations only need to
@@ -161,14 +161,14 @@ implement the <a href="#isAllowed(byte%5B%5D,byte%5B%5D)"><code>isAllowed</code>
 <div class="col-last even-row-color">
 <div class="block">Apply an inverse transformation of the given key, strictly less than the one given.</div>
 </div>
-<div class="col-first odd-row-color"><code>default <a href="https://docs.oracle.com/en/java/javase/24/docs/api/java.base/java/lang/Boolean.html" title="class in java.lang" class="external-link">Boolean</a></code></div>
+<div class="col-first odd-row-color"><code>default <a href="https://docs.oracle.com/en/java/javase/26/docs/api/java.base/java/lang/Boolean.html" title="class in java.lang" class="external-link">Boolean</a></code></div>
 <div class="col-second odd-row-color"><code><a href="Transformer.html#requireValue()" class="member-name-link">requireValue</a>()</code></div>
 <div class="col-last odd-row-color">
 <div class="block">Returns true by default, indicating that the transform methods always require a value
 instance to be provided.</div>
 </div>
-<div class="col-first even-row-color"><code>default <a href="https://docs.oracle.com/en/java/javase/24/docs/api/java.base/java/util/Comparator.html" title="interface in java.util" class="external-link">Comparator</a><wbr>&lt;byte[]&gt;</code></div>
-<div class="col-second even-row-color"><code><a href="Transformer.html#transformedComparator(java.util.Comparator)" class="member-name-link">transformedComparator</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/24/docs/api/java.base/java/util/Comparator.html" title="interface in java.util" class="external-link">Comparator</a>&lt;byte[]&gt;&nbsp;original)</code></div>
+<div class="col-first even-row-color"><code>default <a href="https://docs.oracle.com/en/java/javase/26/docs/api/java.base/java/util/Comparator.html" title="interface in java.util" class="external-link">Comparator</a><wbr>&lt;byte[]&gt;</code></div>
+<div class="col-second even-row-color"><code><a href="Transformer.html#transformedComparator(java.util.Comparator)" class="member-name-link">transformedComparator</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/26/docs/api/java.base/java/util/Comparator.html" title="interface in java.util" class="external-link">Comparator</a>&lt;byte[]&gt;&nbsp;original)</code></div>
 <div class="col-last even-row-color">
 <div class="block">Returns the view comparator, after transformation.</div>
 </div>
@@ -207,11 +207,11 @@ instance to be provided.</div>
 <div class="horizontal-scroll">
 <div class="member-signature"><span class="return-type">boolean</span>&nbsp;<span class="element-name">isAllowed</span><wbr><span class="parameters">(byte[]&nbsp;key,
  byte[]&nbsp;value)</span>
-           throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/24/docs/api/java.base/java/io/IOException.html" title="class in java.io" class="external-link">IOException</a></span></div>
+           throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/26/docs/api/java.base/java/io/IOException.html" title="class in java.io" class="external-link">IOException</a></span></div>
 <div class="block">Return true if the given key and value are not to be filtered out.</div>
 <dl class="notes">
 <dt>Throws:</dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/24/docs/api/java.base/java/io/IOException.html" title="class in java.io" class="external-link">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/26/docs/api/java.base/java/io/IOException.html" title="class in java.io" class="external-link">IOException</a></code></dd>
 </dl>
 </div>
 </section>
@@ -223,7 +223,7 @@ instance to be provided.</div>
 <div class="member-signature"><span class="modifiers">default</span>&nbsp;<span class="return-type">byte[]</span>&nbsp;<span class="element-name">transformValue</span><wbr><span class="parameters">(byte[]&nbsp;value,
  byte[]&nbsp;key,
  byte[]&nbsp;tkey)</span>
-                       throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/24/docs/api/java.base/java/io/IOException.html" title="class in java.io" class="external-link">IOException</a></span></div>
+                       throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/26/docs/api/java.base/java/io/IOException.html" title="class in java.io" class="external-link">IOException</a></span></div>
 <div class="block">Calls the <a href="#isAllowed(byte%5B%5D,byte%5B%5D)"><code>isAllowed</code></a> method.</div>
 <dl class="notes">
 <dt>Specified by:</dt>
@@ -235,7 +235,7 @@ instance to be provided.</div>
 <dt>Returns:</dt>
 <dd>transformed value or null to discard entry</dd>
 <dt>Throws:</dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/24/docs/api/java.base/java/io/IOException.html" title="class in java.io" class="external-link">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/26/docs/api/java.base/java/io/IOException.html" title="class in java.io" class="external-link">IOException</a></code></dd>
 </dl>
 </div>
 </section>
@@ -247,7 +247,7 @@ instance to be provided.</div>
 <div class="member-signature"><span class="modifiers">default</span>&nbsp;<span class="return-type">byte[]</span>&nbsp;<span class="element-name">inverseTransformValue</span><wbr><span class="parameters">(byte[]&nbsp;tvalue,
  byte[]&nbsp;key,
  byte[]&nbsp;tkey)</span>
-                              throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/24/docs/api/java.base/java/io/IOException.html" title="class in java.io" class="external-link">IOException</a>,
+                              throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/26/docs/api/java.base/java/io/IOException.html" title="class in java.io" class="external-link">IOException</a>,
 <a href="ViewConstraintException.html" title="class in org.cojen.tupl">ViewConstraintException</a></span></div>
 <div class="block">Calls the <a href="#isAllowed(byte%5B%5D,byte%5B%5D)"><code>isAllowed</code></a> method.</div>
 <dl class="notes">
@@ -261,7 +261,7 @@ instance to be provided.</div>
 <dd>inverse transformed value, or null to delete the value</dd>
 <dt>Throws:</dt>
 <dd><code><a href="ViewConstraintException.html" title="class in org.cojen.tupl">ViewConstraintException</a></code> - if inverse transformation of given value is not supported</dd>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/24/docs/api/java.base/java/io/IOException.html" title="class in java.io" class="external-link">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/26/docs/api/java.base/java/io/IOException.html" title="class in java.io" class="external-link">IOException</a></code></dd>
 </dl>
 </div>
 </section>

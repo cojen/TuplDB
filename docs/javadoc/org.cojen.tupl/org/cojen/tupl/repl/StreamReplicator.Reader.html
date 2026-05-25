@@ -82,7 +82,7 @@ initTheme();
 <section class="class-description" id="class-description">
 <dl class="notes">
 <dt>All Superinterfaces:</dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/24/docs/api/java.base/java/lang/AutoCloseable.html" title="interface in java.lang" class="external-link">AutoCloseable</a>, <a href="https://docs.oracle.com/en/java/javase/24/docs/api/java.base/java/io/Closeable.html" title="interface in java.io" class="external-link">Closeable</a>, <a href="Replicator.Accessor.html" title="interface in org.cojen.tupl.repl">Replicator.Accessor</a>, <a href="Replicator.Reader.html" title="interface in org.cojen.tupl.repl">Replicator.Reader</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/26/docs/api/java.base/java/lang/AutoCloseable.html" title="interface in java.lang" class="external-link">AutoCloseable</a>, <a href="https://docs.oracle.com/en/java/javase/26/docs/api/java.base/java/io/Closeable.html" title="interface in java.io" class="external-link">Closeable</a>, <a href="Replicator.Accessor.html" title="interface in org.cojen.tupl.repl">Replicator.Accessor</a>, <a href="Replicator.Reader.html" title="interface in org.cojen.tupl.repl">Replicator.Reader</a></code></dd>
 </dl>
 <dl class="notes">
 <dt>Enclosing interface:</dt>
@@ -160,7 +160,7 @@ higher than a term, and never blocking.</div>
 <div class="table-header col-second">Method</div>
 <div class="table-header col-last">Description</div>
 <div class="col-first even-row-color"><code>void</code></div>
-<div class="col-second even-row-color"><code><a href="Replicator.Accessor.html#addCommitListener(java.util.function.LongConsumer)" class="member-name-link">addCommitListener</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/24/docs/api/java.base/java/util/function/LongConsumer.html" title="interface in java.util.function" class="external-link">LongConsumer</a>&nbsp;listener)</code></div>
+<div class="col-second even-row-color"><code><a href="Replicator.Accessor.html#addCommitListener(java.util.function.LongConsumer)" class="member-name-link">addCommitListener</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/26/docs/api/java.base/java/util/function/LongConsumer.html" title="interface in java.util.function" class="external-link">LongConsumer</a>&nbsp;listener)</code></div>
 <div class="col-last even-row-color">
 <div class="block">Install a callback which receives a stream of commit position updates.</div>
 </div>
@@ -195,7 +195,7 @@ position.</div>
 </div>
 <div class="col-first odd-row-color"><code>void</code></div>
 <div class="col-second odd-row-color"><code><a href="Replicator.Accessor.html#uponCommit(long,java.util.function.LongConsumer)" class="member-name-link">uponCommit</a><wbr>(long&nbsp;position,
- <a href="https://docs.oracle.com/en/java/javase/24/docs/api/java.base/java/util/function/LongConsumer.html" title="interface in java.util.function" class="external-link">LongConsumer</a>&nbsp;task)</code></div>
+ <a href="https://docs.oracle.com/en/java/javase/26/docs/api/java.base/java/util/function/LongConsumer.html" title="interface in java.util.function" class="external-link">LongConsumer</a>&nbsp;task)</code></div>
 <div class="col-last odd-row-color">
 <div class="block">Invokes the given task when the commit position reaches the requested position.</div>
 </div>
@@ -228,7 +228,7 @@ position.</div>
 <h3>read</h3>
 <div class="horizontal-scroll">
 <div class="member-signature"><span class="modifiers">default</span>&nbsp;<span class="return-type">int</span>&nbsp;<span class="element-name">read</span><wbr><span class="parameters">(byte[]&nbsp;buf)</span>
-          throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/24/docs/api/java.base/java/io/IOException.html" title="class in java.io" class="external-link">IOException</a></span></div>
+          throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/26/docs/api/java.base/java/io/IOException.html" title="class in java.io" class="external-link">IOException</a></span></div>
 <div class="block">Blocks until log messages are available, never reading past a commit position or
 term.</div>
 <dl class="notes">
@@ -236,7 +236,7 @@ term.</div>
 <dd>amount of bytes read, or EOF (-1) if the term end has been reached</dd>
 <dt>Throws:</dt>
 <dd><code><a href="InvalidReadException.html" title="class in org.cojen.tupl.repl">InvalidReadException</a></code> - if log was deleted (position is too low)</dd>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/24/docs/api/java.base/java/io/IOException.html" title="class in java.io" class="external-link">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/26/docs/api/java.base/java/io/IOException.html" title="class in java.io" class="external-link">IOException</a></code></dd>
 </dl>
 </div>
 </section>
@@ -248,7 +248,7 @@ term.</div>
 <div class="member-signature"><span class="return-type">int</span>&nbsp;<span class="element-name">read</span><wbr><span class="parameters">(byte[]&nbsp;buf,
  int&nbsp;offset,
  int&nbsp;length)</span>
-  throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/24/docs/api/java.base/java/io/IOException.html" title="class in java.io" class="external-link">IOException</a></span></div>
+  throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/26/docs/api/java.base/java/io/IOException.html" title="class in java.io" class="external-link">IOException</a></span></div>
 <div class="block">Blocks until log messages are available, never reading past a commit position or
 term.</div>
 <dl class="notes">
@@ -256,7 +256,7 @@ term.</div>
 <dd>amount of bytes read, or EOF (-1) if the term end has been reached</dd>
 <dt>Throws:</dt>
 <dd><code><a href="InvalidReadException.html" title="class in org.cojen.tupl.repl">InvalidReadException</a></code> - if log was deleted (position is too low)</dd>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/24/docs/api/java.base/java/io/IOException.html" title="class in java.io" class="external-link">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/26/docs/api/java.base/java/io/IOException.html" title="class in java.io" class="external-link">IOException</a></code></dd>
 </dl>
 </div>
 </section>
@@ -268,14 +268,14 @@ term.</div>
 <div class="member-signature"><span class="modifiers">default</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="element-name">readFully</span><wbr><span class="parameters">(byte[]&nbsp;buf,
  int&nbsp;offset,
  int&nbsp;length)</span>
-                throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/24/docs/api/java.base/java/io/IOException.html" title="class in java.io" class="external-link">IOException</a></span></div>
+                throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/26/docs/api/java.base/java/io/IOException.html" title="class in java.io" class="external-link">IOException</a></span></div>
 <div class="block">Blocks until the buffer is fully read with messages, never reading past a commit
 position or term.</div>
 <dl class="notes">
 <dt>Throws:</dt>
 <dd><code><a href="InvalidReadException.html" title="class in org.cojen.tupl.repl">InvalidReadException</a></code> - if log was deleted (position is too low)</dd>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/24/docs/api/java.base/java/io/EOFException.html" title="class in java.io" class="external-link">EOFException</a></code> - if the term end has been reached too soon</dd>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/24/docs/api/java.base/java/io/IOException.html" title="class in java.io" class="external-link">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/26/docs/api/java.base/java/io/EOFException.html" title="class in java.io" class="external-link">EOFException</a></code> - if the term end has been reached too soon</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/26/docs/api/java.base/java/io/IOException.html" title="class in java.io" class="external-link">IOException</a></code></dd>
 </dl>
 </div>
 </section>
@@ -287,7 +287,7 @@ position or term.</div>
 <div class="member-signature"><span class="return-type">int</span>&nbsp;<span class="element-name">tryRead</span><wbr><span class="parameters">(byte[]&nbsp;buf,
  int&nbsp;offset,
  int&nbsp;length)</span>
-     throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/24/docs/api/java.base/java/io/IOException.html" title="class in java.io" class="external-link">IOException</a></span></div>
+     throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/26/docs/api/java.base/java/io/IOException.html" title="class in java.io" class="external-link">IOException</a></span></div>
 <div class="block">Reads whatever log data is available, never higher than a commit position, never
 higher than a term, and never blocking.</div>
 <dl class="notes">
@@ -295,7 +295,7 @@ higher than a term, and never blocking.</div>
 <dd>amount of bytes read, or EOF (-1) if the term end has been reached</dd>
 <dt>Throws:</dt>
 <dd><code><a href="InvalidReadException.html" title="class in org.cojen.tupl.repl">InvalidReadException</a></code> - if log data was deleted (position is too low)</dd>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/24/docs/api/java.base/java/io/IOException.html" title="class in java.io" class="external-link">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/26/docs/api/java.base/java/io/IOException.html" title="class in java.io" class="external-link">IOException</a></code></dd>
 </dl>
 </div>
 </section>
