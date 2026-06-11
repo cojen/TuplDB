@@ -22,6 +22,8 @@ import java.lang.invoke.MethodType;
 
 import java.lang.reflect.InvocationTargetException;
 
+import javax.crypto.SecretKey;
+
 import org.junit.*;
 import static org.junit.Assert.*;
 
@@ -67,7 +69,7 @@ public class RestrictedTest {
         mm.new_(CipherCrypto.class, mm.new_(byte[].class, 16));
 
         mm = cm.addMethod(null, "CipherCrypto_5").public_().static_();
-        mm.new_(CipherCrypto.class, null, 16);
+        mm.new_(CipherCrypto.class, mm.var(SecretKey.class).clear(), 16);
 
         mm = cm.addMethod(null, "CipherCrypto_6").public_().static_();
         MethodType mt = MethodType.methodType(void.class, int.class);
