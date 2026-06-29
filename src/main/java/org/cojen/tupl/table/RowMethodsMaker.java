@@ -34,6 +34,7 @@ import java.util.function.Consumer;
 import org.cojen.maker.Bootstrap;
 import org.cojen.maker.ClassMaker;
 import org.cojen.maker.Label;
+import org.cojen.maker.Maker;
 import org.cojen.maker.MethodMaker;
 import org.cojen.maker.Variable;
 
@@ -55,116 +56,25 @@ public final class RowMethodsMaker {
      * escape characters.
      */
     public static String escape(String name) {
-        for (int i=0; i<name.length(); i++) {
-            char c = name.charAt(i);
-            char e = escape(c);
-            if (e != '\0') {
-                var b = new StringBuilder(name.length() + 1);
-                b.append(name, 0, i).append('\\').append(e);
-                i++;
-                for (; i<name.length(); i++) {
-                    c = name.charAt(i);
-                    e = escape(c);
-                    if (e == '\0') {
-                        b.append(c);
-                    } else {
-                        b.append('\\').append(e);
-                    }
+        name = Maker.mangle(name);
+
+        if (!name.isEmpty() && name.charAt(0) != '\\') {
+            // Also need to handle conflicts with inherited method names.
+            switch (name) {
+                case "hashCode", "equals", "toString", "clone", "getClass", "wait" -> {
+                    name = "\\=" + name;
                 }
-                return b.toString();
             }
         }
 
-        // Also need to handle conflicts with inherited method names, and the empty string.
-
-        switch (name) {
-            case "hashCode", "equals", "toString", "clone", "getClass", "wait", "" -> name += '\\';
-        }
-
         return name;
-    }
-
-    /* Also see:
-
-       https://web.archive.org/web/20160622140347/http://blogs.oracle.com/jrose/entry/symbolic_freedom_in_the_vm
-
-/ 002F 	delimits a package prefix in a class name 	any name 	\| 005C 007C
-. 002E 	looks like a package prefix 	any name 	\, 005C 002C
-; 003B 	delimits a type within a field or method signature
-	any name 	\? 005C 003F
-$ 0024 	looks like a nested class name or synthetic member 	nowhere 	\% 005C 0025
-< 003C 	looks like <init>, delimiter in generic type signature 	method name 	\^ 005C 005E
-> 003E 	looks like <init> 	method name 	\_ 005C 005F
-[ 005B 	begins the name of an array class 	class name 	\{ 005C 007B
-] 005D 	not dangerous, but goes with ]; reserved 	nowhere 	\} 005C 007D
-: 003A 	not dangerous, but reserved for language use 	nowhere 	\! 005C 0021
-\ 005C 	not dangerous, except when forming an accidental escape 	nowhere 	\- 005C 002D
-(null string) 	bytecode names must be non-empty 	any name 	\= 005C 003D
-
-    */
-
-    /**
-     * @return 0 if no need to escape
-     */
-    private static char escape(char c) {
-        return switch (c) {
-            case '\\' -> '\\';
-            case '.'  -> '_';
-            case ';'  -> ':';
-            case '['  -> '(';
-            case '/'  -> '-';
-            case '<'  -> '{';
-            case '>'  -> '}';
-            default   -> '\0';
-        };
     }
 
     /**
      * Converts an escaped string back to its original form.
      */
     public static String unescape(String name) {
-        int length = name.length();
-
-        for (int i=0; i<length; i++) {
-            char c = name.charAt(i);
-            if (c == '\\') {
-                i++;
-                if (i >= length) {
-                    return name.substring(0, length - 1);
-                }
-                var b = new StringBuilder(name.length() - 1);
-                b.append(name, 0, i - 1).append(unescape(name.charAt(i)));
-                i++;
-                for (; i<name.length(); i++) {
-                    c = name.charAt(i);
-                    if (c != '\\') {
-                        b.append(c);
-                    } else {
-                        i++;
-                        if (i >= length) {
-                            break;
-                        }
-                        b.append(unescape(name.charAt(i)));
-                    }
-                }
-                return b.toString();
-            }
-        }
-
-        return name;
-    }
-
-    private static char unescape(char c) {
-        return switch (c) {
-            case '\\' -> '\\';
-            case '_'  -> '.';
-            case ':'  -> ';';
-            case '('  -> '[';
-            case '-'  -> '/';
-            case '{'  -> '<';
-            case '}'  -> '>';
-            default   -> c;
-        };
+        return Maker.demangle(name);
     }
 
     // Used to cache generated classes which contain only static methods.
