@@ -210,26 +210,32 @@ final class NodeGroup extends Clutch.Pack implements Checkpointer.DirtySet {
                     node.releaseExclusive();
                     break;
                 }
-                try {
-                    if (node.evict(mDatabase)) {
-                        if ((mode & MODE_UNEVICTABLE) != 0) {
-                            NodeGroup group = node.mGroup;
-                            if (group == this) {
-                                doMakeUnevictable(node);
-                            } else {
-                                releaseExclusive();
-                                group.makeUnevictable(node);
-                                // Return with node latch still held.
-                                return node;
-                            }
+
+                evict: {
+                    try {
+                        if (!node.evict(mDatabase)) {
+                            break evict;
                         }
+                    } catch (Throwable e) {
                         releaseExclusive();
-                        // Return with node latch still held.
-                        return node;
+                        throw e;
                     }
-                } catch (Throwable e) {
+                
+                    if ((mode & MODE_UNEVICTABLE) != 0) {
+                        NodeGroup group = node.mGroup;
+                        if (group != this) {
+                            releaseExclusive();
+                            group.makeUnevictable(node);
+                            // Return with node latch still held.
+                            return node;
+                        }
+                        doMakeUnevictable(node);
+                    }
+
                     releaseExclusive();
-                    throw e;
+
+                    // Return with node latch still held.
+                    return node;
                 }
             }
         } while (--limit > 0);

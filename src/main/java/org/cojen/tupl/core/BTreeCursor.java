@@ -3330,7 +3330,7 @@ public class BTreeCursor extends CoreValueAccessor implements Cursor {
                             // TODO: If originalValue is fragmented, compare without loading.
                             originalValue = node.retrieveLeafValue(pos);
                         } catch (Throwable e) {
-                            node.releaseExclusive();
+                            node.release(exclusive);
                             shared.release();
                             throw e;
                         }
