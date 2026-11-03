@@ -110,20 +110,29 @@ final class TransactionContext extends Latch implements Flushable {
      * @return positive non-zero transaction id
      */
     long nextTransactionId() {
-        long txnId = (long) cHighTxnIdHandle.getAndAdd(this, mTxnStride) + mTxnStride;
+        long stride = mTxnStride;
+        long txnId = (long) cHighTxnIdHandle.getAndAdd(this, stride) + stride;
+        return txnId > 0 ? txnId : wrapTransactionId();
+    }
 
-        if (txnId <= 0) {
-            // Improbably, the transaction identifier has wrapped around. Only vend positive
-            // identifiers. Non-replicated transactions always have negative identifiers.
-            synchronized (this) {
-                if (mHighTxnId <= 0 && (txnId = mHighTxnId + mTxnStride) <= 0) {
-                    txnId = mInitialTxnId % mTxnStride;
+    private synchronized long wrapTransactionId() {
+        // Improbably, the transaction identifier has wrapped around. Only vend positive
+        // identifiers. Non-replicated transactions always have negative identifiers.
+
+        while (true) {
+            long highTxnId = mHighTxnId;
+            if (highTxnId <= 0) {
+                long txnId = mInitialTxnId + mTxnStride;
+                if (cHighTxnIdHandle.compareAndSet(this, highTxnId, txnId)) {
+                    return txnId;
                 }
-                mHighTxnId = txnId;
+            } else {
+                long txnId = (long) cHighTxnIdHandle.getAndAdd(this, mTxnStride) + mTxnStride;
+                if (txnId > 0) {
+                    return txnId;
+                }
             }
         }
-
-        return txnId;
     }
 
     void acquireRedoLatch() {
