@@ -1,6 +1,11 @@
 Changelog
 =========
 
+v1.9.2
+------
+* Fixed incorrect latch release handling when an exception is thrown in a few cases.
+* Fixed handling of transaction id wraparound, although this is extremely rare.
+
 v1.9.1 (2026-05-24)
 ------
 * Reduce unbind spinning overhead when under high contention. ~1000 threads.
